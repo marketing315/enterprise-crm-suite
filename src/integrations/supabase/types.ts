@@ -469,6 +469,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_phone_duplicate: {
+        Args: { p_brand_id: string; p_phone_normalized: string }
+        Returns: {
+          contact_id: string
+          email: string
+          first_name: string
+          last_name: string
+        }[]
+      }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
         Returns: boolean
@@ -508,6 +517,29 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      search_contacts: {
+        Args: {
+          p_brand_id: string
+          p_limit?: number
+          p_offset?: number
+          p_query: string
+          p_status?: Database["public"]["Enums"]["contact_status"]
+        }
+        Returns: {
+          cap: string
+          city: string
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          match_type: string
+          notes: string
+          primary_phone: string
+          status: Database["public"]["Enums"]["contact_status"]
+          updated_at: string
+        }[]
       }
       user_belongs_to_brand: {
         Args: { _brand_id: string; _user_id: string }
