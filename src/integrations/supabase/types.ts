@@ -38,6 +38,272 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_phones: {
+        Row: {
+          assumed_country: boolean
+          brand_id: string
+          contact_id: string
+          country_code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          phone_normalized: string
+          phone_raw: string
+        }
+        Insert: {
+          assumed_country?: boolean
+          brand_id: string
+          contact_id: string
+          country_code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          phone_normalized: string
+          phone_raw: string
+        }
+        Update: {
+          assumed_country?: boolean
+          brand_id?: string
+          contact_id?: string
+          country_code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          phone_normalized?: string
+          phone_raw?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_phones_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_phones_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          brand_id: string
+          cap: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["contact_status"]
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          cap?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["contact_status"]
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          cap?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["contact_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incoming_requests: {
+        Row: {
+          brand_id: string
+          created_at: string
+          error_message: string | null
+          headers: Json | null
+          id: string
+          ip_address: string | null
+          lead_event_id: string | null
+          processed: boolean
+          raw_body: Json
+          source_id: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          error_message?: string | null
+          headers?: Json | null
+          id?: string
+          ip_address?: string | null
+          lead_event_id?: string | null
+          processed?: boolean
+          raw_body: Json
+          source_id?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          error_message?: string | null
+          headers?: Json | null
+          id?: string
+          ip_address?: string | null
+          lead_event_id?: string | null
+          processed?: boolean
+          raw_body?: Json
+          source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incoming_requests_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_requests_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_requests_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_events: {
+        Row: {
+          ai_model_version: string | null
+          ai_priority: number | null
+          ai_prompt_version: string | null
+          archived: boolean
+          brand_id: string
+          contact_id: string | null
+          created_at: string
+          deal_id: string | null
+          id: string
+          occurred_at: string
+          raw_payload: Json
+          received_at: string
+          source: Database["public"]["Enums"]["lead_source_type"]
+          source_name: string | null
+        }
+        Insert: {
+          ai_model_version?: string | null
+          ai_priority?: number | null
+          ai_prompt_version?: string | null
+          archived?: boolean
+          brand_id: string
+          contact_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          occurred_at?: string
+          raw_payload?: Json
+          received_at?: string
+          source: Database["public"]["Enums"]["lead_source_type"]
+          source_name?: string | null
+        }
+        Update: {
+          ai_model_version?: string | null
+          ai_priority?: number | null
+          ai_prompt_version?: string | null
+          archived?: boolean
+          brand_id?: string
+          contact_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          occurred_at?: string
+          raw_payload?: Json
+          received_at?: string
+          source?: Database["public"]["Enums"]["lead_source_type"]
+          source_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rate_limit_buckets: {
+        Row: {
+          id: string
+          last_refill_at: string
+          max_tokens: number
+          refill_rate: number
+          source_id: string
+          tokens: number
+        }
+        Insert: {
+          id?: string
+          last_refill_at?: string
+          max_tokens: number
+          refill_rate: number
+          source_id: string
+          tokens: number
+        }
+        Update: {
+          id?: string
+          last_refill_at?: string
+          max_tokens?: number
+          refill_rate?: number
+          source_id?: string
+          tokens?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_limit_buckets_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: true
+            referencedRelation: "webhook_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           brand_id: string
@@ -107,11 +373,77 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_sources: {
+        Row: {
+          api_key_hash: string
+          brand_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          mapping: Json | null
+          name: string
+          rate_limit_per_min: number
+          updated_at: string
+        }
+        Insert: {
+          api_key_hash: string
+          brand_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          mapping?: Json | null
+          name: string
+          rate_limit_per_min?: number
+          updated_at?: string
+        }
+        Update: {
+          api_key_hash?: string
+          brand_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          mapping?: Json | null
+          name?: string
+          rate_limit_per_min?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_sources_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      consume_rate_limit_token: {
+        Args: { p_source_id: string }
+        Returns: boolean
+      }
+      find_or_create_contact: {
+        Args: {
+          p_assumed_country: boolean
+          p_brand_id: string
+          p_cap?: string
+          p_city?: string
+          p_country_code: string
+          p_email?: string
+          p_first_name?: string
+          p_last_name?: string
+          p_phone_normalized: string
+          p_phone_raw: string
+        }
+        Returns: string
+      }
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       has_role: {
@@ -136,6 +468,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "ceo" | "callcenter" | "sales"
+      contact_status:
+        | "new"
+        | "active"
+        | "qualified"
+        | "unqualified"
+        | "archived"
+      lead_source_type: "webhook" | "manual" | "import" | "api"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -264,6 +603,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "ceo", "callcenter", "sales"],
+      contact_status: ["new", "active", "qualified", "unqualified", "archived"],
+      lead_source_type: ["webhook", "manual", "import", "api"],
     },
   },
 } as const
