@@ -305,12 +305,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create lead event (append-only)
+    // M2.3: Find or create deal for this contact
+    const { data: dealId, error: dealError } = await supabaseAdmin.rpc(
+      "find_or_create_deal",
+      { p_brand_id: brandId, p_contact_id: contactId }
+    );
+
+    if (dealError) {
+      console.error("Failed to find/create deal:", dealError);
+    }
+
+    // Create lead event (append-only) with deal_id
     const { data: leadEvent, error: leadEventError } = await supabaseAdmin
       .from("lead_events")
       .insert({
         brand_id: brandId,
         contact_id: contactId,
+        deal_id: dealId || null,
         source: "webhook",
         source_name: sourceName,
         raw_payload: rawBody,
@@ -339,8 +350,8 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         contact_id: contactId,
+        deal_id: dealId || null,
         lead_event_id: leadEvent?.id || null,
-        is_new_contact: true, // Will be refined later
       }),
       {
         status: 200,
