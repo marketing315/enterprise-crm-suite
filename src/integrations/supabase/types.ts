@@ -269,6 +269,50 @@ export type Database = {
           },
         ]
       }
+      pipeline_stages: {
+        Row: {
+          brand_id: string
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limit_buckets: {
         Row: {
           id: string
