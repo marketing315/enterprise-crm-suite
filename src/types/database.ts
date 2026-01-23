@@ -119,3 +119,50 @@ export interface ContactWithPhones extends Contact {
 export interface ContactWithEvents extends ContactWithPhones {
   lead_events: LeadEvent[];
 }
+
+// Deals
+export interface Deal {
+  id: string;
+  brand_id: string;
+  contact_id: string;
+  current_stage_id: string | null;
+  status: DealStatus;
+  value: number | null;
+  notes: string | null;
+  assigned_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+}
+
+export interface PipelineStage {
+  id: string;
+  brand_id: string;
+  name: string;
+  description: string | null;
+  order_index: number;
+  color: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DealStageHistory {
+  id: string;
+  deal_id: string;
+  from_stage_id: string | null;
+  to_stage_id: string | null;
+  changed_by: string | null;
+  changed_at: string;
+  notes: string | null;
+}
+
+// Deal with contact info for Kanban
+export interface DealWithContact extends Deal {
+  contact: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  };
+}

@@ -488,6 +488,10 @@ export type Database = {
         }
         Returns: string
       }
+      find_or_create_deal: {
+        Args: { p_brand_id: string; p_contact_id: string }
+        Returns: string
+      }
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       has_role: {
