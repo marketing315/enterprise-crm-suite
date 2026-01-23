@@ -10,6 +10,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Login from "@/pages/Login";
 import SelectBrand from "@/pages/SelectBrand";
 import Dashboard from "@/pages/Dashboard";
+import Contacts from "@/pages/Contacts";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,7 +46,7 @@ const App = () => (
                 }
               >
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/contacts" element={<Dashboard />} />
+                <Route path="/contacts" element={<Contacts />} />
                 <Route path="/pipeline" element={<Dashboard />} />
                 <Route path="/appointments" element={<Dashboard />} />
                 <Route path="/tickets" element={<Dashboard />} />
