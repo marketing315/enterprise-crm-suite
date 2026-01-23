@@ -142,6 +142,126 @@ export type Database = {
           },
         ]
       }
+      deal_stage_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          deal_id: string
+          from_stage_id: string | null
+          id: string
+          notes: string | null
+          to_stage_id: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          deal_id: string
+          from_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          to_stage_id?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          deal_id?: string
+          from_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          to_stage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          brand_id: string
+          closed_at: string | null
+          contact_id: string
+          created_at: string
+          current_stage_id: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["deal_status"]
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          brand_id: string
+          closed_at?: string | null
+          contact_id: string
+          created_at?: string
+          current_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["deal_status"]
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          brand_id?: string
+          closed_at?: string | null
+          contact_id?: string
+          created_at?: string
+          current_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["deal_status"]
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_current_stage_id_fkey"
+            columns: ["current_stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incoming_requests: {
         Row: {
           brand_id: string
@@ -554,6 +674,7 @@ export type Database = {
         | "qualified"
         | "unqualified"
         | "archived"
+      deal_status: "open" | "won" | "lost" | "closed" | "reopened_for_support"
       lead_source_type: "webhook" | "manual" | "import" | "api"
     }
     CompositeTypes: {
@@ -684,6 +805,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "ceo", "callcenter", "sales"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
+      deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],
       lead_source_type: ["webhook", "manual", "import", "api"],
     },
   },
