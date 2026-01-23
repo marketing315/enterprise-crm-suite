@@ -38,11 +38,13 @@ import {
   Settings,
   LogOut,
   Building2,
+  Inbox,
 } from 'lucide-react';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Users, label: 'Contatti', path: '/contacts' },
+  { icon: Inbox, label: 'Eventi', path: '/events' },
   { icon: Kanban, label: 'Pipeline', path: '/pipeline' },
   { icon: Calendar, label: 'Appuntamenti', path: '/appointments' },
   { icon: Ticket, label: 'Ticket', path: '/tickets' },

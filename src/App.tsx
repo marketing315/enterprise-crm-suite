@@ -12,6 +12,7 @@ import SelectBrand from "@/pages/SelectBrand";
 import Dashboard from "@/pages/Dashboard";
 import Contacts from "@/pages/Contacts";
 import Pipeline from "@/pages/Pipeline";
+import Events from "@/pages/Events";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/pipeline" element={<Pipeline />} />
+                <Route path="/events" element={<Events />} />
                 <Route path="/appointments" element={<Dashboard />} />
                 <Route path="/tickets" element={<Dashboard />} />
                 <Route path="/analytics" element={<Dashboard />} />
