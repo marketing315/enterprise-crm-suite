@@ -252,6 +252,23 @@ async function applyClassification(
     } else if (ticketResult && ticketResult.length > 0) {
       const { ticket_id, is_new } = ticketResult[0];
       console.log(`Ticket ${is_new ? "created" : "attached"}: ${ticket_id}`);
+
+      // 5. Auto-assign via Round Robin (only for new support tickets)
+      if (is_new && result.lead_type === "support") {
+        const { data: assignResult, error: assignError } = await supabase.rpc(
+          "assign_ticket_round_robin",
+          {
+            p_brand_id: brandId,
+            p_ticket_id: ticket_id,
+          }
+        );
+
+        if (assignError) {
+          console.error("Failed to auto-assign ticket:", assignError);
+        } else if (assignResult && assignResult.length > 0 && assignResult[0].was_assigned) {
+          console.log(`Ticket auto-assigned to: ${assignResult[0].assigned_user_name}`);
+        }
+      }
     }
   }
 }

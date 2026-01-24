@@ -68,6 +68,39 @@ export type Database = {
           },
         ]
       }
+      brand_assignment_state: {
+        Row: {
+          brand_id: string
+          last_assigned_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          last_assigned_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          last_assigned_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_assignment_state_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_assignment_state_last_assigned_user_id_fkey"
+            columns: ["last_assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           created_at: string
@@ -1017,6 +1050,18 @@ export type Database = {
       apply_ai_fallback: {
         Args: { p_lead_event_id: string }
         Returns: undefined
+      }
+      assign_ticket_round_robin: {
+        Args: { p_brand_id: string; p_ticket_id: string }
+        Returns: {
+          assigned_user_id: string
+          assigned_user_name: string
+          was_assigned: boolean
+        }[]
+      }
+      assign_unassigned_support_tickets: {
+        Args: { p_brand_id: string }
+        Returns: number
       }
       check_phone_duplicate: {
         Args: { p_brand_id: string; p_phone_normalized: string }
