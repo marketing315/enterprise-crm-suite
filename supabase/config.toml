@@ -2,3 +2,6 @@ project_id = "qmqcjtmcxfqahhubpaea"
 
 [functions.webhook-ingest]
 verify_jwt = false
+
+[functions.ai-classify]
+verify_jwt = false

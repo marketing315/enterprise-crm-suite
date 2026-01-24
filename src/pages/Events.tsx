@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { format, subDays, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import { Inbox, Filter, ExternalLink, Archive, Calendar, RefreshCw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ContactDetailSheet } from "@/components/contacts/ContactDetailSheet";
+import { TagFilter } from "@/components/tags/TagFilter";
 
 type PeriodFilter = "today" | "7days" | "30days" | "all";
 
@@ -56,6 +57,7 @@ export default function Events() {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("7days");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -239,6 +241,13 @@ export default function Events() {
             Mostra archiviati
           </Label>
         </div>
+        
+        {/* Tag Filter */}
+        <TagFilter
+          selectedTagIds={selectedTagIds}
+          onTagsChange={setSelectedTagIds}
+          scope="event"
+        />
       </div>
 
       {/* Table */}
