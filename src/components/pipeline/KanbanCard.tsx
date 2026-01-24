@@ -5,6 +5,7 @@ import { it } from "date-fns/locale";
 import { User, Mail, Clock, DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EntityTagList } from "@/components/tags/EntityTagList";
 import type { DealWithContact } from "@/types/database";
 
 interface KanbanCardProps {
@@ -81,6 +82,16 @@ export function KanbanCard({ deal, onClick }: KanbanCardProps) {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Clock className="h-3 w-3 shrink-0" />
           <span>{format(new Date(deal.updated_at), "dd MMM HH:mm", { locale: it })}</span>
+        </div>
+
+        {/* Deal Tags */}
+        <div className="pt-1 border-t" onClick={(e) => e.stopPropagation()}>
+          <EntityTagList 
+            entityType="deal" 
+            entityId={deal.id} 
+            scope="deal"
+            size="sm"
+          />
         </div>
 
         {deal.notes && (

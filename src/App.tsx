@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import Contacts from "@/pages/Contacts";
 import Pipeline from "@/pages/Pipeline";
 import Events from "@/pages/Events";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,7 +55,7 @@ const App = () => (
                 <Route path="/appointments" element={<Dashboard />} />
                 <Route path="/tickets" element={<Dashboard />} />
                 <Route path="/analytics" element={<Dashboard />} />
-                <Route path="/settings" element={<Dashboard />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
               
               {/* Redirects */}
