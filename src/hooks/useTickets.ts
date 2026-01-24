@@ -246,9 +246,32 @@ export function useAssignTicket() {
 
   return useMutation({
     mutationFn: async ({ ticketId, userId }: { ticketId: string; userId: string | null }) => {
+      const updates: Record<string, unknown> = { 
+        assigned_to_user_id: userId,
+        assigned_at: userId ? new Date().toISOString() : null,
+      };
+
+      // Get current user to set assigned_by_user_id
+      if (userId) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          const { data: currentUserData } = await supabase
+            .from("users")
+            .select("id")
+            .eq("supabase_auth_id", authUser.id)
+            .single();
+          
+          if (currentUserData) {
+            updates.assigned_by_user_id = currentUserData.id;
+          }
+        }
+      } else {
+        updates.assigned_by_user_id = null;
+      }
+
       const { error } = await supabase
         .from("tickets")
-        .update({ assigned_to_user_id: userId })
+        .update(updates)
         .eq("id", ticketId)
         .eq("brand_id", currentBrand?.id);
 

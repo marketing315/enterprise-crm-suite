@@ -23,16 +23,16 @@ export default function Tickets() {
   const [selectedTicket, setSelectedTicket] = useState<TicketWithRelations | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const { user } = useAuth();
+  const { supabaseUser } = useAuth();
   const { data: allTickets = [], isLoading } = useTickets(
     statusFilter === "all" ? undefined : statusFilter
   );
   const { data: operators = [] } = useBrandOperators();
   const assignTicket = useAssignTicket();
 
-  // Get current user's operator ID
+  // Get current user's operator ID using supabase_auth_id for reliable matching
   const currentOperator = operators.find(
-    (op) => op.email === user?.email
+    (op) => op.supabase_auth_id === supabaseUser?.id
   );
 
   // Apply assignment filter
