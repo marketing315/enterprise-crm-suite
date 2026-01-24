@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { BrandSelector } from './BrandSelector';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ import {
   Inbox,
   Headphones,
 } from 'lucide-react';
+import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -63,6 +65,17 @@ export function MainLayout() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Realtime ticket notifications
+  const { newTicketsCount, myNewAssignmentsCount, resetCounts } = useTicketRealtime();
+  const totalBadgeCount = newTicketsCount + myNewAssignmentsCount;
+
+  // Reset badge when viewing tickets page
+  useEffect(() => {
+    if (location.pathname === '/tickets') {
+      resetCounts();
+    }
+  }, [location.pathname, resetCounts]);
 
   const handleLogout = async () => {
     await signOut();
@@ -107,7 +120,13 @@ export function MainLayout() {
                         tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
                       >
                         <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
+                        <span className="flex-1">{item.label}</span>
+                        {/* Badge for ticket notifications */}
+                        {item.path === '/tickets' && totalBadgeCount > 0 && (
+                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                            {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
