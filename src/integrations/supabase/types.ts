@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_jobs: {
+        Row: {
+          attempts: number
+          brand_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          lead_event_id: string
+          max_attempts: number
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          brand_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          lead_event_id: string
+          max_attempts?: number
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          brand_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          lead_event_id?: string
+          max_attempts?: number
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_jobs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_jobs_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: true
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           created_at: string
@@ -325,50 +379,68 @@ export type Database = {
       }
       lead_events: {
         Row: {
+          ai_confidence: number | null
           ai_model_version: string | null
           ai_priority: number | null
+          ai_processed: boolean
+          ai_processed_at: string | null
           ai_prompt_version: string | null
+          ai_rationale: string | null
           archived: boolean
           brand_id: string
           contact_id: string | null
           created_at: string
           deal_id: string | null
           id: string
+          lead_type: Database["public"]["Enums"]["lead_type"] | null
           occurred_at: string
           raw_payload: Json
           received_at: string
+          should_create_ticket: boolean | null
           source: Database["public"]["Enums"]["lead_source_type"]
           source_name: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           ai_model_version?: string | null
           ai_priority?: number | null
+          ai_processed?: boolean
+          ai_processed_at?: string | null
           ai_prompt_version?: string | null
+          ai_rationale?: string | null
           archived?: boolean
           brand_id: string
           contact_id?: string | null
           created_at?: string
           deal_id?: string | null
           id?: string
+          lead_type?: Database["public"]["Enums"]["lead_type"] | null
           occurred_at?: string
           raw_payload?: Json
           received_at?: string
+          should_create_ticket?: boolean | null
           source: Database["public"]["Enums"]["lead_source_type"]
           source_name?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           ai_model_version?: string | null
           ai_priority?: number | null
+          ai_processed?: boolean
+          ai_processed_at?: string | null
           ai_prompt_version?: string | null
+          ai_rationale?: string | null
           archived?: boolean
           brand_id?: string
           contact_id?: string | null
           created_at?: string
           deal_id?: string | null
           id?: string
+          lead_type?: Database["public"]["Enums"]["lead_type"] | null
           occurred_at?: string
           raw_payload?: Json
           received_at?: string
+          should_create_ticket?: boolean | null
           source?: Database["public"]["Enums"]["lead_source_type"]
           source_name?: string | null
         }
@@ -728,6 +800,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_ai_fallback: {
+        Args: { p_lead_event_id: string }
+        Returns: undefined
+      }
       check_phone_duplicate: {
         Args: { p_brand_id: string; p_phone_normalized: string }
         Returns: {
@@ -841,6 +917,7 @@ export type Database = {
         | "archived"
       deal_status: "open" | "won" | "lost" | "closed" | "reopened_for_support"
       lead_source_type: "webhook" | "manual" | "import" | "api"
+      lead_type: "trial" | "info" | "support" | "generic"
       tag_scope:
         | "contact"
         | "event"
@@ -980,6 +1057,7 @@ export const Constants = {
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
       deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],
       lead_source_type: ["webhook", "manual", "import", "api"],
+      lead_type: ["trial", "info", "support", "generic"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
     },
   },

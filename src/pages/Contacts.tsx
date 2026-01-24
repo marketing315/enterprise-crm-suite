@@ -11,6 +11,7 @@ import { ContactsTable } from '@/components/contacts/ContactsTable';
 import { NewContactDialog } from '@/components/contacts/NewContactDialog';
 import { ContactSearch } from '@/components/contacts/ContactSearch';
 import { ContactDetailSheet } from '@/components/contacts/ContactDetailSheet';
+import { TagFilter } from '@/components/tags/TagFilter';
 import { useContactSearch } from '@/hooks/useContactSearch';
 import type { ContactStatus } from '@/types/database';
 
@@ -26,6 +27,7 @@ const statusOptions: { value: ContactStatus | 'all'; label: string }[] = [
 export default function Contacts() {
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   
@@ -98,6 +100,13 @@ export default function Contacts() {
             </SelectContent>
           </Select>
         </div>
+        
+        {/* Tag Filter */}
+        <TagFilter
+          selectedTagIds={selectedTagIds}
+          onTagsChange={setSelectedTagIds}
+          scope="contact"
+        />
       </div>
 
       {/* Table */}
