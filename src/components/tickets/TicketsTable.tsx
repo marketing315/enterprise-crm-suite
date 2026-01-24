@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock } from "lucide-react";
+import { User, Clock, Hand } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
 import { TicketWithRelations } from "@/hooks/useTickets";
@@ -17,9 +18,10 @@ import { TicketWithRelations } from "@/hooks/useTickets";
 interface TicketsTableProps {
   tickets: TicketWithRelations[];
   onTicketClick: (ticket: TicketWithRelations) => void;
+  onTakeOwnership?: (ticket: TicketWithRelations, e: React.MouseEvent) => void;
 }
 
-export function TicketsTable({ tickets, onTicketClick }: TicketsTableProps) {
+export function TicketsTable({ tickets, onTicketClick, onTakeOwnership }: TicketsTableProps) {
   const getContactName = (ticket: TicketWithRelations) => {
     if (!ticket.contacts) return "—";
     const { first_name, last_name, email } = ticket.contacts;
@@ -45,12 +47,13 @@ export function TicketsTable({ tickets, onTicketClick }: TicketsTableProps) {
             <TableHead>Categoria</TableHead>
             <TableHead>Assegnato a</TableHead>
             <TableHead className="w-[120px]">Aging</TableHead>
+            {onTakeOwnership && <TableHead className="w-[100px]">Azione</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {tickets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={onTakeOwnership ? 8 : 7} className="text-center py-8 text-muted-foreground">
                 Nessun ticket trovato
               </TableCell>
             </TableRow>
@@ -97,7 +100,9 @@ export function TicketsTable({ tickets, onTicketClick }: TicketsTableProps) {
                       </span>
                     </div>
                   ) : (
-                    <span className="text-muted-foreground">Non assegnato</span>
+                    <Badge variant="outline" className="text-orange-600 border-orange-300">
+                      Non assegnato
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell>
@@ -106,6 +111,20 @@ export function TicketsTable({ tickets, onTicketClick }: TicketsTableProps) {
                     <span className="text-sm">{getAging(ticket.opened_at)}</span>
                   </div>
                 </TableCell>
+                {onTakeOwnership && (
+                  <TableCell>
+                    {!ticket.assigned_to_user_id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => onTakeOwnership(ticket, e)}
+                      >
+                        <Hand className="h-3.5 w-3.5 mr-1" />
+                        Prendi
+                      </Button>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}

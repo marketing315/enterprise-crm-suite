@@ -779,6 +779,8 @@ export type Database = {
       }
       tickets: {
         Row: {
+          assigned_at: string | null
+          assigned_by_user_id: string | null
           assigned_to_user_id: string | null
           brand_id: string
           category_tag_id: string | null
@@ -798,6 +800,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_by_user_id?: string | null
           assigned_to_user_id?: string | null
           brand_id: string
           category_tag_id?: string | null
@@ -817,6 +821,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_at?: string | null
+          assigned_by_user_id?: string | null
           assigned_to_user_id?: string | null
           brand_id?: string
           category_tag_id?: string | null
@@ -836,6 +842,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tickets_assigned_by_user_id_fkey"
+            columns: ["assigned_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tickets_assigned_to_user_id_fkey"
             columns: ["assigned_to_user_id"]
@@ -1052,6 +1065,23 @@ export type Database = {
           is_new: boolean
           ticket_event_id: string
           ticket_id: string
+        }[]
+      }
+      get_ai_metrics_errors: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_ai_metrics_overview: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_brand_operators: {
+        Args: { p_brand_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          role: string
+          user_id: string
         }[]
       }
       get_tag_assignment_counts: {

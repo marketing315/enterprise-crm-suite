@@ -15,6 +15,7 @@ import Pipeline from "@/pages/Pipeline";
 import Events from "@/pages/Events";
 import Tickets from "@/pages/Tickets";
 import Settings from "@/pages/Settings";
+import AdminAIMetrics from "@/pages/AdminAIMetrics";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/analytics" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
               </Route>
               
               {/* Redirects */}
