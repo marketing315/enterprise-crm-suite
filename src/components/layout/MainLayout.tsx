@@ -39,6 +39,7 @@ import {
   LogOut,
   Building2,
   Inbox,
+  Headphones,
 } from 'lucide-react';
 
 const menuItems = [
@@ -54,6 +55,7 @@ const menuItems = [
 const adminMenuItems = [
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
+  { icon: Headphones, label: 'KPI Call Center', path: '/admin/callcenter-kpi' },
 ];
 
 export function MainLayout() {
