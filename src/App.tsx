@@ -16,6 +16,7 @@ import Events from "@/pages/Events";
 import Tickets from "@/pages/Tickets";
 import Settings from "@/pages/Settings";
 import AdminAIMetrics from "@/pages/AdminAIMetrics";
+import AdminCallcenterKpi from "@/pages/AdminCallcenterKpi";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const App = () => (
                 <Route path="/analytics" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
+                <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
               </Route>
               
               {/* Redirects */}

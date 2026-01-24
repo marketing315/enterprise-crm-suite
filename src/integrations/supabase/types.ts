@@ -1085,6 +1085,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_callcenter_kpis_by_operator: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_callcenter_kpis_overview: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }
         Returns: {
