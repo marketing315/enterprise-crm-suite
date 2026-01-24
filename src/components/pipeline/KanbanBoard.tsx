@@ -20,9 +20,10 @@ import type { DealWithContact } from "@/types/database";
 
 interface KanbanBoardProps {
   onDealClick?: (dealId: string) => void;
+  filterTagIds?: string[];
 }
 
-export function KanbanBoard({ onDealClick }: KanbanBoardProps) {
+export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps) {
   const { data: stages, isLoading: stagesLoading } = usePipelineStages();
   const { data: deals, isLoading: dealsLoading } = useDeals("open");
   const updateStage = useUpdateDealStage();

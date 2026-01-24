@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
+import { TagFilter } from "@/components/tags/TagFilter";
 import { useBrand } from "@/contexts/BrandContext";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Pipeline() {
   const { currentBrand, hasBrandSelected } = useBrand();
-  const navigate = useNavigate();
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const handleDealClick = (dealId: string) => {
     // Navigate to contact detail in future
@@ -29,14 +29,26 @@ export default function Pipeline() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
-        <h1 className="text-2xl font-bold">Pipeline</h1>
-        <p className="text-muted-foreground">
-          Gestisci i tuoi deal in {currentBrand?.name}
-        </p>
+      <div className="p-4 border-b space-y-3">
+        <div>
+          <h1 className="text-2xl font-bold">Pipeline</h1>
+          <p className="text-muted-foreground">
+            Gestisci i tuoi deal in {currentBrand?.name}
+          </p>
+        </div>
+        
+        {/* Tag Filter */}
+        <TagFilter
+          selectedTagIds={selectedTagIds}
+          onTagsChange={setSelectedTagIds}
+          scope="deal"
+        />
       </div>
 
-      <KanbanBoard onDealClick={handleDealClick} />
+      <KanbanBoard 
+        onDealClick={handleDealClick}
+        filterTagIds={selectedTagIds}
+      />
     </div>
   );
 }

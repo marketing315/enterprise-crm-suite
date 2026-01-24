@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, FileJson } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, FileJson, Tags } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContactStatusBadge } from './ContactStatusBadge';
+import { EntityTagList } from '@/components/tags/EntityTagList';
 import { useContact, useLeadEvents } from '@/hooks/useContacts';
 
 interface ContactDetailSheetProps {
@@ -95,6 +96,20 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     Creato il {format(new Date(contact.created_at), 'dd MMMM yyyy HH:mm', { locale: it })}
                   </span>
                 </div>
+              </div>
+
+              {/* Tags */}
+              <Separator />
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Tags className="h-4 w-4" />
+                  Tag
+                </h3>
+                <EntityTagList 
+                  entityType="contact" 
+                  entityId={contact.id} 
+                  scope="contact"
+                />
               </div>
 
               {contact.notes && (

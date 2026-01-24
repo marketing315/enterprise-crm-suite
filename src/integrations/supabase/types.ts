@@ -468,6 +468,145 @@ export type Database = {
           },
         ]
       }
+      tag_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: Database["public"]["Enums"]["assigned_by"]
+          assigned_by_user_id: string | null
+          brand_id: string
+          confidence: number | null
+          contact_id: string | null
+          deal_id: string | null
+          id: string
+          lead_event_id: string | null
+          tag_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: Database["public"]["Enums"]["assigned_by"]
+          assigned_by_user_id?: string | null
+          brand_id: string
+          confidence?: number | null
+          contact_id?: string | null
+          deal_id?: string | null
+          id?: string
+          lead_event_id?: string | null
+          tag_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: Database["public"]["Enums"]["assigned_by"]
+          assigned_by_user_id?: string | null
+          brand_id?: string
+          confidence?: number | null
+          contact_id?: string | null
+          deal_id?: string | null
+          id?: string
+          lead_event_id?: string | null
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_assignments_assigned_by_user_id_fkey"
+            columns: ["assigned_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_assignments_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_assignments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_assignments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_assignments_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tags: {
+        Row: {
+          brand_id: string
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          parent_id: string | null
+          scope: Database["public"]["Enums"]["tag_scope"]
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          order_index?: number
+          parent_id?: string | null
+          scope?: Database["public"]["Enums"]["tag_scope"]
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_index?: number
+          parent_id?: string | null
+          scope?: Database["public"]["Enums"]["tag_scope"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tags_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           brand_id: string
@@ -621,6 +760,31 @@ export type Database = {
         Args: { p_brand_id: string; p_contact_id: string }
         Returns: string
       }
+      get_tag_assignment_counts: {
+        Args: { p_brand_id: string }
+        Returns: {
+          contact_count: number
+          deal_count: number
+          event_count: number
+          tag_id: string
+          total_count: number
+        }[]
+      }
+      get_tag_tree: {
+        Args: { p_brand_id: string }
+        Returns: {
+          color: string
+          depth: number
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          parent_id: string
+          path: string
+          scope: Database["public"]["Enums"]["tag_scope"]
+        }[]
+      }
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       has_role: {
@@ -668,6 +832,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "ceo" | "callcenter" | "sales"
+      assigned_by: "ai" | "user" | "rule"
       contact_status:
         | "new"
         | "active"
@@ -676,6 +841,13 @@ export type Database = {
         | "archived"
       deal_status: "open" | "won" | "lost" | "closed" | "reopened_for_support"
       lead_source_type: "webhook" | "manual" | "import" | "api"
+      tag_scope:
+        | "contact"
+        | "event"
+        | "deal"
+        | "appointment"
+        | "ticket"
+        | "mixed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -804,9 +976,11 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "ceo", "callcenter", "sales"],
+      assigned_by: ["ai", "user", "rule"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
       deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],
       lead_source_type: ["webhook", "manual", "import", "api"],
+      tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
     },
   },
 } as const
