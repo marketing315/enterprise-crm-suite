@@ -14,15 +14,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarIcon, Ticket, UserCheck, CheckCircle, Clock, AlertCircle, Users } from "lucide-react";
+import { CalendarIcon, Ticket, UserCheck, CheckCircle, AlertCircle, Users, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useCallcenterKpisOverview,
   useCallcenterKpisByOperator,
 } from "@/hooks/useCallcenterKpis";
 import { CallcenterKpiCharts } from "@/components/admin/CallcenterKpiCharts";
+import { useBrand } from "@/contexts/BrandContext";
+import { arrayToCSV, downloadCSV, formatMinutesForCSV } from "@/lib/csvExport";
+import { toast } from "sonner";
 
 export default function AdminCallcenterKpi() {
+  const { currentBrand } = useBrand();
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfDay(subDays(new Date(), 30)),
     to: endOfDay(new Date()),
@@ -37,7 +41,7 @@ export default function AdminCallcenterKpi() {
     dateRange.to
   );
 
-  const formatMinutes = (minutes: number): string => {
+  const formatMinutesDisplay = (minutes: number): string => {
     if (minutes === 0) return "-";
     if (minutes < 60) return `${Math.round(minutes)} min`;
     const hours = Math.floor(minutes / 60);
@@ -45,6 +49,65 @@ export default function AdminCallcenterKpi() {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
+  const handleExportOverview = () => {
+    if (!overview) return;
+    
+    const data = [{
+      tickets_created: overview.tickets_created,
+      tickets_assigned: overview.tickets_assigned,
+      tickets_resolved: overview.tickets_resolved,
+      avg_time_to_assign: formatMinutesForCSV(overview.avg_time_to_assign_minutes),
+      avg_time_to_resolve: formatMinutesForCSV(overview.avg_time_to_resolve_minutes),
+      backlog_total: overview.backlog_total,
+      unassigned_now: overview.unassigned_now,
+    }];
+
+    const csv = arrayToCSV(data, [
+      { key: "tickets_created", label: "Ticket Creati" },
+      { key: "tickets_assigned", label: "Ticket Assegnati" },
+      { key: "tickets_resolved", label: "Ticket Risolti" },
+      { key: "avg_time_to_assign", label: "Tempo Medio Assegnazione" },
+      { key: "avg_time_to_resolve", label: "Tempo Medio Risoluzione" },
+      { key: "backlog_total", label: "Backlog Totale" },
+      { key: "unassigned_now", label: "Non Assegnati" },
+    ]);
+
+    const fromStr = format(dateRange.from, "yyyy-MM-dd");
+    const toStr = format(dateRange.to, "yyyy-MM-dd");
+    const brandSlug = currentBrand?.slug || "brand";
+    downloadCSV(csv, `kpi-overview_${brandSlug}_${fromStr}_${toStr}.csv`);
+    toast.success("Export overview completato");
+  };
+
+  const handleExportOperators = () => {
+    if (operatorKpis.length === 0) return;
+
+    const data = operatorKpis.map((op) => ({
+      operatore: op.full_name || op.email,
+      ruolo: op.role === "callcenter" ? "Call Center" : "Sales",
+      tickets_assigned: op.tickets_assigned,
+      tickets_resolved: op.tickets_resolved,
+      avg_time_to_assign: formatMinutesForCSV(op.avg_time_to_assign_minutes),
+      avg_time_to_resolve: formatMinutesForCSV(op.avg_time_to_resolve_minutes),
+      backlog_current: op.backlog_current,
+    }));
+
+    const csv = arrayToCSV(data, [
+      { key: "operatore", label: "Operatore" },
+      { key: "ruolo", label: "Ruolo" },
+      { key: "tickets_assigned", label: "Assegnati" },
+      { key: "tickets_resolved", label: "Risolti" },
+      { key: "avg_time_to_assign", label: "Tempo Medio Assegnazione" },
+      { key: "avg_time_to_resolve", label: "Tempo Medio Risoluzione" },
+      { key: "backlog_current", label: "Backlog Attuale" },
+    ]);
+
+    const fromStr = format(dateRange.from, "yyyy-MM-dd");
+    const toStr = format(dateRange.to, "yyyy-MM-dd");
+    const brandSlug = currentBrand?.slug || "brand";
+    downloadCSV(csv, `kpi-operatori_${brandSlug}_${fromStr}_${toStr}.csv`);
+    toast.success("Export operatori completato");
+  };
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -123,6 +186,28 @@ export default function AdminCallcenterKpi() {
               90g
             </Button>
           </div>
+
+          {/* Export Buttons */}
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportOverview}
+              disabled={!overview || isLoadingOverview}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Overview
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportOperators}
+              disabled={operatorKpis.length === 0 || isLoadingOperators}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Operatori
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -155,7 +240,7 @@ export default function AdminCallcenterKpi() {
               <div className="text-2xl font-bold">{overview?.tickets_assigned ?? 0}</div>
             )}
             <p className="text-xs text-muted-foreground">
-              Tempo medio: {formatMinutes(overview?.avg_time_to_assign_minutes ?? 0)}
+              Tempo medio: {formatMinutesDisplay(overview?.avg_time_to_assign_minutes ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -172,7 +257,7 @@ export default function AdminCallcenterKpi() {
               <div className="text-2xl font-bold">{overview?.tickets_resolved ?? 0}</div>
             )}
             <p className="text-xs text-muted-foreground">
-              Tempo medio: {formatMinutes(overview?.avg_time_to_resolve_minutes ?? 0)}
+              Tempo medio: {formatMinutesDisplay(overview?.avg_time_to_resolve_minutes ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -256,10 +341,10 @@ export default function AdminCallcenterKpi() {
                     <TableCell className="text-right">{op.tickets_assigned}</TableCell>
                     <TableCell className="text-right">{op.tickets_resolved}</TableCell>
                     <TableCell className="text-right">
-                      {formatMinutes(op.avg_time_to_assign_minutes)}
+                      {formatMinutesDisplay(op.avg_time_to_assign_minutes)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatMinutes(op.avg_time_to_resolve_minutes)}
+                      {formatMinutesDisplay(op.avg_time_to_resolve_minutes)}
                     </TableCell>
                     <TableCell className="text-right">
                       <span

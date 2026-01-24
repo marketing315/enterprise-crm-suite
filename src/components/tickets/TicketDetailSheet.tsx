@@ -196,10 +196,34 @@ export function TicketDetailSheet({
                   {ticket.users ? (
                     <span>{ticket.users.full_name || ticket.users.email}</span>
                   ) : (
-                    <Badge variant="outline" className="text-orange-600 border-orange-300">
+                    <Badge variant="outline" className="text-amber-600 border-amber-300">
                       Non assegnato
                     </Badge>
                   )}
+                </div>
+              )}
+
+              {/* Assignment details */}
+              {ticket.assigned_at && (
+                <div className="text-sm text-muted-foreground space-y-1 pt-2 border-t">
+                  <div className="flex items-center gap-2">
+                    <span>Assegnato da:</span>
+                    {ticket.assigned_by_user_id ? (
+                      <span className="font-medium text-foreground">
+                        {ticket.assigned_by?.full_name || ticket.assigned_by?.email || "—"}
+                      </span>
+                    ) : (
+                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                        Auto (Round Robin)
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>Assegnato il:</span>
+                    <span className="font-medium text-foreground">
+                      {format(new Date(ticket.assigned_at), "dd/MM/yyyy HH:mm", { locale: it })}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
