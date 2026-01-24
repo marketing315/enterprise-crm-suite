@@ -679,6 +679,207 @@ export type Database = {
           },
         ]
       }
+      ticket_comments: {
+        Row: {
+          author_user_id: string
+          body: string
+          brand_id: string
+          created_at: string
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          brand_id: string
+          created_at?: string
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          brand_id?: string
+          created_at?: string
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comments_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_comments_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_events: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          lead_event_id: string | null
+          note: string | null
+          ticket_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          lead_event_id?: string | null
+          note?: string | null
+          ticket_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          lead_event_id?: string | null
+          note?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_events_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          assigned_to_user_id: string | null
+          brand_id: string
+          category_tag_id: string | null
+          closed_at: string | null
+          contact_id: string
+          created_at: string
+          created_by: Database["public"]["Enums"]["ticket_creator"]
+          deal_id: string | null
+          description: string | null
+          id: string
+          opened_at: string
+          priority: number
+          resolved_at: string | null
+          source_event_id: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          brand_id: string
+          category_tag_id?: string | null
+          closed_at?: string | null
+          contact_id: string
+          created_at?: string
+          created_by?: Database["public"]["Enums"]["ticket_creator"]
+          deal_id?: string | null
+          description?: string | null
+          id?: string
+          opened_at?: string
+          priority?: number
+          resolved_at?: string | null
+          source_event_id?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          brand_id?: string
+          category_tag_id?: string | null
+          closed_at?: string | null
+          contact_id?: string
+          created_at?: string
+          created_by?: Database["public"]["Enums"]["ticket_creator"]
+          deal_id?: string | null
+          description?: string | null
+          id?: string
+          opened_at?: string
+          priority?: number
+          resolved_at?: string | null
+          source_event_id?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_assigned_to_user_id_fkey"
+            columns: ["assigned_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_category_tag_id_fkey"
+            columns: ["category_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           brand_id: string
@@ -836,6 +1037,23 @@ export type Database = {
         Args: { p_brand_id: string; p_contact_id: string }
         Returns: string
       }
+      find_or_create_ticket: {
+        Args: {
+          p_brand_id: string
+          p_category_tag_id?: string
+          p_contact_id: string
+          p_deal_id: string
+          p_description: string
+          p_lead_event_id: string
+          p_priority: number
+          p_title: string
+        }
+        Returns: {
+          is_new: boolean
+          ticket_event_id: string
+          ticket_id: string
+        }[]
+      }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }
         Returns: {
@@ -925,6 +1143,8 @@ export type Database = {
         | "appointment"
         | "ticket"
         | "mixed"
+      ticket_creator: "ai" | "user" | "rule"
+      ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1059,6 +1279,8 @@ export const Constants = {
       lead_source_type: ["webhook", "manual", "import", "api"],
       lead_type: ["trial", "info", "support", "generic"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
+      ticket_creator: ["ai", "user", "rule"],
+      ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
     },
   },
 } as const

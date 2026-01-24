@@ -126,6 +126,7 @@ async function applyClassification(
   supabase: any,
   brandId: string,
   leadEventId: string,
+  contactId: string | null,
   dealId: string | null,
   result: AIClassificationResult
 ): Promise<void> {
@@ -165,7 +166,9 @@ async function applyClassification(
     }
   }
 
-  // 3. Apply tags
+  // 3. Apply tags and find category tag for ticket
+  let categoryTagId: string | null = null;
+  
   if (result.tags_to_apply.length > 0) {
     // Get all tags for this brand
     const { data: allTags } = await supabase
@@ -196,7 +199,7 @@ async function applyClassification(
         }
         
         tagMap.set(path.toLowerCase(), tag.id);
-        tagMap.set(tag.name.toLowerCase(), tag.id); // Also match by name only
+        tagMap.set(tag.name.toLowerCase(), tag.id);
       }
 
       // Match and assign tags
@@ -215,8 +218,40 @@ async function applyClassification(
               onConflict: "tag_id,lead_event_id",
               ignoreDuplicates: true,
             });
+          
+          // Use first matching tag as category for ticket
+          if (!categoryTagId) {
+            categoryTagId = tagId;
+          }
         }
       }
+    }
+  }
+
+  // 4. Create ticket if should_create_ticket and we have a contact
+  if (result.should_create_ticket && contactId) {
+    // Extract message from payload for ticket description
+    const payload = result.rationale || "Richiesta di assistenza";
+    
+    const { data: ticketResult, error: ticketError } = await supabase.rpc(
+      "find_or_create_ticket",
+      {
+        p_brand_id: brandId,
+        p_contact_id: contactId,
+        p_deal_id: dealId,
+        p_lead_event_id: leadEventId,
+        p_title: result.lead_type === "support" ? "Richiesta di Assistenza" : "Ticket Automatico",
+        p_description: payload,
+        p_priority: result.priority,
+        p_category_tag_id: categoryTagId,
+      }
+    );
+
+    if (ticketError) {
+      console.error("Failed to create/attach ticket:", ticketError);
+    } else if (ticketResult && ticketResult.length > 0) {
+      const { ticket_id, is_new } = ticketResult[0];
+      console.log(`Ticket ${is_new ? "created" : "attached"}: ${ticket_id}`);
     }
   }
 }
@@ -378,6 +413,7 @@ serve(async (req: Request) => {
           supabase,
           job.brand_id,
           job.lead_event_id,
+          leadEvent.contact_id,
           leadEvent.deal_id,
           classification
         );
