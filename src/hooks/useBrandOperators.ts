@@ -4,6 +4,7 @@ import { useBrand } from "@/contexts/BrandContext";
 
 export interface BrandOperator {
   user_id: string;
+  supabase_auth_id: string;
   full_name: string | null;
   email: string;
   role: string;

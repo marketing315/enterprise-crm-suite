@@ -1081,6 +1081,7 @@ export type Database = {
           email: string
           full_name: string
           role: string
+          supabase_auth_id: string
           user_id: string
         }[]
       }

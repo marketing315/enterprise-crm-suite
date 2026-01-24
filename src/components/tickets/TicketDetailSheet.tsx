@@ -48,7 +48,7 @@ export function TicketDetailSheet({
 }: TicketDetailSheetProps) {
   const [newComment, setNewComment] = useState("");
   
-  const { user, hasRole } = useAuth();
+  const { supabaseUser, hasRole } = useAuth();
   const { data: events = [] } = useTicketEvents(ticket?.id || null);
   const { data: comments = [] } = useTicketComments(ticket?.id || null);
   const { data: operators = [] } = useBrandOperators();
@@ -58,9 +58,9 @@ export function TicketDetailSheet({
 
   if (!ticket) return null;
 
-  // Check if user can assign tickets
+  // Check if user can assign tickets (callcenter can also reassign to other operators)
   const canAssign = hasRole('admin') || hasRole('callcenter');
-  const currentOperator = operators.find((op) => op.email === user?.email);
+  const currentOperator = operators.find((op) => op.supabase_auth_id === supabaseUser?.id);
 
   const handleStatusChange = async (status: TicketStatus) => {
     try {
