@@ -1,6 +1,7 @@
-import { Settings as SettingsIcon, Tags } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
+import { TicketingSettings } from "@/components/settings/TicketingSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -37,13 +38,21 @@ export default function Settings() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="tags" className="space-y-4">
+      <Tabs defaultValue="ticketing" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="ticketing" className="gap-2">
+            <Ticket className="h-4 w-4" />
+            Ticketing
+          </TabsTrigger>
           <TabsTrigger value="tags" className="gap-2">
             <Tags className="h-4 w-4" />
             Tag
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="ticketing" className="space-y-4">
+          <TicketingSettings />
+        </TabsContent>
 
         <TabsContent value="tags" className="space-y-4">
           <TagManager />
