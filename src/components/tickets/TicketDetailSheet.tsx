@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock, MessageSquare, Send, ExternalLink } from "lucide-react";
+import { User, Clock, MessageSquare, Send, ExternalLink, UserPlus } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -29,7 +29,10 @@ import {
   useTicketComments,
   useUpdateTicketStatus,
   useAddTicketComment,
+  useAssignTicket,
 } from "@/hooks/useTickets";
+import { useBrandOperators } from "@/hooks/useBrandOperators";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface TicketDetailSheetProps {
@@ -45,12 +48,19 @@ export function TicketDetailSheet({
 }: TicketDetailSheetProps) {
   const [newComment, setNewComment] = useState("");
   
+  const { user, hasRole } = useAuth();
   const { data: events = [] } = useTicketEvents(ticket?.id || null);
   const { data: comments = [] } = useTicketComments(ticket?.id || null);
+  const { data: operators = [] } = useBrandOperators();
   const updateStatus = useUpdateTicketStatus();
   const addComment = useAddTicketComment();
+  const assignTicket = useAssignTicket();
 
   if (!ticket) return null;
+
+  // Check if user can assign tickets
+  const canAssign = hasRole('admin') || hasRole('callcenter');
+  const currentOperator = operators.find((op) => op.email === user?.email);
 
   const handleStatusChange = async (status: TicketStatus) => {
     try {
@@ -58,6 +68,31 @@ export function TicketDetailSheet({
       toast.success("Stato aggiornato");
     } catch {
       toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const handleAssignChange = async (userId: string) => {
+    try {
+      await assignTicket.mutateAsync({ 
+        ticketId: ticket.id, 
+        userId: userId === "unassigned" ? null : userId 
+      });
+      toast.success("Ticket assegnato");
+    } catch {
+      toast.error("Errore nell'assegnazione");
+    }
+  };
+
+  const handleTakeOwnership = async () => {
+    if (!currentOperator) return;
+    try {
+      await assignTicket.mutateAsync({ 
+        ticketId: ticket.id, 
+        userId: currentOperator.user_id 
+      });
+      toast.success("Ticket preso in carico");
+    } catch {
+      toast.error("Errore nell'assegnazione");
     }
   };
 
@@ -116,6 +151,59 @@ export function TicketDetailSheet({
               </Select>
             </div>
 
+            {/* Assignment */}
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Assegnazione
+                </h4>
+                {!ticket.assigned_to_user_id && currentOperator && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleTakeOwnership}
+                    disabled={assignTicket.isPending}
+                  >
+                    Prendi in carico
+                  </Button>
+                )}
+              </div>
+              
+              {canAssign ? (
+                <Select
+                  value={ticket.assigned_to_user_id || "unassigned"}
+                  onValueChange={handleAssignChange}
+                  disabled={assignTicket.isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona operatore" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Non assegnato</SelectItem>
+                    {operators.map((op) => (
+                      <SelectItem key={op.user_id} value={op.user_id}>
+                        {op.full_name || op.email}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({op.role})
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm">
+                  {ticket.users ? (
+                    <span>{ticket.users.full_name || ticket.users.email}</span>
+                  ) : (
+                    <Badge variant="outline" className="text-orange-600 border-orange-300">
+                      Non assegnato
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Contact Info */}
             <div className="rounded-lg border p-4 space-y-2">
               <div className="flex items-center justify-between">
@@ -165,12 +253,6 @@ export function TicketDetailSheet({
                 <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-muted-foreground">Aperto:</span>
                 <span>{formatDistanceToNow(new Date(ticket.opened_at), { locale: it, addSuffix: true })}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Assegnato a:</span>
-                <span className="ml-2">
-                  {ticket.users?.full_name || ticket.users?.email || "Non assegnato"}
-                </span>
               </div>
             </div>
 

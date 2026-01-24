@@ -53,6 +53,7 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
+  { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
 ];
 
 export function MainLayout() {
