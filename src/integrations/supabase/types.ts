@@ -1053,11 +1053,7 @@ export type Database = {
       }
       assign_ticket_round_robin: {
         Args: { p_brand_id: string; p_ticket_id: string }
-        Returns: {
-          assigned_user_id: string
-          assigned_user_name: string
-          was_assigned: boolean
-        }[]
+        Returns: string
       }
       assign_unassigned_support_tickets: {
         Args: { p_brand_id: string }
