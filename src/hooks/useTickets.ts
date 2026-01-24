@@ -15,6 +15,8 @@ export interface Ticket {
   description: string | null;
   category_tag_id: string | null;
   assigned_to_user_id: string | null;
+  assigned_by_user_id: string | null;
+  assigned_at: string | null;
   created_by: "ai" | "user" | "rule";
   source_event_id: string | null;
   opened_at: string;
