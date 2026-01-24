@@ -43,6 +43,11 @@ export interface TicketWithRelations extends Ticket {
     full_name: string | null;
     email: string;
   } | null;
+  assigned_by: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  } | null;
 }
 
 export interface TicketEvent {
@@ -86,7 +91,8 @@ export function useTickets(status?: TicketStatus) {
           *,
           contacts:contact_id (id, first_name, last_name, email),
           tags:category_tag_id (id, name, color),
-          users:assigned_to_user_id (id, full_name, email)
+          users:assigned_to_user_id (id, full_name, email),
+          assigned_by:assigned_by_user_id (id, full_name, email)
         `)
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
@@ -118,7 +124,8 @@ export function useTicket(ticketId: string | null) {
           *,
           contacts:contact_id (id, first_name, last_name, email),
           tags:category_tag_id (id, name, color),
-          users:assigned_to_user_id (id, full_name, email)
+          users:assigned_to_user_id (id, full_name, email),
+          assigned_by:assigned_by_user_id (id, full_name, email)
         `)
         .eq("id", ticketId)
         .eq("brand_id", currentBrand.id)
