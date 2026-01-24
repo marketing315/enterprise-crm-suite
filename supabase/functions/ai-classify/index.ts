@@ -238,7 +238,76 @@ serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get pending jobs (limit to batch size)
+    // 1. Recovery: Reset stuck jobs (processing for >5 min)
+    const { data: stuckJobs } = await supabase
+      .from("ai_jobs")
+      .select("id, lead_event_id, attempts, max_attempts")
+      .eq("status", "processing")
+      .lt("started_at", new Date(Date.now() - 5 * 60 * 1000).toISOString());
+
+    interface StuckJob {
+      id: string;
+      lead_event_id: string;
+      attempts: number;
+      max_attempts: number;
+    }
+
+    const typedStuckJobs = stuckJobs as StuckJob[] | null;
+
+    if (typedStuckJobs && typedStuckJobs.length > 0) {
+      console.log(`Recovering ${typedStuckJobs.length} stuck jobs`);
+      for (const stuck of typedStuckJobs) {
+        if (stuck.attempts >= stuck.max_attempts) {
+          // Apply fallback for stuck jobs at max attempts
+          await supabase.rpc("apply_ai_fallback", { p_lead_event_id: stuck.lead_event_id });
+          await supabase
+            .from("ai_jobs")
+            .update({ 
+              status: "failed", 
+              last_error: "Job stuck in processing, fallback applied",
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", stuck.id);
+        } else {
+          // Reset to pending for retry
+          await supabase
+            .from("ai_jobs")
+            .update({ status: "pending", last_error: "Reset after stuck in processing" })
+            .eq("id", stuck.id);
+        }
+      }
+    }
+
+    // 2. Apply fallback to jobs that exceeded max attempts but are still pending
+    const { data: exhaustedJobs } = await supabase
+      .from("ai_jobs")
+      .select("id, lead_event_id")
+      .eq("status", "pending")
+      .gte("attempts", 3);
+
+    interface ExhaustedJob {
+      id: string;
+      lead_event_id: string;
+    }
+
+    const typedExhaustedJobs = exhaustedJobs as ExhaustedJob[] | null;
+
+    if (typedExhaustedJobs && typedExhaustedJobs.length > 0) {
+      console.log(`Applying fallback to ${typedExhaustedJobs.length} exhausted jobs`);
+      for (const exhausted of typedExhaustedJobs) {
+        await supabase.rpc("apply_ai_fallback", { p_lead_event_id: exhausted.lead_event_id });
+        await supabase
+          .from("ai_jobs")
+          .update({ 
+            status: "failed", 
+            last_error: "Max attempts exceeded, fallback applied",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", exhausted.id);
+      }
+    }
+
+    // 3. Get pending jobs (limit to batch size)
     const { data: jobs, error: jobsError } = await supabase
       .from("ai_jobs")
       .select(`
@@ -266,9 +335,17 @@ serve(async (req: Request) => {
 
     const typedJobs = jobs as unknown as AIJob[] | null;
 
+    const recoveredStuck = typedStuckJobs?.length || 0;
+    const recoveredExhausted = typedExhaustedJobs?.length || 0;
+
     if (!typedJobs || typedJobs.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No pending jobs", processed: 0 }),
+        JSON.stringify({ 
+          message: "No pending jobs", 
+          processed: 0,
+          recovered_stuck: recoveredStuck,
+          recovered_exhausted: recoveredExhausted
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
