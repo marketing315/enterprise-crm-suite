@@ -92,24 +92,24 @@ export function TicketsTable({ tickets, onTicketClick, onTakeOwnership }: Ticket
                   )}
                 </TableCell>
                 <TableCell>
-                  {ticket.users ? (
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">
-                        {ticket.users.full_name || ticket.users.email}
-                      </span>
-                      {/* Auto-assigned badge: assigned_at exists but assigned_by_user_id is null */}
-                      {ticket.assigned_at && !ticket.assigned_by_user_id && (
-                        <Badge variant="secondary" className="text-xs ml-1">
-                          Auto
-                        </Badge>
-                      )}
-                    </div>
-                  ) : (
-                    <Badge variant="outline" className="border-destructive/50 text-destructive">
-                      Non assegnato
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {ticket.users ? (
+                      <>
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm">
+                          {ticket.users.full_name || ticket.users.email}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Non assegnato</span>
+                    )}
+                    {/* Auto-assigned badge: assigned_at exists but assigned_by_user_id is null */}
+                    {ticket.assigned_at && !ticket.assigned_by_user_id && (
+                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                        Auto
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
