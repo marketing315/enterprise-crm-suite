@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
-import { TicketAuditLog } from "./TicketAuditLog";
+import { TicketAuditTimeline } from "./TicketAuditTimeline";
 import {
   TicketWithRelations,
   TicketStatus,
@@ -407,7 +407,7 @@ export function TicketDetailSheet({
           
           <TabsContent value="audit" className="flex-1 overflow-hidden mt-4">
             <div className="h-full">
-              <TicketAuditLog ticketId={ticket.id} />
+              <TicketAuditTimeline ticketId={ticket.id} />
             </div>
           </TabsContent>
         </Tabs>
