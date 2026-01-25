@@ -712,6 +712,64 @@ export type Database = {
           },
         ]
       }
+      ticket_audit_logs: {
+        Row: {
+          action_type: Database["public"]["Enums"]["ticket_audit_action"]
+          brand_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          new_value: Json | null
+          old_value: Json | null
+          ticket_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: Database["public"]["Enums"]["ticket_audit_action"]
+          brand_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          ticket_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["ticket_audit_action"]
+          brand_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          ticket_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_audit_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_audit_logs_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_comments: {
         Row: {
           author_user_id: string
@@ -1227,6 +1285,13 @@ export type Database = {
         | "appointment"
         | "ticket"
         | "mixed"
+      ticket_audit_action:
+        | "created"
+        | "status_change"
+        | "assignment_change"
+        | "priority_change"
+        | "category_change"
+        | "comment_added"
       ticket_creator: "ai" | "user" | "rule"
       ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
     }
@@ -1363,6 +1428,14 @@ export const Constants = {
       lead_source_type: ["webhook", "manual", "import", "api"],
       lead_type: ["trial", "info", "support", "generic"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
+      ticket_audit_action: [
+        "created",
+        "status_change",
+        "assignment_change",
+        "priority_change",
+        "category_change",
+        "comment_added",
+      ],
       ticket_creator: ["ai", "user", "rule"],
       ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
     },
