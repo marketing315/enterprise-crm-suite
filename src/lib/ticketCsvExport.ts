@@ -16,6 +16,7 @@ interface TicketExportRow {
   category: string;
   contact_name: string;
   contact_email: string;
+  contact_phone: string;
   assigned_to: string;
   assigned_at: string;
   assigned_by: string;
@@ -60,6 +61,12 @@ function getContactName(ticket: TicketWithRelations): string {
   return `${first_name || ""} ${last_name || ""}`.trim();
 }
 
+function getPrimaryPhone(ticket: TicketWithRelations): string {
+  const phones = ticket.contacts?.contact_phones || [];
+  const primary = phones.find((p) => p.is_primary);
+  return (primary?.phone_raw || phones[0]?.phone_raw || "").trim();
+}
+
 export function exportTicketsToCSV(
   tickets: TicketWithRelations[],
   options: {
@@ -86,6 +93,7 @@ export function exportTicketsToCSV(
       category: ticket.tags?.name || "",
       contact_name: getContactName(ticket),
       contact_email: ticket.contacts?.email || "",
+      contact_phone: getPrimaryPhone(ticket),
       assigned_to: ticket.users?.full_name || ticket.users?.email || "",
       assigned_at: formatDateForCSV(ticket.assigned_at),
       assigned_by: ticket.assigned_at 
@@ -109,6 +117,7 @@ export function exportTicketsToCSV(
     { key: "category", label: "Categoria" },
     { key: "contact_name", label: "Contatto" },
     { key: "contact_email", label: "Email" },
+    { key: "contact_phone", label: "Telefono" },
     { key: "assigned_to", label: "Assegnato a" },
     { key: "assigned_at", label: "Assegnato il" },
     { key: "assigned_by", label: "Tipo Assegnazione" },

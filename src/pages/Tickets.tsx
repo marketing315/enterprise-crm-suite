@@ -52,6 +52,13 @@ export default function Tickets() {
     isOperator,
     slaThresholds,
   });
+  // Helper to get primary phone for search
+  const getPrimaryPhone = (ticket: TicketWithRelations) => {
+    const phones = ticket.contacts?.contact_phones || [];
+    const primary = phones.find((p) => p.is_primary);
+    return (primary?.phone_raw || phones[0]?.phone_raw || "").trim();
+  };
+
   // Apply additional filters on top of queue filter
   const filteredTickets = useMemo(() => {
     let result = queueFilteredTickets;
@@ -62,12 +69,14 @@ export default function Tickets() {
       result = result.filter((ticket) => {
         const contactName = `${ticket.contacts?.first_name || ""} ${ticket.contacts?.last_name || ""}`.toLowerCase();
         const contactEmail = ticket.contacts?.email?.toLowerCase() || "";
+        const contactPhone = getPrimaryPhone(ticket).toLowerCase();
         const title = ticket.title.toLowerCase();
         const description = ticket.description?.toLowerCase() || "";
         
         return (
           contactName.includes(query) ||
           contactEmail.includes(query) ||
+          contactPhone.includes(query) ||
           title.includes(query) ||
           description.includes(query)
         );

@@ -32,6 +32,7 @@ export interface TicketWithRelations extends Ticket {
     first_name: string | null;
     last_name: string | null;
     email: string | null;
+    contact_phones: { phone_raw: string; is_primary: boolean }[];
   } | null;
   tags: {
     id: string;
@@ -89,7 +90,7 @@ export function useTickets(status?: TicketStatus) {
         .from("tickets")
         .select(`
           *,
-          contacts:contact_id (id, first_name, last_name, email),
+          contacts:contact_id (id, first_name, last_name, email, contact_phones (phone_raw, is_primary)),
           tags:category_tag_id (id, name, color),
           users:assigned_to_user_id (id, full_name, email),
           assigned_by:assigned_by_user_id (id, full_name, email)
@@ -122,7 +123,7 @@ export function useTicket(ticketId: string | null) {
         .from("tickets")
         .select(`
           *,
-          contacts:contact_id (id, first_name, last_name, email),
+          contacts:contact_id (id, first_name, last_name, email, contact_phones (phone_raw, is_primary)),
           tags:category_tag_id (id, name, color),
           users:assigned_to_user_id (id, full_name, email),
           assigned_by:assigned_by_user_id (id, full_name, email)
