@@ -31,6 +31,8 @@ interface TicketFiltersProps {
   // Counts for badges
   autoCount: number;
   manualCount: number;
+  // Hide assignee filter when using queue tabs
+  hideAssigneeFilter?: boolean;
 }
 
 export function TicketFilters({
@@ -45,6 +47,7 @@ export function TicketFilters({
   onAssignmentTypeChange,
   autoCount,
   manualCount,
+  hideAssigneeFilter = false,
 }: TicketFiltersProps) {
   return (
     <div className="space-y-4">
@@ -73,24 +76,26 @@ export function TicketFilters({
           scope="ticket"
         />
 
-        {/* Assignee filter */}
-        <div className="flex items-center gap-2">
-          <UserCircle className="h-4 w-4 text-muted-foreground" />
-          <Select value={assigneeFilter} onValueChange={onAssigneeChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Assegnatario" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli operatori</SelectItem>
-              <SelectItem value="unassigned">Non assegnati</SelectItem>
-              {operators.map((op) => (
-                <SelectItem key={op.user_id} value={op.user_id}>
-                  {op.full_name || op.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Assignee filter - hidden when using queue tabs */}
+        {!hideAssigneeFilter && (
+          <div className="flex items-center gap-2">
+            <UserCircle className="h-4 w-4 text-muted-foreground" />
+            <Select value={assigneeFilter} onValueChange={onAssigneeChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Assegnatario" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli operatori</SelectItem>
+                <SelectItem value="unassigned">Non assegnati</SelectItem>
+                {operators.map((op) => (
+                  <SelectItem key={op.user_id} value={op.user_id}>
+                    {op.full_name || op.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Assignment type filter (Auto vs Manual) */}
         <div className="flex items-center gap-2 border-l pl-4">

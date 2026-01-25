@@ -4,29 +4,25 @@ import { Button } from "@/components/ui/button";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
 import { TicketDetailSheet } from "@/components/tickets/TicketDetailSheet";
 import { TicketFilters, AssignmentTypeFilter } from "@/components/tickets/TicketFilters";
+import { TicketQueueTabs } from "@/components/tickets/TicketQueueTabs";
 import { useTickets, TicketStatus, TicketWithRelations, useAssignTicket } from "@/hooks/useTickets";
+import { useTicketQueue } from "@/hooks/useTicketQueue";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
 import { toast } from "sonner";
 
 export default function Tickets() {
-  // Status filter
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
-  
   // Advanced filters
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [assignmentTypeFilter, setAssignmentTypeFilter] = useState<AssignmentTypeFilter>("all");
   
   // Detail sheet
   const [selectedTicket, setSelectedTicket] = useState<TicketWithRelations | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const { supabaseUser } = useAuth();
-  const { data: allTickets = [], isLoading } = useTickets(
-    statusFilter === "all" ? undefined : statusFilter
-  );
+  const { supabaseUser, hasRole } = useAuth();
+  const { data: allTickets = [], isLoading } = useTickets();
   const { data: operators = [] } = useBrandOperators();
   const assignTicket = useAssignTicket();
 
@@ -35,9 +31,23 @@ export default function Tickets() {
     (op) => op.supabase_auth_id === supabaseUser?.id
   );
 
-  // Apply all filters
+  const isOperator = hasRole("callcenter") || hasRole("admin");
+
+  // Queue tabs with smart sorting
+  const {
+    activeTab,
+    setActiveTab,
+    filteredTickets: queueFilteredTickets,
+    counts,
+  } = useTicketQueue({
+    tickets: allTickets,
+    currentUserId: currentOperator?.user_id ?? null,
+    isOperator,
+  });
+
+  // Apply additional filters on top of queue filter
   const filteredTickets = useMemo(() => {
-    let result = allTickets;
+    let result = queueFilteredTickets;
 
     // Search filter (name, email, phone, title, description)
     if (searchQuery.trim()) {
@@ -64,44 +74,26 @@ export default function Tickets() {
       );
     }
 
-    // Assignee filter
-    if (assigneeFilter === "unassigned") {
-      result = result.filter((ticket) => !ticket.assigned_to_user_id);
-    } else if (assigneeFilter !== "all") {
-      result = result.filter((ticket) => ticket.assigned_to_user_id === assigneeFilter);
-    }
-
     // Assignment type filter (auto vs manual)
     if (assignmentTypeFilter === "auto") {
-      // Auto-assigned: has assigned_at but no assigned_by_user_id
       result = result.filter(
         (ticket) => ticket.assigned_at && !ticket.assigned_by_user_id
       );
     } else if (assignmentTypeFilter === "manual") {
-      // Manual: has assigned_by_user_id
       result = result.filter((ticket) => ticket.assigned_by_user_id);
     }
 
     return result;
-  }, [allTickets, searchQuery, selectedTagIds, assigneeFilter, assignmentTypeFilter]);
+  }, [queueFilteredTickets, searchQuery, selectedTagIds, assignmentTypeFilter]);
 
-  // Counts for filters
-  const statusCounts = useMemo(() => ({
-    all: allTickets.length,
-    open: allTickets.filter((t) => t.status === "open").length,
-    in_progress: allTickets.filter((t) => t.status === "in_progress").length,
-    resolved: allTickets.filter((t) => t.status === "resolved").length,
-    closed: allTickets.filter((t) => t.status === "closed").length,
-    reopened: allTickets.filter((t) => t.status === "reopened").length,
-  }), [allTickets]);
-
+  // Counts for assignment type filter
   const autoCount = useMemo(
-    () => allTickets.filter((t) => t.assigned_at && !t.assigned_by_user_id).length,
-    [allTickets]
+    () => queueFilteredTickets.filter((t) => t.assigned_at && !t.assigned_by_user_id).length,
+    [queueFilteredTickets]
   );
   const manualCount = useMemo(
-    () => allTickets.filter((t) => t.assigned_by_user_id).length,
-    [allTickets]
+    () => queueFilteredTickets.filter((t) => t.assigned_by_user_id).length,
+    [queueFilteredTickets]
   );
 
   const handleTicketClick = (ticket: TicketWithRelations) => {
@@ -141,58 +133,28 @@ export default function Tickets() {
         </div>
       </div>
 
-      {/* Quick Stats - Status */}
-      <div className="flex gap-4 flex-wrap">
-        <Button
-          variant={statusFilter === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("all")}
-        >
-          Tutti ({statusCounts.all})
-        </Button>
-        <Button
-          variant={statusFilter === "open" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("open")}
-        >
-          Aperti ({statusCounts.open})
-        </Button>
-        <Button
-          variant={statusFilter === "in_progress" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("in_progress")}
-        >
-          In Lavorazione ({statusCounts.in_progress})
-        </Button>
-        <Button
-          variant={statusFilter === "resolved" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("resolved")}
-        >
-          Risolti ({statusCounts.resolved})
-        </Button>
-        <Button
-          variant={statusFilter === "reopened" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("reopened")}
-        >
-          Riaperti ({statusCounts.reopened})
-        </Button>
-      </div>
+      {/* Queue Tabs */}
+      <TicketQueueTabs
+        value={activeTab}
+        onChange={setActiveTab}
+        counts={counts}
+        showMyQueue={isOperator}
+      />
 
-      {/* Advanced Filters */}
+      {/* Advanced Filters (simplified - removed assignee since handled by tabs) */}
       <TicketFilters
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         selectedTagIds={selectedTagIds}
         onTagsChange={setSelectedTagIds}
-        assigneeFilter={assigneeFilter}
-        onAssigneeChange={setAssigneeFilter}
+        assigneeFilter="all"
+        onAssigneeChange={() => {}}
         operators={operators}
         assignmentTypeFilter={assignmentTypeFilter}
         onAssignmentTypeChange={setAssignmentTypeFilter}
         autoCount={autoCount}
         manualCount={manualCount}
+        hideAssigneeFilter={activeTab !== "all"}
       />
 
       {/* Table */}
@@ -205,6 +167,7 @@ export default function Tickets() {
           tickets={filteredTickets} 
           onTicketClick={handleTicketClick}
           onTakeOwnership={currentOperator ? handleTakeOwnership : undefined}
+          showSlaIndicator
         />
       )}
 
