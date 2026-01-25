@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock, Hand } from "lucide-react";
+import { User, Clock, Hand, AlertTriangle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -14,14 +14,17 @@ import { Button } from "@/components/ui/button";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
 import { TicketWithRelations } from "@/hooks/useTickets";
+import { isSlaBreached } from "@/hooks/useTicketQueue";
+import { cn } from "@/lib/utils";
 
 interface TicketsTableProps {
   tickets: TicketWithRelations[];
   onTicketClick: (ticket: TicketWithRelations) => void;
   onTakeOwnership?: (ticket: TicketWithRelations, e: React.MouseEvent) => void;
+  showSlaIndicator?: boolean;
 }
 
-export function TicketsTable({ tickets, onTicketClick, onTakeOwnership }: TicketsTableProps) {
+export function TicketsTable({ tickets, onTicketClick, onTakeOwnership, showSlaIndicator = false }: TicketsTableProps) {
   const getContactName = (ticket: TicketWithRelations) => {
     if (!ticket.contacts) return "—";
     const { first_name, last_name, email } = ticket.contacts;
@@ -112,7 +115,13 @@ export function TicketsTable({ tickets, onTicketClick, onTakeOwnership }: Ticket
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <div className={cn(
+                    "flex items-center gap-1.5",
+                    showSlaIndicator && isSlaBreached(ticket) && "text-destructive"
+                  )}>
+                    {showSlaIndicator && isSlaBreached(ticket) && (
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    )}
                     <Clock className="h-3.5 w-3.5" />
                     <span className="text-sm">{getAging(ticket.opened_at)}</span>
                   </div>
