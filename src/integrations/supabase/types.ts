@@ -106,6 +106,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          sla_thresholds_minutes: Json
           slug: string
           updated_at: string
         }
@@ -113,6 +114,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          sla_thresholds_minutes?: Json
           slug: string
           updated_at?: string
         }
@@ -120,6 +122,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          sla_thresholds_minutes?: Json
           slug?: string
           updated_at?: string
         }

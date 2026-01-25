@@ -8,6 +8,7 @@ import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import { Bot, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SlaThresholdsCard } from "./SlaThresholdsCard";
 
 export function TicketingSettings() {
   const { data: settings, isLoading } = useBrandSettings();
@@ -32,20 +33,36 @@ export function TicketingSettings() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-72" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-10 w-full" />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Auto-assign Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -86,6 +103,9 @@ export function TicketingSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* SLA Thresholds Card */}
+      <SlaThresholdsCard />
     </div>
   );
 }

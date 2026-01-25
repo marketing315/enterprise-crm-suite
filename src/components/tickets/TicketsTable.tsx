@@ -15,6 +15,7 @@ import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
 import { TicketWithRelations } from "@/hooks/useTickets";
 import { isSlaBreached } from "@/hooks/useTicketQueue";
+import { SlaThresholds } from "@/hooks/useBrandSettings";
 import { cn } from "@/lib/utils";
 
 interface TicketsTableProps {
@@ -22,9 +23,16 @@ interface TicketsTableProps {
   onTicketClick: (ticket: TicketWithRelations) => void;
   onTakeOwnership?: (ticket: TicketWithRelations, e: React.MouseEvent) => void;
   showSlaIndicator?: boolean;
+  slaThresholds?: SlaThresholds;
 }
 
-export function TicketsTable({ tickets, onTicketClick, onTakeOwnership, showSlaIndicator = false }: TicketsTableProps) {
+export function TicketsTable({ 
+  tickets, 
+  onTicketClick, 
+  onTakeOwnership, 
+  showSlaIndicator = false,
+  slaThresholds 
+}: TicketsTableProps) {
   const getContactName = (ticket: TicketWithRelations) => {
     if (!ticket.contacts) return "—";
     const { first_name, last_name, email } = ticket.contacts;
@@ -117,9 +125,9 @@ export function TicketsTable({ tickets, onTicketClick, onTakeOwnership, showSlaI
                 <TableCell>
                   <div className={cn(
                     "flex items-center gap-1.5",
-                    showSlaIndicator && isSlaBreached(ticket) && "text-destructive"
+                    showSlaIndicator && isSlaBreached(ticket, slaThresholds) && "text-destructive"
                   )}>
-                    {showSlaIndicator && isSlaBreached(ticket) && (
+                    {showSlaIndicator && isSlaBreached(ticket, slaThresholds) && (
                       <AlertTriangle className="h-3.5 w-3.5" />
                     )}
                     <Clock className="h-3.5 w-3.5" />

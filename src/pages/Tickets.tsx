@@ -7,6 +7,7 @@ import { TicketFilters, AssignmentTypeFilter } from "@/components/tickets/Ticket
 import { TicketQueueTabs } from "@/components/tickets/TicketQueueTabs";
 import { useTickets, TicketStatus, TicketWithRelations, useAssignTicket } from "@/hooks/useTickets";
 import { useTicketQueue } from "@/hooks/useTicketQueue";
+import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
 import { toast } from "sonner";
@@ -24,7 +25,11 @@ export default function Tickets() {
   const { supabaseUser, hasRole } = useAuth();
   const { data: allTickets = [], isLoading } = useTickets();
   const { data: operators = [] } = useBrandOperators();
+  const { data: brandSettings } = useBrandSettings();
   const assignTicket = useAssignTicket();
+
+  // Get SLA thresholds from brand settings
+  const slaThresholds = brandSettings?.sla_thresholds_minutes;
 
   // Get current user's operator ID
   const currentOperator = operators.find(
@@ -43,8 +48,8 @@ export default function Tickets() {
     tickets: allTickets,
     currentUserId: currentOperator?.user_id ?? null,
     isOperator,
+    slaThresholds,
   });
-
   // Apply additional filters on top of queue filter
   const filteredTickets = useMemo(() => {
     let result = queueFilteredTickets;
@@ -168,6 +173,7 @@ export default function Tickets() {
           onTicketClick={handleTicketClick}
           onTakeOwnership={currentOperator ? handleTakeOwnership : undefined}
           showSlaIndicator
+          slaThresholds={slaThresholds}
         />
       )}
 
