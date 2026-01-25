@@ -1159,6 +1159,10 @@ export type Database = {
           scope: Database["public"]["Enums"]["tag_scope"]
         }[]
       }
+      get_ticket_trend_dashboard: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       has_role: {
