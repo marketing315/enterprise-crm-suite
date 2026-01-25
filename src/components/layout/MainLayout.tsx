@@ -41,6 +41,7 @@ import {
   Building2,
   Inbox,
   Headphones,
+  TrendingUp,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 
@@ -58,6 +59,7 @@ const adminMenuItems = [
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
   { icon: Headphones, label: 'KPI Call Center', path: '/admin/callcenter-kpi' },
+  { icon: TrendingUp, label: 'Trend Ticket', path: '/admin/ticket-trend' },
 ];
 
 export function MainLayout() {
