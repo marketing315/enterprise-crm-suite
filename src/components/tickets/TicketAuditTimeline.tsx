@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface TicketAuditLogProps {
+interface TicketAuditTimelineProps {
   ticketId: string | null;
 }
 
@@ -135,7 +135,7 @@ function AuditLogItem({ log }: { log: TicketAuditLogType }) {
   );
 }
 
-export function TicketAuditLog({ ticketId }: TicketAuditLogProps) {
+export function TicketAuditTimeline({ ticketId }: TicketAuditTimelineProps) {
   const { data: auditLogs, isLoading } = useTicketAuditLogs(ticketId);
 
   if (isLoading) {
