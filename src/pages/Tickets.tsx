@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react";
-import { Ticket, Download } from "lucide-react";
+import { Ticket, Download, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
 import { TicketDetailSheet } from "@/components/tickets/TicketDetailSheet";
 import { TicketFilters, AssignmentTypeFilter } from "@/components/tickets/TicketFilters";
 import { TicketQueueTabs } from "@/components/tickets/TicketQueueTabs";
+import { TicketBulkActionsBar } from "@/components/tickets/TicketBulkActionsBar";
 import { useTickets, TicketStatus, TicketWithRelations, useAssignTicket } from "@/hooks/useTickets";
 import { useTicketQueue } from "@/hooks/useTicketQueue";
+import { useTicketBulkUpdate, useTicketBulkAssignToMe } from "@/hooks/useTicketBulkActions";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
@@ -24,11 +26,17 @@ export default function Tickets() {
   const [selectedTicket, setSelectedTicket] = useState<TicketWithRelations | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+
   const { supabaseUser, hasRole } = useAuth();
   const { data: allTickets = [], isLoading } = useTickets();
   const { data: operators = [] } = useBrandOperators();
   const { data: brandSettings } = useBrandSettings();
   const assignTicket = useAssignTicket();
+  const bulkUpdate = useTicketBulkUpdate();
+  const bulkAssignToMe = useTicketBulkAssignToMe();
 
   // Get SLA thresholds from brand settings
   const slaThresholds = brandSettings?.sla_thresholds_minutes;
@@ -146,6 +154,72 @@ export default function Tickets() {
     toast.success(`Esportati ${filteredTickets.length} ticket`);
   };
 
+  // Bulk action handlers
+  const isBulkLoading = bulkUpdate.isPending || bulkAssignToMe.isPending;
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+    setBulkMode(false);
+  };
+
+  const handleBulkAssignToMe = async () => {
+    const ids = Array.from(selectedIds);
+    try {
+      await bulkAssignToMe.mutateAsync(ids);
+      toast.success(`${ids.length} ticket presi in carico`);
+      handleClearSelection();
+    } catch {
+      toast.error("Errore nell'assegnazione batch");
+    }
+  };
+
+  const handleBulkAssignTo = async (userId: string) => {
+    const ids = Array.from(selectedIds);
+    try {
+      await bulkUpdate.mutateAsync({
+        ticketIds: ids,
+        assignToUserId: userId || null,
+      });
+      toast.success(userId ? `${ids.length} ticket assegnati` : `${ids.length} ticket de-assegnati`);
+      handleClearSelection();
+    } catch {
+      toast.error("Errore nell'assegnazione batch");
+    }
+  };
+
+  const handleBulkChangeStatus = async (status: TicketStatus) => {
+    const ids = Array.from(selectedIds);
+    try {
+      await bulkUpdate.mutateAsync({ ticketIds: ids, status });
+      toast.success(`Stato aggiornato su ${ids.length} ticket`);
+      handleClearSelection();
+    } catch {
+      toast.error("Errore nell'aggiornamento batch");
+    }
+  };
+
+  const handleBulkChangePriority = async (priority: number) => {
+    const ids = Array.from(selectedIds);
+    try {
+      await bulkUpdate.mutateAsync({ ticketIds: ids, priority });
+      toast.success(`Priorità aggiornata su ${ids.length} ticket`);
+      handleClearSelection();
+    } catch {
+      toast.error("Errore nell'aggiornamento batch");
+    }
+  };
+
+  const handleBulkChangeCategory = async (tagId: string | null) => {
+    const ids = Array.from(selectedIds);
+    try {
+      await bulkUpdate.mutateAsync({ ticketIds: ids, categoryTagId: tagId });
+      toast.success(`Categoria aggiornata su ${ids.length} ticket`);
+      handleClearSelection();
+    } catch {
+      toast.error("Errore nell'aggiornamento batch");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -159,15 +233,28 @@ export default function Tickets() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportCSV}
-          disabled={filteredTickets.length === 0}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV ({filteredTickets.length})
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={bulkMode ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => {
+              setBulkMode(!bulkMode);
+              if (bulkMode) setSelectedIds(new Set());
+            }}
+          >
+            <CheckSquare className="h-4 w-4 mr-2" />
+            {bulkMode ? "Esci selezione" : "Selezione multipla"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={filteredTickets.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV ({filteredTickets.length})
+          </Button>
+        </div>
       </div>
 
       {/* Queue Tabs */}
@@ -206,6 +293,9 @@ export default function Tickets() {
           onTakeOwnership={currentOperator ? handleTakeOwnership : undefined}
           showSlaIndicator
           slaThresholds={slaThresholds}
+          showCheckboxes={bulkMode}
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
         />
       )}
 
@@ -214,6 +304,19 @@ export default function Tickets() {
         ticket={selectedTicket}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+      />
+
+      {/* Bulk Actions Bar */}
+      <TicketBulkActionsBar
+        selectedCount={selectedIds.size}
+        onClearSelection={handleClearSelection}
+        onAssignToMe={handleBulkAssignToMe}
+        onAssignTo={handleBulkAssignTo}
+        onChangeStatus={handleBulkChangeStatus}
+        onChangePriority={handleBulkChangePriority}
+        onChangeCategory={handleBulkChangeCategory}
+        operators={operators}
+        isLoading={isBulkLoading}
       />
     </div>
   );
