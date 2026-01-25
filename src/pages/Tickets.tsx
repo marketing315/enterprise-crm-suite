@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Ticket } from "lucide-react";
+import { Ticket, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
 import { TicketDetailSheet } from "@/components/tickets/TicketDetailSheet";
@@ -9,7 +9,9 @@ import { useTickets, TicketStatus, TicketWithRelations, useAssignTicket } from "
 import { useTicketQueue } from "@/hooks/useTicketQueue";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBrand } from "@/contexts/BrandContext";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
+import { exportTicketsToCSV } from "@/lib/ticketCsvExport";
 import { toast } from "sonner";
 
 export default function Tickets() {
@@ -123,6 +125,18 @@ export default function Tickets() {
     }
   };
 
+  const { currentBrand } = useBrand();
+
+  const handleExportCSV = () => {
+    if (!currentBrand) return;
+    exportTicketsToCSV(filteredTickets, {
+      brandName: currentBrand.name,
+      activeTab,
+      slaThresholds,
+    });
+    toast.success(`Esportati ${filteredTickets.length} ticket`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -136,6 +150,15 @@ export default function Tickets() {
             </p>
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportCSV}
+          disabled={filteredTickets.length === 0}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export CSV ({filteredTickets.length})
+        </Button>
       </div>
 
       {/* Queue Tabs */}
