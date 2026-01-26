@@ -7,8 +7,9 @@ import { TicketFilters } from "@/components/tickets/TicketFilters";
 import { TicketQueueTabs } from "@/components/tickets/TicketQueueTabs";
 import { TicketBulkActionsBar } from "@/components/tickets/TicketBulkActionsBar";
 import { TicketStatus, TicketWithRelations, useAssignTicket } from "@/hooks/useTickets";
-import { useTicketsSearch, useTicketQueueCounts, QueueTab, AssignmentTypeFilter, TicketCursor } from "@/hooks/useTicketsSearch";
+import { useTicketsSearch, useTicketQueueCounts, TicketCursor } from "@/hooks/useTicketsSearch";
 import { useTicketBulkUpdate, useTicketBulkAssignToMe } from "@/hooks/useTicketBulkActions";
+import { useTicketUrlState } from "@/hooks/useTicketUrlState";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
@@ -19,21 +20,19 @@ import { toast } from "sonner";
 const PAGE_SIZE = 50;
 
 export default function Tickets() {
-  // Queue tab (stored in localStorage)
-  const [activeTab, setActiveTab] = useState<QueueTab>(() => {
-    const saved = localStorage.getItem("ticketQueueTab");
-    return (saved as QueueTab) || "all";
-  });
-
-  // Search & filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [assignmentTypeFilter, setAssignmentTypeFilter] = useState<AssignmentTypeFilter>("all");
+  // URL-based state for refresh-safe navigation
+  const { state: urlState, updateUrl, resetPagination } = useTicketUrlState();
   
-  // Cursor-based pagination
-  const [cursor, setCursor] = useState<TicketCursor | null>(null);
-  const [direction, setDirection] = useState<"next" | "prev">("next");
-  const [pageStartStack, setPageStartStack] = useState<TicketCursor[]>([]);
+  // Destructure URL state
+  const {
+    tab: activeTab,
+    searchQuery,
+    tagIds: selectedTagIds,
+    assignmentType: assignmentTypeFilter,
+    cursor,
+    direction,
+    pageStack: pageStartStack,
+  } = urlState;
   
   // Detail sheet
   const [selectedTicket, setSelectedTicket] = useState<TicketWithRelations | null>(null);
@@ -97,60 +96,57 @@ export default function Tickets() {
     setSelectedIds(new Set());
   }, []);
 
-  // Reset pagination state
-  const resetPaging = useCallback(() => {
-    setCursor(null);
-    setDirection("next");
-    setPageStartStack([]);
-  }, []);
-
   // Handle tab change - reset pagination and selection
-  const handleTabChange = useCallback((tab: QueueTab) => {
-    setActiveTab(tab);
-    resetPaging();
+  const handleTabChange = useCallback((tab: typeof activeTab) => {
+    updateUrl({ tab });
+    resetPagination();
     clearSelection();
-    localStorage.setItem("ticketQueueTab", tab);
-  }, [clearSelection, resetPaging]);
+  }, [updateUrl, resetPagination, clearSelection]);
 
-  // Handle filter changes - reset pagination and selection
+  // Handle filter changes - reset pagination
   const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query);
-    resetPaging();
+    updateUrl({ searchQuery: query });
+    resetPagination();
     // Don't clear selection on search - user might be refining
-  }, [resetPaging]);
+  }, [updateUrl, resetPagination]);
 
   const handleTagsChange = useCallback((tagIds: string[]) => {
-    setSelectedTagIds(tagIds);
-    resetPaging();
+    updateUrl({ tagIds });
+    resetPagination();
     clearSelection();
-  }, [clearSelection, resetPaging]);
+  }, [updateUrl, resetPagination, clearSelection]);
 
-  const handleAssignmentTypeChange = useCallback((type: AssignmentTypeFilter) => {
-    setAssignmentTypeFilter(type);
-    resetPaging();
+  const handleAssignmentTypeChange = useCallback((type: typeof assignmentTypeFilter) => {
+    updateUrl({ assignmentType: type });
+    resetPagination();
     clearSelection();
-  }, [clearSelection, resetPaging]);
+  }, [updateUrl, resetPagination, clearSelection]);
 
   // Cursor pagination handlers
   const handleNextPage = useCallback(() => {
     if (!hasNext || !searchResult?.nextCursor) return;
     // Save current page start for "back" navigation
     if (pageStartCursor) {
-      setPageStartStack((s) => [...s, pageStartCursor]);
+      updateUrl({ 
+        cursor: searchResult.nextCursor, 
+        direction: "next",
+        pageStack: [...pageStartStack, pageStartCursor],
+      });
     }
-    setDirection("next");
-    setCursor(searchResult.nextCursor);
     clearSelection();
-  }, [hasNext, searchResult?.nextCursor, pageStartCursor, clearSelection]);
+  }, [hasNext, searchResult?.nextCursor, pageStartCursor, pageStartStack, updateUrl, clearSelection]);
 
   const handlePrevPage = useCallback(() => {
     if (pageStartStack.length === 0) return;
+    const newStack = pageStartStack.slice(0, -1);
     const prevStart = pageStartStack[pageStartStack.length - 1];
-    setPageStartStack((s) => s.slice(0, -1));
-    setDirection("prev");
-    setCursor(prevStart);
+    updateUrl({
+      cursor: prevStart,
+      direction: "prev",
+      pageStack: newStack,
+    });
     clearSelection();
-  }, [pageStartStack, clearSelection]);
+  }, [pageStartStack, updateUrl, clearSelection]);
 
   const handleTicketClick = (ticket: TicketWithRelations) => {
     setSelectedTicket(ticket);
