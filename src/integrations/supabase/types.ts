@@ -1283,6 +1283,21 @@ export type Database = {
         Args: { p_source_id: string }
         Returns: boolean
       }
+      create_outbound_webhook: {
+        Args: {
+          p_brand_id: string
+          p_event_types: string[]
+          p_is_active?: boolean
+          p_name: string
+          p_secret: string
+          p_url: string
+        }
+        Returns: {
+          secret: string
+          webhook_id: string
+        }[]
+      }
+      delete_outbound_webhook: { Args: { p_id: string }; Returns: boolean }
       enqueue_webhook_delivery: {
         Args: {
           p_brand_id: string
@@ -1395,6 +1410,7 @@ export type Database = {
       }
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
+      get_webhook_delivery: { Args: { p_delivery_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1410,6 +1426,29 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_outbound_webhooks: {
+        Args: { p_brand_id: string }
+        Returns: {
+          created_at: string
+          event_types: Database["public"]["Enums"]["webhook_event_type"][]
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          url: string
+        }[]
+      }
+      list_webhook_deliveries: {
+        Args: {
+          p_brand_id: string
+          p_event_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["webhook_delivery_status"]
+          p_webhook_id?: string
+        }
+        Returns: Json
+      }
       record_delivery_result: {
         Args: {
           p_delivery_id: string
@@ -1419,6 +1458,10 @@ export type Database = {
           p_success: boolean
         }
         Returns: undefined
+      }
+      rotate_outbound_webhook_secret: {
+        Args: { p_id: string; p_new_secret: string }
+        Returns: string
       }
       search_contacts: {
         Args: {
@@ -1474,6 +1517,17 @@ export type Database = {
         }
         Returns: Json
       }
+      test_webhook: { Args: { p_webhook_id: string }; Returns: string }
+      update_outbound_webhook: {
+        Args: {
+          p_event_types?: string[]
+          p_id: string
+          p_is_active?: boolean
+          p_name?: string
+          p_url?: string
+        }
+        Returns: boolean
+      }
       user_belongs_to_brand: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
@@ -1523,6 +1577,7 @@ export type Database = {
         | "deal.created"
         | "deal.stage_changed"
         | "deal.closed"
+        | "webhook.test"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1683,6 +1738,7 @@ export const Constants = {
         "deal.created",
         "deal.stage_changed",
         "deal.closed",
+        "webhook.test",
       ],
     },
   },

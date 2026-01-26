@@ -1,13 +1,17 @@
-import { Settings as SettingsIcon, Tags, Ticket } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
+import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { useBrand } from "@/contexts/BrandContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
+  const { hasRole } = useAuth();
+  
+  const isAdmin = currentBrand ? hasRole("admin", currentBrand.id) : false;
 
   if (!hasBrandSelected) {
     return (
@@ -48,6 +52,12 @@ export default function Settings() {
             <Tags className="h-4 w-4" />
             Tag
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="webhooks" className="gap-2" data-testid="webhooks-settings-tab">
+              <Webhook className="h-4 w-4" />
+              Webhook
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="ticketing" className="space-y-4">
@@ -57,6 +67,12 @@ export default function Settings() {
         <TabsContent value="tags" className="space-y-4">
           <TagManager />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="webhooks" className="space-y-4">
+            <WebhookSettings />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

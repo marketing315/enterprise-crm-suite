@@ -8,6 +8,7 @@ const corsHeaders = {
 const BATCH_SIZE = 50;
 const PARALLEL_LIMIT = 10;
 const REQUEST_TIMEOUT_MS = 10000;
+const WALL_TIME_LIMIT_MS = 25000; // Stop processing after 25s to avoid cron overlap
 const USER_AGENT = "ralphloop-webhooks/1.0";
 
 interface WebhookDelivery {
@@ -147,17 +148,25 @@ async function processDelivery(
 // deno-lint-ignore no-explicit-any
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
-// Process batch with parallelism limit
+// Process batch with parallelism limit and wall-time guard
 async function processBatch(
   supabase: SupabaseClientAny,
-  deliveries: WebhookDelivery[]
-): Promise<{ sentOk: number; sentFail: number }> {
+  deliveries: WebhookDelivery[],
+  startTime: number
+): Promise<{ sentOk: number; sentFail: number; remainingHint: boolean }> {
   const webhookCache = new Map<string, WebhookConfig | null>();
   let sentOk = 0;
   let sentFail = 0;
 
   // Process in chunks of PARALLEL_LIMIT
   for (let i = 0; i < deliveries.length; i += PARALLEL_LIMIT) {
+    // Wall-time guard: stop if we're running too long
+    if (Date.now() - startTime > WALL_TIME_LIMIT_MS) {
+      const remaining = deliveries.length - i;
+      console.log(`[WALL_TIME] Stopping after ${Date.now() - startTime}ms, remaining=${remaining}`);
+      return { sentOk, sentFail, remainingHint: true };
+    }
+
     const chunk = deliveries.slice(i, i + PARALLEL_LIMIT);
     const results = await Promise.all(
       chunk.map(d => processDelivery(supabase, d, webhookCache))
@@ -177,13 +186,15 @@ async function processBatch(
     }
   }
 
-  return { sentOk, sentFail };
+  return { sentOk, sentFail, remainingHint: false };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const runStartTime = Date.now();
 
   try {
     // Validate cron secret
@@ -230,11 +241,21 @@ Deno.serve(async (req) => {
 
     console.log(`[INFO] Claimed ${claimedCount} deliveries`);
 
-    // Process batch
-    const { sentOk, sentFail } = await processBatch(supabase, deliveries as WebhookDelivery[]);
+    // Process batch with wall-time guard
+    const { sentOk, sentFail, remainingHint } = await processBatch(
+      supabase, 
+      deliveries as WebhookDelivery[],
+      runStartTime
+    );
 
-    const summary = { claimed: claimedCount, sent_ok: sentOk, sent_fail: sentFail };
-    console.log(`[SUMMARY] claimed=${claimedCount} sent_ok=${sentOk} sent_fail=${sentFail}`);
+    const summary = { 
+      claimed: claimedCount, 
+      sent_ok: sentOk, 
+      sent_fail: sentFail,
+      remaining_hint: remainingHint,
+      duration_ms: Date.now() - runStartTime
+    };
+    console.log(`[SUMMARY] claimed=${claimedCount} sent_ok=${sentOk} sent_fail=${sentFail} remaining_hint=${remainingHint} duration_ms=${summary.duration_ms}`);
 
     return new Response(JSON.stringify(summary), {
       status: 200,
