@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.ai-classify]
 verify_jwt = false
+
+[functions.sla-breach-checker]
+verify_jwt = false
+
+[functions.ticket-assign-recovery]
+verify_jwt = false

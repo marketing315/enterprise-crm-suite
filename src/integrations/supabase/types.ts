@@ -891,6 +891,7 @@ export type Database = {
           opened_at: string
           priority: number
           resolved_at: string | null
+          sla_breached_at: string | null
           source_event_id: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           title: string
@@ -912,6 +913,7 @@ export type Database = {
           opened_at?: string
           priority?: number
           resolved_at?: string | null
+          sla_breached_at?: string | null
           source_event_id?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           title: string
@@ -933,6 +935,7 @@ export type Database = {
           opened_at?: string
           priority?: number
           resolved_at?: string | null
+          sla_breached_at?: string | null
           source_event_id?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           title?: string
@@ -1120,6 +1123,11 @@ export type Database = {
         Returns: string
       }
       assign_unassigned_support_tickets: {
+        Args: { p_brand_id: string }
+        Returns: number
+      }
+      check_all_brands_sla_breaches: { Args: never; Returns: Json }
+      check_and_mark_sla_breaches: {
         Args: { p_brand_id: string }
         Returns: number
       }
@@ -1339,6 +1347,7 @@ export type Database = {
         | "priority_change"
         | "category_change"
         | "comment_added"
+        | "sla_breach"
       ticket_creator: "ai" | "user" | "rule"
       ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
     }
@@ -1482,6 +1491,7 @@ export const Constants = {
         "priority_change",
         "category_change",
         "comment_added",
+        "sla_breach",
       ],
       ticket_creator: ["ai", "user", "rule"],
       ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
