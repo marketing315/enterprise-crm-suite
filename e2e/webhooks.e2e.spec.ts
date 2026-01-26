@@ -1,4 +1,4 @@
-import { test, expect } from "../fixtures/auth";
+import { test, expect } from "./fixtures/auth";
 
 /**
  * M8 Step D E2E Tests: Webhook Settings + Deliveries Monitor
@@ -6,11 +6,16 @@ import { test, expect } from "../fixtures/auth";
  * Prerequisites:
  * - Test user with admin role on at least one brand
  * - Test credentials in environment: TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD
+ * - For CI: mock webhook receiver running on MOCK_WEBHOOK_URL
  */
 
-const TEST_EMAIL = process.env.TEST_ADMIN_EMAIL || "admin@example.com";
-const TEST_PASSWORD = process.env.TEST_ADMIN_PASSWORD || "password123";
-const TEST_BRAND = "Demo Brand"; // Must exist and user must be admin
+const TEST_EMAIL = process.env.E2E_EMAIL || process.env.TEST_ADMIN_EMAIL || "admin@example.com";
+const TEST_PASSWORD = process.env.E2E_PASSWORD || process.env.TEST_ADMIN_PASSWORD || "password123";
+const TEST_BRAND = process.env.E2E_BRAND_NAME || "Demo Brand";
+
+// Use mock server in CI, httpbin locally
+const WEBHOOK_URL = process.env.MOCK_WEBHOOK_URL || 
+  (process.env.CI ? "http://127.0.0.1:5055/webhook" : "https://httpbin.org/post");
 
 test.describe("Webhook Settings", () => {
   test.beforeEach(async ({ page, login, selectBrandIfNeeded }) => {
@@ -31,7 +36,7 @@ test.describe("Webhook Settings", () => {
 
     // Fill form
     await page.getByTestId("webhook-name-input").fill("E2E Test Webhook");
-    await page.getByTestId("webhook-url-input").fill("https://httpbin.org/post");
+    await page.getByTestId("webhook-url-input").fill(WEBHOOK_URL);
 
     // Select 2 event types
     await page.getByTestId("event-type-ticket.created").click();

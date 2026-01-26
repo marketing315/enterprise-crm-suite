@@ -15,6 +15,8 @@ jobs:
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
       E2E_BRAND_NAME: ${{ secrets.E2E_BRAND_NAME }}
       PW_BASE_URL: ${{ secrets.PW_BASE_URL }}
+      MOCK_WEBHOOK_PORT: 5055
+      MOCK_WEBHOOK_URL: http://127.0.0.1:5055/webhook
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +33,12 @@ jobs:
 
       - name: Seed SLA breach ticket
         run: psql "$DATABASE_URL" -f scripts/seed-e2e-sla-breach.sql
+
+      - name: Start mock webhook receiver
+        run: |
+          node scripts/mock-webhook-receiver.js &
+          echo "Mock webhook receiver started on port $MOCK_WEBHOOK_PORT"
+          sleep 2
 
       - name: Run E2E gate
         run: npm run test:e2e

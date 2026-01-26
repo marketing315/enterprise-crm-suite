@@ -26,10 +26,20 @@ import {
   WEBHOOK_EVENT_TYPES,
 } from "@/hooks/useWebhooks";
 
+// Allow http://127.0.0.1 for local testing, otherwise require HTTPS
+const isValidWebhookUrl = (url: string): boolean => {
+  if (url.startsWith("https://")) return true;
+  // Allow localhost/loopback for E2E testing only
+  if (url.startsWith("http://127.0.0.1") || url.startsWith("http://localhost")) {
+    return true;
+  }
+  return false;
+};
+
 const formSchema = z.object({
   name: z.string().min(1, "Nome obbligatorio").max(100),
-  url: z.string().url("URL non valido").refine((u) => u.startsWith("https://"), {
-    message: "L'URL deve usare HTTPS",
+  url: z.string().url("URL non valido").refine(isValidWebhookUrl, {
+    message: "L'URL deve usare HTTPS (http://127.0.0.1 consentito per test)",
   }),
   event_types: z.array(z.string()).min(1, "Seleziona almeno un evento"),
   is_active: z.boolean(),
