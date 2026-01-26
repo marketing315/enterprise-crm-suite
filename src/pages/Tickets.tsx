@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
-import { Ticket, Download, CheckSquare } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Ticket, Download, CheckSquare, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
 import { TicketDetailSheet } from "@/components/tickets/TicketDetailSheet";
-import { TicketFilters, AssignmentTypeFilter } from "@/components/tickets/TicketFilters";
+import { TicketFilters } from "@/components/tickets/TicketFilters";
 import { TicketQueueTabs } from "@/components/tickets/TicketQueueTabs";
 import { TicketBulkActionsBar } from "@/components/tickets/TicketBulkActionsBar";
-import { useTickets, TicketStatus, TicketWithRelations, useAssignTicket } from "@/hooks/useTickets";
-import { useTicketQueue } from "@/hooks/useTicketQueue";
+import { TicketStatus, TicketWithRelations, useAssignTicket } from "@/hooks/useTickets";
+import { useTicketsSearch, useTicketQueueCounts, QueueTab, AssignmentTypeFilter } from "@/hooks/useTicketsSearch";
 import { useTicketBulkUpdate, useTicketBulkAssignToMe } from "@/hooks/useTicketBulkActions";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,11 +16,22 @@ import { useBrandOperators } from "@/hooks/useBrandOperators";
 import { exportTicketsToCSV } from "@/lib/ticketCsvExport";
 import { toast } from "sonner";
 
+const PAGE_SIZE = 50;
+
 export default function Tickets() {
-  // Advanced filters
+  // Queue tab (stored in localStorage)
+  const [activeTab, setActiveTab] = useState<QueueTab>(() => {
+    const saved = localStorage.getItem("ticketQueueTab");
+    return (saved as QueueTab) || "all";
+  });
+
+  // Search & filters
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [assignmentTypeFilter, setAssignmentTypeFilter] = useState<AssignmentTypeFilter>("all");
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(0);
   
   // Detail sheet
   const [selectedTicket, setSelectedTicket] = useState<TicketWithRelations | null>(null);
@@ -31,7 +42,7 @@ export default function Tickets() {
   const [bulkMode, setBulkMode] = useState(false);
 
   const { supabaseUser, hasRole } = useAuth();
-  const { data: allTickets = [], isLoading } = useTickets();
+  const { currentBrand } = useBrand();
   const { data: operators = [] } = useBrandOperators();
   const { data: brandSettings } = useBrandSettings();
   const assignTicket = useAssignTicket();
@@ -48,77 +59,46 @@ export default function Tickets() {
 
   const isOperator = hasRole("callcenter") || hasRole("admin");
 
-  // Queue tabs with smart sorting
-  const {
-    activeTab,
-    setActiveTab,
-    filteredTickets: queueFilteredTickets,
-    counts,
-  } = useTicketQueue({
-    tickets: allTickets,
-    currentUserId: currentOperator?.user_id ?? null,
-    isOperator,
-    slaThresholds,
+  // Server-side search with all filters
+  const { data: searchResult, isLoading } = useTicketsSearch({
+    queueTab: activeTab,
+    searchQuery: searchQuery.trim() || undefined,
+    tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+    assignmentType: assignmentTypeFilter,
+    limit: PAGE_SIZE,
+    offset: currentPage * PAGE_SIZE,
   });
-  // Helper to get primary phone for search
-  const getPrimaryPhone = (ticket: TicketWithRelations) => {
-    const phones = ticket.contacts?.contact_phones || [];
-    const primary = phones.find((p) => p.is_primary);
-    return (primary?.phone_raw || phones[0]?.phone_raw || "").trim();
-  };
 
-  // Apply additional filters on top of queue filter
-  const filteredTickets = useMemo(() => {
-    let result = queueFilteredTickets;
+  // Queue counts (lightweight separate query)
+  const { data: queueCounts } = useTicketQueueCounts();
 
-    // Search filter (name, email, phone, title, description)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      result = result.filter((ticket) => {
-        const contactName = `${ticket.contacts?.first_name || ""} ${ticket.contacts?.last_name || ""}`.toLowerCase();
-        const contactEmail = ticket.contacts?.email?.toLowerCase() || "";
-        const contactPhone = getPrimaryPhone(ticket).toLowerCase();
-        const title = ticket.title.toLowerCase();
-        const description = ticket.description?.toLowerCase() || "";
-        
-        return (
-          contactName.includes(query) ||
-          contactEmail.includes(query) ||
-          contactPhone.includes(query) ||
-          title.includes(query) ||
-          description.includes(query)
-        );
-      });
-    }
+  const tickets = searchResult?.tickets || [];
+  const totalCount = searchResult?.totalCount || 0;
+  const hasMore = searchResult?.hasMore || false;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-    // Tag/Category filter
-    if (selectedTagIds.length > 0) {
-      result = result.filter(
-        (ticket) => ticket.category_tag_id && selectedTagIds.includes(ticket.category_tag_id)
-      );
-    }
+  // Handle tab change - reset pagination
+  const handleTabChange = useCallback((tab: QueueTab) => {
+    setActiveTab(tab);
+    setCurrentPage(0);
+    localStorage.setItem("ticketQueueTab", tab);
+  }, []);
 
-    // Assignment type filter (auto vs manual)
-    if (assignmentTypeFilter === "auto") {
-      result = result.filter(
-        (ticket) => ticket.assigned_at && !ticket.assigned_by_user_id
-      );
-    } else if (assignmentTypeFilter === "manual") {
-      result = result.filter((ticket) => ticket.assigned_by_user_id);
-    }
+  // Handle filter changes - reset pagination
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(0);
+  }, []);
 
-    return result;
-  }, [queueFilteredTickets, searchQuery, selectedTagIds, assignmentTypeFilter]);
+  const handleTagsChange = useCallback((tagIds: string[]) => {
+    setSelectedTagIds(tagIds);
+    setCurrentPage(0);
+  }, []);
 
-  // Counts for assignment type filter
-  const autoCount = useMemo(
-    () => queueFilteredTickets.filter((t) => t.assigned_at && !t.assigned_by_user_id).length,
-    [queueFilteredTickets]
-  );
-  const manualCount = useMemo(
-    () => queueFilteredTickets.filter((t) => t.assigned_by_user_id).length,
-    [queueFilteredTickets]
-  );
+  const handleAssignmentTypeChange = useCallback((type: AssignmentTypeFilter) => {
+    setAssignmentTypeFilter(type);
+    setCurrentPage(0);
+  }, []);
 
   const handleTicketClick = (ticket: TicketWithRelations) => {
     setSelectedTicket(ticket);
@@ -142,16 +122,14 @@ export default function Tickets() {
     }
   };
 
-  const { currentBrand } = useBrand();
-
   const handleExportCSV = () => {
     if (!currentBrand) return;
-    exportTicketsToCSV(filteredTickets, {
+    exportTicketsToCSV(tickets, {
       brandName: currentBrand.name,
       activeTab,
       slaThresholds,
     });
-    toast.success(`Esportati ${filteredTickets.length} ticket`);
+    toast.success(`Esportati ${tickets.length} ticket`);
   };
 
   // Bulk action handlers
@@ -220,6 +198,10 @@ export default function Tickets() {
     }
   };
 
+  // Counts for assignment type filter (calculated from current page - approximate)
+  const autoCount = tickets.filter((t) => t.assigned_at && !t.assigned_by_user_id).length;
+  const manualCount = tickets.filter((t) => t.assigned_by_user_id).length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -249,10 +231,10 @@ export default function Tickets() {
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
-            disabled={filteredTickets.length === 0}
+            disabled={tickets.length === 0}
           >
             <Download className="h-4 w-4 mr-2" />
-            Export CSV ({filteredTickets.length})
+            Export CSV ({tickets.length})
           </Button>
         </div>
       </div>
@@ -260,22 +242,27 @@ export default function Tickets() {
       {/* Queue Tabs */}
       <TicketQueueTabs
         value={activeTab}
-        onChange={setActiveTab}
-        counts={counts}
+        onChange={handleTabChange}
+        counts={{
+          all: queueCounts?.all ?? 0,
+          myQueue: queueCounts?.my_queue ?? 0,
+          unassigned: queueCounts?.unassigned ?? 0,
+          slaBreached: queueCounts?.sla_breached ?? 0,
+        }}
         showMyQueue={isOperator}
       />
 
-      {/* Advanced Filters (simplified - removed assignee since handled by tabs) */}
+      {/* Advanced Filters */}
       <TicketFilters
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         selectedTagIds={selectedTagIds}
-        onTagsChange={setSelectedTagIds}
+        onTagsChange={handleTagsChange}
         assigneeFilter="all"
         onAssigneeChange={() => {}}
         operators={operators}
         assignmentTypeFilter={assignmentTypeFilter}
-        onAssignmentTypeChange={setAssignmentTypeFilter}
+        onAssignmentTypeChange={handleAssignmentTypeChange}
         autoCount={autoCount}
         manualCount={manualCount}
         hideAssigneeFilter={activeTab !== "all"}
@@ -288,7 +275,7 @@ export default function Tickets() {
         </div>
       ) : (
         <TicketsTable 
-          tickets={filteredTickets} 
+          tickets={tickets} 
           onTicketClick={handleTicketClick}
           onTakeOwnership={currentOperator ? handleTakeOwnership : undefined}
           showSlaIndicator
@@ -297,6 +284,35 @@ export default function Tickets() {
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
         />
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t pt-4">
+          <p className="text-sm text-muted-foreground">
+            Pagina {currentPage + 1} di {totalPages} ({totalCount} ticket totali)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Precedente
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => p + 1)}
+              disabled={!hasMore}
+            >
+              Successiva
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Detail Sheet */}

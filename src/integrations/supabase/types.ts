@@ -1223,6 +1223,14 @@ export type Database = {
           scope: Database["public"]["Enums"]["tag_scope"]
         }[]
       }
+      get_ticket_queue_counts: {
+        Args: {
+          p_brand_id: string
+          p_current_user_id?: string
+          p_sla_thresholds?: Json
+        }
+        Returns: Json
+      }
       get_ticket_trend_dashboard: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
@@ -1266,6 +1274,21 @@ export type Database = {
           status: Database["public"]["Enums"]["contact_status"]
           updated_at: string
         }[]
+      }
+      search_tickets_v1: {
+        Args: {
+          p_assignment_type?: string
+          p_brand_id: string
+          p_current_user_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_queue_tab?: string
+          p_search_query?: string
+          p_sla_thresholds?: Json
+          p_statuses?: string[]
+          p_tag_ids?: string[]
+        }
+        Returns: Json
       }
       user_belongs_to_brand: {
         Args: { _brand_id: string; _user_id: string }
