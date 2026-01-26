@@ -1292,6 +1292,22 @@ export type Database = {
         }
         Returns: Json
       }
+      search_tickets_v2: {
+        Args: {
+          p_assignment_type?: string
+          p_brand_id: string
+          p_current_user_id?: string
+          p_cursor?: Json
+          p_direction?: string
+          p_limit?: number
+          p_queue_tab?: string
+          p_search_query?: string
+          p_sla_thresholds?: Json
+          p_statuses?: string[]
+          p_tag_ids?: string[]
+        }
+        Returns: Json
+      }
       user_belongs_to_brand: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
