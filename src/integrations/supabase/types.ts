@@ -103,6 +103,7 @@ export type Database = {
       }
       brands: {
         Row: {
+          auto_assign_enabled: boolean
           created_at: string
           id: string
           name: string
@@ -111,6 +112,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_assign_enabled?: boolean
           created_at?: string
           id?: string
           name: string
@@ -119,6 +121,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_assign_enabled?: boolean
           created_at?: string
           id?: string
           name?: string
