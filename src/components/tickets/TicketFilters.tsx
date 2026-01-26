@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Search, Filter, UserCircle, Bot, Hand } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, Filter, UserCircle, Bot, Hand, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,10 @@ import { BrandOperator } from "@/hooks/useBrandOperators";
 
 export type AssignmentTypeFilter = "all" | "auto" | "manual";
 
+const DEBOUNCE_DELAY = 300; // ms
+
 interface TicketFiltersProps {
-  // Search
+  // Search - now receives debounced value from parent
   searchQuery: string;
   onSearchChange: (query: string) => void;
   // Category tag filter
@@ -49,17 +51,58 @@ export function TicketFilters({
   manualCount,
   hideAssigneeFilter = false,
 }: TicketFiltersProps) {
+  // Local state for immediate input feedback
+  const [localValue, setLocalValue] = useState(searchQuery);
+  const [isDebouncing, setIsDebouncing] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local value when parent resets (e.g., tab change)
+  useEffect(() => {
+    if (searchQuery !== localValue && !isDebouncing) {
+      setLocalValue(searchQuery);
+    }
+  }, [searchQuery]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalValue(value);
+    setIsDebouncing(true);
+
+    // Clear previous timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set new debounced callback
+    timeoutRef.current = setTimeout(() => {
+      setIsDebouncing(false);
+      onSearchChange(value);
+    }, DEBOUNCE_DELAY);
+  }, [onSearchChange]);
+
   return (
     <div className="space-y-4">
-      {/* Search bar */}
+      {/* Search bar with debounce indicator */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Cerca per nome, email, telefono, titolo..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10"
+          value={localValue}
+          onChange={handleInputChange}
+          className="pl-10 pr-10"
         />
+        {isDebouncing && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+        )}
       </div>
 
       {/* Filter row */}
