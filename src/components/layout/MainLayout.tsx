@@ -125,13 +125,13 @@ export function MainLayout() {
                         <span className="flex-1">{item.label}</span>
                         {/* Badge for ticket activity (new tickets + assignments) */}
                         {item.path === '/tickets' && ticketActivityCount > 0 && (
-                          <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                          <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-ticket-badge">
                             {ticketActivityCount > 99 ? '99+' : ticketActivityCount}
                           </Badge>
                         )}
                         {/* Badge for SLA breaches (red, separate) */}
                         {item.path === '/tickets' && slaBreachCount > 0 && (
-                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-sla-badge">
                             SLA {slaBreachCount > 99 ? '99+' : slaBreachCount}
                           </Badge>
                         )}

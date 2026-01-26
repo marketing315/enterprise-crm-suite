@@ -24,7 +24,7 @@ export function TicketQueueTabs({
   showMyQueue,
 }: TicketQueueTabsProps) {
   return (
-    <Tabs value={value} onValueChange={(v) => onChange(v as QueueTab)}>
+    <Tabs value={value} onValueChange={(v) => onChange(v as QueueTab)} data-testid="tickets-tabs">
       <TabsList className="h-auto p-1 gap-1">
         {showMyQueue && (
           <TabsTrigger
@@ -32,6 +32,7 @@ export function TicketQueueTabs({
             className={cn(
               "gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             )}
+            data-testid="tab-my-queue"
           >
             <User className="h-4 w-4" />
             My Queue
@@ -48,6 +49,7 @@ export function TicketQueueTabs({
           className={cn(
             "gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           )}
+          data-testid="tab-unassigned"
         >
           <Users className="h-4 w-4" />
           Non assegnati
@@ -66,6 +68,7 @@ export function TicketQueueTabs({
           className={cn(
             "gap-2 data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground"
           )}
+          data-testid="tab-sla-breached"
         >
           <AlertTriangle className="h-4 w-4" />
           Scaduti SLA
@@ -82,6 +85,7 @@ export function TicketQueueTabs({
         <TabsTrigger
           value="all"
           className="gap-2"
+          data-testid="tab-all"
         >
           <List className="h-4 w-4" />
           Tutti

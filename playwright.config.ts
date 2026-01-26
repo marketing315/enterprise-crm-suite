@@ -1,26 +1,26 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const PORT = process.env.PORT ? Number(process.env.PORT) : 5173;
+
 /**
  * Playwright configuration for E2E tests.
  * See https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: "./e2e",
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
-  
+
   use: {
-    // Base URL for the app - uses Vite dev server
-    baseURL: "http://localhost:5173",
-    
-    // Collect trace on first retry
-    trace: "on-first-retry",
-    
-    // Screenshot on failure
+    baseURL: process.env.PW_BASE_URL ?? `http://localhost:${PORT}`,
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
 
   projects: [
@@ -31,10 +31,12 @@ export default defineConfig({
   ],
 
   // Run local dev server before starting tests
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  webServer: process.env.PW_BASE_URL
+    ? undefined
+    : {
+        command: "npm run dev -- --host 0.0.0.0 --port 5173",
+        url: `http://localhost:${PORT}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+      },
 });
