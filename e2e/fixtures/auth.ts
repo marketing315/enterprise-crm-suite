@@ -16,6 +16,7 @@ export const test = base.extend<Fixtures>({
   login: async ({ page }, use) => {
     await use(async (email: string, password: string) => {
       await page.goto("/login");
+      await page.waitForSelector('input', { timeout: 10000 });
       await page.getByLabel(/email/i).fill(email);
       await page.getByLabel(/password/i).fill(password);
       await page.getByRole("button", { name: /accedi|login|sign in/i }).click();
@@ -27,7 +28,7 @@ export const test = base.extend<Fixtures>({
     await use(async (brandName: string) => {
       if (page.url().includes("select-brand")) {
         await page.getByText(brandName, { exact: false }).click();
-        await page.waitForURL(/\/(dashboard|tickets|contacts)/);
+        await page.waitForURL(/\/(dashboard|tickets|contacts)/, { timeout: 10000 });
       }
     });
   },
@@ -66,7 +67,7 @@ export async function waitForUrlParam(page: Page, param: string, timeout = 5000)
  */
 export async function firstRowKey(page: Page): Promise<string> {
   const row = page.locator('[data-testid="ticket-row"]').first();
-  await row.waitFor({ state: "visible", timeout: 5000 });
+  await row.waitFor({ state: "visible", timeout: 10000 });
   const id = await row.getAttribute("data-ticket-id");
   const text = await row.innerText();
   return `${id ?? ""}::${text.slice(0, 80)}`;
