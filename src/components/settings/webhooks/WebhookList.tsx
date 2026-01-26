@@ -160,7 +160,7 @@ export function WebhookList() {
               </TableHeader>
               <TableBody>
                 {webhooks?.map((webhook) => (
-                  <TableRow key={webhook.id} data-testid="webhook-row">
+                  <TableRow key={webhook.id} data-testid="webhook-row" data-webhook-id={webhook.id}>
                     <TableCell className="font-medium">{webhook.name}</TableCell>
                     <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                       {webhook.url}
