@@ -75,12 +75,20 @@ export function TicketFilters({
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setLocalValue(value);
-    setIsDebouncing(true);
 
     // Clear previous timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
+
+    // If cleared, trigger immediately for faster UX
+    if (value === "") {
+      setIsDebouncing(false);
+      onSearchChange(value);
+      return;
+    }
+
+    setIsDebouncing(true);
 
     // Set new debounced callback
     timeoutRef.current = setTimeout(() => {
@@ -89,15 +97,27 @@ export function TicketFilters({
     }, DEBOUNCE_DELAY);
   }, [onSearchChange]);
 
+  // Enter key = flush immediately (UX for callcenter)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      setIsDebouncing(false);
+      onSearchChange(localValue);
+    }
+  }, [localValue, onSearchChange]);
+
   return (
     <div className="space-y-4">
       {/* Search bar with debounce indicator */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Cerca per nome, email, telefono, titolo..."
+          placeholder="Cerca per nome, email, telefono, titolo... (Invio = cerca)"
           value={localValue}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           className="pl-10 pr-10"
         />
         {isDebouncing && (
