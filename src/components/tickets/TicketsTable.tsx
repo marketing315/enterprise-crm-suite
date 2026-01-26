@@ -1,4 +1,4 @@
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
 import { User, Clock, Hand, AlertTriangle } from "lucide-react";
 import {
@@ -12,6 +12,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
 import { TicketWithRelations } from "@/hooks/useTickets";
@@ -184,11 +190,39 @@ export function TicketsTable({
                 <TableCell>
                   <div className={cn(
                     "flex items-center gap-1.5",
-                    showSlaIndicator && isSlaBreached(ticket, slaThresholds) && "text-destructive"
+                    // Use sla_breached_at as source of truth, fallback to dynamic check
+                    (ticket.sla_breached_at || (showSlaIndicator && isSlaBreached(ticket, slaThresholds))) && "text-destructive"
                   )}>
-                    {showSlaIndicator && isSlaBreached(ticket, slaThresholds) && (
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                    )}
+                    {/* SLA Breach badge with tooltip */}
+                    {ticket.sla_breached_at ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge 
+                              variant="destructive" 
+                              className="h-5 px-1.5 text-xs font-semibold gap-1"
+                            >
+                              <AlertTriangle className="h-3 w-3" />
+                              SLA
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Scaduto SLA alle {format(new Date(ticket.sla_breached_at), "HH:mm dd/MM", { locale: it })}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : showSlaIndicator && isSlaBreached(ticket, slaThresholds) ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Oltre soglia SLA (non ancora marcato)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : null}
                     <Clock className="h-3.5 w-3.5" />
                     <span className="text-sm">{getAging(ticket.opened_at)}</span>
                   </div>
