@@ -178,6 +178,7 @@ export function DeliveriesMonitor() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => setSelectedDeliveryId(delivery.id)}
                     data-testid="delivery-row"
+                    data-delivery-id={delivery.id}
                   >
                     <TableCell className="font-medium">
                       {delivery.webhook_name}

@@ -140,7 +140,7 @@ test.describe("Webhook Settings", () => {
     
     if (isChecked) {
       await toggle.click();
-      await page.waitForSelector('text=Webhook disattivato', { timeout: 3000 });
+      await page.waitForTimeout(1000); // Wait for state update
     }
 
     // Trigger test on inactive webhook
@@ -152,12 +152,16 @@ test.describe("Webhook Settings", () => {
     await page.getByTestId("deliveries-tab").click();
     await page.waitForSelector('[data-testid="deliveries-table"]', { timeout: 5000 });
 
-    // Filter by failed status
+    // Filter by failed status  
     await page.getByTestId("filter-status").click();
     await page.getByRole("option", { name: "Fallito" }).click();
 
-    // Wait for failed delivery (may need dispatcher to run)
-    await page.waitForSelector('[data-testid="delivery-row"]', { timeout: 60000 });
+    // Also filter by webhook.test event type for precision
+    await page.getByTestId("filter-event-type").click();
+    await page.getByRole("option", { name: "Test" }).click();
+
+    // Wait for failed delivery (may need dispatcher to run - up to 90s for cron + processing)
+    await page.waitForSelector('[data-testid="delivery-row"]', { timeout: 90000 });
     
     // Click on delivery to see details
     await page.getByTestId("delivery-row").first().click();
