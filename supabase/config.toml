@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.ticket-assign-recovery]
 verify_jwt = false
+
+[functions.webhook-dispatcher]
+verify_jwt = false
