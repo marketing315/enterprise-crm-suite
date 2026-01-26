@@ -500,6 +500,119 @@ export type Database = {
           },
         ]
       }
+      outbound_webhook_deliveries: {
+        Row: {
+          attempt_count: number
+          brand_id: string
+          created_at: string
+          event_id: string
+          event_type: Database["public"]["Enums"]["webhook_event_type"]
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string
+          payload: Json
+          response_body: string | null
+          response_status: number | null
+          status: Database["public"]["Enums"]["webhook_delivery_status"]
+          updated_at: string
+          webhook_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          brand_id: string
+          created_at?: string
+          event_id: string
+          event_type: Database["public"]["Enums"]["webhook_event_type"]
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload?: Json
+          response_body?: string | null
+          response_status?: number | null
+          status?: Database["public"]["Enums"]["webhook_delivery_status"]
+          updated_at?: string
+          webhook_id: string
+        }
+        Update: {
+          attempt_count?: number
+          brand_id?: string
+          created_at?: string
+          event_id?: string
+          event_type?: Database["public"]["Enums"]["webhook_event_type"]
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload?: Json
+          response_body?: string | null
+          response_status?: number | null
+          status?: Database["public"]["Enums"]["webhook_delivery_status"]
+          updated_at?: string
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_webhook_deliveries_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outbound_webhooks: {
+        Row: {
+          brand_id: string
+          created_at: string
+          event_types: Database["public"]["Enums"]["webhook_event_type"][]
+          id: string
+          is_active: boolean
+          name: string
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          event_types?: Database["public"]["Enums"]["webhook_event_type"][]
+          id?: string
+          is_active?: boolean
+          name: string
+          secret: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          event_types?: Database["public"]["Enums"]["webhook_event_type"][]
+          id?: string
+          is_active?: boolean
+          name?: string
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_webhooks_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_stages: {
         Row: {
           brand_id: string
@@ -1140,9 +1253,44 @@ export type Database = {
           last_name: string
         }[]
       }
+      claim_webhook_deliveries: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          attempt_count: number
+          brand_id: string
+          created_at: string
+          event_id: string
+          event_type: Database["public"]["Enums"]["webhook_event_type"]
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string
+          payload: Json
+          response_body: string | null
+          response_status: number | null
+          status: Database["public"]["Enums"]["webhook_delivery_status"]
+          updated_at: string
+          webhook_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "outbound_webhook_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
         Returns: boolean
+      }
+      enqueue_webhook_delivery: {
+        Args: {
+          p_brand_id: string
+          p_event_id: string
+          p_event_type: Database["public"]["Enums"]["webhook_event_type"]
+          p_payload: Json
+        }
+        Returns: number
       }
       find_or_create_contact: {
         Args: {
@@ -1262,6 +1410,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_delivery_result: {
+        Args: {
+          p_delivery_id: string
+          p_error?: string
+          p_response_body?: string
+          p_response_status?: number
+          p_success: boolean
+        }
+        Returns: undefined
+      }
       search_contacts: {
         Args: {
           p_brand_id: string
@@ -1350,6 +1508,21 @@ export type Database = {
         | "sla_breach"
       ticket_creator: "ai" | "user" | "rule"
       ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
+      webhook_delivery_status: "pending" | "sending" | "success" | "failed"
+      webhook_event_type:
+        | "ticket.created"
+        | "ticket.updated"
+        | "ticket.assigned"
+        | "ticket.status_changed"
+        | "ticket.priority_changed"
+        | "ticket.sla_breached"
+        | "ticket.resolved"
+        | "ticket.closed"
+        | "contact.created"
+        | "contact.updated"
+        | "deal.created"
+        | "deal.stage_changed"
+        | "deal.closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1495,6 +1668,22 @@ export const Constants = {
       ],
       ticket_creator: ["ai", "user", "rule"],
       ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
+      webhook_delivery_status: ["pending", "sending", "success", "failed"],
+      webhook_event_type: [
+        "ticket.created",
+        "ticket.updated",
+        "ticket.assigned",
+        "ticket.status_changed",
+        "ticket.priority_changed",
+        "ticket.sla_breached",
+        "ticket.resolved",
+        "ticket.closed",
+        "contact.created",
+        "contact.updated",
+        "deal.created",
+        "deal.stage_changed",
+        "deal.closed",
+      ],
     },
   },
 } as const
