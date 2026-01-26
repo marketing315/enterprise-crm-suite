@@ -91,7 +91,7 @@ export function TicketsTable({
 
   return (
     <div className="rounded-md border">
-      <Table>
+      <Table data-testid="tickets-table">
         <TableHeader>
           <TableRow>
             {showCheckboxes && (
@@ -125,6 +125,8 @@ export function TicketsTable({
             tickets.map((ticket) => (
               <TableRow
                 key={ticket.id}
+                data-testid="ticket-row"
+                data-ticket-id={ticket.id}
                 className={cn(
                   "cursor-pointer hover:bg-muted/50",
                   selectedIds.has(ticket.id) && "bg-muted/30"
@@ -201,6 +203,7 @@ export function TicketsTable({
                             <Badge 
                               variant="destructive" 
                               className="h-5 px-1.5 text-xs font-semibold gap-1"
+                              data-testid="sla-badge"
                             >
                               <AlertTriangle className="h-3 w-3" />
                               SLA

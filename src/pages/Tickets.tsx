@@ -343,6 +343,7 @@ export default function Tickets() {
               size="sm"
               onClick={handlePrevPage}
               disabled={!hasPrev || isLoading}
+              data-testid="tickets-prev"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Precedenti
@@ -352,6 +353,7 @@ export default function Tickets() {
               size="sm"
               onClick={handleNextPage}
               disabled={!hasNext || isLoading}
+              data-testid="tickets-next"
             >
               Successivi
               <ChevronRight className="h-4 w-4 ml-1" />
