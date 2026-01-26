@@ -7,7 +7,7 @@ import { TicketFilters } from "@/components/tickets/TicketFilters";
 import { TicketQueueTabs } from "@/components/tickets/TicketQueueTabs";
 import { TicketBulkActionsBar } from "@/components/tickets/TicketBulkActionsBar";
 import { TicketStatus, TicketWithRelations, useAssignTicket } from "@/hooks/useTickets";
-import { useTicketsSearch, useTicketQueueCounts, QueueTab, AssignmentTypeFilter } from "@/hooks/useTicketsSearch";
+import { useTicketsSearch, useTicketQueueCounts, QueueTab, AssignmentTypeFilter, TicketCursor } from "@/hooks/useTicketsSearch";
 import { useTicketBulkUpdate, useTicketBulkAssignToMe } from "@/hooks/useTicketBulkActions";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,8 +30,10 @@ export default function Tickets() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [assignmentTypeFilter, setAssignmentTypeFilter] = useState<AssignmentTypeFilter>("all");
   
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(0);
+  // Cursor-based pagination
+  const [cursor, setCursor] = useState<TicketCursor | null>(null);
+  const [direction, setDirection] = useState<"next" | "prev">("next");
+  const [pageStartStack, setPageStartStack] = useState<TicketCursor[]>([]);
   
   // Detail sheet
   const [selectedTicket, setSelectedTicket] = useState<TicketWithRelations | null>(null);
@@ -59,14 +61,15 @@ export default function Tickets() {
 
   const isOperator = hasRole("callcenter") || hasRole("admin");
 
-  // Server-side search with all filters
+  // Server-side search with cursor pagination
   const { data: searchResult, isLoading } = useTicketsSearch({
     queueTab: activeTab,
     searchQuery: searchQuery.trim() || undefined,
     tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
     assignmentType: assignmentTypeFilter,
     limit: PAGE_SIZE,
-    offset: currentPage * PAGE_SIZE,
+    cursor,
+    direction,
   });
 
   // Queue counts (lightweight separate query) - includes contextual auto/manual counts
@@ -77,50 +80,77 @@ export default function Tickets() {
 
   const tickets = searchResult?.tickets || [];
   const totalCount = searchResult?.totalCount || 0;
-  const hasMore = searchResult?.hasMore || false;
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const hasNext = searchResult?.hasNext || false;
+  const hasPrev = pageStartStack.length > 0;
 
   // Server-side auto/manual counts
   const autoCount = queueCounts?.auto_count ?? 0;
   const manualCount = queueCounts?.manual_count ?? 0;
+
+  // Get cursor for current page start (first ticket)
+  const pageStartCursor: TicketCursor | null = tickets.length > 0
+    ? { priority: tickets[0].priority, opened_at: tickets[0].opened_at, id: tickets[0].id }
+    : null;
 
   // Reset selection when filters/tab/page change
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
   }, []);
 
+  // Reset pagination state
+  const resetPaging = useCallback(() => {
+    setCursor(null);
+    setDirection("next");
+    setPageStartStack([]);
+  }, []);
+
   // Handle tab change - reset pagination and selection
   const handleTabChange = useCallback((tab: QueueTab) => {
     setActiveTab(tab);
-    setCurrentPage(0);
+    resetPaging();
     clearSelection();
     localStorage.setItem("ticketQueueTab", tab);
-  }, [clearSelection]);
+  }, [clearSelection, resetPaging]);
 
   // Handle filter changes - reset pagination and selection
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    setCurrentPage(0);
+    resetPaging();
     // Don't clear selection on search - user might be refining
-  }, []);
+  }, [resetPaging]);
 
   const handleTagsChange = useCallback((tagIds: string[]) => {
     setSelectedTagIds(tagIds);
-    setCurrentPage(0);
+    resetPaging();
     clearSelection();
-  }, [clearSelection]);
+  }, [clearSelection, resetPaging]);
 
   const handleAssignmentTypeChange = useCallback((type: AssignmentTypeFilter) => {
     setAssignmentTypeFilter(type);
-    setCurrentPage(0);
+    resetPaging();
     clearSelection();
-  }, [clearSelection]);
+  }, [clearSelection, resetPaging]);
 
-  // Handle page change - clear selection
-  const handlePageChange = useCallback((newPage: number) => {
-    setCurrentPage(newPage);
+  // Cursor pagination handlers
+  const handleNextPage = useCallback(() => {
+    if (!hasNext || !searchResult?.nextCursor) return;
+    // Save current page start for "back" navigation
+    if (pageStartCursor) {
+      setPageStartStack((s) => [...s, pageStartCursor]);
+    }
+    setDirection("next");
+    setCursor(searchResult.nextCursor);
     clearSelection();
-  }, [clearSelection]);
+  }, [hasNext, searchResult?.nextCursor, pageStartCursor, clearSelection]);
+
+  const handlePrevPage = useCallback(() => {
+    if (pageStartStack.length === 0) return;
+    const prevStart = pageStartStack[pageStartStack.length - 1];
+    setPageStartStack((s) => s.slice(0, -1));
+    setDirection("prev");
+    setCursor(prevStart);
+    clearSelection();
+  }, [pageStartStack, clearSelection]);
 
   const handleTicketClick = (ticket: TicketWithRelations) => {
     setSelectedTicket(ticket);
@@ -305,29 +335,29 @@ export default function Tickets() {
         />
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Cursor Pagination */}
+      {(hasPrev || hasNext) && (
         <div className="flex items-center justify-between border-t pt-4">
           <p className="text-sm text-muted-foreground">
-            Pagina {currentPage + 1} di {totalPages} ({totalCount} ticket totali)
+            {totalCount} ticket trovati
           </p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handlePageChange(Math.max(0, currentPage - 1))}
-              disabled={currentPage === 0}
+              onClick={handlePrevPage}
+              disabled={!hasPrev || isLoading}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Precedente
+              Precedenti
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={!hasMore}
+              onClick={handleNextPage}
+              disabled={!hasNext || isLoading}
             >
-              Successiva
+              Successivi
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
