@@ -1,27 +1,28 @@
 -- =============================================================================
--- SEED SCRIPT: 10k Ticket Performance Test
+-- SEED SCRIPT: 10k Ticket Performance Test (5k + 5k on 2 brands)
 -- =============================================================================
--- Distribuisce 10.000 ticket su brand esistenti con:
+-- Distribuisce 10.000 ticket su 2 brand esistenti con:
 -- - Contatti realistici con telefoni
 -- - Mix di status, priority, assignment
 -- - Tag categories distribuite
 -- - Date aging realistiche per test SLA
+-- - Validazione isolamento RLS tra brand
 -- =============================================================================
 
--- STEP 0: Verifica brand disponibili
+-- STEP 0: Verifica almeno 2 brand disponibili
 DO $$
 DECLARE
   v_brand_count INT;
 BEGIN
   SELECT COUNT(*) INTO v_brand_count FROM brands;
-  IF v_brand_count = 0 THEN
-    RAISE EXCEPTION 'Nessun brand trovato. Crea almeno un brand prima del seed.';
+  IF v_brand_count < 2 THEN
+    RAISE EXCEPTION 'Servono almeno 2 brand. Trovati: %. Crea altri brand prima del seed.', v_brand_count;
   END IF;
-  RAISE NOTICE 'Brand disponibili: %', v_brand_count;
+  RAISE NOTICE 'Brand disponibili: % (useremo i primi 2)', v_brand_count;
 END $$;
 
 -- =============================================================================
--- STEP 1: Crea contatti di test (2000 contatti → ~5 ticket/contatto media)
+-- STEP 1: Crea contatti di test (500 per brand → ~10 ticket/contatto media)
 -- =============================================================================
 DO $$
 DECLARE
@@ -29,22 +30,24 @@ DECLARE
   v_contact_id UUID;
   v_phone_normalized TEXT;
   i INT;
-  v_contacts_per_brand INT := 1000;
+  v_contacts_per_brand INT := 500;
+  v_brand_index INT := 0;
 BEGIN
-  FOR v_brand IN SELECT id, name FROM brands LIMIT 3 LOOP
-    RAISE NOTICE 'Creando % contatti per brand %...', v_contacts_per_brand, v_brand.name;
+  FOR v_brand IN SELECT id, name FROM brands ORDER BY created_at LIMIT 2 LOOP
+    v_brand_index := v_brand_index + 1;
+    RAISE NOTICE 'Creando % contatti per brand % (#%)...', v_contacts_per_brand, v_brand.name, v_brand_index;
     
     FOR i IN 1..v_contacts_per_brand LOOP
-      -- Genera telefono unico
-      v_phone_normalized := '3' || LPAD((EXTRACT(EPOCH FROM now())::bigint % 1000000000 + i + (SELECT COUNT(*) FROM contacts WHERE brand_id = v_brand.id))::TEXT, 9, '0');
+      -- Genera telefono unico per brand (prefisso diverso per brand)
+      v_phone_normalized := '3' || v_brand_index::TEXT || LPAD((i + (EXTRACT(EPOCH FROM now())::bigint % 10000000))::TEXT, 8, '0');
       
       -- Crea contatto
       INSERT INTO contacts (brand_id, first_name, last_name, email, city, status)
       VALUES (
         v_brand.id,
         'Test' || i,
-        'User' || (i % 100),
-        'test' || i || '_' || LEFT(v_brand.id::TEXT, 8) || '@perf.test',
+        'Brand' || v_brand_index || '_User' || (i % 100),
+        'test' || i || '_brand' || v_brand_index || '@perf.test',
         (ARRAY['Milano', 'Roma', 'Napoli', 'Torino', 'Bologna', 'Firenze', 'Palermo', 'Genova'])[1 + (i % 8)],
         (ARRAY['new', 'active', 'qualified', 'unqualified']::contact_status[])[1 + (i % 4)]
       )
@@ -61,9 +64,9 @@ BEGIN
         true
       );
       
-      -- Progress ogni 500
-      IF i % 500 = 0 THEN
-        RAISE NOTICE '  ... % contatti creati', i;
+      -- Progress ogni 250
+      IF i % 250 = 0 THEN
+        RAISE NOTICE '  ... % contatti creati per brand %', i, v_brand.name;
       END IF;
     END LOOP;
   END LOOP;
@@ -81,7 +84,7 @@ DECLARE
   v_tag_colors TEXT[] := ARRAY['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#6366f1'];
   i INT;
 BEGIN
-  FOR v_brand IN SELECT id, name FROM brands LIMIT 3 LOOP
+  FOR v_brand IN SELECT id, name FROM brands ORDER BY created_at LIMIT 2 LOOP
     FOR i IN 1..array_length(v_tag_names, 1) LOOP
       INSERT INTO tags (brand_id, name, color, scope, description)
       VALUES (
@@ -106,7 +109,7 @@ DECLARE
   v_user RECORD;
   v_role_exists BOOLEAN;
 BEGIN
-  FOR v_brand IN SELECT id, name FROM brands LIMIT 3 LOOP
+  FOR v_brand IN SELECT id, name FROM brands ORDER BY created_at LIMIT 2 LOOP
     -- Verifica se ci sono operatori
     SELECT EXISTS(
       SELECT 1 FROM user_roles WHERE brand_id = v_brand.id AND role IN ('callcenter', 'admin')
@@ -126,7 +129,7 @@ BEGIN
 END $$;
 
 -- =============================================================================
--- STEP 4: Genera 10.000 ticket con distribuzioni realistiche
+-- STEP 4: Genera 10.000 ticket (5.000 per brand)
 -- =============================================================================
 DO $$
 DECLARE
@@ -135,9 +138,7 @@ DECLARE
   v_operator RECORD;
   v_tag RECORD;
   v_ticket_id UUID;
-  v_tickets_per_brand INT;
-  v_total_tickets INT := 10000;
-  v_brand_count INT;
+  v_tickets_per_brand INT := 5000;
   v_status ticket_status;
   v_priority INT;
   v_created_offset INTERVAL;
@@ -147,13 +148,11 @@ DECLARE
   v_contact_ids UUID[];
   v_operator_ids UUID[];
   v_tag_ids UUID[];
+  v_brand_index INT := 0;
 BEGIN
-  -- Conta brand
-  SELECT COUNT(*) INTO v_brand_count FROM brands LIMIT 3;
-  v_tickets_per_brand := v_total_tickets / GREATEST(v_brand_count, 1);
-  
-  FOR v_brand IN SELECT id, name FROM brands LIMIT 3 LOOP
-    RAISE NOTICE '=== Generando % ticket per brand % ===', v_tickets_per_brand, v_brand.name;
+  FOR v_brand IN SELECT id, name FROM brands ORDER BY created_at LIMIT 2 LOOP
+    v_brand_index := v_brand_index + 1;
+    RAISE NOTICE '=== Generando % ticket per brand % (#%) ===', v_tickets_per_brand, v_brand.name, v_brand_index;
     
     -- Cache contatti per questo brand
     SELECT ARRAY_AGG(id) INTO v_contact_ids
@@ -218,7 +217,7 @@ BEGIN
         v_contact_ids[1 + (i % array_length(v_contact_ids, 1))],
         v_status,
         v_priority,
-        'Ticket Test #' || i || ' - ' || v_status || ' P' || v_priority,
+        'Ticket B' || v_brand_index || ' #' || i || ' - ' || v_status || ' P' || v_priority,
         'Descrizione ticket di test per performance benchmark. Ticket numero ' || i || ' del brand ' || v_brand.name,
         -- 80% con categoria, 20% senza
         CASE WHEN v_tag_ids IS NOT NULL AND array_length(v_tag_ids, 1) > 0 AND (i % 5) < 4
@@ -246,18 +245,18 @@ BEGIN
       
       -- Progress ogni 1000
       IF i % 1000 = 0 THEN
-        RAISE NOTICE '  ... % ticket creati', i;
+        RAISE NOTICE '  ... % ticket creati per brand %', i, v_brand.name;
       END IF;
     END LOOP;
     
     RAISE NOTICE 'Completato brand %: % ticket', v_brand.name, v_tickets_per_brand;
   END LOOP;
   
-  RAISE NOTICE '=== SEED COMPLETATO: % ticket totali ===', v_total_tickets;
+  RAISE NOTICE '=== SEED COMPLETATO: 10.000 ticket totali (5k + 5k) ===';
 END $$;
 
 -- =============================================================================
--- STEP 5: Statistiche finali
+-- STEP 5: Statistiche finali per brand
 -- =============================================================================
 SELECT 
   b.name as brand,
@@ -271,3 +270,12 @@ FROM tickets t
 JOIN brands b ON b.id = t.brand_id
 GROUP BY b.id, b.name
 ORDER BY total_tickets DESC;
+
+-- =============================================================================
+-- STEP 6: Verifica isolamento RLS (counts devono essere separati per brand)
+-- =============================================================================
+SELECT 
+  'ISOLATION CHECK' as test,
+  (SELECT COUNT(DISTINCT brand_id) FROM tickets) as distinct_brands,
+  (SELECT COUNT(*) FROM tickets WHERE brand_id = (SELECT id FROM brands ORDER BY created_at LIMIT 1)) as brand_1_count,
+  (SELECT COUNT(*) FROM tickets WHERE brand_id = (SELECT id FROM brands ORDER BY created_at LIMIT 1 OFFSET 1)) as brand_2_count;
