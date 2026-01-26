@@ -21,9 +21,19 @@ interface CommentRow {
   brand_id: string;
 }
 
+interface AuditLogRow {
+  id: string;
+  ticket_id: string;
+  brand_id: string;
+  action_type: string;
+  new_value: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+}
+
 export interface TicketNotificationState {
   newTicketsCount: number;
   myNewAssignmentsCount: number;
+  slaBreachCount: number;
 }
 
 /**
@@ -43,6 +53,7 @@ export function useTicketRealtime(
   const [notificationState, setNotificationState] = useState<TicketNotificationState>({
     newTicketsCount: 0,
     myNewAssignmentsCount: 0,
+    slaBreachCount: 0,
   });
 
   // Get current user's operator ID
@@ -55,6 +66,7 @@ export function useTicketRealtime(
     setNotificationState({
       newTicketsCount: 0,
       myNewAssignmentsCount: 0,
+      slaBreachCount: 0,
     });
   }, []);
 
@@ -125,6 +137,49 @@ export function useTicketRealtime(
     [currentBrand?.id, queryClient]
   );
 
+  const handleAuditLogChange = useCallback(
+    async (payload: RealtimePostgresChangesPayload<AuditLogRow>) => {
+      const newLog = payload.new as AuditLogRow | undefined;
+
+      // Only handle SLA breach events
+      if (payload.eventType === "INSERT" && newLog && newLog.action_type === "sla_breach") {
+        if (newLog.brand_id !== currentBrand?.id) return;
+
+        // Fetch ticket to check assignment
+        const { data: ticket } = await supabase
+          .from("tickets")
+          .select("id, title, assigned_to_user_id")
+          .eq("id", newLog.ticket_id)
+          .single();
+
+        if (!ticket) return;
+
+        // Notify only if ticket is assigned to me OR unassigned
+        const isMyTicket = myUserId && ticket.assigned_to_user_id === myUserId;
+        const isUnassigned = !ticket.assigned_to_user_id;
+
+        if (isMyTicket || isUnassigned) {
+          setNotificationState((prev) => ({
+            ...prev,
+            slaBreachCount: prev.slaBreachCount + 1,
+          }));
+
+          toast.warning("⚠️ SLA Breach", {
+            description: isMyTicket
+              ? `Il tuo ticket "${ticket.title}" ha superato la soglia SLA`
+              : `Ticket non assegnato "${ticket.title}" ha superato la soglia SLA`,
+          });
+        }
+
+        // Always invalidate queries to refresh the list
+        queryClient.invalidateQueries({ queryKey: ["tickets", currentBrand?.id] });
+        queryClient.invalidateQueries({ queryKey: ["ticket", newLog.ticket_id] });
+        queryClient.invalidateQueries({ queryKey: ["ticket-audit-logs", newLog.ticket_id] });
+      }
+    },
+    [currentBrand?.id, myUserId, queryClient]
+  );
+
   useEffect(() => {
     if (!currentBrand?.id) return;
 
@@ -161,11 +216,27 @@ export function useTicketRealtime(
       )
       .subscribe();
 
+    // Subscribe to ticket_audit_logs for SLA breach notifications
+    const auditChannel = supabase
+      .channel(`audit-realtime-${currentBrand.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "ticket_audit_logs",
+          filter: `brand_id=eq.${currentBrand.id}`,
+        },
+        handleAuditLogChange
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(ticketsChannel);
       supabase.removeChannel(commentsChannel);
+      supabase.removeChannel(auditChannel);
     };
-  }, [currentBrand?.id, handleTicketChange, handleCommentChange, resetCounts]);
+  }, [currentBrand?.id, handleTicketChange, handleCommentChange, handleAuditLogChange, resetCounts]);
 
   return { ...notificationState, resetCounts };
 }

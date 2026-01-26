@@ -69,8 +69,8 @@ export function MainLayout() {
   const location = useLocation();
   
   // Realtime ticket notifications
-  const { newTicketsCount, myNewAssignmentsCount, resetCounts } = useTicketRealtime();
-  const totalBadgeCount = newTicketsCount + myNewAssignmentsCount;
+  const { newTicketsCount, myNewAssignmentsCount, slaBreachCount, resetCounts } = useTicketRealtime();
+  const totalBadgeCount = newTicketsCount + myNewAssignmentsCount + slaBreachCount;
 
   // Reset badge when viewing tickets page
   useEffect(() => {
