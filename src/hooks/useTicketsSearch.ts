@@ -32,6 +32,8 @@ export interface QueueCounts {
   my_queue: number;
   unassigned: number;
   sla_breached: number;
+  auto_count: number;
+  manual_count: number;
 }
 
 /**
@@ -106,10 +108,15 @@ export function useTicketsSearch(params: TicketSearchParams) {
   });
 }
 
+export interface QueueCountsParams {
+  queueTab?: QueueTab;
+  tagIds?: string[];
+}
+
 /**
- * Lightweight hook to get queue counts for tabs
+ * Lightweight hook to get queue counts for tabs + contextual auto/manual counts
  */
-export function useTicketQueueCounts() {
+export function useTicketQueueCounts(params?: QueueCountsParams) {
   const { currentBrand } = useBrand();
   const { supabaseUser } = useAuth();
   const { data: brandSettings } = useBrandSettings();
@@ -127,16 +134,20 @@ export function useTicketQueueCounts() {
       currentBrand?.id,
       currentOperator?.user_id,
       slaThresholds,
+      params?.queueTab,
+      params?.tagIds,
     ],
     queryFn: async (): Promise<QueueCounts> => {
       if (!currentBrand?.id) {
-        return { all: 0, my_queue: 0, unassigned: 0, sla_breached: 0 };
+        return { all: 0, my_queue: 0, unassigned: 0, sla_breached: 0, auto_count: 0, manual_count: 0 };
       }
 
       const { data, error } = await supabase.rpc("get_ticket_queue_counts", {
         p_brand_id: currentBrand.id,
         p_current_user_id: currentOperator?.user_id ?? null,
         p_sla_thresholds: slaThresholds ? JSON.stringify(slaThresholds) : null,
+        p_queue_tab: params?.queueTab || "all",
+        p_tag_ids: params?.tagIds?.length ? params.tagIds : null,
       });
 
       if (error) throw error;

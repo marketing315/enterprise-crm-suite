@@ -69,36 +69,58 @@ export default function Tickets() {
     offset: currentPage * PAGE_SIZE,
   });
 
-  // Queue counts (lightweight separate query)
-  const { data: queueCounts } = useTicketQueueCounts();
+  // Queue counts (lightweight separate query) - includes contextual auto/manual counts
+  const { data: queueCounts } = useTicketQueueCounts({
+    queueTab: activeTab,
+    tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+  });
 
   const tickets = searchResult?.tickets || [];
   const totalCount = searchResult?.totalCount || 0;
   const hasMore = searchResult?.hasMore || false;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  // Handle tab change - reset pagination
+  // Server-side auto/manual counts
+  const autoCount = queueCounts?.auto_count ?? 0;
+  const manualCount = queueCounts?.manual_count ?? 0;
+
+  // Reset selection when filters/tab/page change
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Handle tab change - reset pagination and selection
   const handleTabChange = useCallback((tab: QueueTab) => {
     setActiveTab(tab);
     setCurrentPage(0);
+    clearSelection();
     localStorage.setItem("ticketQueueTab", tab);
-  }, []);
+  }, [clearSelection]);
 
-  // Handle filter changes - reset pagination
+  // Handle filter changes - reset pagination and selection
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
     setCurrentPage(0);
+    // Don't clear selection on search - user might be refining
   }, []);
 
   const handleTagsChange = useCallback((tagIds: string[]) => {
     setSelectedTagIds(tagIds);
     setCurrentPage(0);
-  }, []);
+    clearSelection();
+  }, [clearSelection]);
 
   const handleAssignmentTypeChange = useCallback((type: AssignmentTypeFilter) => {
     setAssignmentTypeFilter(type);
     setCurrentPage(0);
-  }, []);
+    clearSelection();
+  }, [clearSelection]);
+
+  // Handle page change - clear selection
+  const handlePageChange = useCallback((newPage: number) => {
+    setCurrentPage(newPage);
+    clearSelection();
+  }, [clearSelection]);
 
   const handleTicketClick = (ticket: TicketWithRelations) => {
     setSelectedTicket(ticket);
@@ -198,9 +220,6 @@ export default function Tickets() {
     }
   };
 
-  // Counts for assignment type filter (calculated from current page - approximate)
-  const autoCount = tickets.filter((t) => t.assigned_at && !t.assigned_by_user_id).length;
-  const manualCount = tickets.filter((t) => t.assigned_by_user_id).length;
 
   return (
     <div className="space-y-6">
@@ -296,7 +315,7 @@ export default function Tickets() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+              onClick={() => handlePageChange(Math.max(0, currentPage - 1))}
               disabled={currentPage === 0}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -305,7 +324,7 @@ export default function Tickets() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => p + 1)}
+              onClick={() => handlePageChange(currentPage + 1)}
               disabled={!hasMore}
             >
               Successiva

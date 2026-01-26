@@ -1227,7 +1227,9 @@ export type Database = {
         Args: {
           p_brand_id: string
           p_current_user_id?: string
+          p_queue_tab?: string
           p_sla_thresholds?: Json
+          p_tag_ids?: string[]
         }
         Returns: Json
       }
