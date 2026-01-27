@@ -6,6 +6,29 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// GDPR-safe header whitelist - exclude sensitive data
+const HEADER_WHITELIST = [
+  "content-type",
+  "user-agent",
+  "x-forwarded-for",
+  "cf-connecting-ip",
+  "x-real-ip",
+  "origin",
+  "accept",
+  "accept-language",
+  // Excluded: referer (may contain PII in query strings)
+  // Excluded: authorization, cookie, x-api-key (credentials)
+];
+
+function filterHeaders(headers: Headers): Record<string, string> {
+  const filtered: Record<string, string> = {};
+  for (const key of HEADER_WHITELIST) {
+    const value = headers.get(key);
+    if (value) filtered[key] = value;
+  }
+  return filtered;
+}
+
 interface NormalizedPhone {
   normalized: string;
   countryCode: string;
@@ -62,15 +85,6 @@ async function verifyApiKey(
   return providedHash === storedHash;
 }
 
-// Hash API key for storage
-async function hashApiKey(key: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(key);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 // Apply field mapping from webhook source config
 function applyMapping(
   payload: Record<string, unknown>,
@@ -94,6 +108,28 @@ function applyMapping(
   return result;
 }
 
+// Helper to update incoming request status
+async function updateIncomingRequestStatus(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseAdmin: any,
+  requestId: string | undefined,
+  status: "pending" | "success" | "rejected" | "failed",
+  errorMessage?: string,
+  leadEventId?: string
+) {
+  if (!requestId) return;
+  
+  await supabaseAdmin
+    .from("incoming_requests")
+    .update({
+      processed: true,
+      status,
+      error_message: errorMessage || null,
+      lead_event_id: leadEventId || null,
+    })
+    .eq("id", requestId);
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -107,6 +143,14 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Create admin client early for error logging
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  let incomingRequestId: string | undefined;
+
   try {
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
@@ -115,6 +159,13 @@ Deno.serve(async (req: Request) => {
     // Generate request ID for structured logging
     const requestId = crypto.randomUUID();
     const logContext = { request_id: requestId, source_id: sourceId };
+
+    // Extract common request info early
+    const ipAddress =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      "unknown";
+    const userAgent = req.headers.get("user-agent") || null;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -137,12 +188,6 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Create admin client (bypasses RLS)
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     // Find webhook source by UUID and DERIVE brand_id (server-side only)
     const { data: source, error: sourceError } = await supabaseAdmin
@@ -216,20 +261,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Store incoming request for audit
-    const ipAddress =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("cf-connecting-ip") ||
-      "unknown";
-
+    // Store incoming request for audit with GDPR-safe headers
     const { data: incomingRequest, error: incomingError } = await supabaseAdmin
       .from("incoming_requests")
       .insert({
         source_id: source.id,
         brand_id: brandId,
         raw_body: rawBody,
-        headers: Object.fromEntries(req.headers.entries()),
+        headers: filterHeaders(req.headers),
         ip_address: ipAddress,
+        user_agent: userAgent,
+        status: "pending",
         processed: false,
       })
       .select("id")
@@ -238,6 +280,8 @@ Deno.serve(async (req: Request) => {
     if (incomingError) {
       console.error("Failed to log incoming request:", incomingError);
     }
+
+    incomingRequestId = incomingRequest?.id;
 
     // Apply field mapping
     const mappedPayload = source.mapping
@@ -250,13 +294,12 @@ Deno.serve(async (req: Request) => {
     ).trim();
 
     if (!phoneRaw) {
-      // Update incoming request with error
-      if (incomingRequest?.id) {
-        await supabaseAdmin
-          .from("incoming_requests")
-          .update({ processed: true, error_message: "No phone number provided" })
-          .eq("id", incomingRequest.id);
-      }
+      await updateIncomingRequestStatus(
+        supabaseAdmin,
+        incomingRequestId,
+        "rejected",
+        "No phone number provided"
+      );
 
       return new Response(
         JSON.stringify({ error: "Phone number is required" }),
@@ -269,7 +312,7 @@ Deno.serve(async (req: Request) => {
 
     const normalizedPhone = normalizePhone(phoneRaw);
 
-    // Extract other fields
+    // Extract other fields with email normalization (trim + lowercase)
     const firstName = String(
       mappedPayload.first_name ||
         mappedPayload.firstName ||
@@ -284,7 +327,11 @@ Deno.serve(async (req: Request) => {
         ""
     ).trim() || null;
 
-    const email = String(mappedPayload.email || "").trim() || null;
+    // Email normalization: trim + lowercase for dedup consistency
+    const email = String(mappedPayload.email || "")
+      .trim()
+      .toLowerCase() || null;
+
     const city = String(mappedPayload.city || mappedPayload.citta || "").trim() || null;
     const cap = String(mappedPayload.cap || mappedPayload.zip || "").trim() || null;
 
@@ -308,15 +355,12 @@ Deno.serve(async (req: Request) => {
     if (contactError || !contactId) {
       console.error("Failed to find/create contact:", contactError);
 
-      if (incomingRequest?.id) {
-        await supabaseAdmin
-          .from("incoming_requests")
-          .update({
-            processed: true,
-            error_message: `Contact creation failed: ${contactError?.message}`,
-          })
-          .eq("id", incomingRequest.id);
-      }
+      await updateIncomingRequestStatus(
+        supabaseAdmin,
+        incomingRequestId,
+        "failed",
+        `Contact creation failed: ${contactError?.message}`
+      );
 
       return new Response(
         JSON.stringify({ error: "Failed to process contact" }),
@@ -357,24 +401,21 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to create lead event:", leadEventError);
     }
 
-    // Update incoming request as processed
-    if (incomingRequest?.id) {
-      await supabaseAdmin
-        .from("incoming_requests")
-        .update({
-          processed: true,
-          lead_event_id: leadEvent?.id || null,
-        })
-        .eq("id", incomingRequest.id);
-    }
+    // Update incoming request as successfully processed
+    await updateIncomingRequestStatus(
+      supabaseAdmin,
+      incomingRequestId,
+      "success",
+      undefined,
+      leadEvent?.id
+    );
 
     // M9: Call sheets-export (fire-and-forget with short timeout)
-    // This is async and won't block the ingest response
     if (leadEvent?.id) {
       const sheetsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sheets-export`;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         
         fetch(sheetsUrl, {
           method: "POST",
@@ -396,7 +437,6 @@ Deno.serve(async (req: Request) => {
             console.error("Sheets export error (non-blocking):", err.message);
           });
       } catch (err) {
-        // Fire-and-forget: don't block ingest on sheets errors
         console.error("Sheets export setup error:", err);
       }
     }
@@ -424,6 +464,15 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     console.error("Webhook processing error:", JSON.stringify({ error: String(error) }));
+
+    // Mark as failed on unexpected errors
+    await updateIncomingRequestStatus(
+      supabaseAdmin,
+      incomingRequestId,
+      "failed",
+      `Internal error: ${String(error)}`
+    );
+
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       {
