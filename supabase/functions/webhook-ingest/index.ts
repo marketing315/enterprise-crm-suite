@@ -110,11 +110,13 @@ Deno.serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
-    const sourceName = pathParts[pathParts.length - 1];
+    const sourceId = pathParts[pathParts.length - 1];
 
-    if (!sourceName || sourceName === "webhook-ingest") {
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!sourceId || sourceId === "webhook-ingest" || !uuidRegex.test(sourceId)) {
       return new Response(
-        JSON.stringify({ error: "Source name required in URL path" }),
+        JSON.stringify({ error: "Valid source ID (UUID) required in URL path" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -136,12 +138,11 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Find webhook source and DERIVE brand_id (server-side only)
+    // Find webhook source by UUID and DERIVE brand_id (server-side only)
     const { data: source, error: sourceError } = await supabaseAdmin
       .from("webhook_sources")
-      .select("id, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active")
-      .eq("name", sourceName)
-      .eq("is_active", true)
+      .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active")
+      .eq("id", sourceId)
       .maybeSingle();
 
     if (sourceError || !source) {
@@ -149,6 +150,17 @@ Deno.serve(async (req: Request) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Check if source is active - return 409 if inactive
+    if (!source.is_active) {
+      return new Response(
+        JSON.stringify({ error: "inactive_source", message: "Webhook source is not active" }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Validate API key
@@ -323,7 +335,7 @@ Deno.serve(async (req: Request) => {
         contact_id: contactId,
         deal_id: dealId || null,
         source: "webhook",
-        source_name: sourceName,
+        source_name: source.name,
         raw_payload: rawBody,
         occurred_at: new Date().toISOString(),
         received_at: new Date().toISOString(),
