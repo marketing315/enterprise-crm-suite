@@ -27,6 +27,8 @@ export interface Brand {
   id: string;
   name: string;
   slug: string;
+  auto_assign_enabled: boolean;
+  sla_thresholds_minutes: Record<string, number>;
   created_at: string;
   updated_at: string;
 }
