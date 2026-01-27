@@ -165,6 +165,90 @@ test.describe("Inbound Webhooks - Error Cases", () => {
     const body = await response.json();
     expect(body.error).toBe("Phone number is required");
   });
+
+  test("Invalid JSON returns 400 and creates audit record", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+    // Send invalid JSON as raw text
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": E2E_API_KEY,
+      },
+      data: "not-valid-json{", // intentionally invalid
+    });
+
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("Invalid JSON body");
+
+    // Skip audit verification if no service role key available
+    if (!serviceRoleKey) {
+      console.log("Skipping audit verification - no SUPABASE_SERVICE_ROLE_KEY");
+      return;
+    }
+
+    // Verify audit row exists with status=rejected
+    const auditRes = await request.get(
+      `${SUPABASE_URL}/rest/v1/incoming_requests?select=id,status,error_message,source_id,brand_id&source_id=eq.${E2E_SOURCE_ACTIVE_ID}&order=created_at.desc&limit=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          apikey: serviceRoleKey,
+        },
+      }
+    );
+
+    expect(auditRes.ok()).toBeTruthy();
+    const rows = await auditRes.json();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0].status).toBe("rejected");
+    expect(rows[0].error_message).toBe("invalid_json");
+    expect(rows[0].brand_id).toBeTruthy();
+  });
+
+  test("Invalid UUID returns 400 and creates audit record", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/not-a-valid-uuid`;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": "any-key",
+      },
+      data: { phone: "+393331234567" },
+    });
+
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body.error).toContain("Valid source ID");
+
+    // Skip audit verification if no service role key available
+    if (!serviceRoleKey) {
+      console.log("Skipping audit verification - no SUPABASE_SERVICE_ROLE_KEY");
+      return;
+    }
+
+    // Verify audit row exists with source_id=null, brand_id=null
+    const auditRes = await request.get(
+      `${SUPABASE_URL}/rest/v1/incoming_requests?select=id,status,error_message,source_id,brand_id&source_id=is.null&order=created_at.desc&limit=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          apikey: serviceRoleKey,
+        },
+      }
+    );
+
+    expect(auditRes.ok()).toBeTruthy();
+    const rows = await auditRes.json();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0].status).toBe("rejected");
+    expect(rows[0].error_message).toBe("invalid_source_id");
+    expect(rows[0].source_id).toBeNull();
+    expect(rows[0].brand_id).toBeNull();
+  });
 });
 
 test.describe("Inbound Webhooks - Happy Path", () => {
