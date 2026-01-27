@@ -21,6 +21,7 @@ import {
   Send,
   RefreshCw,
   Webhook,
+  Timer,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
@@ -72,7 +73,7 @@ export default function AdminWebhooksDashboard() {
   const queueDepth = (metrics?.pending_count || 0) + (metrics?.sending_count || 0);
 
   return (
-    <div className="space-y-6" data-testid="webhooks-dashboard">
+    <div className="space-y-6" data-testid="webhooks-dashboard-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -93,13 +94,13 @@ export default function AdminWebhooksDashboard() {
       {/* KPI Cards */}
       <div data-testid="webhooks-dashboard-kpis">
         {loadingMetrics ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-[120px]" />
             ))}
           </div>
         ) : metrics ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
             <MetricCard
               title="Total Deliveries"
               value={metrics.total_deliveries}
@@ -119,6 +120,17 @@ export default function AdminWebhooksDashboard() {
               icon={XCircle}
               variant={failRate <= 5 ? "success" : failRate <= 15 ? "warning" : "danger"}
               subtitle={`${metrics.failed_count} falliti`}
+            />
+            <MetricCard
+              title="Avg Latency"
+              value={metrics.avg_latency_ms != null ? `${metrics.avg_latency_ms}ms` : "N/A"}
+              icon={Timer}
+              variant={
+                metrics.avg_latency_ms == null ? "default" :
+                metrics.avg_latency_ms <= 500 ? "success" :
+                metrics.avg_latency_ms <= 2000 ? "warning" : "danger"
+              }
+              subtitle="tempo medio risposta"
             />
             <MetricCard
               title="Queue Depth"

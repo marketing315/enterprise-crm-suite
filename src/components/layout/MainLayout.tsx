@@ -151,9 +151,10 @@ export function MainLayout() {
                   <SidebarMenu>
                     {adminMenuItems.map((item) => (
                       <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
+                      <SidebarMenuButton
                           isActive={location.pathname === item.path}
                           onClick={() => navigate(item.path)}
+                          data-testid={item.path === '/admin/webhooks' ? 'nav-webhooks-dashboard' : undefined}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.label}</span>
