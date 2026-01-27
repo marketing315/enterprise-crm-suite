@@ -169,6 +169,7 @@ test.describe("Inbound Webhooks - Error Cases", () => {
   test("Invalid JSON returns 400 and creates audit record", async ({ request }) => {
     const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    const startedAt = new Date().toISOString();
 
     // Send invalid JSON as raw text
     const response = await request.post(endpoint, {
@@ -189,9 +190,14 @@ test.describe("Inbound Webhooks - Error Cases", () => {
       return;
     }
 
-    // Verify audit row exists with status=rejected
+    // Verify audit row exists with status=rejected (deterministic query with startedAt)
     const auditRes = await request.get(
-      `${SUPABASE_URL}/rest/v1/incoming_requests?select=id,status,error_message,source_id,brand_id&source_id=eq.${E2E_SOURCE_ACTIVE_ID}&order=created_at.desc&limit=1`,
+      `${SUPABASE_URL}/rest/v1/incoming_requests` +
+        `?select=id,status,error_message,source_id,brand_id,created_at` +
+        `&source_id=eq.${E2E_SOURCE_ACTIVE_ID}` +
+        `&error_message=eq.invalid_json` +
+        `&created_at=gte.${encodeURIComponent(startedAt)}` +
+        `&order=created_at.desc&limit=1`,
       {
         headers: {
           Authorization: `Bearer ${serviceRoleKey}`,
@@ -202,7 +208,7 @@ test.describe("Inbound Webhooks - Error Cases", () => {
 
     expect(auditRes.ok()).toBeTruthy();
     const rows = await auditRes.json();
-    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBe(1);
     expect(rows[0].status).toBe("rejected");
     expect(rows[0].error_message).toBe("invalid_json");
     expect(rows[0].brand_id).toBeTruthy();
@@ -211,6 +217,7 @@ test.describe("Inbound Webhooks - Error Cases", () => {
   test("Invalid UUID returns 400 and creates audit record", async ({ request }) => {
     const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/not-a-valid-uuid`;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    const startedAt = new Date().toISOString();
 
     const response = await request.post(endpoint, {
       headers: {
@@ -230,9 +237,14 @@ test.describe("Inbound Webhooks - Error Cases", () => {
       return;
     }
 
-    // Verify audit row exists with source_id=null, brand_id=null
+    // Verify audit row exists with source_id=null, brand_id=null (deterministic query)
     const auditRes = await request.get(
-      `${SUPABASE_URL}/rest/v1/incoming_requests?select=id,status,error_message,source_id,brand_id&source_id=is.null&order=created_at.desc&limit=1`,
+      `${SUPABASE_URL}/rest/v1/incoming_requests` +
+        `?select=id,status,error_message,source_id,brand_id,created_at` +
+        `&source_id=is.null` +
+        `&error_message=eq.invalid_uuid` +
+        `&created_at=gte.${encodeURIComponent(startedAt)}` +
+        `&order=created_at.desc&limit=1`,
       {
         headers: {
           Authorization: `Bearer ${serviceRoleKey}`,
@@ -243,9 +255,9 @@ test.describe("Inbound Webhooks - Error Cases", () => {
 
     expect(auditRes.ok()).toBeTruthy();
     const rows = await auditRes.json();
-    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBe(1);
     expect(rows[0].status).toBe("rejected");
-    expect(rows[0].error_message).toBe("invalid_source_id");
+    expect(rows[0].error_message).toBe("invalid_uuid");
     expect(rows[0].source_id).toBeNull();
     expect(rows[0].brand_id).toBeNull();
   });
