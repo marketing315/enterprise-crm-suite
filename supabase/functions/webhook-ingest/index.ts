@@ -358,6 +358,39 @@ Deno.serve(async (req: Request) => {
         .eq("id", incomingRequest.id);
     }
 
+    // M9: Call sheets-export (fire-and-forget with short timeout)
+    // This is async and won't block the ingest response
+    if (leadEvent?.id) {
+      const sheetsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sheets-export`;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        
+        fetch(sheetsUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({ lead_event_id: leadEvent.id }),
+          signal: controller.signal,
+        })
+          .then((res) => {
+            clearTimeout(timeoutId);
+            if (!res.ok) {
+              console.error("Sheets export failed:", res.status);
+            }
+          })
+          .catch((err) => {
+            clearTimeout(timeoutId);
+            console.error("Sheets export error (non-blocking):", err.message);
+          });
+      } catch (err) {
+        // Fire-and-forget: don't block ingest on sheets errors
+        console.error("Sheets export setup error:", err);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

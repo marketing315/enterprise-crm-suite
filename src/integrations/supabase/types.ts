@@ -695,6 +695,51 @@ export type Database = {
           },
         ]
       }
+      sheets_export_logs: {
+        Row: {
+          brand_id: string
+          created_at: string
+          error: string | null
+          id: string
+          lead_event_id: string
+          status: string
+          tab_name: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          lead_event_id: string
+          status: string
+          tab_name?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          lead_event_id?: string
+          status?: string
+          tab_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheets_export_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheets_export_logs_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tag_assignments: {
         Row: {
           assigned_at: string
