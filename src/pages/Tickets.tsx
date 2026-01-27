@@ -248,14 +248,14 @@ export default function Tickets() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Ticket className="h-8 w-8 text-primary" />
+          <Ticket className="h-6 w-6 md:h-8 md:w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Ticket</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-xl md:text-2xl font-bold">Ticket</h1>
+            <p className="text-sm text-muted-foreground hidden sm:block">
               Gestisci le richieste di assistenza
             </p>
           </div>
@@ -269,8 +269,8 @@ export default function Tickets() {
               if (bulkMode) setSelectedIds(new Set());
             }}
           >
-            <CheckSquare className="h-4 w-4 mr-2" />
-            {bulkMode ? "Esci selezione" : "Selezione multipla"}
+            <CheckSquare className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{bulkMode ? "Esci selezione" : "Selezione multipla"}</span>
           </Button>
           <Button
             variant="outline"
@@ -278,8 +278,9 @@ export default function Tickets() {
             onClick={handleExportCSV}
             disabled={tickets.length === 0}
           >
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV ({tickets.length})
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">({tickets.length})</span>
           </Button>
         </div>
       </div>

@@ -195,18 +195,18 @@ export function MainLayout() {
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset>
-          <header className="flex h-14 items-center gap-4 border-b bg-background px-6">
+        <SidebarInset className="flex flex-col min-h-screen">
+          <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6">
             <SidebarTrigger />
             <div className="flex-1" />
             {currentBrand && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Building2 className="h-4 w-4" />
-                <span>{currentBrand.name}</span>
+              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
+                <Building2 className="h-4 w-4 hidden sm:block" />
+                <span className="truncate max-w-[120px] md:max-w-none">{currentBrand.name}</span>
               </div>
             )}
           </header>
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-3 md:p-6 overflow-x-hidden">
             <Outlet />
           </main>
         </SidebarInset>

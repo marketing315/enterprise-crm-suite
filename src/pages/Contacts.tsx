@@ -56,15 +56,15 @@ export default function Contacts() {
   }));
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Users className="h-5 w-5 text-primary" />
+          <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Users className="h-4 w-4 md:h-5 md:w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Contatti</h1>
+            <h1 className="text-xl md:text-2xl font-semibold">Contatti</h1>
             <p className="text-sm text-muted-foreground">
               {contacts.length} contatti {searchQuery ? 'trovati' : 'totali'}
             </p>
@@ -77,18 +77,20 @@ export default function Contacts() {
       </div>
 
       {/* Search + Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <ContactSearch
-          value={searchQuery}
-          onChange={setSearchQuery}
-        />
+      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
+        <div className="w-full sm:w-auto">
+          <ContactSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
           <Select
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as ContactStatus | 'all')}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filtra per stato" />
             </SelectTrigger>
             <SelectContent>

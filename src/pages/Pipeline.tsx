@@ -29,10 +29,10 @@ export default function Pipeline() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b space-y-3">
+      <div className="p-3 md:p-4 border-b space-y-3">
         <div>
-          <h1 className="text-2xl font-bold">Pipeline</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
+          <p className="text-sm text-muted-foreground">
             Gestisci i tuoi deal in {currentBrand?.name}
           </p>
         </div>
