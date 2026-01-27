@@ -59,20 +59,26 @@ Each row in a source tab contains:
 | Lead per Campagna | QUERY grouping by Campagna |
 | % Archiviati | COUNTIF true/false |
 
-## Idempotency
+## Idempotency (Race-Safe)
 
-Before appending, the system checks `sheets_export_logs`:
-- If `lead_event_id` exists with `status='success'` → **skip** (no duplicate rows)
-- Use `force=true` to bypass this check
+The system uses **DB-level unique constraint** for race-safe idempotency:
+
+1. On export request, insert `sheets_export_logs` with `status='processing'`
+2. If unique constraint violation → check existing status:
+   - `success` → return `{ skipped: true, reason: "already_exported" }`
+   - `processing` → return `{ skipped: true, reason: "in_progress" }`
+   - `failed` → return `{ skipped: true, reason: "failed" }`
+3. On successful append → update status to `success`
+4. On error → update status to `failed` with error message
+
+Use `force=true` to bypass idempotency check (for retries).
 
 ## Retry Behavior
 
-- **Max attempts**: 3
-- **Backoff**: Exponential (1s, 2s, 4s)
 - **On failure**: 
   - Error logged to `sheets_export_logs` table with `status='failed'`
-  - Does not block inbound webhook processing
-  - Can be retried manually via admin UI
+  - Does not block inbound webhook processing (fire-and-forget with 5s timeout)
+  - Can be retried manually with `force=true`
 
 ## Configuration
 

@@ -209,6 +209,68 @@ test.describe("Inbound Webhooks - Happy Path", () => {
   });
 });
 
+test.describe("Sheets Export - Idempotency", () => {
+  test("Duplicate sheets-export call returns skipped:true", async ({ request }) => {
+    // First, create a lead event via inbound webhook
+    const ingestEndpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+    const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
+
+    const ingestResponse = await request.post(ingestEndpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": E2E_API_KEY,
+      },
+      data: {
+        telefono: uniquePhone,
+        nome: "Idempotency",
+        cognome: "Test",
+        email: "idempotency@test.com",
+      },
+    });
+
+    expect(ingestResponse.status()).toBe(200);
+    const ingestBody = await ingestResponse.json();
+    const leadEventId = ingestBody.lead_event_id;
+    expect(leadEventId).toBeTruthy();
+
+    // Sheets export endpoint
+    const sheetsEndpoint = `${SUPABASE_URL}/functions/v1/sheets-export`;
+
+    // First call - should succeed or skip (depending on GOOGLE_SHEETS_ENABLED)
+    const response1 = await request.post(sheetsEndpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.VITE_SUPABASE_PUBLISHABLE_KEY || ""}`,
+      },
+      data: { lead_event_id: leadEventId },
+    });
+    expect(response1.status()).toBe(200);
+    const body1 = await response1.json();
+
+    // If sheets is disabled, success:false is returned - that's ok for this test
+    if (body1.success === false && body1.error === "Sheets export is disabled") {
+      console.log("Sheets export disabled - skipping idempotency verification");
+      return;
+    }
+
+    // Second call - should return skipped:true due to idempotency
+    const response2 = await request.post(sheetsEndpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.VITE_SUPABASE_PUBLISHABLE_KEY || ""}`,
+      },
+      data: { lead_event_id: leadEventId },
+    });
+    expect(response2.status()).toBe(200);
+    const body2 = await response2.json();
+
+    // Should be skipped (already exported or in progress)
+    expect(body2.success).toBe(true);
+    expect(body2.skipped).toBe(true);
+    expect(["already_exported", "in_progress", "processing", "success"]).toContain(body2.reason);
+  });
+});
+
 test.describe("Inbound Webhooks - Admin UI", () => {
   test("Admin can create and view inbound source in UI", async ({ page, login, selectBrandIfNeeded }) => {
     await login(TEST_EMAIL, TEST_PASSWORD);
