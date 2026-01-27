@@ -20,7 +20,7 @@ vi.mock("@/contexts/BrandContext", () => ({
 import { supabase } from "@/integrations/supabase/client";
 import { useWebhookMetrics24h } from "@/hooks/useWebhookMetrics";
 
-// Wrapper for react-query
+// Wrapper for react-query using React.createElement (no JSX)
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -35,11 +35,13 @@ function createWrapper() {
 }
 
 // Helper to wait for hook to settle
-async function waitForHook(result: { current: { isSuccess: boolean; isLoading: boolean } }) {
+async function waitForHookToSettle(result: { current: { isLoading: boolean } }) {
   const maxAttempts = 50;
   let attempts = 0;
   while (result.current.isLoading && attempts < maxAttempts) {
-    await new Promise((r) => setTimeout(r, 10));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
     attempts++;
   }
 }
@@ -73,7 +75,7 @@ describe("useWebhookMetrics24h", () => {
       wrapper: createWrapper(),
     });
 
-    await waitForHook(result);
+    await waitForHookToSettle(result);
 
     // Verify RPC was called with correct function name and parameters
     expect(supabase.rpc).toHaveBeenCalledWith("webhook_metrics_24h", {
@@ -105,7 +107,7 @@ describe("useWebhookMetrics24h", () => {
       wrapper: createWrapper(),
     });
 
-    await waitForHook(result);
+    await waitForHookToSettle(result);
 
     // Verify type mapping includes all fields
     const data = result.current.data;
@@ -143,7 +145,7 @@ describe("useWebhookMetrics24h", () => {
       wrapper: createWrapper(),
     });
 
-    await waitForHook(result);
+    await waitForHookToSettle(result);
 
     const data = result.current.data;
     expect(data?.p50_latency_ms).toBeNull();
