@@ -1279,6 +1279,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cleanup_outbound_webhook_deliveries: {
+        Args: { p_limit?: number }
+        Returns: number
+      }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
         Returns: boolean
