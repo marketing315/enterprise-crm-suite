@@ -108,28 +108,6 @@ function applyMapping(
   return result;
 }
 
-// Helper to update incoming request status
-async function updateIncomingRequestStatus(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabaseAdmin: any,
-  requestId: string | undefined,
-  status: "pending" | "success" | "rejected" | "failed",
-  errorMessage?: string,
-  leadEventId?: string
-) {
-  if (!requestId) return;
-  
-  await supabaseAdmin
-    .from("incoming_requests")
-    .update({
-      processed: true,
-      status,
-      error_message: errorMessage || null,
-      lead_event_id: leadEventId || null,
-    })
-    .eq("id", requestId);
-}
-
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -143,146 +121,201 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Create admin client early for error logging
+  // Create admin client early for audit logging
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  let incomingRequestId: string | undefined;
+  // Extract common request info immediately (before any validation)
+  const ipAddress =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("cf-connecting-ip") ||
+    "unknown";
+  const userAgent = req.headers.get("user-agent") || null;
+  const filteredHeaders = filterHeaders(req.headers);
 
+  // Read body as text first (allows audit even if JSON is invalid)
+  let bodyText: string;
   try {
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split("/").filter(Boolean);
-    const sourceId = pathParts[pathParts.length - 1];
-    
-    // Generate request ID for structured logging
-    const requestId = crypto.randomUUID();
-    const logContext = { request_id: requestId, source_id: sourceId };
+    bodyText = await req.text();
+  } catch {
+    bodyText = "";
+  }
 
-    // Extract common request info early
-    const ipAddress =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("cf-connecting-ip") ||
-      "unknown";
-    const userAgent = req.headers.get("user-agent") || null;
+  // Parse JSON - will be null if invalid
+  let rawBody: Record<string, unknown> | null = null;
+  let jsonParseError = false;
+  try {
+    rawBody = bodyText ? JSON.parse(bodyText) : null;
+  } catch {
+    jsonParseError = true;
+  }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!sourceId || sourceId === "webhook-ingest" || !uuidRegex.test(sourceId)) {
-      console.log(JSON.stringify({ ...logContext, outcome: "invalid_uuid", status: 400 }));
-      return new Response(
-        JSON.stringify({ error: "Valid source ID (UUID) required in URL path" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+  // Extract source ID from URL
+  const url = new URL(req.url);
+  const pathParts = url.pathname.split("/").filter(Boolean);
+  const sourceId = pathParts[pathParts.length - 1];
 
-    const apiKey = req.headers.get("x-api-key");
-    if (!apiKey) {
-      console.log(JSON.stringify({ ...logContext, outcome: "missing_api_key", status: 401 }));
-      return new Response(JSON.stringify({ error: "Missing X-API-Key header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  // Generate request ID for structured logging
+  const requestId = crypto.randomUUID();
+  const logContext = { request_id: requestId, source_id: sourceId };
 
-    // Find webhook source by UUID and DERIVE brand_id (server-side only)
-    const { data: source, error: sourceError } = await supabaseAdmin
-      .from("webhook_sources")
-      .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active")
-      .eq("id", sourceId)
-      .maybeSingle();
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const isValidUuid = sourceId && sourceId !== "webhook-ingest" && uuidRegex.test(sourceId);
 
-    if (sourceError || !source) {
-      console.log(JSON.stringify({ ...logContext, outcome: "source_not_found", status: 404 }));
-      return new Response(JSON.stringify({ error: "Unknown webhook source" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check if source is active - return 409 if inactive
-    if (!source.is_active) {
-      console.log(JSON.stringify({ ...logContext, outcome: "inactive_source", status: 409 }));
-      return new Response(
-        JSON.stringify({ error: "inactive_source", message: "Webhook source is not active" }),
-        {
-          status: 409,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Validate API key
-    const isValidKey = await verifyApiKey(apiKey, source.api_key_hash);
-    if (!isValidKey) {
-      console.log(JSON.stringify({ ...logContext, outcome: "invalid_api_key", status: 401 }));
-      return new Response(JSON.stringify({ error: "Invalid API key" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // brand_id derived server-side, never from client
-    const brandId = source.brand_id;
-
-    // Rate limit check
-    const { data: hasToken, error: rateLimitError } = await supabaseAdmin.rpc(
-      "consume_rate_limit_token",
-      { p_source_id: source.id }
-    );
-
-    if (rateLimitError || !hasToken) {
-      console.log(JSON.stringify({ ...logContext, outcome: "rate_limited", status: 429 }));
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded", retry_after: 60 }),
-        {
-          status: 429,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "Retry-After": "60",
-          },
-        }
-      );
-    }
-
-    // Parse body
-    let rawBody: Record<string, unknown>;
-    try {
-      rawBody = await req.json();
-    } catch {
-      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Store incoming request for audit with GDPR-safe headers
-    const { data: incomingRequest, error: incomingError } = await supabaseAdmin
+  // Helper to create audit record
+  async function createAuditRecord(
+    status: "pending" | "success" | "rejected" | "failed",
+    errorMessage: string | null,
+    resolvedSourceId: string | null,
+    resolvedBrandId: string | null,
+    leadEventId: string | null = null
+  ): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
       .from("incoming_requests")
       .insert({
-        source_id: source.id,
-        brand_id: brandId,
-        raw_body: rawBody,
-        headers: filterHeaders(req.headers),
+        source_id: resolvedSourceId,
+        brand_id: resolvedBrandId,
+        raw_body: rawBody, // null if JSON invalid
+        headers: filteredHeaders,
         ip_address: ipAddress,
         user_agent: userAgent,
-        status: "pending",
-        processed: false,
+        status,
+        processed: status !== "pending",
+        error_message: errorMessage,
+        lead_event_id: leadEventId,
       })
       .select("id")
       .single();
 
-    if (incomingError) {
-      console.error("Failed to log incoming request:", incomingError);
+    if (error) {
+      console.error("Failed to create audit record:", error);
+      return null;
     }
+    return data?.id || null;
+  }
 
-    incomingRequestId = incomingRequest?.id;
+  // Helper to update existing audit record
+  async function updateAuditRecord(
+    auditId: string,
+    status: "success" | "rejected" | "failed",
+    errorMessage: string | null,
+    leadEventId: string | null = null
+  ) {
+    await supabaseAdmin
+      .from("incoming_requests")
+      .update({
+        status,
+        processed: true,
+        error_message: errorMessage,
+        lead_event_id: leadEventId,
+      })
+      .eq("id", auditId);
+  }
 
+  // === VALIDATION PHASE (with audit) ===
+
+  // 1. Invalid UUID - audit without source_id/brand_id
+  if (!isValidUuid) {
+    console.log(JSON.stringify({ ...logContext, outcome: "invalid_uuid", status: 400 }));
+    await createAuditRecord("rejected", "invalid_uuid", null, null);
+    return new Response(
+      JSON.stringify({ error: "Valid source ID (UUID) required in URL path" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // 2. Missing API key - audit without brand_id (source_id known)
+  const apiKey = req.headers.get("x-api-key");
+  if (!apiKey) {
+    console.log(JSON.stringify({ ...logContext, outcome: "missing_api_key", status: 401 }));
+    await createAuditRecord("rejected", "missing_api_key", sourceId, null);
+    return new Response(JSON.stringify({ error: "Missing X-API-Key header" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // 3. Find webhook source
+  const { data: source, error: sourceError } = await supabaseAdmin
+    .from("webhook_sources")
+    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active")
+    .eq("id", sourceId)
+    .maybeSingle();
+
+  // 4. Source not found - audit with source_id but no brand_id
+  if (sourceError || !source) {
+    console.log(JSON.stringify({ ...logContext, outcome: "source_not_found", status: 404 }));
+    await createAuditRecord("rejected", "source_not_found", sourceId, null);
+    return new Response(JSON.stringify({ error: "Unknown webhook source" }), {
+      status: 404,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Now we have brand_id from source
+  const brandId = source.brand_id;
+
+  // 5. Source inactive - full audit possible
+  if (!source.is_active) {
+    console.log(JSON.stringify({ ...logContext, outcome: "inactive_source", status: 409 }));
+    await createAuditRecord("rejected", "inactive_source", sourceId, brandId);
+    return new Response(
+      JSON.stringify({ error: "inactive_source", message: "Webhook source is not active" }),
+      { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // 6. Invalid API key - full audit
+  const isValidKey = await verifyApiKey(apiKey, source.api_key_hash);
+  if (!isValidKey) {
+    console.log(JSON.stringify({ ...logContext, outcome: "invalid_api_key", status: 401 }));
+    await createAuditRecord("rejected", "invalid_api_key", sourceId, brandId);
+    return new Response(JSON.stringify({ error: "Invalid API key" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // 7. Rate limit - full audit
+  const { data: hasToken, error: rateLimitError } = await supabaseAdmin.rpc(
+    "consume_rate_limit_token",
+    { p_source_id: source.id }
+  );
+
+  if (rateLimitError || !hasToken) {
+    console.log(JSON.stringify({ ...logContext, outcome: "rate_limited", status: 429 }));
+    await createAuditRecord("rejected", "rate_limited", sourceId, brandId);
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded", retry_after: 60 }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Retry-After": "60",
+        },
+      }
+    );
+  }
+
+  // 8. Invalid JSON body - full audit (raw_body will be null)
+  if (jsonParseError || !rawBody) {
+    console.log(JSON.stringify({ ...logContext, outcome: "invalid_json", status: 400 }));
+    await createAuditRecord("rejected", "invalid_json", sourceId, brandId);
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // === PROCESSING PHASE ===
+  // Create audit record as "pending" before processing
+  const auditId = await createAuditRecord("pending", null, sourceId, brandId);
+
+  try {
     // Apply field mapping
     const mappedPayload = source.mapping
       ? applyMapping(rawBody, source.mapping as Record<string, string>)
@@ -294,25 +327,18 @@ Deno.serve(async (req: Request) => {
     ).trim();
 
     if (!phoneRaw) {
-      await updateIncomingRequestStatus(
-        supabaseAdmin,
-        incomingRequestId,
-        "rejected",
-        "No phone number provided"
-      );
-
+      if (auditId) {
+        await updateAuditRecord(auditId, "rejected", "missing_phone");
+      }
       return new Response(
         JSON.stringify({ error: "Phone number is required" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const normalizedPhone = normalizePhone(phoneRaw);
 
-    // Extract other fields with email normalization (trim + lowercase)
+    // Extract other fields with email normalization (trim + lowercase for dedup)
     const firstName = String(
       mappedPayload.first_name ||
         mappedPayload.firstName ||
@@ -327,7 +353,6 @@ Deno.serve(async (req: Request) => {
         ""
     ).trim() || null;
 
-    // Email normalization: trim + lowercase for dedup consistency
     const email = String(mappedPayload.email || "")
       .trim()
       .toLowerCase() || null;
@@ -335,7 +360,7 @@ Deno.serve(async (req: Request) => {
     const city = String(mappedPayload.city || mappedPayload.citta || "").trim() || null;
     const cap = String(mappedPayload.cap || mappedPayload.zip || "").trim() || null;
 
-    // Find or create contact (deduplication by normalized phone)
+    // Find or create contact
     const { data: contactId, error: contactError } = await supabaseAdmin.rpc(
       "find_or_create_contact",
       {
@@ -354,24 +379,16 @@ Deno.serve(async (req: Request) => {
 
     if (contactError || !contactId) {
       console.error("Failed to find/create contact:", contactError);
-
-      await updateIncomingRequestStatus(
-        supabaseAdmin,
-        incomingRequestId,
-        "failed",
-        `Contact creation failed: ${contactError?.message}`
-      );
-
+      if (auditId) {
+        await updateAuditRecord(auditId, "failed", `contact_creation_failed: ${contactError?.message}`);
+      }
       return new Response(
         JSON.stringify({ error: "Failed to process contact" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // M2.3: Find or create deal for this contact
+    // Find or create deal
     const { data: dealId, error: dealError } = await supabaseAdmin.rpc(
       "find_or_create_deal",
       { p_brand_id: brandId, p_contact_id: contactId }
@@ -381,7 +398,7 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to find/create deal:", dealError);
     }
 
-    // Create lead event (append-only) with deal_id
+    // Create lead event (append-only)
     const { data: leadEvent, error: leadEventError } = await supabaseAdmin
       .from("lead_events")
       .insert({
@@ -401,16 +418,12 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to create lead event:", leadEventError);
     }
 
-    // Update incoming request as successfully processed
-    await updateIncomingRequestStatus(
-      supabaseAdmin,
-      incomingRequestId,
-      "success",
-      undefined,
-      leadEvent?.id
-    );
+    // Update audit record to success
+    if (auditId) {
+      await updateAuditRecord(auditId, "success", null, leadEvent?.id);
+    }
 
-    // M9: Call sheets-export (fire-and-forget with short timeout)
+    // Fire-and-forget: Call sheets-export
     if (leadEvent?.id) {
       const sheetsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sheets-export`;
       try {
@@ -441,7 +454,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Log success
     console.log(JSON.stringify({
       ...logContext,
       outcome: "success",
@@ -457,28 +469,17 @@ Deno.serve(async (req: Request) => {
         deal_id: dealId || null,
         lead_event_id: leadEvent?.id || null,
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error) {
     console.error("Webhook processing error:", JSON.stringify({ error: String(error) }));
-
-    // Mark as failed on unexpected errors
-    await updateIncomingRequestStatus(
-      supabaseAdmin,
-      incomingRequestId,
-      "failed",
-      `Internal error: ${String(error)}`
-    );
-
+    if (auditId) {
+      await updateAuditRecord(auditId, "failed", `internal_error: ${String(error)}`);
+    }
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

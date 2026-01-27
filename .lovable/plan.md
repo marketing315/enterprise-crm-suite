@@ -195,10 +195,14 @@ Contenuto strutturato per:
 
 ## Checklist Deliverables
 
-- [ ] Migrazione DB: `user_agent`, `status` enum, indice composito
-- [ ] webhook-ingest: whitelist headers GDPR
-- [ ] webhook-ingest: email normalization (trim/lowercase)
-- [ ] webhook-ingest: salvare user_agent
-- [ ] webhook-ingest: status semantico (rejected vs failed)
-- [ ] docs/troubleshooting.md standalone
+- [x] Migrazione DB: `user_agent`, `status` enum, indice composito
+- [x] Migrazione DB: `brand_id` nullable, `raw_body` nullable (per audit sempre scritto)
+- [x] webhook-ingest: whitelist headers GDPR
+- [x] webhook-ingest: email normalization (trim/lowercase)
+- [x] webhook-ingest: salvare user_agent
+- [x] webhook-ingest: status semantico (rejected vs failed)
+- [x] webhook-ingest: audit SEMPRE scritto (anche per 400/401/404/409/429)
+- [x] webhook-ingest: gestione JSON invalido con req.text() + parse
+- [x] docs/troubleshooting.md standalone
+- [ ] E2E: test invalid JSON + assert audit row
 
