@@ -46,15 +46,14 @@ const HEADERS_ITA = [
   "Archiviato",
 ];
 
+// ALL_RAW tab name (aggregates all sources)
+const ALL_RAW_TAB = "ALL_RAW";
+
 // Google Sheets API helpers
 async function getAccessToken(serviceAccountKey: string): Promise<string> {
   const key = JSON.parse(serviceAccountKey);
   
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-  };
-  
+  const header = { alg: "RS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss: key.client_email,
@@ -83,11 +82,7 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
     ["sign"]
   );
 
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    cryptoKey,
-    encoder.encode(unsignedToken)
-  );
+  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey, encoder.encode(unsignedToken));
   const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/=/g, "")
     .replace(/\+/g, "-")
@@ -108,7 +103,6 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
   if (!tokenData.access_token) {
     throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
   }
-
   return tokenData.access_token;
 }
 
@@ -122,148 +116,77 @@ async function getSheetInfo(accessToken: string, spreadsheetId: string): Promise
   return response.json();
 }
 
-async function getSheetIdByTitle(
-  accessToken: string,
-  spreadsheetId: string,
-  title: string
-): Promise<number | null> {
+async function tabExists(accessToken: string, spreadsheetId: string, title: string): Promise<boolean> {
+  const info = await getSheetInfo(accessToken, spreadsheetId);
+  return info.sheets?.some((s) => s.properties.title === title) ?? false;
+}
+
+async function getSheetIdByTitle(accessToken: string, spreadsheetId: string, title: string): Promise<number | null> {
   const info = await getSheetInfo(accessToken, spreadsheetId);
   const sheet = info.sheets?.find((s) => s.properties.title === title);
   return sheet?.properties.sheetId ?? null;
 }
 
-async function ensureRawTabExists(
-  accessToken: string,
-  spreadsheetId: string,
-  rawTabName: string
-): Promise<number> {
-  const info = await getSheetInfo(accessToken, spreadsheetId);
-  const existingTab = info.sheets?.find((s) => s.properties.title === rawTabName);
-  
-  if (existingTab) {
-    return existingTab.properties.sheetId;
-  }
-
-  // Create the RAW tab
-  const createResponse = await fetch(
+async function createTab(accessToken: string, spreadsheetId: string, title: string): Promise<number> {
+  const response = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        requests: [{ addSheet: { properties: { title: rawTabName } } }],
-      }),
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title } } }] }),
     }
   );
-  const createResult = await createResponse.json();
-  const newSheetId = createResult.replies?.[0]?.addSheet?.properties?.sheetId;
-
-  // Add header row to RAW tab (English for internal use, or keep consistent)
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(rawTabName)}!A1:L1?valueInputOption=RAW`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ values: [HEADERS_ITA] }),
-    }
-  );
-
-  return newSheetId;
+  const result = await response.json();
+  return result.replies?.[0]?.addSheet?.properties?.sheetId ?? 0;
 }
 
-async function ensureViewTabExists(
+async function writeRange(
   accessToken: string,
   spreadsheetId: string,
-  viewTabName: string,
-  rawTabName: string
-): Promise<number> {
-  const info = await getSheetInfo(accessToken, spreadsheetId);
-  const existingTab = info.sheets?.find((s) => s.properties.title === viewTabName);
-  
-  if (existingTab) {
-    return existingTab.properties.sheetId;
-  }
-
-  // Create view tab
-  const createResponse = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        requests: [{ addSheet: { properties: { title: viewTabName } } }],
-      }),
-    }
-  );
-  const createResult = await createResponse.json();
-  const newSheetId = createResult.replies?.[0]?.addSheet?.properties?.sheetId;
-
-  // Add ARRAYFORMULA to mirror RAW data with Italian headers
-  const formula = `=ARRAYFORMULA('${rawTabName}'!A:L)`;
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(viewTabName)}!A1?valueInputOption=USER_ENTERED`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ values: [[formula]] }),
-    }
-  );
-
-  return newSheetId;
-}
-
-async function applyTabLayout(
-  accessToken: string,
-  spreadsheetId: string,
-  sheetId: number
+  range: string,
+  values: string[][],
+  inputOption: "RAW" | "USER_ENTERED" = "RAW"
 ): Promise<void> {
-  // Apply freeze + filter + formatting
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=${inputOption}`,
+    {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ values }),
+    }
+  );
+}
+
+async function appendRow(accessToken: string, spreadsheetId: string, tabName: string, row: string[]): Promise<void> {
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName)}!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [row] }),
+    }
+  );
+}
+
+async function applyTabLayout(accessToken: string, spreadsheetId: string, sheetId: number): Promise<void> {
   const requests = [
     // Freeze first row
     {
       updateSheetProperties: {
-        properties: {
-          sheetId,
-          gridProperties: { frozenRowCount: 1 },
-        },
+        properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
         fields: "gridProperties.frozenRowCount",
       },
     },
     // Set basic filter on all data
     {
       setBasicFilter: {
-        filter: {
-          range: {
-            sheetId,
-            startRowIndex: 0,
-            startColumnIndex: 0,
-            endColumnIndex: 12, // Columns A-L
-          },
-        },
+        filter: { range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 12 } },
       },
     },
-    // Bold header row
+    // Bold + gray background for header row
     {
       repeatCell: {
-        range: {
-          sheetId,
-          startRowIndex: 0,
-          endRowIndex: 1,
-          startColumnIndex: 0,
-          endColumnIndex: 12,
-        },
+        range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 12 },
         cell: {
           userEnteredFormat: {
             textFormat: { bold: true },
@@ -276,12 +199,7 @@ async function applyTabLayout(
     // Auto-resize columns
     {
       autoResizeDimensions: {
-        dimensions: {
-          sheetId,
-          dimension: "COLUMNS",
-          startIndex: 0,
-          endIndex: 12,
-        },
+        dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 12 },
       },
     },
   ];
@@ -290,136 +208,147 @@ async function applyTabLayout(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ requests }),
     }
   );
 }
 
-async function ensureRiepilogoTab(
-  accessToken: string,
-  spreadsheetId: string,
-  rawTabName: string
-): Promise<void> {
-  const info = await getSheetInfo(accessToken, spreadsheetId);
-  const existingTab = info.sheets?.find((s) => s.properties.title === "Riepilogo");
-  
-  if (existingTab) {
-    return; // Already exists
+async function ensureRawTab(accessToken: string, spreadsheetId: string, rawTabName: string): Promise<number> {
+  const exists = await tabExists(accessToken, spreadsheetId, rawTabName);
+  if (exists) {
+    const sheetId = await getSheetIdByTitle(accessToken, spreadsheetId, rawTabName);
+    return sheetId ?? 0;
   }
 
-  // Create Riepilogo tab
-  const createResponse = await fetch(
+  const sheetId = await createTab(accessToken, spreadsheetId, rawTabName);
+  await writeRange(accessToken, spreadsheetId, `${rawTabName}!A1:L1`, [HEADERS_ITA]);
+  return sheetId;
+}
+
+async function ensureViewTab(
+  accessToken: string,
+  spreadsheetId: string,
+  viewTabName: string,
+  rawTabName: string
+): Promise<number> {
+  const exists = await tabExists(accessToken, spreadsheetId, viewTabName);
+  if (exists) {
+    const sheetId = await getSheetIdByTitle(accessToken, spreadsheetId, viewTabName);
+    return sheetId ?? 0;
+  }
+
+  const sheetId = await createTab(accessToken, spreadsheetId, viewTabName);
+  
+  // ARRAYFORMULA to mirror RAW data
+  const formula = `=ARRAYFORMULA('${rawTabName}'!A:L)`;
+  await writeRange(accessToken, spreadsheetId, `${viewTabName}!A1`, [[formula]], "USER_ENTERED");
+  
+  // Apply layout (freeze, filter, format)
+  await applyTabLayout(accessToken, spreadsheetId, sheetId);
+  
+  return sheetId;
+}
+
+async function ensureAllRawTab(accessToken: string, spreadsheetId: string): Promise<number> {
+  return ensureRawTab(accessToken, spreadsheetId, ALL_RAW_TAB);
+}
+
+async function ensureRiepilogoTab(accessToken: string, spreadsheetId: string): Promise<void> {
+  const exists = await tabExists(accessToken, spreadsheetId, "Riepilogo");
+  if (exists) return;
+
+  const sheetId = await createTab(accessToken, spreadsheetId, "Riepilogo");
+
+  // KPI formulas working on ALL_RAW
+  const kpiData = [
+    ["📊 RIEPILOGO LEAD", "", "", ""],
+    ["", "", "", ""],
+    ["METRICHE GENERALI", "", "", ""],
+    ["Metrica", "Valore", "", ""],
+    ["Lead Totali", `=MAX(0,COUNTA('${ALL_RAW_TAB}'!A:A)-1)`, "", ""],
+    ["Lead Ultime 24h", `=COUNTIFS('${ALL_RAW_TAB}'!A2:A,">="&TEXT(NOW()-1,"yyyy-mm-dd hh:mm:ss"))`, "", ""],
+    ["Lead Ultimi 7 giorni", `=COUNTIFS('${ALL_RAW_TAB}'!A2:A,">="&TEXT(NOW()-7,"yyyy-mm-dd"))`, "", ""],
+    ["Lead Ultimi 30 giorni", `=COUNTIFS('${ALL_RAW_TAB}'!A2:A,">="&TEXT(NOW()-30,"yyyy-mm-dd"))`, "", ""],
+    ["", "", "", ""],
+    ["📈 LEAD PER FONTE", "", "", ""],
+    ["Fonte", "Conteggio", "", ""],
+    // Using QUERY for unique sources with counts
+    [`=IFERROR(QUERY('${ALL_RAW_TAB}'!C2:C,"SELECT C, COUNT(C) WHERE C<>'' GROUP BY C LABEL COUNT(C) 'Conteggio'",0),"Nessun dato")`, "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["🎯 LEAD PER CAMPAGNA", "", "", ""],
+    ["Campagna", "Conteggio", "", ""],
+    [`=IFERROR(QUERY('${ALL_RAW_TAB}'!J2:J,"SELECT J, COUNT(J) WHERE J<>'' GROUP BY J LABEL COUNT(J) 'Conteggio'",0),"Nessun dato")`, "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["📁 STATO ARCHIVIAZIONE", "", "", ""],
+    ["Stato", "Conteggio", "%", ""],
+    ["Archiviati", `=COUNTIF('${ALL_RAW_TAB}'!L:L,"true")`, `=IFERROR(ROUND(B28/B5*100,1)&"%","0%")`, ""],
+    ["Non Archiviati", `=COUNTIF('${ALL_RAW_TAB}'!L:L,"false")`, `=IFERROR(ROUND(B29/B5*100,1)&"%","0%")`, ""],
+  ];
+
+  await writeRange(accessToken, spreadsheetId, "Riepilogo!A1:D30", kpiData, "USER_ENTERED");
+
+  // Format Riepilogo
+  await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        requests: [{ addSheet: { properties: { title: "Riepilogo" } } }],
+        requests: [
+          // Bold title
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 },
+              cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 16 } } },
+              fields: "userEnteredFormat.textFormat",
+            },
+          },
+          // Bold section headers
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 2 },
+              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
+              fields: "userEnteredFormat(textFormat,backgroundColor)",
+            },
+          },
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 9, endRowIndex: 10, startColumnIndex: 0, endColumnIndex: 2 },
+              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
+              fields: "userEnteredFormat(textFormat,backgroundColor)",
+            },
+          },
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 17, endRowIndex: 18, startColumnIndex: 0, endColumnIndex: 2 },
+              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
+              fields: "userEnteredFormat(textFormat,backgroundColor)",
+            },
+          },
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 25, endRowIndex: 26, startColumnIndex: 0, endColumnIndex: 3 },
+              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
+              fields: "userEnteredFormat(textFormat,backgroundColor)",
+            },
+          },
+          // Auto-resize
+          {
+            autoResizeDimensions: {
+              dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 4 },
+            },
+          },
+        ],
       }),
-    }
-  );
-  const createResult = await createResponse.json();
-  const sheetId = createResult.replies?.[0]?.addSheet?.properties?.sheetId;
-
-  // Add KPI formulas
-  const kpiData = [
-    ["📊 RIEPILOGO LEAD", "", ""],
-    ["", "", ""],
-    ["Metrica", "Valore", ""],
-    ["Lead Totali", `=COUNTA('${rawTabName}'!A:A)-1`, ""],
-    ["Lead Ultime 24h", `=COUNTIF('${rawTabName}'!A:A,">="&(NOW()-1))`, ""],
-    ["Lead Ultimi 7 giorni", `=COUNTIF('${rawTabName}'!A:A,">="&(NOW()-7))`, ""],
-    ["Lead Ultimi 30 giorni", `=COUNTIF('${rawTabName}'!A:A,">="&(NOW()-30))`, ""],
-    ["", "", ""],
-    ["📈 PER FONTE", "", ""],
-    ["Fonte", "Conteggio", ""],
-    [`=UNIQUE(FILTER('${rawTabName}'!C2:C,'${rawTabName}'!C2:C<>""))`, `=COUNTIF('${rawTabName}'!C:C,A11)`, ""],
-    ["", "", ""],
-    ["🎯 PER CAMPAGNA", "", ""],
-    ["Campagna", "Conteggio", ""],
-    [`=UNIQUE(FILTER('${rawTabName}'!J2:J,'${rawTabName}'!J2:J<>""))`, `=COUNTIF('${rawTabName}'!J:J,A15)`, ""],
-    ["", "", ""],
-    ["📁 STATO", "", ""],
-    ["Archiviati", `=COUNTIF('${rawTabName}'!L:L,"true")`, ""],
-    ["Non Archiviati", `=COUNTIF('${rawTabName}'!L:L,"false")`, ""],
-    ["% Archiviati", `=IFERROR(B18/(B18+B19)*100,0)&"%"`, ""],
-  ];
-
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Riepilogo!A1:C20?valueInputOption=USER_ENTERED`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ values: kpiData }),
-    }
-  );
-
-  // Format Riepilogo
-  if (sheetId) {
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          requests: [
-            // Bold title
-            {
-              repeatCell: {
-                range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 },
-                cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } },
-                fields: "userEnteredFormat.textFormat",
-              },
-            },
-            // Bold section headers
-            {
-              repeatCell: {
-                range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 2 },
-                cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.85, green: 0.85, blue: 0.85 } } },
-                fields: "userEnteredFormat(textFormat,backgroundColor)",
-              },
-            },
-            // Auto-resize
-            {
-              autoResizeDimensions: {
-                dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 3 },
-              },
-            },
-          ],
-        }),
-      }
-    );
-  }
-}
-
-async function appendRow(
-  accessToken: string,
-  spreadsheetId: string,
-  tabName: string,
-  row: string[]
-): Promise<void> {
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName)}!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ values: [row] }),
     }
   );
 }
@@ -427,9 +356,11 @@ async function appendRow(
 function getSourceTabNames(sourceName: string | null): { raw: string; view: string } {
   const isMeta = sourceName?.toLowerCase().includes("meta");
   const baseName = isMeta ? "Meta" : (sourceName || "Generic");
+  // Clean tab name (remove special chars)
+  const cleanName = baseName.replace(/[^\w\s-]/g, "").substring(0, 50);
   return {
-    raw: `${baseName}_RAW`,
-    view: baseName,
+    raw: `${cleanName}_RAW`,
+    view: cleanName,
   };
 }
 
@@ -461,6 +392,27 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // IDEMPOTENCY CHECK: skip if already exported successfully
+    if (!force) {
+      const { data: existingLogs, error: checkError } = await supabaseAdmin
+        .from("sheets_export_logs")
+        .select("id, status")
+        .eq("lead_event_id", lead_event_id)
+        .eq("status", "success")
+        .limit(1);
+
+      console.log(`Idempotency check for ${lead_event_id}: found=${existingLogs?.length ?? 0}, error=${checkError?.message ?? 'none'}`);
+
+      if (existingLogs && existingLogs.length > 0) {
+        console.log(`Lead event ${lead_event_id} already exported successfully, skipping`);
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "already_exported" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Fetch lead event
     const { data: event, error: eventError } = await supabaseAdmin
       .from("lead_events")
       .select(`
@@ -479,12 +431,14 @@ Deno.serve(async (req: Request) => {
 
     const leadEvent = event as LeadEventRow;
 
+    // Get brand name
     const { data: brand } = await supabaseAdmin
       .from("brands")
       .select("name")
       .eq("id", leadEvent.brand_id)
       .single();
 
+    // Get contact info
     let contact: ContactInfo | null = null;
     let phone: PhoneInfo | null = null;
 
@@ -505,6 +459,7 @@ Deno.serve(async (req: Request) => {
       phone = phoneData as PhoneInfo | null;
     }
 
+    // Get Google credentials
     const serviceAccountKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
     const spreadsheetId = Deno.env.get("GOOGLE_SHEETS_FILE_ID");
 
@@ -525,27 +480,14 @@ Deno.serve(async (req: Request) => {
 
     const accessToken = await getAccessToken(decodedKey);
 
-    // Get tab names based on source
-    const { raw: rawTabName, view: viewTabName } = getSourceTabNames(leadEvent.source_name);
+    // Get source-specific tab names
+    const { raw: sourceRawTab, view: sourceViewTab } = getSourceTabNames(leadEvent.source_name);
 
-    // Ensure RAW tab exists (append-only)
-    const rawSheetId = await ensureRawTabExists(accessToken, spreadsheetId, rawTabName);
-
-    // Ensure View tab exists (with ARRAYFORMULA)
-    const viewSheetId = await ensureViewTabExists(accessToken, spreadsheetId, viewTabName, rawTabName);
-
-    // Apply layout to View tab (freeze, filter, formatting)
-    await applyTabLayout(accessToken, spreadsheetId, viewSheetId);
-
-    // Ensure Riepilogo tab exists with KPI formulas
-    await ensureRiepilogoTab(accessToken, spreadsheetId, rawTabName);
-
-    // Extract data from payload
+    // Build row data
     const payload = leadEvent.raw_payload || {};
     const message = String(payload.message || payload.messaggio || payload.notes || "");
     const campaignName = String(payload.campaign_name || payload.campagna || payload.utm_campaign || "");
 
-    // Build row for RAW tab
     const row = [
       leadEvent.received_at,
       brand?.name || "",
@@ -561,24 +503,61 @@ Deno.serve(async (req: Request) => {
       leadEvent.archived ? "true" : "false",
     ];
 
-    // Append to RAW tab (View tab auto-updates via formula)
-    await appendRow(accessToken, spreadsheetId, rawTabName, row);
+    // 1. Ensure ALL_RAW exists and append there (aggregate)
+    await ensureAllRawTab(accessToken, spreadsheetId);
+    await appendRow(accessToken, spreadsheetId, ALL_RAW_TAB, row);
+
+    // 2. Ensure source-specific RAW tab and append
+    await ensureRawTab(accessToken, spreadsheetId, sourceRawTab);
+    await appendRow(accessToken, spreadsheetId, sourceRawTab, row);
+
+    // 3. Ensure source-specific VIEW tab with ARRAYFORMULA + layout
+    const viewSheetId = await ensureViewTab(accessToken, spreadsheetId, sourceViewTab, sourceRawTab);
+
+    // 4. Ensure Riepilogo tab with KPIs (works on ALL_RAW)
+    await ensureRiepilogoTab(accessToken, spreadsheetId);
 
     // Log success
     await supabaseAdmin.from("sheets_export_logs").insert({
       lead_event_id: leadEvent.id,
       brand_id: leadEvent.brand_id,
       status: "success",
-      tab_name: rawTabName,
+      tab_name: sourceRawTab,
     });
 
     return new Response(
-      JSON.stringify({ success: true, raw_tab: rawTabName, view_tab: viewTabName }),
+      JSON.stringify({ 
+        success: true, 
+        all_raw_tab: ALL_RAW_TAB,
+        source_raw_tab: sourceRawTab, 
+        source_view_tab: sourceViewTab 
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Sheets export error:", error);
+    
+    // Try to log failure
+    try {
+      const body = await new Response(req.body).text();
+      const { lead_event_id } = JSON.parse(body || "{}");
+      if (lead_event_id) {
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        await supabaseAdmin.from("sheets_export_logs").insert({
+          lead_event_id,
+          brand_id: "00000000-0000-0000-0000-000000000000", // placeholder
+          status: "failed",
+          error: message,
+        });
+      }
+    } catch {
+      // Ignore logging errors
+    }
+
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
