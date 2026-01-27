@@ -357,7 +357,7 @@ export type Database = {
       }
       incoming_requests: {
         Row: {
-          brand_id: string
+          brand_id: string | null
           created_at: string
           error_message: string | null
           headers: Json | null
@@ -365,13 +365,13 @@ export type Database = {
           ip_address: string | null
           lead_event_id: string | null
           processed: boolean
-          raw_body: Json
+          raw_body: Json | null
           source_id: string | null
           status: Database["public"]["Enums"]["ingest_status"] | null
           user_agent: string | null
         }
         Insert: {
-          brand_id: string
+          brand_id?: string | null
           created_at?: string
           error_message?: string | null
           headers?: Json | null
@@ -379,13 +379,13 @@ export type Database = {
           ip_address?: string | null
           lead_event_id?: string | null
           processed?: boolean
-          raw_body: Json
+          raw_body?: Json | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["ingest_status"] | null
           user_agent?: string | null
         }
         Update: {
-          brand_id?: string
+          brand_id?: string | null
           created_at?: string
           error_message?: string | null
           headers?: Json | null
@@ -393,7 +393,7 @@ export type Database = {
           ip_address?: string | null
           lead_event_id?: string | null
           processed?: boolean
-          raw_body?: Json
+          raw_body?: Json | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["ingest_status"] | null
           user_agent?: string | null
