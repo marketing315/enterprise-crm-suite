@@ -1,135 +1,160 @@
-# Google Sheets Export (M9) - Level C
-
-Automatically append lead events to a Google Sheets file for real-time visibility and reporting.
+# Google Sheets Integration (M9) — Enterprise Architecture
 
 ## Overview
 
-When a new `lead_event` is created via inbound webhook, it is automatically appended to a Google Sheets file. The system uses an **Enterprise structure** with separate RAW (append-only) and VIEW (filtered) tabs.
+The Google Sheets integration provides **real-time, append-only synchronization** of lead events to a Google Spreadsheet. It is designed for C-level presentation with Italian headers, automated KPIs, and professional formatting.
 
-## File Structure
+## Architecture
 
-### Tabs
+### Multi-Tab Structure (Enterprise)
 
-| Tab Name | Description |
-|----------|-------------|
-| `Riepilogo` | Summary KPIs: lead totali, 24h/7d/30d, per fonte/campagna, % archiviati |
-| `ALL_RAW` | Aggregate append-only log of ALL leads (source of truth for Riepilogo) |
-| `Meta_RAW` | Append-only log for Meta/Facebook sources |
-| `Meta` | Filtered view with ARRAYFORMULA pointing to Meta_RAW |
-| `Generic_RAW` | Append-only log for generic webhook sources |
-| `Generic` | Filtered view with ARRAYFORMULA pointing to Generic_RAW |
-| `[SourceName]_RAW` | Auto-created RAW tab for each new source |
-| `[SourceName]` | Auto-created VIEW tab for each new source |
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Google Spreadsheet                        │
+├─────────────────────────────────────────────────────────────┤
+│  Riepilogo     │ KPI dashboard with SUMPRODUCT formulas     │
+│                │ (works on ALL_RAW with proper datetime)    │
+├─────────────────────────────────────────────────────────────┤
+│  ALL_RAW       │ Aggregate append-only log (all sources)    │
+├─────────────────────────────────────────────────────────────┤
+│  Meta_RAW      │ Source-specific append-only log            │
+│  Meta          │ VIEW with =ARRAYFORMULA (user-friendly)    │
+├─────────────────────────────────────────────────────────────┤
+│  Generic_RAW   │ Source-specific append-only log            │
+│  Generic       │ VIEW with =ARRAYFORMULA                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### Columns (Italian Headers)
+### Data Flow
 
-Each row in a source tab contains:
+1. **Inbound webhook** → creates `lead_event`
+2. **webhook-ingest** → calls `sheets-export` (internal, service-role auth)
+3. **sheets-export** → appends to `ALL_RAW` + `[Source]_RAW`
+4. **VIEW tabs** → auto-mirror RAW via `ARRAYFORMULA`
+5. **Riepilogo** → KPIs with proper ISO→datetime conversion
 
-| Column | Description |
-|--------|-------------|
-| `Timestamp` | When the lead was received (ISO 8601) |
-| `Brand` | Brand name |
-| `Fonte` | Source name (e.g., "Meta Campaign Q1") |
-| `Nome` | Contact first name |
-| `Cognome` | Contact last name |
-| `Telefono` | Primary phone number |
-| `Email` | Email address |
-| `Città` | City |
-| `Messaggio` | Message or notes from payload |
-| `Campagna` | Campaign identifier (if present) |
-| `Priorità AI` | AI-assigned priority (1-5, if processed) |
-| `Archiviato` | Whether the event is archived (true/false) |
+## Security
 
-### View Features (Level C)
+### Endpoint Protection
 
-- ✅ **Freeze**: First row frozen
-- ✅ **Filter**: Basic filter enabled on all columns
-- ✅ **Bold Header**: Header row bold with gray background
-- ✅ **Auto-resize**: Columns auto-sized
+The `sheets-export` function is **internal-only**:
 
-### Riepilogo KPIs
+```typescript
+// Only accepts:
+// 1. Service role: Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}
+// 2. Internal token: X-Internal-Token: ${SHEETS_INTERNAL_TOKEN}
+```
 
-| KPI | Formula Source |
-|-----|----------------|
-| Lead Totali | Count from ALL_RAW |
-| Lead Ultime 24h | COUNTIFS with date filter |
-| Lead Ultimi 7 giorni | COUNTIFS with date filter |
-| Lead Ultimi 30 giorni | COUNTIFS with date filter |
-| Lead per Fonte | QUERY grouping by Fonte |
-| Lead per Campagna | QUERY grouping by Campagna |
-| % Archiviati | COUNTIF true/false |
+**Never expose** this endpoint to public clients.
 
-## Idempotency (Race-Safe)
+### Batch Export (Admin Only)
 
-The system uses **DB-level unique constraint** for race-safe idempotency:
-
-1. On export request, insert `sheets_export_logs` with `status='processing'`
-2. If unique constraint violation → check existing status:
-   - `success` → return `{ skipped: true, reason: "already_exported" }`
-   - `processing` → return `{ skipped: true, reason: "in_progress" }`
-   - `failed` → return `{ skipped: true, reason: "failed" }`
-3. On successful append → update status to `success`
-4. On error → update status to `failed` with error message
-
-Use `force=true` to bypass idempotency check (for retries).
-
-## Retry Behavior
-
-- **On failure**: 
-  - Error logged to `sheets_export_logs` table with `status='failed'`
-  - Does not block inbound webhook processing (fire-and-forget with 5s timeout)
-  - Can be retried manually with `force=true`
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_SHEETS_ENABLED` | `true` to enable export |
-| `GOOGLE_SHEETS_FILE_ID` | The Sheets file ID |
-| `GOOGLE_SERVICE_ACCOUNT_KEY` | Base64-encoded service account JSON |
-
-### Service Account Setup
-
-1. Create a Google Cloud project
-2. Enable the Google Sheets API
-3. Create a service account with Sheets access
-4. Download the JSON key
-5. Base64-encode and add as secret: `GOOGLE_SERVICE_ACCOUNT_KEY`
-6. Share the Sheets file with the service account email as **Editor**
-
-## API
-
-### Manual trigger (for testing)
+The `sheets-batch-export` function requires **service role** authentication:
 
 ```bash
-curl -X POST \
-  "https://qmqcjtmcxfqahhubpaea.supabase.co/functions/v1/sheets-export" \
+curl -X POST "${SUPABASE_URL}/functions/v1/sheets-batch-export" \
+  -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_SERVICE_KEY" \
   -d '{
-    "lead_event_id": "uuid",
+    "brand_id": "uuid",
+    "from": "2026-01-01",
+    "to": "2026-01-31",
+    "only_failed": true,
+    "limit": 100,
     "force": false
   }'
 ```
 
-Response:
+## KPI Formulas (Robust Datetime)
+
+The Riepilogo tab uses **SUMPRODUCT with proper ISO timestamp conversion**:
+
+```
+// ISO timestamp: 2026-01-27T14:30:00.000Z
+// Conversion: DATEVALUE(LEFT(A2,10)) + TIMEVALUE(MID(A2,12,8))
+
+// Lead ultime 24h (robust):
+=SUMPRODUCT(
+  (ALL_RAW!A2:A<>"")*
+  ((DATEVALUE(LEFT(ALL_RAW!A2:A,10))+IFERROR(TIMEVALUE(MID(ALL_RAW!A2:A,12,8)),0))>=NOW()-1)
+)
+```
+
+## Headers (Italian)
+
+| Column | Header IT     | Description                    |
+|--------|---------------|--------------------------------|
+| A      | Timestamp     | ISO datetime received_at       |
+| B      | Brand         | Brand name                     |
+| C      | Fonte         | Source name (Meta, Generic...) |
+| D      | Nome          | First name                     |
+| E      | Cognome       | Last name                      |
+| F      | Telefono      | Normalized phone               |
+| G      | Email         | Email address                  |
+| H      | Città         | City                           |
+| I      | Messaggio     | Message/notes from payload     |
+| J      | Campagna      | Campaign name                  |
+| K      | Priorità AI   | AI priority score              |
+| L      | Archiviato    | Archived status (true/false)   |
+
+## Idempotency
+
+Race-safe idempotency via DB constraint:
+
+1. `INSERT sheets_export_logs (status='processing')`
+2. If conflict (23505) → already exported → return `{skipped: true}`
+3. Append to Google Sheets
+4. `UPDATE status='success'`
+
+## Batch Operations
+
+### Re-export Failed
+
 ```json
 {
-  "success": true,
-  "all_raw_tab": "ALL_RAW",
-  "source_raw_tab": "Meta_RAW",
-  "source_view_tab": "Meta"
+  "brand_id": "uuid",
+  "only_failed": true,
+  "limit": 100
 }
 ```
 
-## Feature Flags
+### Export Date Range
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `GOOGLE_SHEETS_ENABLED` | `false` | Enable/disable Sheets export |
-| `MYSQL_EXPORT_ENABLED` | `false` | Enable/disable MySQL export (future) |
+```json
+{
+  "brand_id": "uuid",
+  "from": "2026-01-01",
+  "to": "2026-01-31"
+}
+```
+
+### Force Re-export (bypass idempotency)
+
+```json
+{
+  "brand_id": "uuid",
+  "force": true,
+  "limit": 50
+}
+```
+
+## Environment Variables
+
+| Variable                    | Required | Description                          |
+|-----------------------------|----------|--------------------------------------|
+| GOOGLE_SHEETS_ENABLED       | Yes      | Feature flag (true/false)            |
+| GOOGLE_SERVICE_ACCOUNT_KEY  | Yes      | Base64 or JSON service account       |
+| GOOGLE_SHEETS_FILE_ID       | Yes      | Spreadsheet ID                       |
+| SHEETS_INTERNAL_TOKEN       | Optional | Alternative to service role auth     |
+
+## Tab Layout (Applied on Creation)
+
+- **Frozen row 1** (header)
+- **Basic filter** on columns A-L
+- **Bold header** with gray background
+- **Auto-resize** columns
+
+Layout is applied **only once** when a tab is created (not on every export).
 
 ## Cost
 
@@ -151,4 +176,4 @@ Response:
 ### Rate limiting
 
 - Google Sheets API has quotas (100 requests/100 seconds per user)
-- The worker batches writes to stay within limits
+- The batch export function adds 200ms delay between requests
