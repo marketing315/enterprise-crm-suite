@@ -111,10 +111,15 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
     const sourceId = pathParts[pathParts.length - 1];
+    
+    // Generate request ID for structured logging
+    const requestId = crypto.randomUUID();
+    const logContext = { request_id: requestId, source_id: sourceId };
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!sourceId || sourceId === "webhook-ingest" || !uuidRegex.test(sourceId)) {
+      console.log(JSON.stringify({ ...logContext, outcome: "invalid_uuid", status: 400 }));
       return new Response(
         JSON.stringify({ error: "Valid source ID (UUID) required in URL path" }),
         {
@@ -126,6 +131,7 @@ Deno.serve(async (req: Request) => {
 
     const apiKey = req.headers.get("x-api-key");
     if (!apiKey) {
+      console.log(JSON.stringify({ ...logContext, outcome: "missing_api_key", status: 401 }));
       return new Response(JSON.stringify({ error: "Missing X-API-Key header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -146,6 +152,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (sourceError || !source) {
+      console.log(JSON.stringify({ ...logContext, outcome: "source_not_found", status: 404 }));
       return new Response(JSON.stringify({ error: "Unknown webhook source" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -154,6 +161,7 @@ Deno.serve(async (req: Request) => {
 
     // Check if source is active - return 409 if inactive
     if (!source.is_active) {
+      console.log(JSON.stringify({ ...logContext, outcome: "inactive_source", status: 409 }));
       return new Response(
         JSON.stringify({ error: "inactive_source", message: "Webhook source is not active" }),
         {
@@ -166,6 +174,7 @@ Deno.serve(async (req: Request) => {
     // Validate API key
     const isValidKey = await verifyApiKey(apiKey, source.api_key_hash);
     if (!isValidKey) {
+      console.log(JSON.stringify({ ...logContext, outcome: "invalid_api_key", status: 401 }));
       return new Response(JSON.stringify({ error: "Invalid API key" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -182,6 +191,7 @@ Deno.serve(async (req: Request) => {
     );
 
     if (rateLimitError || !hasToken) {
+      console.log(JSON.stringify({ ...logContext, outcome: "rate_limited", status: 429 }));
       return new Response(
         JSON.stringify({ error: "Rate limit exceeded", retry_after: 60 }),
         {
@@ -391,6 +401,15 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Log success
+    console.log(JSON.stringify({
+      ...logContext,
+      outcome: "success",
+      status: 200,
+      contact_id: contactId,
+      lead_event_id: leadEvent?.id,
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -404,7 +423,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    console.error("Webhook processing error:", JSON.stringify({ error: String(error) }));
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       {
