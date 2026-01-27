@@ -169,7 +169,7 @@ test.describe("Inbound Webhooks - Error Cases", () => {
   test("Invalid JSON returns 400 and creates audit record", async ({ request }) => {
     const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-    const startedAt = new Date().toISOString();
+    const startedAt = new Date(Date.now() - 2000).toISOString(); // -2s buffer for CI clock skew
 
     // Send invalid JSON as raw text
     const response = await request.post(endpoint, {
@@ -217,7 +217,7 @@ test.describe("Inbound Webhooks - Error Cases", () => {
   test("Invalid UUID returns 400 and creates audit record", async ({ request }) => {
     const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/not-a-valid-uuid`;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-    const startedAt = new Date().toISOString();
+    const startedAt = new Date(Date.now() - 2000).toISOString(); // -2s buffer for CI clock skew
 
     const response = await request.post(endpoint, {
       headers: {
