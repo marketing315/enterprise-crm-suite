@@ -14,6 +14,9 @@ export interface WebhookMetrics24h {
   sending_count: number;
   avg_attempts: number;
   avg_latency_ms: number | null;
+  p50_latency_ms: number | null;
+  p95_latency_ms: number | null;
+  p99_latency_ms: number | null;
   computed_at: string;
 }
 

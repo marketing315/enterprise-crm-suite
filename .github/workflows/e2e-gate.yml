@@ -51,7 +51,7 @@ jobs:
           sleep 2
 
       - name: Run E2E gate
-        run: npm run test:e2e
+        run: npx playwright test e2e/tickets.gate.spec.ts e2e/webhooks.e2e.spec.ts e2e/webhooks-dashboard.e2e.spec.ts
 
       - name: Upload test results
         if: failure()

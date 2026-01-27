@@ -122,15 +122,30 @@ export default function AdminWebhooksDashboard() {
               subtitle={`${metrics.failed_count} falliti`}
             />
             <MetricCard
-              title="Avg Latency"
-              value={metrics.avg_latency_ms != null ? `${metrics.avg_latency_ms}ms` : "N/A"}
+              title="Latency (ms)"
+              value={
+                <div className="space-y-0.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">P50:</span>
+                    <span className="font-medium">{metrics.p50_latency_ms ?? "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">P95:</span>
+                    <span className="font-medium">{metrics.p95_latency_ms ?? "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">P99:</span>
+                    <span className="font-medium">{metrics.p99_latency_ms ?? "N/A"}</span>
+                  </div>
+                </div>
+              }
               icon={Timer}
               variant={
-                metrics.avg_latency_ms == null ? "default" :
-                metrics.avg_latency_ms <= 500 ? "success" :
-                metrics.avg_latency_ms <= 2000 ? "warning" : "danger"
+                metrics.p95_latency_ms == null ? "default" :
+                metrics.p95_latency_ms <= 500 ? "success" :
+                metrics.p95_latency_ms <= 2000 ? "warning" : "danger"
               }
-              subtitle="tempo medio risposta"
+              subtitle={`avg: ${metrics.avg_latency_ms ?? "N/A"}ms`}
             />
             <MetricCard
               title="Queue Depth"
