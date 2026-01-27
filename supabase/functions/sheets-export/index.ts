@@ -304,16 +304,20 @@ async function ensureRiepilogoTab(
 
   const sheetId = await createTab(accessToken, spreadsheetId, "Riepilogo");
 
-  // KPI formulas working on ALL_RAW
+  // KPI formulas working on ALL_RAW with proper ISO timestamp conversion
+  // Helper formula to convert ISO timestamp (2026-01-27T12:30:00Z) to Sheets datetime
+  const timestampConversion = `DATEVALUE(LEFT(A2,10))+TIMEVALUE(MID(A2,12,8))`;
+  
   const kpiData = [
     ["📊 RIEPILOGO LEAD", "", "", ""],
     ["", "", "", ""],
     ["METRICHE GENERALI", "", "", ""],
     ["Metrica", "Valore", "", ""],
     ["Lead Totali", `=MAX(0,COUNTA('${ALL_RAW_TAB}'!A:A)-1)`, "", ""],
-    ["Lead Ultime 24h", `=COUNTIFS('${ALL_RAW_TAB}'!A2:A,">="&TEXT(NOW()-1,"yyyy-mm-dd hh:mm:ss"))`, "", ""],
-    ["Lead Ultimi 7 giorni", `=COUNTIFS('${ALL_RAW_TAB}'!A2:A,">="&TEXT(NOW()-7,"yyyy-mm-dd"))`, "", ""],
-    ["Lead Ultimi 30 giorni", `=COUNTIFS('${ALL_RAW_TAB}'!A2:A,">="&TEXT(NOW()-30,"yyyy-mm-dd"))`, "", ""],
+    // Robust datetime KPIs using proper ISO→Sheets conversion
+    ["Lead Ultime 24h", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10))+IFERROR(TIMEVALUE(MID('${ALL_RAW_TAB}'!A2:A,12,8)),0))>=NOW()-1))`, "", ""],
+    ["Lead Ultimi 7 giorni", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10)))>=TODAY()-7))`, "", ""],
+    ["Lead Ultimi 30 giorni", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10)))>=TODAY()-30))`, "", ""],
     ["", "", "", ""],
     ["📈 LEAD PER FONTE", "", "", ""],
     ["Fonte", "Conteggio", "", ""],
@@ -433,6 +437,23 @@ function getSourceTabNames(
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // SECURITY: Only allow internal calls (service role or internal token)
+  const authHeader = req.headers.get("Authorization");
+  const internalToken = req.headers.get("X-Internal-Token");
+  const expectedInternalToken = Deno.env.get("SHEETS_INTERNAL_TOKEN");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  
+  const isServiceRole = authHeader === `Bearer ${serviceRoleKey}`;
+  const isInternalToken = expectedInternalToken && internalToken === expectedInternalToken;
+  
+  if (!isServiceRole && !isInternalToken) {
+    console.error("Unauthorized sheets-export call - missing valid auth");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized - internal only" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const sheetsEnabled = Deno.env.get("GOOGLE_SHEETS_ENABLED") === "true";
