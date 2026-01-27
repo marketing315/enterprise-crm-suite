@@ -130,10 +130,10 @@ export default function Dashboard() {
   const currentRole = userRoles.find(r => r.brand_id === currentBrand?.id);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Benvenuto in {currentBrand?.name}
           {currentRole && (
             <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
@@ -144,54 +144,54 @@ export default function Dashboard() {
       </div>
 
       {/* Main KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lead Oggi</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Lead Oggi</CardTitle>
+            <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{leadsToday}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold">{leadsToday}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">
               {leadsWeek} negli ultimi 7 giorni
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Deal Aperti</CardTitle>
-            <Kanban className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Deal Aperti</CardTitle>
+            <Kanban className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openDeals}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold">{openDeals}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">
               Pipeline attiva
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Contatti</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Contatti</CardTitle>
+            <Users className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalContacts}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold">{totalContacts}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">
               Totale nel database
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Aperti</CardTitle>
-            <Ticket className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Ticket Aperti</CardTitle>
+            <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openTickets}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold">{openTickets}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">
               Da gestire
             </p>
           </CardContent>
@@ -216,7 +216,7 @@ export default function Dashboard() {
       )}
 
       {/* Status Summary */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Stato Sistema</CardTitle>

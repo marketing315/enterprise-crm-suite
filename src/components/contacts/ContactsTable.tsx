@@ -55,17 +55,17 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
 
   return (
     <>
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Telefono</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Città</TableHead>
-              <TableHead>Stato</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
+              <TableHead className="min-w-[120px]">Nome</TableHead>
+              <TableHead className="min-w-[120px]">Telefono</TableHead>
+              <TableHead className="min-w-[150px]">Email</TableHead>
+              <TableHead className="w-[100px]">Città</TableHead>
+              <TableHead className="w-[90px]">Stato</TableHead>
+              <TableHead className="w-[90px]">Data</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

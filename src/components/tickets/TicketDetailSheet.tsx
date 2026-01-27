@@ -123,10 +123,10 @@ export function TicketDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[600px] sm:max-w-[600px] flex flex-col">
+      <SheetContent className="w-full sm:w-[500px] sm:max-w-[600px] flex flex-col p-4 sm:p-6">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-3">
-            <span>{ticket.title}</span>
+          <SheetTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
+            <span className="truncate">{ticket.title}</span>
             <TicketPriorityBadge priority={ticket.priority} />
           </SheetTitle>
           {/* Last updated badge */}

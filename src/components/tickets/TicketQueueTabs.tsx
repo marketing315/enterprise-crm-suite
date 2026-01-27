@@ -25,17 +25,18 @@ export function TicketQueueTabs({
 }: TicketQueueTabsProps) {
   return (
     <Tabs value={value} onValueChange={(v) => onChange(v as QueueTab)} data-testid="tickets-tabs">
-      <TabsList className="h-auto p-1 gap-1">
+      <TabsList className="h-auto p-1 gap-1 flex-wrap w-full sm:w-auto">
         {showMyQueue && (
           <TabsTrigger
             value="my_queue"
             className={cn(
-              "gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              "gap-1.5 md:gap-2 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
             )}
             data-testid="tab-my-queue"
           >
-            <User className="h-4 w-4" />
-            My Queue
+            <User className="h-3.5 w-3.5 md:h-4 md:w-4" />
+            <span className="hidden sm:inline">My Queue</span>
+            <span className="sm:hidden">Miei</span>
             <Badge
               variant={value === "my_queue" ? "secondary" : "outline"}
               className="ml-1 h-5 px-1.5 text-xs"
@@ -47,12 +48,13 @@ export function TicketQueueTabs({
         <TabsTrigger
           value="unassigned"
           className={cn(
-            "gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            "gap-1.5 md:gap-2 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
           )}
           data-testid="tab-unassigned"
         >
-          <Users className="h-4 w-4" />
-          Non assegnati
+          <Users className="h-3.5 w-3.5 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Non assegnati</span>
+          <span className="sm:hidden">Liberi</span>
           <Badge
             variant={value === "unassigned" ? "secondary" : "outline"}
             className={cn(
@@ -66,12 +68,13 @@ export function TicketQueueTabs({
         <TabsTrigger
           value="sla_breached"
           className={cn(
-            "gap-2 data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground"
+            "gap-1.5 md:gap-2 text-xs md:text-sm data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground flex-1 sm:flex-none"
           )}
           data-testid="tab-sla-breached"
         >
-          <AlertTriangle className="h-4 w-4" />
-          Scaduti SLA
+          <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Scaduti SLA</span>
+          <span className="sm:hidden">SLA</span>
           <Badge
             variant={value === "sla_breached" ? "secondary" : "outline"}
             className={cn(
@@ -84,10 +87,10 @@ export function TicketQueueTabs({
         </TabsTrigger>
         <TabsTrigger
           value="all"
-          className="gap-2"
+          className="gap-1.5 md:gap-2 text-xs md:text-sm flex-1 sm:flex-none"
           data-testid="tab-all"
         >
-          <List className="h-4 w-4" />
+          <List className="h-3.5 w-3.5 md:h-4 md:w-4" />
           Tutti
           <Badge
             variant={value === "all" ? "secondary" : "outline"}

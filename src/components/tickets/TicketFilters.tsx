@@ -109,12 +109,12 @@ export function TicketFilters({
   }, [localValue, onSearchChange]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {/* Search bar with debounce indicator */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Cerca per nome, email, telefono, titolo... (Invio = cerca)"
+          placeholder="Cerca..."
           value={localValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -127,8 +127,8 @@ export function TicketFilters({
       </div>
 
       {/* Filter row */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap">
+        <div className="hidden sm:flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Filtri:</span>
         </div>
@@ -143,9 +143,9 @@ export function TicketFilters({
         {/* Assignee filter - hidden when using queue tabs */}
         {!hideAssigneeFilter && (
           <div className="flex items-center gap-2">
-            <UserCircle className="h-4 w-4 text-muted-foreground" />
+            <UserCircle className="h-4 w-4 text-muted-foreground hidden sm:block" />
             <Select value={assigneeFilter} onValueChange={onAssigneeChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Assegnatario" />
               </SelectTrigger>
               <SelectContent>
@@ -162,11 +162,12 @@ export function TicketFilters({
         )}
 
         {/* Assignment type filter (Auto vs Manual) */}
-        <div className="flex items-center gap-2 border-l pl-4">
+        <div className="flex items-center gap-1.5 sm:gap-2 sm:border-l sm:pl-4 overflow-x-auto">
           <Button
             variant={assignmentTypeFilter === "all" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => onAssignmentTypeChange("all")}
+            className="text-xs sm:text-sm"
           >
             Tutti
           </Button>
@@ -174,19 +175,19 @@ export function TicketFilters({
             variant={assignmentTypeFilter === "auto" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => onAssignmentTypeChange("auto")}
-            className="gap-1.5"
+            className="gap-1 sm:gap-1.5 text-xs sm:text-sm"
           >
-            <Bot className="h-3.5 w-3.5" />
-            Auto ({autoCount})
+            <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            <span className="hidden sm:inline">Auto</span> ({autoCount})
           </Button>
           <Button
             variant={assignmentTypeFilter === "manual" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => onAssignmentTypeChange("manual")}
-            className="gap-1.5"
+            className="gap-1 sm:gap-1.5 text-xs sm:text-sm"
           >
-            <Hand className="h-3.5 w-3.5" />
-            Manuali ({manualCount})
+            <Hand className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            <span className="hidden sm:inline">Manuali</span> ({manualCount})
           </Button>
         </div>
       </div>

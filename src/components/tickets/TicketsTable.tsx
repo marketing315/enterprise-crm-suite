@@ -90,8 +90,8 @@ export function TicketsTable({
   const colSpan = (showCheckboxes ? 1 : 0) + 7 + (onTakeOwnership ? 1 : 0);
 
   return (
-    <div className="rounded-md border">
-      <Table data-testid="tickets-table">
+    <div className="rounded-md border overflow-x-auto">
+      <Table data-testid="tickets-table" className="min-w-[800px]">
         <TableHeader>
           <TableRow>
             {showCheckboxes && (
@@ -104,14 +104,14 @@ export function TicketsTable({
                 />
               </TableHead>
             )}
-            <TableHead className="w-[100px]">Stato</TableHead>
-            <TableHead className="w-[60px]">Priorità</TableHead>
-            <TableHead>Contatto</TableHead>
-            <TableHead>Titolo</TableHead>
-            <TableHead>Categoria</TableHead>
-            <TableHead>Assegnato a</TableHead>
-            <TableHead className="w-[120px]">Aging</TableHead>
-            {onTakeOwnership && <TableHead className="w-[100px]">Azione</TableHead>}
+            <TableHead className="w-[90px]">Stato</TableHead>
+            <TableHead className="w-[50px]">P.</TableHead>
+            <TableHead className="min-w-[120px]">Contatto</TableHead>
+            <TableHead className="min-w-[150px]">Titolo</TableHead>
+            <TableHead className="w-[100px]">Categoria</TableHead>
+            <TableHead className="min-w-[120px]">Assegnato</TableHead>
+            <TableHead className="w-[110px]">Aging</TableHead>
+            {onTakeOwnership && <TableHead className="w-[80px]">Azione</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
