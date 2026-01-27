@@ -134,7 +134,7 @@ export default function AdminWebhooksDashboard() {
                 metrics.p95_latency_ms <= 500 ? "success" :
                 metrics.p95_latency_ms <= 2000 ? "warning" : "danger"
               }
-              subtitle={`avg: ${metrics.avg_latency_ms ?? "N/A"}ms`}
+              subtitle={`avg: ${metrics.avg_latency_ms != null ? metrics.avg_latency_ms + "ms" : "N/A"}`}
             />
             <MetricCard
               title="Queue Depth"
