@@ -19,6 +19,7 @@ const TEST_BRAND = process.env.E2E_BRAND_NAME || "Demo Brand";
 // UUIDs are valid hex: a=10, so aaaaaaaa-... is valid
 const E2E_SOURCE_ACTIVE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa001";
 const E2E_SOURCE_INACTIVE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa002";
+const E2E_SOURCE_RATELIMITED_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa003";
 const E2E_API_KEY = "e2e-test-api-key-12345";
 
 test.describe("Inbound Webhooks - Error Cases", () => {
@@ -117,6 +118,52 @@ test.describe("Inbound Webhooks - Error Cases", () => {
     expect(response.status()).toBe(409);
     const body = await response.json();
     expect(body.error).toBe("inactive_source");
+  });
+
+  test("Rate-limited source returns 429 with Retry-After header", async ({ request }) => {
+    // Source 003 is seeded with 0 tokens and 1 req/min limit
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_RATELIMITED_ID}`;
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": E2E_API_KEY,
+      },
+      data: {
+        telefono: "+393339999999",
+        nome: "Rate",
+        cognome: "Limited",
+      },
+    });
+
+    expect(response.status()).toBe(429);
+    const body = await response.json();
+    expect(body.error).toBe("Rate limit exceeded");
+    expect(body.retry_after).toBe(60);
+    
+    // Verify Retry-After header is present
+    const retryAfter = response.headers()["retry-after"];
+    expect(retryAfter).toBe("60");
+  });
+
+  test("Missing phone returns 400", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": E2E_API_KEY,
+      },
+      data: {
+        nome: "NoPhone",
+        cognome: "Test",
+        email: "nophone@test.com",
+      },
+    });
+
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("Phone number is required");
   });
 });
 
