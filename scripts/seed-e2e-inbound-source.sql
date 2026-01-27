@@ -6,7 +6,7 @@ DELETE FROM webhook_sources WHERE name = 'E2E Test Meta Source';
 
 -- Create test source with known API key hash
 -- API Key: e2e-test-api-key-12345
--- SHA-256 hash: 7c222fb2927d828af22f592134e8932480637c0d6b66e61c9e0caa8af48b62a8
+-- SHA-256 hash: e8acc62fa327e65a8c3b2faa19ca2e712246175e2a2698df9583e7e61f4ee2fc
 INSERT INTO webhook_sources (
   id,
   brand_id,
@@ -22,7 +22,7 @@ SELECT
   b.id,
   'E2E Test Meta Source',
   'Test source for E2E inbound webhook tests',
-  '7c222fb2927d828af22f592134e8932480637c0d6b66e61c9e0caa8af48b62a8',
+  'e8acc62fa327e65a8c3b2faa19ca2e712246175e2a2698df9583e7e61f4ee2fc',
   100,
   true,
   '{"phone": "telefono", "first_name": "nome", "last_name": "cognome"}'::jsonb
@@ -31,7 +31,7 @@ WHERE b.name ILIKE '%' || COALESCE(current_setting('app.e2e_brand_name', true), 
 LIMIT 1
 ON CONFLICT (id) DO UPDATE SET
   is_active = true,
-  api_key_hash = '7c222fb2927d828af22f592134e8932480637c0d6b66e61c9e0caa8af48b62a8';
+  api_key_hash = 'e8acc62fa327e65a8c3b2faa19ca2e712246175e2a2698df9583e7e61f4ee2fc';
 
 -- Also create rate limit bucket for this source
 INSERT INTO rate_limit_buckets (source_id, tokens, max_tokens, refill_rate)
