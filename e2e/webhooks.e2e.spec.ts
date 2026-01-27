@@ -5,17 +5,17 @@ import { test, expect } from "./fixtures/auth";
  * 
  * Prerequisites:
  * - Test user with admin role on at least one brand
- * - Test credentials in environment: TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD
- * - For CI: mock webhook receiver running on MOCK_WEBHOOK_URL
+ * - Test credentials in environment: E2E_EMAIL, E2E_PASSWORD, E2E_BRAND_NAME
+ * - For CI: mock webhook receiver running on E2E_WEBHOOK_URL (HTTPS required)
  */
 
-const TEST_EMAIL = process.env.E2E_EMAIL || process.env.TEST_ADMIN_EMAIL || "admin@example.com";
-const TEST_PASSWORD = process.env.E2E_PASSWORD || process.env.TEST_ADMIN_PASSWORD || "password123";
+const TEST_EMAIL = process.env.E2E_EMAIL || "admin@example.com";
+const TEST_PASSWORD = process.env.E2E_PASSWORD || "password123";
 const TEST_BRAND = process.env.E2E_BRAND_NAME || "Demo Brand";
 
-// Use mock server in CI, httpbin locally
-const WEBHOOK_URL = process.env.MOCK_WEBHOOK_URL || 
-  (process.env.CI ? "http://127.0.0.1:5055/webhook" : "https://httpbin.org/post");
+// HTTPS required - use env vars for CI mock server
+const WEBHOOK_URL = process.env.E2E_WEBHOOK_URL || "https://httpbin.org/post";
+const WEBHOOK_FAIL_URL = process.env.E2E_WEBHOOK_FAIL_URL || "https://httpbin.org/status/500";
 
 test.describe("Webhook Settings", () => {
   test.beforeEach(async ({ page, login, selectBrandIfNeeded }) => {
