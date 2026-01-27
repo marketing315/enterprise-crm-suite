@@ -42,6 +42,7 @@ import {
   Inbox,
   Headphones,
   TrendingUp,
+  Webhook,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 
@@ -60,6 +61,7 @@ const adminMenuItems = [
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
   { icon: Headphones, label: 'KPI Call Center', path: '/admin/callcenter-kpi' },
   { icon: TrendingUp, label: 'Trend Ticket', path: '/admin/ticket-trend' },
+  { icon: Webhook, label: 'Webhook Monitor', path: '/admin/webhooks' },
 ];
 
 export function MainLayout() {
