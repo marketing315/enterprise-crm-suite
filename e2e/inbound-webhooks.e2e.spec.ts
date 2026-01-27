@@ -23,7 +23,8 @@ const E2E_API_KEY = "e2e-test-api-key-12345";
 
 test.describe("Inbound Webhooks - Error Cases", () => {
   test("Invalid source UUID returns 404", async ({ request }) => {
-    const fakeSourceId = "00000000-0000-0000-0000-000000000000";
+    // Use crypto.randomUUID() to guarantee no collision with real sources
+    const fakeSourceId = crypto.randomUUID();
     const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${fakeSourceId}`;
 
     const response = await request.post(endpoint, {
@@ -62,7 +63,8 @@ test.describe("Inbound Webhooks - Error Cases", () => {
   });
 
   test("Missing API key returns 401", async ({ request }) => {
-    const fakeSourceId = "00000000-0000-0000-0000-000000000001";
+    // Use random UUID - we test 401 before source lookup completes
+    const fakeSourceId = crypto.randomUUID();
     const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${fakeSourceId}`;
 
     const response = await request.post(endpoint, {
