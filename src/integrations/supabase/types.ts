@@ -734,7 +734,7 @@ export type Database = {
           {
             foreignKeyName: "sheets_export_logs_lead_event_id_fkey"
             columns: ["lead_event_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "lead_events"
             referencedColumns: ["id"]
           },

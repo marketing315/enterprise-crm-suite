@@ -30,6 +30,15 @@ interface PhoneInfo {
   phone_normalized: string;
 }
 
+interface SheetProperties {
+  sheetId: number;
+  title: string;
+}
+
+interface SheetInfo {
+  sheets: { properties: SheetProperties }[];
+}
+
 // Italian headers for C-level presentation
 const HEADERS_ITA = [
   "Timestamp",
@@ -106,25 +115,39 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
   return tokenData.access_token;
 }
 
-async function getSheetInfo(accessToken: string, spreadsheetId: string): Promise<{
-  sheets: { properties: { sheetId: number; title: string } }[];
-}> {
-  const response = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  return response.json();
-}
-
-async function tabExists(accessToken: string, spreadsheetId: string, title: string): Promise<boolean> {
-  const info = await getSheetInfo(accessToken, spreadsheetId);
-  return info.sheets?.some((s) => s.properties.title === title) ?? false;
-}
-
-async function getSheetIdByTitle(accessToken: string, spreadsheetId: string, title: string): Promise<number | null> {
-  const info = await getSheetInfo(accessToken, spreadsheetId);
-  const sheet = info.sheets?.find((s) => s.properties.title === title);
-  return sheet?.properties.sheetId ?? null;
+// Cached sheet info to minimize API calls
+class SheetInfoCache {
+  cachedInfo: SheetInfo | null = null;
+  
+  async get(accessToken: string, spreadsheetId: string): Promise<SheetInfo> {
+    if (this.cachedInfo) {
+      return this.cachedInfo;
+    }
+    
+    const response = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    this.cachedInfo = await response.json();
+    return this.cachedInfo!;
+  }
+  
+  invalidate(): void {
+    this.cachedInfo = null;
+  }
+  
+  getExistingTabNames(): string[] {
+    return this.cachedInfo?.sheets?.map(s => s.properties.title) || [];
+  }
+  
+  tabExists(title: string): boolean {
+    return this.cachedInfo?.sheets?.some((s) => s.properties.title === title) ?? false;
+  }
+  
+  getSheetId(title: string): number | null {
+    const sheet = this.cachedInfo?.sheets?.find((s) => s.properties.title === title);
+    return sheet?.properties.sheetId ?? null;
+  }
 }
 
 async function createTab(accessToken: string, spreadsheetId: string, title: string): Promise<number> {
@@ -214,28 +237,37 @@ async function applyTabLayout(accessToken: string, spreadsheetId: string, sheetI
   );
 }
 
-async function ensureRawTab(accessToken: string, spreadsheetId: string, rawTabName: string): Promise<number> {
-  const exists = await tabExists(accessToken, spreadsheetId, rawTabName);
-  if (exists) {
-    const sheetId = await getSheetIdByTitle(accessToken, spreadsheetId, rawTabName);
-    return sheetId ?? 0;
+async function ensureRawTab(
+  accessToken: string,
+  spreadsheetId: string,
+  rawTabName: string,
+  cache: SheetInfoCache
+): Promise<{ sheetId: number; created: boolean }> {
+  await cache.get(accessToken, spreadsheetId);
+  
+  if (cache.tabExists(rawTabName)) {
+    const sheetId = cache.getSheetId(rawTabName);
+    return { sheetId: sheetId ?? 0, created: false };
   }
 
   const sheetId = await createTab(accessToken, spreadsheetId, rawTabName);
   await writeRange(accessToken, spreadsheetId, `${rawTabName}!A1:L1`, [HEADERS_ITA]);
-  return sheetId;
+  cache.invalidate(); // Invalidate cache after creating new tab
+  return { sheetId, created: true };
 }
 
 async function ensureViewTab(
   accessToken: string,
   spreadsheetId: string,
   viewTabName: string,
-  rawTabName: string
-): Promise<number> {
-  const exists = await tabExists(accessToken, spreadsheetId, viewTabName);
-  if (exists) {
-    const sheetId = await getSheetIdByTitle(accessToken, spreadsheetId, viewTabName);
-    return sheetId ?? 0;
+  rawTabName: string,
+  cache: SheetInfoCache
+): Promise<{ sheetId: number; created: boolean }> {
+  await cache.get(accessToken, spreadsheetId);
+  
+  if (cache.tabExists(viewTabName)) {
+    const sheetId = cache.getSheetId(viewTabName);
+    return { sheetId: sheetId ?? 0, created: false };
   }
 
   const sheetId = await createTab(accessToken, spreadsheetId, viewTabName);
@@ -244,19 +276,31 @@ async function ensureViewTab(
   const formula = `=ARRAYFORMULA('${rawTabName}'!A:L)`;
   await writeRange(accessToken, spreadsheetId, `${viewTabName}!A1`, [[formula]], "USER_ENTERED");
   
-  // Apply layout (freeze, filter, format)
+  // Apply layout ONLY on creation (freeze, filter, format)
   await applyTabLayout(accessToken, spreadsheetId, sheetId);
   
-  return sheetId;
+  cache.invalidate(); // Invalidate cache after creating new tab
+  return { sheetId, created: true };
 }
 
-async function ensureAllRawTab(accessToken: string, spreadsheetId: string): Promise<number> {
-  return ensureRawTab(accessToken, spreadsheetId, ALL_RAW_TAB);
+async function ensureAllRawTab(
+  accessToken: string,
+  spreadsheetId: string,
+  cache: SheetInfoCache
+): Promise<{ sheetId: number; created: boolean }> {
+  return ensureRawTab(accessToken, spreadsheetId, ALL_RAW_TAB, cache);
 }
 
-async function ensureRiepilogoTab(accessToken: string, spreadsheetId: string): Promise<void> {
-  const exists = await tabExists(accessToken, spreadsheetId, "Riepilogo");
-  if (exists) return;
+async function ensureRiepilogoTab(
+  accessToken: string,
+  spreadsheetId: string,
+  cache: SheetInfoCache
+): Promise<boolean> {
+  await cache.get(accessToken, spreadsheetId);
+  
+  if (cache.tabExists("Riepilogo")) {
+    return false; // Already exists
+  }
 
   const sheetId = await createTab(accessToken, spreadsheetId, "Riepilogo");
 
@@ -351,17 +395,39 @@ async function ensureRiepilogoTab(accessToken: string, spreadsheetId: string): P
       }),
     }
   );
+
+  cache.invalidate();
+  return true; // Created
 }
 
-function getSourceTabNames(sourceName: string | null): { raw: string; view: string } {
+// Collision-safe tab naming with hash suffix if needed
+function getSourceTabNames(
+  sourceName: string | null,
+  existingTabs: string[]
+): { raw: string; view: string } {
   const isMeta = sourceName?.toLowerCase().includes("meta");
   const baseName = isMeta ? "Meta" : (sourceName || "Generic");
-  // Clean tab name (remove special chars)
+  // Clean tab name (remove special chars, limit to 50 chars)
   const cleanName = baseName.replace(/[^\w\s-]/g, "").substring(0, 50);
-  return {
-    raw: `${cleanName}_RAW`,
-    view: cleanName,
-  };
+  
+  let rawName = `${cleanName}_RAW`;
+  let viewName = cleanName;
+  
+  // Check for collision: if tab exists but is a different source, add hash suffix
+  const rawExists = existingTabs.includes(rawName);
+  const viewExists = existingTabs.includes(viewName);
+  
+  // If both exist, we assume they are for the same source (no collision)
+  // If only one exists, might be a collision - add short hash
+  if ((rawExists && !viewExists) || (!rawExists && viewExists)) {
+    const hash = sourceName ? 
+      Array.from(sourceName).reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0).toString(16).slice(-4) :
+      Date.now().toString(16).slice(-4);
+    rawName = `${cleanName}_${hash}_RAW`;
+    viewName = `${cleanName}_${hash}`;
+  }
+  
+  return { raw: rawName, view: viewName };
 }
 
 Deno.serve(async (req: Request) => {
@@ -377,38 +443,78 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // FIX: Consume body ONCE at the start to avoid stream consumption issues in catch
+  let bodyText = "";
+  let payload: { lead_event_id?: string; force?: boolean } = {};
+  
   try {
-    const { lead_event_id, force = false } = await req.json();
-
-    if (!lead_event_id) {
-      return new Response(
-        JSON.stringify({ error: "lead_event_id required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    bodyText = await req.text();
+    payload = JSON.parse(bodyText || "{}");
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "Invalid JSON body" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+  }
 
-    // IDEMPOTENCY CHECK: skip if already exported successfully
+  const { lead_event_id, force = false } = payload;
+
+  if (!lead_event_id) {
+    return new Response(
+      JSON.stringify({ error: "lead_event_id required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  try {
+    // RACE-SAFE IDEMPOTENCY: Insert 'processing' status first
+    // If conflict (unique constraint), another request is already handling this
     if (!force) {
-      const { data: existingLogs, error: checkError } = await supabaseAdmin
+      const { error: insertError } = await supabaseAdmin
         .from("sheets_export_logs")
-        .select("id, status")
-        .eq("lead_event_id", lead_event_id)
-        .eq("status", "success")
-        .limit(1);
+        .insert({
+          lead_event_id,
+          brand_id: "00000000-0000-0000-0000-000000000000", // Placeholder, will update on success
+          status: "processing",
+        });
 
-      console.log(`Idempotency check for ${lead_event_id}: found=${existingLogs?.length ?? 0}, error=${checkError?.message ?? 'none'}`);
+      if (insertError) {
+        // Check if it's a unique constraint violation (already exported or in progress)
+        if (insertError.code === "23505") {
+          // Check if it was successful or still processing
+          const { data: existingLog } = await supabaseAdmin
+            .from("sheets_export_logs")
+            .select("status")
+            .eq("lead_event_id", lead_event_id)
+            .single();
 
-      if (existingLogs && existingLogs.length > 0) {
-        console.log(`Lead event ${lead_event_id} already exported successfully, skipping`);
-        return new Response(
-          JSON.stringify({ success: true, skipped: true, reason: "already_exported" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+          if (existingLog?.status === "success") {
+            console.log(`Lead event ${lead_event_id} already exported successfully, skipping`);
+            return new Response(
+              JSON.stringify({ success: true, skipped: true, reason: "already_exported" }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } else if (existingLog?.status === "processing") {
+            console.log(`Lead event ${lead_event_id} is being processed by another request`);
+            return new Response(
+              JSON.stringify({ success: true, skipped: true, reason: "in_progress" }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          // If status is 'failed', we could retry - but for now just skip
+          console.log(`Lead event ${lead_event_id} has existing log with status: ${existingLog?.status}`);
+          return new Response(
+            JSON.stringify({ success: true, skipped: true, reason: existingLog?.status }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        // Other error, log and continue
+        console.error("Insert processing log error:", insertError);
       }
     }
 
@@ -423,6 +529,12 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (eventError || !event) {
+      // Update log to failed
+      await supabaseAdmin
+        .from("sheets_export_logs")
+        .update({ status: "failed", error: "Lead event not found" })
+        .eq("lead_event_id", lead_event_id);
+        
       return new Response(
         JSON.stringify({ error: "Lead event not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -465,6 +577,11 @@ Deno.serve(async (req: Request) => {
 
     if (!serviceAccountKey || !spreadsheetId) {
       console.error("Missing Google Sheets configuration");
+      await supabaseAdmin
+        .from("sheets_export_logs")
+        .update({ status: "failed", error: "Sheets not configured" })
+        .eq("lead_event_id", lead_event_id);
+        
       return new Response(
         JSON.stringify({ error: "Sheets not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -479,14 +596,21 @@ Deno.serve(async (req: Request) => {
     }
 
     const accessToken = await getAccessToken(decodedKey);
+    
+    // Create cache instance for this request
+    const cache = new SheetInfoCache();
+    
+    // Pre-fetch sheet info once
+    await cache.get(accessToken, spreadsheetId);
+    const existingTabs = cache.getExistingTabNames();
 
-    // Get source-specific tab names
-    const { raw: sourceRawTab, view: sourceViewTab } = getSourceTabNames(leadEvent.source_name);
+    // Get source-specific tab names (collision-safe)
+    const { raw: sourceRawTab, view: sourceViewTab } = getSourceTabNames(leadEvent.source_name, existingTabs);
 
     // Build row data
-    const payload = leadEvent.raw_payload || {};
-    const message = String(payload.message || payload.messaggio || payload.notes || "");
-    const campaignName = String(payload.campaign_name || payload.campagna || payload.utm_campaign || "");
+    const rawPayload = leadEvent.raw_payload || {};
+    const message = String(rawPayload.message || rawPayload.messaggio || rawPayload.notes || "");
+    const campaignName = String(rawPayload.campaign_name || rawPayload.campagna || rawPayload.utm_campaign || "");
 
     const row = [
       leadEvent.received_at,
@@ -504,26 +628,28 @@ Deno.serve(async (req: Request) => {
     ];
 
     // 1. Ensure ALL_RAW exists and append there (aggregate)
-    await ensureAllRawTab(accessToken, spreadsheetId);
+    await ensureAllRawTab(accessToken, spreadsheetId, cache);
     await appendRow(accessToken, spreadsheetId, ALL_RAW_TAB, row);
 
     // 2. Ensure source-specific RAW tab and append
-    await ensureRawTab(accessToken, spreadsheetId, sourceRawTab);
+    await ensureRawTab(accessToken, spreadsheetId, sourceRawTab, cache);
     await appendRow(accessToken, spreadsheetId, sourceRawTab, row);
 
-    // 3. Ensure source-specific VIEW tab with ARRAYFORMULA + layout
-    const viewSheetId = await ensureViewTab(accessToken, spreadsheetId, sourceViewTab, sourceRawTab);
+    // 3. Ensure source-specific VIEW tab with ARRAYFORMULA + layout (layout ONLY on create)
+    await ensureViewTab(accessToken, spreadsheetId, sourceViewTab, sourceRawTab, cache);
 
-    // 4. Ensure Riepilogo tab with KPIs (works on ALL_RAW)
-    await ensureRiepilogoTab(accessToken, spreadsheetId);
+    // 4. Ensure Riepilogo tab with KPIs (works on ALL_RAW) - only created once
+    await ensureRiepilogoTab(accessToken, spreadsheetId, cache);
 
-    // Log success
-    await supabaseAdmin.from("sheets_export_logs").insert({
-      lead_event_id: leadEvent.id,
-      brand_id: leadEvent.brand_id,
-      status: "success",
-      tab_name: sourceRawTab,
-    });
+    // Update log to success
+    await supabaseAdmin
+      .from("sheets_export_logs")
+      .update({ 
+        status: "success",
+        brand_id: leadEvent.brand_id,
+        tab_name: sourceRawTab,
+      })
+      .eq("lead_event_id", lead_event_id);
 
     return new Response(
       JSON.stringify({ 
@@ -538,24 +664,19 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Sheets export error:", error);
     
-    // Try to log failure
-    try {
-      const body = await new Response(req.body).text();
-      const { lead_event_id } = JSON.parse(body || "{}");
-      if (lead_event_id) {
-        const supabaseAdmin = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
-        await supabaseAdmin.from("sheets_export_logs").insert({
-          lead_event_id,
-          brand_id: "00000000-0000-0000-0000-000000000000", // placeholder
-          status: "failed",
-          error: message,
-        });
+    // Update log to failed (using the already-parsed lead_event_id)
+    if (lead_event_id) {
+      try {
+        await supabaseAdmin
+          .from("sheets_export_logs")
+          .update({ 
+            status: "failed", 
+            error: message,
+          })
+          .eq("lead_event_id", lead_event_id);
+      } catch {
+        // Ignore logging errors
       }
-    } catch {
-      // Ignore logging errors
     }
 
     return new Response(
