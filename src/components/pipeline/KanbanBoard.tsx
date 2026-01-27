@@ -71,7 +71,21 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     if (!over) return;
 
     const dealId = active.id as string;
-    const newStageId = over.id as string;
+    const overId = over.id as string;
+
+    // Determine if we dropped on a stage or a deal
+    // If overId is a stage ID, use it directly; otherwise find the stage of the target deal
+    const isStageId = stages?.some((s) => s.id === overId);
+    let newStageId: string;
+    
+    if (isStageId) {
+      newStageId = overId;
+    } else {
+      // Dropped on another deal - find its stage
+      const targetDeal = deals?.find((d) => d.id === overId);
+      if (!targetDeal?.current_stage_id) return;
+      newStageId = targetDeal.current_stage_id;
+    }
 
     // Check if dropping on a different stage
     const deal = deals?.find((d) => d.id === dealId);
@@ -85,7 +99,8 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
           const stageName = stages?.find((s) => s.id === newStageId)?.name;
           toast.success(`Deal spostato in "${stageName}"`);
         },
-        onError: () => {
+        onError: (error) => {
+          console.error("Stage update error:", error);
           toast.error("Errore nello spostamento del deal");
         },
       }
