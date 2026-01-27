@@ -1,12 +1,12 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
+import { GoogleSheetsSettings } from "@/components/settings/GoogleSheetsSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const { hasRole } = useAuth();
@@ -58,6 +58,12 @@ export default function Settings() {
               Webhook
             </TabsTrigger>
           )}
+          {isAdmin && (
+            <TabsTrigger value="sheets" className="gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              Google Sheets
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="ticketing" className="space-y-4">
@@ -71,6 +77,12 @@ export default function Settings() {
         {isAdmin && (
           <TabsContent value="webhooks" className="space-y-4">
             <WebhookSettings />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="sheets" className="space-y-4">
+            <GoogleSheetsSettings />
           </TabsContent>
         )}
       </Tabs>
