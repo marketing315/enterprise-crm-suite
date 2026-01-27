@@ -16,8 +16,9 @@ const TEST_PASSWORD = process.env.E2E_PASSWORD || "password123";
 const TEST_BRAND = process.env.E2E_BRAND_NAME || "Demo Brand";
 
 // Seeded test sources (from seed-e2e-inbound-source.sql)
-const E2E_SOURCE_ACTIVE_ID = "e2e00000-0000-0000-0000-000000000001";
-const E2E_SOURCE_INACTIVE_ID = "e2e00000-0000-0000-0000-000000000002";
+// UUIDs are valid hex: a=10, so aaaaaaaa-... is valid
+const E2E_SOURCE_ACTIVE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa001";
+const E2E_SOURCE_INACTIVE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa002";
 const E2E_API_KEY = "e2e-test-api-key-12345";
 
 test.describe("Inbound Webhooks - Error Cases", () => {
