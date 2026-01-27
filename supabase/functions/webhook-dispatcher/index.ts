@@ -74,10 +74,12 @@ async function processDelivery(
 
     // Webhook not found or inactive
     if (!webhook || !webhook.is_active) {
+      const durationMs = Date.now() - startTime;
       await supabase.rpc("record_delivery_result", {
         p_delivery_id: delivery.id,
         p_success: false,
         p_error: webhook ? "webhook_inactive" : "webhook_not_found",
+        p_duration_ms: durationMs,
       });
       return { success: false, error: "webhook_inactive", durationMs: Date.now() - startTime };
     }
@@ -116,12 +118,14 @@ async function processDelivery(
     const isSuccess = response.status >= 200 && response.status < 300;
 
     // Record result
+    const durationMs = Date.now() - startTime;
     await supabase.rpc("record_delivery_result", {
       p_delivery_id: delivery.id,
       p_success: isSuccess,
       p_response_status: response.status,
       p_response_body: responseBody.slice(0, 10000),
       p_error: isSuccess ? null : `HTTP ${response.status}`,
+      p_duration_ms: durationMs,
     });
 
     return {
@@ -139,6 +143,7 @@ async function processDelivery(
       p_delivery_id: delivery.id,
       p_success: false,
       p_error: errorMessage,
+      p_duration_ms: durationMs,
     });
 
     return { success: false, error: errorMessage, durationMs };

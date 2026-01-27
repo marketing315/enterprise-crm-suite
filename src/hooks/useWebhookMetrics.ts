@@ -13,6 +13,7 @@ export interface WebhookMetrics24h {
   pending_count: number;
   sending_count: number;
   avg_attempts: number;
+  avg_latency_ms: number | null;
   computed_at: string;
 }
 

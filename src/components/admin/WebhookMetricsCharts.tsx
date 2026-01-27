@@ -80,7 +80,7 @@ export function WebhookMetricsCharts({
   }));
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2" data-testid="webhooks-dashboard-charts">
+    <div className="grid gap-4 lg:grid-cols-2" data-testid="webhooks-dashboard-timeseries">
       {/* Deliveries Over Time */}
       <Card className="lg:col-span-2">
         <CardHeader>
