@@ -1536,6 +1536,23 @@ export type Database = {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
       }
+      webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
+      webhook_timeseries_24h: {
+        Args: { p_brand_id: string; p_bucket_minutes?: number }
+        Returns: Json
+      }
+      webhook_top_errors_24h: {
+        Args: { p_brand_id: string; p_limit?: number }
+        Returns: Json
+      }
+      webhook_top_event_types_24h: {
+        Args: { p_brand_id: string; p_limit?: number }
+        Returns: Json
+      }
+      webhook_top_webhooks_24h: {
+        Args: { p_brand_id: string; p_limit?: number }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "ceo" | "callcenter" | "sales"
