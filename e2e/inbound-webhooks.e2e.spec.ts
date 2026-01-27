@@ -15,8 +15,9 @@ const TEST_EMAIL = process.env.E2E_EMAIL || "admin@example.com";
 const TEST_PASSWORD = process.env.E2E_PASSWORD || "password123";
 const TEST_BRAND = process.env.E2E_BRAND_NAME || "Demo Brand";
 
-// Seeded test source (from seed-e2e-inbound-source.sql)
-const E2E_SOURCE_ID = "e2e00000-0000-0000-0000-000000000001";
+// Seeded test sources (from seed-e2e-inbound-source.sql)
+const E2E_SOURCE_ACTIVE_ID = "e2e00000-0000-0000-0000-000000000001";
+const E2E_SOURCE_INACTIVE_ID = "e2e00000-0000-0000-0000-000000000002";
 const E2E_API_KEY = "e2e-test-api-key-12345";
 
 test.describe("Inbound Webhooks - Error Cases", () => {
@@ -58,22 +59,6 @@ test.describe("Inbound Webhooks - Error Cases", () => {
     const body = await response.json();
     expect(body.error).toContain("Valid source ID");
   });
-    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/not-a-uuid`;
-
-    const response = await request.post(endpoint, {
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": "any-key",
-      },
-      data: {
-        phone: "+393331234567",
-      },
-    });
-
-    expect(response.status()).toBe(400);
-    const body = await response.json();
-    expect(body.error).toContain("Valid source ID");
-  });
 
   test("Missing API key returns 401", async ({ request }) => {
     const fakeSourceId = "00000000-0000-0000-0000-000000000001";
@@ -94,7 +79,7 @@ test.describe("Inbound Webhooks - Error Cases", () => {
   });
 
   test("Wrong API key returns 401", async ({ request }) => {
-    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ID}`;
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
 
     const response = await request.post(endpoint, {
       headers: {
@@ -110,11 +95,31 @@ test.describe("Inbound Webhooks - Error Cases", () => {
     const body = await response.json();
     expect(body.error).toBe("Invalid API key");
   });
+
+  test("Inactive source returns 409", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_INACTIVE_ID}`;
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": E2E_API_KEY,
+      },
+      data: {
+        telefono: "+393331234567",
+        nome: "Test",
+        cognome: "Inactive",
+      },
+    });
+
+    expect(response.status()).toBe(409);
+    const body = await response.json();
+    expect(body.error).toBe("inactive_source");
+  });
 });
 
 test.describe("Inbound Webhooks - Happy Path", () => {
   test("Valid webhook creates incoming_request and lead_event", async ({ request }) => {
-    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ID}`;
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
     const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
 
     const response = await request.post(endpoint, {
@@ -140,7 +145,7 @@ test.describe("Inbound Webhooks - Happy Path", () => {
   });
 
   test("Retry with same payload creates new lead_event (append-only)", async ({ request }) => {
-    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ID}`;
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
     const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
 
     const payload = {
@@ -180,7 +185,7 @@ test.describe("Inbound Webhooks - Happy Path", () => {
   });
 
   test("Phone normalization strips country prefix", async ({ request }) => {
-    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ID}`;
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
     
     // Send with full international format
     const response = await request.post(endpoint, {
