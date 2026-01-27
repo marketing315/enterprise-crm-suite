@@ -124,20 +124,9 @@ export default function AdminWebhooksDashboard() {
             <MetricCard
               title="Latency (ms)"
               value={
-                <div className="space-y-0.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">P50:</span>
-                    <span className="font-medium">{metrics.p50_latency_ms ?? "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">P95:</span>
-                    <span className="font-medium">{metrics.p95_latency_ms ?? "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">P99:</span>
-                    <span className="font-medium">{metrics.p99_latency_ms ?? "N/A"}</span>
-                  </div>
-                </div>
+                metrics.p50_latency_ms != null || metrics.p95_latency_ms != null || metrics.p99_latency_ms != null
+                  ? `P50 ${metrics.p50_latency_ms ?? "N/A"} · P95 ${metrics.p95_latency_ms ?? "N/A"} · P99 ${metrics.p99_latency_ms ?? "N/A"}`
+                  : "N/A"
               }
               icon={Timer}
               variant={
