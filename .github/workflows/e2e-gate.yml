@@ -15,6 +15,7 @@ jobs:
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
       E2E_BRAND_NAME: ${{ secrets.E2E_BRAND_NAME }}
       PW_BASE_URL: ${{ secrets.PW_BASE_URL }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       E2E_WEBHOOK_URL: https://127.0.0.1:5055/webhook
       E2E_WEBHOOK_FAIL_URL: https://127.0.0.1:5055/webhook/fail
       MOCK_WEBHOOK_PORT: 5055
@@ -35,6 +36,9 @@ jobs:
       - name: Seed SLA breach ticket
         run: psql "$DATABASE_URL" -f scripts/seed-e2e-sla-breach.sql
 
+      - name: Seed inbound webhook source
+        run: psql "$DATABASE_URL" -f scripts/seed-e2e-inbound-source.sql
+
       - name: Generate SSL certificate for mock receiver
         run: |
           mkdir -p scripts/certs
@@ -53,8 +57,8 @@ jobs:
       - name: Run unit tests
         run: npx vitest run
 
-      - name: Run E2E gate
-        run: npx playwright test e2e/tickets.gate.spec.ts e2e/webhooks.e2e.spec.ts e2e/webhooks-dashboard.e2e.spec.ts
+      - name: Run E2E tests
+        run: npx playwright test e2e/tickets.gate.spec.ts e2e/webhooks.e2e.spec.ts e2e/webhooks-dashboard.e2e.spec.ts e2e/inbound-webhooks.e2e.spec.ts
 
       - name: Upload test results
         if: failure()
