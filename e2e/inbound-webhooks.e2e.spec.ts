@@ -58,6 +58,22 @@ test.describe("Inbound Webhooks - Error Cases", () => {
     const body = await response.json();
     expect(body.error).toContain("Valid source ID");
   });
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/not-a-uuid`;
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": "any-key",
+      },
+      data: {
+        phone: "+393331234567",
+      },
+    });
+
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body.error).toContain("Valid source ID");
+  });
 
   test("Missing API key returns 401", async ({ request }) => {
     const fakeSourceId = "00000000-0000-0000-0000-000000000001";
@@ -75,6 +91,24 @@ test.describe("Inbound Webhooks - Error Cases", () => {
     expect(response.status()).toBe(401);
     const body = await response.json();
     expect(body.error).toBe("Missing X-API-Key header");
+  });
+
+  test("Wrong API key returns 401", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ID}`;
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": "wrong-api-key",
+      },
+      data: {
+        telefono: "+393331234567",
+      },
+    });
+
+    expect(response.status()).toBe(401);
+    const body = await response.json();
+    expect(body.error).toBe("Invalid API key");
   });
 });
 
