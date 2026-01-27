@@ -367,6 +367,8 @@ export type Database = {
           processed: boolean
           raw_body: Json
           source_id: string | null
+          status: Database["public"]["Enums"]["ingest_status"] | null
+          user_agent: string | null
         }
         Insert: {
           brand_id: string
@@ -379,6 +381,8 @@ export type Database = {
           processed?: boolean
           raw_body: Json
           source_id?: string | null
+          status?: Database["public"]["Enums"]["ingest_status"] | null
+          user_agent?: string | null
         }
         Update: {
           brand_id?: string
@@ -391,6 +395,8 @@ export type Database = {
           processed?: boolean
           raw_body?: Json
           source_id?: string | null
+          status?: Database["public"]["Enums"]["ingest_status"] | null
+          user_agent?: string | null
         }
         Relationships: [
           {
@@ -1625,6 +1631,7 @@ export type Database = {
         | "unqualified"
         | "archived"
       deal_status: "open" | "won" | "lost" | "closed" | "reopened_for_support"
+      ingest_status: "pending" | "success" | "rejected" | "failed"
       lead_source_type: "webhook" | "manual" | "import" | "api"
       lead_type: "trial" | "info" | "support" | "generic"
       tag_scope:
@@ -1791,6 +1798,7 @@ export const Constants = {
       assigned_by: ["ai", "user", "rule"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
       deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],
+      ingest_status: ["pending", "success", "rejected", "failed"],
       lead_source_type: ["webhook", "manual", "import", "api"],
       lead_type: ["trial", "info", "support", "generic"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
