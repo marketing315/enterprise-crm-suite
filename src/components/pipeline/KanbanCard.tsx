@@ -226,3 +226,5 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
     );
   }
 );
+
+KanbanCard.displayName = "KanbanCard";

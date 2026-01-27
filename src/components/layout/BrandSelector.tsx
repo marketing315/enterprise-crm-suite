@@ -60,3 +60,5 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
     );
   }
 );
+
+BrandSelector.displayName = "BrandSelector";
