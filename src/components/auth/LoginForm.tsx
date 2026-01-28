@@ -8,11 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-interface LoginFormProps {
-  onToggleMode: () => void;
-}
-
-export function LoginForm({ onToggleMode }: LoginFormProps) {
+export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -72,7 +68,7 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
             />
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
+        <CardFooter>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
@@ -83,16 +79,6 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
               'Accedi'
             )}
           </Button>
-          <p className="text-sm text-muted-foreground text-center">
-            Non hai un account?{' '}
-            <button
-              type="button"
-              onClick={onToggleMode}
-              className="text-primary hover:underline font-medium"
-            >
-              Registrati
-            </button>
-          </p>
         </CardFooter>
       </form>
     </Card>
