@@ -7,14 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Popover,
   PopoverContent,
@@ -35,6 +28,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Inbox,
+  LineChart,
 } from "lucide-react";
 
 function formatMinutesDisplay(minutes: number): string {
@@ -63,10 +57,10 @@ export default function AdminTicketTrend() {
 
   if (!hasBrandSelected) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Seleziona un Brand</h2>
-        <p className="text-muted-foreground max-w-md">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <Building2 className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground mb-4" />
+        <h2 className="text-xl md:text-2xl font-bold mb-2">Seleziona un Brand</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
           Utilizza il selettore nella sidebar per scegliere il brand.
         </p>
       </div>
@@ -79,27 +73,34 @@ export default function AdminTicketTrend() {
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Trend Ticket</h1>
-          <p className="text-muted-foreground">
-            Analisi e trend del sistema ticketing per {currentBrand?.name}
-          </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary/10">
+            <LineChart className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg md:text-2xl font-bold">Trend Ticket</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              Analisi per {currentBrand?.name}
+            </p>
+          </div>
         </div>
 
+        {/* Controls */}
         <div className="flex flex-wrap gap-2 items-center">
-          {/* Date Range Picker */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="justify-start text-left font-normal">
+              <Button variant="outline" size="sm" className="justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(dateRange.from, "dd MMM", { locale: it })} -{" "}
-                {format(dateRange.to, "dd MMM yyyy", { locale: it })}
+                <span className="text-sm">
+                  {format(dateRange.from, "dd MMM", { locale: it })} -{" "}
+                  {format(dateRange.to, "dd MMM yy", { locale: it })}
+                </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="range"
                 selected={{ from: dateRange.from, to: dateRange.to }}
@@ -111,20 +112,20 @@ export default function AdminTicketTrend() {
                     });
                   }
                 }}
-                numberOfMonths={2}
+                numberOfMonths={1}
                 locale={it}
                 className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
 
-          {/* Quick filters */}
           <div className="flex gap-1">
             {[7, 30, 90].map((days) => (
               <Button
                 key={days}
                 variant="ghost"
                 size="sm"
+                className="px-2"
                 onClick={() =>
                   setDateRange({
                     from: startOfDay(subDays(new Date(), days)),
@@ -141,76 +142,76 @@ export default function AdminTicketTrend() {
 
       {/* Summary Cards */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-[100px]" />
+            <Skeleton key={i} className="h-[90px]" />
           ))}
         </div>
       ) : summary ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Creati</CardTitle>
-              <Inbox className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium">Creati</CardTitle>
+              <Inbox className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.total_created}</div>
-              <p className="text-xs text-muted-foreground">nel periodo</p>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold">{summary.total_created}</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground">nel periodo</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Risolti</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium">Risolti</CardTitle>
+              <CheckCircle2 className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.total_resolved}</div>
-              <p className="text-xs text-muted-foreground">
-                {resolutionRate}% tasso risoluzione
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold">{summary.total_resolved}</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground">
+                {resolutionRate}% tasso
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Backlog</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium">Backlog</CardTitle>
+              <Clock className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.current_backlog}</div>
-              <p className="text-xs text-muted-foreground">ticket aperti ora</p>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold">{summary.current_backlog}</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground">aperti ora</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Non Assegnati</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium">Non Assegnati</CardTitle>
+              <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
               <div className={cn(
-                "text-2xl font-bold",
+                "text-xl md:text-2xl font-bold",
                 summary.current_unassigned > 0 && "text-destructive"
               )}>
                 {summary.current_unassigned}
               </div>
-              <p className="text-xs text-muted-foreground">da assegnare</p>
+              <p className="text-[10px] md:text-xs text-muted-foreground">da assegnare</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Flusso</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium">Flusso</CardTitle>
               {summary.total_resolved >= summary.total_created ? (
-                <TrendingUp className="h-4 w-4 text-chart-3" />
+                <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-chart-3" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-destructive" />
+                <TrendingDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-destructive" />
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
               <div className={cn(
-                "text-2xl font-bold",
+                "text-xl md:text-2xl font-bold",
                 summary.total_resolved >= summary.total_created
                   ? "text-chart-3"
                   : "text-destructive"
@@ -218,7 +219,7 @@ export default function AdminTicketTrend() {
                 {summary.total_resolved >= summary.total_created ? "+" : ""}
                 {summary.total_resolved - summary.total_created}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] md:text-xs text-muted-foreground">
                 risolti - creati
               </p>
             </CardContent>
@@ -229,8 +230,6 @@ export default function AdminTicketTrend() {
       {/* Charts */}
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-[300px] lg:col-span-2" />
-          <Skeleton className="h-[300px]" />
           <Skeleton className="h-[250px] lg:col-span-2" />
           <Skeleton className="h-[250px]" />
         </div>
@@ -240,62 +239,63 @@ export default function AdminTicketTrend() {
 
       {/* Operator Breakdown Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+        <CardHeader className="p-4 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Users className="h-4 w-4 md:h-5 md:w-5" />
             Performance Operatori
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 md:p-6 md:pt-0">
           {isLoading ? (
-            <Skeleton className="h-[200px]" />
+            <Skeleton className="h-[150px] m-4" />
           ) : data?.operator_breakdown && data.operator_breakdown.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Operatore</TableHead>
-                  <TableHead className="text-right">Assegnati</TableHead>
-                  <TableHead className="text-right">Risolti</TableHead>
-                  <TableHead className="text-right">Tempo Medio</TableHead>
-                  <TableHead className="text-right">Backlog</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.operator_breakdown.map((op) => (
-                  <TableRow key={op.user_id}>
-                    <TableCell>
-                      <div className="font-medium">
-                        {op.full_name || op.email}
-                      </div>
-                      {op.full_name && (
-                        <div className="text-xs text-muted-foreground">
-                          {op.email}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {op.assigned_count}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {op.resolved_count}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMinutesDisplay(op.avg_resolution_minutes)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant={op.current_backlog > 5 ? "destructive" : "secondary"}
-                      >
-                        {op.current_backlog}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <ScrollArea className="w-full">
+              <div className="min-w-[500px]">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 text-xs md:text-sm font-medium">Operatore</th>
+                      <th className="text-right p-3 text-xs md:text-sm font-medium">Assegnati</th>
+                      <th className="text-right p-3 text-xs md:text-sm font-medium">Risolti</th>
+                      <th className="text-right p-3 text-xs md:text-sm font-medium">Tempo Medio</th>
+                      <th className="text-right p-3 text-xs md:text-sm font-medium">Backlog</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.operator_breakdown.map((op) => (
+                      <tr key={op.user_id} className="border-t">
+                        <td className="p-3">
+                          <div className="font-medium text-sm truncate max-w-[150px]">
+                            {op.full_name || op.email}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right tabular-nums text-sm">
+                          {op.assigned_count}
+                        </td>
+                        <td className="p-3 text-right tabular-nums text-sm">
+                          {op.resolved_count}
+                        </td>
+                        <td className="p-3 text-right tabular-nums text-sm">
+                          {formatMinutesDisplay(op.avg_resolution_minutes)}
+                        </td>
+                        <td className="p-3 text-right">
+                          <Badge
+                            variant={op.current_backlog > 5 ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {op.current_backlog}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           ) : (
-            <p className="text-center text-muted-foreground py-8">
-              Nessun operatore trovato per questo brand
+            <p className="text-center text-muted-foreground py-8 text-sm">
+              Nessun operatore trovato
             </p>
           )}
         </CardContent>
