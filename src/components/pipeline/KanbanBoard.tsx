@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { usePipelineStages, useDeals, useUpdateDealStage } from "@/hooks/usePipeline";
 import { KanbanColumn } from "./KanbanColumn";
-import { KanbanCard } from "./KanbanCard";
+import { KanbanCardPreview } from "./KanbanCardPreview";
 import { MobileKanbanView } from "./MobileKanbanView";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
@@ -166,7 +166,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
       </div>
 
       <DragOverlay>
-        {activeDeal && <KanbanCard deal={activeDeal} />}
+        {activeDeal && <KanbanCardPreview deal={activeDeal} />}
       </DragOverlay>
     </DndContext>
   );
