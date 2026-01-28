@@ -67,7 +67,7 @@ export function MobileKanbanView({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden w-full max-w-full">
       {/* Stage Tabs - Scrollable horizontal tabs */}
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
         <div className="overflow-x-auto scrollbar-hide">
@@ -169,8 +169,8 @@ export function MobileKanbanView({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <ScrollArea className="h-full">
-          <div className="p-3 space-y-3">
+        <ScrollArea className="h-full w-full">
+          <div className="p-3 space-y-3 max-w-full overflow-hidden">
             {activeDeals.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div 
