@@ -68,7 +68,7 @@ export default function AdminAIMetrics() {
     : 0;
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
