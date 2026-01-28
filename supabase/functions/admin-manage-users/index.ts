@@ -247,6 +247,21 @@ serve(async (req: Request) => {
       case "add_role": {
         const { user_id, brand_id, role } = body;
 
+        // Check if user already has a role for this brand
+        const { data: existingRole } = await adminClient
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", user_id)
+          .eq("brand_id", brand_id)
+          .maybeSingle();
+
+        if (existingRole) {
+          return new Response(JSON.stringify({ error: "User already has a role for this brand. Update the existing role instead." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         const { error: insertError } = await adminClient
           .from("user_roles")
           .insert({ user_id, brand_id, role });
