@@ -271,12 +271,15 @@ export function NewAppointmentDialog({
           {/* Assign Sales */}
           <div className="space-y-2">
             <Label>Assegna venditore</Label>
-            <Select value={assignedSalesUserId} onValueChange={setAssignedSalesUserId}>
+            <Select 
+              value={assignedSalesUserId || "_none"} 
+              onValueChange={(val) => setAssignedSalesUserId(val === "_none" ? "" : val)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona venditore (opzionale)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nessuno</SelectItem>
+                <SelectItem value="_none">Nessuno</SelectItem>
                 {salesUsers.map((user) => (
                   <SelectItem key={user.user_id} value={user.user_id}>
                     {user.full_name || user.email}
