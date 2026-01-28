@@ -1,10 +1,11 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { GoogleSheetsSettings } from "@/components/settings/GoogleSheetsSettings";
 import { AdminManagement } from "@/components/settings/AdminManagement";
+import { MetaAppsSettings } from "@/components/settings/meta/MetaAppsSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -69,6 +70,12 @@ export default function Settings() {
                 <span>Sheets</span>
               </TabsTrigger>
             )}
+            {isBrandAdmin && (
+              <TabsTrigger value="meta" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Facebook className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Meta Ads</span>
+              </TabsTrigger>
+            )}
             {isAdmin && (
               <TabsTrigger value="admin" className="gap-1.5 px-3 text-xs md:text-sm">
                 <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -96,6 +103,12 @@ export default function Settings() {
         {isBrandAdmin && (
           <TabsContent value="sheets" className="space-y-4">
             <GoogleSheetsSettings />
+          </TabsContent>
+        )}
+
+        {isBrandAdmin && (
+          <TabsContent value="meta" className="space-y-4">
+            <MetaAppsSettings />
           </TabsContent>
         )}
 
