@@ -10,10 +10,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Users, UserPlus, Pencil, Trash2, Plus } from "lucide-react";
 import type { AppRole, Brand } from "@/types/database";
-
 interface UserManagementCardProps {
   brands: Brand[];
 }
@@ -55,7 +55,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserFullName, setNewUserFullName] = useState("");
-  const [newUserBrandId, setNewUserBrandId] = useState("");
+  const [newUserBrandIds, setNewUserBrandIds] = useState<string[]>([]);
   const [newUserRole, setNewUserRole] = useState<AppRole>("callcenter");
 
   // Edit user state
@@ -109,7 +109,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
       email: string;
       password: string;
       full_name: string;
-      brand_id: string;
+      brand_ids: string[];
       role: AppRole;
     }) => {
       const { data, error } = await supabase.functions.invoke("admin-create-user", {
@@ -243,13 +243,21 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setNewUserEmail("");
     setNewUserPassword("");
     setNewUserFullName("");
-    setNewUserBrandId("");
+    setNewUserBrandIds([]);
     setNewUserRole("callcenter");
   };
 
+  const toggleBrandSelection = (brandId: string) => {
+    setNewUserBrandIds((prev) =>
+      prev.includes(brandId)
+        ? prev.filter((id) => id !== brandId)
+        : [...prev, brandId]
+    );
+  };
+
   const handleCreateUser = () => {
-    if (!newUserEmail.trim() || !newUserPassword.trim() || !newUserFullName.trim() || !newUserBrandId) {
-      toast.error("Compila tutti i campi");
+    if (!newUserEmail.trim() || !newUserPassword.trim() || !newUserFullName.trim() || newUserBrandIds.length === 0) {
+      toast.error("Compila tutti i campi e seleziona almeno un brand");
       return;
     }
     if (newUserPassword.length < 6) {
@@ -260,7 +268,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
       email: newUserEmail,
       password: newUserPassword,
       full_name: newUserFullName,
-      brand_id: newUserBrandId,
+      brand_ids: newUserBrandIds,
       role: newUserRole,
     });
   };
@@ -435,19 +443,29 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="user-brand">Brand</Label>
-                    <Select value={newUserBrandId} onValueChange={setNewUserBrandId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {brands.map((brand) => (
-                          <SelectItem key={brand.id} value={brand.id}>
+                    <Label>Brand (seleziona uno o più)</Label>
+                    <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                      {brands.map((brand) => (
+                        <div key={brand.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`brand-${brand.id}`}
+                            checked={newUserBrandIds.includes(brand.id)}
+                            onCheckedChange={() => toggleBrandSelection(brand.id)}
+                          />
+                          <Label
+                            htmlFor={`brand-${brand.id}`}
+                            className="text-sm font-normal cursor-pointer"
+                          >
                             {brand.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                    {newUserBrandIds.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {newUserBrandIds.length} brand selezionati
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="user-role">Ruolo</Label>
