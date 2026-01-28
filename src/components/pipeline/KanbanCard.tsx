@@ -173,42 +173,41 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
           </DropdownMenu>
         </div>
 
-        <CardContent className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
-          <div className="flex items-start justify-between gap-1 pr-5 sm:pr-6">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium min-w-0">
-              <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2 pr-6">
+            <div className="flex items-center gap-2 text-sm font-medium truncate">
+              <User className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="truncate">{getFullName()}</span>
             </div>
-            <Badge variant="outline" className={`text-[10px] sm:text-xs ${statusColors[deal.status] || ""}`}>
+            <Badge variant="outline" className={statusColors[deal.status] || ""}>
               {deal.status === "open" ? "Aperto" : 
                deal.status === "won" ? "Vinto" :
                deal.status === "lost" ? "Perso" :
-               deal.status === "closed" ? "Chiuso" : "Riap."}
+               deal.status === "closed" ? "Chiuso" : "Riaperto"}
             </Badge>
           </div>
 
           {deal.contact?.email && (
-            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-              <Mail className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Mail className="h-3 w-3 shrink-0" />
               <span className="truncate">{deal.contact.email}</span>
             </div>
           )}
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            {deal.value && (
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium text-green-700">
-                <DollarSign className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-                <span>€{deal.value.toLocaleString("it-IT")}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
-              <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-              <span>{format(new Date(deal.updated_at), "dd MMM", { locale: it })}</span>
+          {deal.value && (
+            <div className="flex items-center gap-2 text-xs font-medium text-green-700">
+              <DollarSign className="h-3 w-3 shrink-0" />
+              <span>€{deal.value.toLocaleString("it-IT")}</span>
             </div>
+          )}
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3 shrink-0" />
+            <span>{format(new Date(deal.updated_at), "dd MMM HH:mm", { locale: it })}</span>
           </div>
 
-          {/* Deal Tags - hidden on very small screens */}
-          <div className="hidden sm:block pt-1 border-t" onClick={(e) => e.stopPropagation()}>
+          {/* Deal Tags */}
+          <div className="pt-1 border-t" onClick={(e) => e.stopPropagation()}>
             <EntityTagList 
               entityType="deal" 
               entityId={deal.id} 
@@ -218,7 +217,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
           </div>
 
           {deal.notes && (
-            <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 sm:line-clamp-2 pt-1 border-t">
+            <p className="text-xs text-muted-foreground line-clamp-2 pt-1 border-t">
               {deal.notes}
             </p>
           )}
