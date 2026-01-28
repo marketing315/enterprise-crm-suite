@@ -65,19 +65,57 @@ curl -X POST "${SUPABASE_URL}/functions/v1/sheets-batch-export" \
   }'
 ```
 
-## KPI Formulas (Robust Datetime)
+## KPI Formulas (Robust Datetime - Italian)
 
-The Riepilogo tab uses **SUMPRODUCT with proper ISO timestamp conversion**:
+The Riepilogo tab uses **SUMPRODUCT with proper ISO timestamp conversion**. Google Sheets in Italian uses `;` as separator.
 
 ```
 // ISO timestamp: 2026-01-27T14:30:00.000Z
-// Conversion: DATEVALUE(LEFT(A2,10)) + TIMEVALUE(MID(A2,12,8))
+// Conversion: DATEVALUE(LEFT(A2;10)) + TIMEVALUE(MID(A2;12;8))
+```
 
-// Lead ultime 24h (robust):
-=SUMPRODUCT(
-  (ALL_RAW!A2:A<>"")*
-  ((DATEVALUE(LEFT(ALL_RAW!A2:A,10))+IFERROR(TIMEVALUE(MID(ALL_RAW!A2:A,12,8)),0))>=NOW()-1)
-)
+### Lead Count Formulas
+
+```
+// Lead ultime 24h (robust with time):
+=SUMPRODUCT((Meta_RAW!A2:A<>"")*(SE.ERRORE(DATEVALUE(LEFT(Meta_RAW!A2:A;10))+TIMEVALUE(MID(Meta_RAW!A2:A;12;8));0)>=NOW()-1))
+
+// Lead ultimi 7 giorni:
+=SUMPRODUCT((Meta_RAW!A2:A<>"")*(DATEVALUE(LEFT(Meta_RAW!A2:A;10))>=TODAY()-7))
+
+// Lead ultimi 30 giorni:
+=SUMPRODUCT((Meta_RAW!A2:A<>"")*(DATEVALUE(LEFT(Meta_RAW!A2:A;10))>=TODAY()-30))
+```
+
+### Source & Campaign Analysis
+
+```
+// Lista fonti uniche:
+=UNIQUE(FILTER(Meta_RAW!C2:C; Meta_RAW!C2:C<>""))
+
+// Conteggio per fonte (se il valore è in A11):
+=COUNTIF(Meta_RAW!C2:C; A11)
+
+// Lista campagne uniche:
+=UNIQUE(FILTER(Meta_RAW!J2:J; Meta_RAW!J2:J<>""))
+
+// Conteggio per campagna (se il valore è in A15):
+=COUNTIF(Meta_RAW!J2:J; A15)
+```
+
+### Archived Status
+
+```
+// Se colonna L contiene "true"/"false" come stringa:
+=COUNTIF(Meta_RAW!L2:L; "true")   // Archiviati
+=COUNTIF(Meta_RAW!L2:L; "false")  // Non archiviati
+
+// Se colonna L contiene booleano TRUE/FALSE:
+=COUNTIF(Meta_RAW!L2:L; TRUE)
+=COUNTIF(Meta_RAW!L2:L; FALSE)
+
+// % Archiviati (formatta cella come Percentuale):
+=SE.ERRORE(B18/(B18+B19);0)
 ```
 
 ## Headers (Italian)
