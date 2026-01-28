@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
-import { useBrand } from '@/contexts/BrandContext';
+import { useBrand, ALL_BRANDS, ALL_BRANDS_ID } from '@/contexts/BrandContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Select,
   SelectContent,
@@ -7,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building2 } from 'lucide-react';
+import { Building2, Globe } from 'lucide-react';
 
 interface BrandSelectorProps {
   compact?: boolean;
@@ -16,6 +17,9 @@ interface BrandSelectorProps {
 export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
   function BrandSelector({ compact = false }, ref) {
     const { brands, currentBrand, setCurrentBrand, isLoading } = useBrand();
+    const { isAdmin, isCeo } = useAuth();
+
+    const canSeeAllBrands = isAdmin || isCeo;
 
     if (isLoading) {
       return (
@@ -41,14 +45,28 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
         <Select
           value={currentBrand?.id || ''}
           onValueChange={(value) => {
-            const brand = brands.find(b => b.id === value);
-            setCurrentBrand(brand || null);
+            if (value === ALL_BRANDS_ID) {
+              setCurrentBrand(ALL_BRANDS);
+            } else {
+              const brand = brands.find(b => b.id === value);
+              setCurrentBrand(brand || null);
+            }
           }}
         >
           <SelectTrigger className={compact ? 'w-full' : 'w-[200px]'}>
             <SelectValue placeholder="Seleziona brand" />
           </SelectTrigger>
           <SelectContent>
+            {/* All Brands option for admins/CEOs */}
+            {canSeeAllBrands && (
+              <SelectItem value={ALL_BRANDS_ID} className="font-medium">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <span>Tutti i brand</span>
+                </div>
+              </SelectItem>
+            )}
+            {/* Individual brands */}
             {brands.map((brand) => (
               <SelectItem key={brand.id} value={brand.id}>
                 {brand.name}
