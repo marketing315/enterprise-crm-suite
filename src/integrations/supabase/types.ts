@@ -731,6 +731,7 @@ export type Database = {
             | null
           deal_id: string | null
           decision_status: Database["public"]["Enums"]["decision_status"] | null
+          external_id: string | null
           id: string
           lead_source_channel:
             | Database["public"]["Enums"]["lead_source_channel"]
@@ -772,6 +773,7 @@ export type Database = {
           decision_status?:
             | Database["public"]["Enums"]["decision_status"]
             | null
+          external_id?: string | null
           id?: string
           lead_source_channel?:
             | Database["public"]["Enums"]["lead_source_channel"]
@@ -813,6 +815,7 @@ export type Database = {
           decision_status?:
             | Database["public"]["Enums"]["decision_status"]
             | null
+          external_id?: string | null
           id?: string
           lead_source_channel?:
             | Database["public"]["Enums"]["lead_source_channel"]
@@ -843,6 +846,53 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_apps: {
+        Row: {
+          access_token: string
+          app_secret: string
+          brand_id: string
+          brand_slug: string
+          created_at: string
+          id: string
+          is_active: boolean
+          page_id: string | null
+          updated_at: string
+          verify_token: string
+        }
+        Insert: {
+          access_token: string
+          app_secret: string
+          brand_id: string
+          brand_slug: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          page_id?: string | null
+          updated_at?: string
+          verify_token: string
+        }
+        Update: {
+          access_token?: string
+          app_secret?: string
+          brand_id?: string
+          brand_slug?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          page_id?: string | null
+          updated_at?: string
+          verify_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_apps_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
             referencedColumns: ["id"]
           },
         ]
@@ -1860,6 +1910,19 @@ export type Database = {
           p_payload: Json
         }
         Returns: number
+      }
+      find_meta_app_by_slug: {
+        Args: { p_brand_slug: string }
+        Returns: {
+          access_token: string
+          app_secret: string
+          brand_id: string
+          brand_slug: string
+          id: string
+          is_active: boolean
+          page_id: string
+          verify_token: string
+        }[]
       }
       find_meta_lead_source: {
         Args: { p_form_id?: string; p_page_id: string }
