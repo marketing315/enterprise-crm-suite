@@ -28,12 +28,12 @@ export default function Pipeline() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 md:p-4 border-b space-y-3">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="p-2 sm:p-3 md:p-4 border-b space-y-2 sm:space-y-3 shrink-0">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestisci i tuoi deal in {currentBrand?.name}
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Pipeline</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">
+            Gestisci deal in {currentBrand?.name}
           </p>
         </div>
         
@@ -45,10 +45,12 @@ export default function Pipeline() {
         />
       </div>
 
-      <KanbanBoard 
-        onDealClick={handleDealClick}
-        filterTagIds={selectedTagIds}
-      />
+      <div className="flex-1 overflow-hidden">
+        <KanbanBoard 
+          onDealClick={handleDealClick}
+          filterTagIds={selectedTagIds}
+        />
+      </div>
     </div>
   );
 }
