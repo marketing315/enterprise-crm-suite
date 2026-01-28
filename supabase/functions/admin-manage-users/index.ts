@@ -67,14 +67,15 @@ async function verifyAdmin(authHeader: string) {
     throw new Error("User not found");
   }
 
-  const { data: adminRole, error: roleError } = await adminClient
+  // Use limit(1) to handle users with multiple admin roles across brands
+  const { data: adminRoles, error: roleError } = await adminClient
     .from("user_roles")
     .select("id")
     .eq("user_id", internalUser.id)
     .eq("role", "admin")
-    .maybeSingle();
+    .limit(1);
 
-  if (roleError || !adminRole) {
+  if (roleError || !adminRoles || adminRoles.length === 0) {
     throw new Error("Admin access required");
   }
 
