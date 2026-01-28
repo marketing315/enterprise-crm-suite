@@ -12,10 +12,12 @@ import {
 import { usePipelineStages, useDeals, useUpdateDealStage } from "@/hooks/usePipeline";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
+import { MobileKanbanView } from "./MobileKanbanView";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { DealWithContact } from "@/types/database";
 
 interface KanbanBoardProps {
@@ -27,6 +29,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   const { data: stages, isLoading: stagesLoading } = usePipelineStages();
   const { data: deals, isLoading: dealsLoading } = useDeals("open");
   const updateStage = useUpdateDealStage();
+  const isMobile = useIsMobile();
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -132,6 +135,18 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     );
   }
 
+  // Mobile: Show tab-based single-column view
+  if (isMobile) {
+    return (
+      <MobileKanbanView
+        stages={stages}
+        dealsByStage={dealsByStage}
+        onDealClick={onDealClick}
+      />
+    );
+  }
+
+  // Desktop: Full drag-and-drop Kanban
   return (
     <DndContext
       sensors={sensors}
@@ -139,7 +154,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 overflow-x-auto h-full pb-4">
+      <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
         {stages.map((stage) => (
           <KanbanColumn
             key={stage.id}
