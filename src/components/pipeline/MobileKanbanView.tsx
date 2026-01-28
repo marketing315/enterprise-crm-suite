@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { KanbanCard } from "./KanbanCard";
-import type { PipelineStage, DealWithContact } from "@/types/database";
+import type { PipelineStage } from "@/types/database";
+import type { DealWithContactAndTags } from "@/hooks/usePipeline";
 
 interface MobileKanbanViewProps {
   stages: PipelineStage[];
-  dealsByStage: Record<string, DealWithContact[]>;
+  dealsByStage: Record<string, DealWithContactAndTags[]>;
   onDealClick?: (dealId: string) => void;
 }
 
