@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { format, subDays, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Inbox, ExternalLink, Archive, Calendar, RefreshCw, SlidersHorizontal } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { Inbox, ExternalLink, Archive, Calendar, RefreshCw, SlidersHorizontal, Shield } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useBrand } from "@/contexts/BrandContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLeadEvents, type PeriodFilter, type LeadEventResult } from "@/hooks/useLeadEvents";
 
 import {
   Select,
@@ -30,29 +31,12 @@ import {
 } from "@/components/ui/sheet";
 import { ContactDetailSheet } from "@/components/contacts/ContactDetailSheet";
 import { TagFilter } from "@/components/tags/TagFilter";
-
-type PeriodFilter = "today" | "7days" | "30days" | "all";
-
-interface LeadEventWithContact {
-  id: string;
-  brand_id: string;
-  contact_id: string | null;
-  source: string;
-  source_name: string | null;
-  received_at: string;
-  ai_priority: number | null;
-  archived: boolean;
-  raw_payload: Record<string, unknown>;
-  contact: {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    contact_phones: { phone_raw: string; is_primary: boolean }[];
-  } | null;
-}
+import { TagBadge } from "@/components/tags/TagBadge";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Events() {
   const { currentBrand, hasBrandSelected } = useBrand();
+  const { isAdmin, isCeo } = useAuth();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   
@@ -64,64 +48,20 @@ export default function Events() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const { data: events, isLoading, refetch } = useQuery({
-    queryKey: ["lead-events", currentBrand?.id, periodFilter, sourceFilter, showArchived],
-    queryFn: async (): Promise<LeadEventWithContact[]> => {
-      if (!currentBrand) return [];
+  const canSeeArchived = isAdmin || isCeo;
 
-      let query = supabase
-        .from("lead_events")
-        .select(`
-          id, brand_id, contact_id, source, source_name, received_at, ai_priority, archived, raw_payload,
-          contact:contacts(id, first_name, last_name, contact_phones(phone_raw, is_primary))
-        `)
-        .eq("brand_id", currentBrand.id)
-        .order("received_at", { ascending: false })
-        .limit(100);
-
-      // Period filter
-      if (periodFilter !== "all") {
-        const now = new Date();
-        let startDate: Date;
-        
-        switch (periodFilter) {
-          case "today":
-            startDate = startOfDay(now);
-            break;
-          case "7days":
-            startDate = startOfDay(subDays(now, 7));
-            break;
-          case "30days":
-            startDate = startOfDay(subDays(now, 30));
-            break;
-          default:
-            startDate = startOfDay(subDays(now, 7));
-        }
-        
-        query = query.gte("received_at", startDate.toISOString());
-      }
-
-      // Source filter
-      if (sourceFilter !== "all") {
-        query = query.eq("source", sourceFilter as "webhook" | "manual" | "import" | "api");
-      }
-
-      // Archived filter
-      if (!showArchived) {
-        query = query.eq("archived", false);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      return (data || []) as unknown as LeadEventWithContact[];
-    },
-    enabled: !!currentBrand,
+  const { data, isLoading, refetch } = useLeadEvents({
+    periodFilter,
+    sourceFilter,
+    showArchived,
+    tagIds: selectedTagIds,
   });
 
-  // Get unique sources for filter
-  const uniqueSources = [...new Set(events?.map((e) => e.source) || [])];
+  const events = data?.events || [];
+  const totalCount = data?.total || 0;
+
+  // Get unique sources for filter dropdown
+  const uniqueSources = [...new Set(events.map((e) => e.source))];
 
   const handleOpenContact = (contactId: string | null) => {
     if (contactId) {
@@ -136,19 +76,17 @@ export default function Events() {
       .update({ archived } as never)
       .eq("id", eventId);
     
-    queryClient.invalidateQueries({ queryKey: ["lead-events"] });
+    queryClient.invalidateQueries({ queryKey: ["lead-events-rpc"] });
   };
 
-  const getContactName = (event: LeadEventWithContact) => {
-    if (!event.contact) return "—";
+  const getContactName = (event: LeadEventResult) => {
+    if (!event.contact?.id) return "—";
     const parts = [event.contact.first_name, event.contact.last_name].filter(Boolean);
     return parts.length > 0 ? parts.join(" ") : "Senza nome";
   };
 
-  const getContactPhone = (event: LeadEventWithContact) => {
-    if (!event.contact?.contact_phones?.length) return "—";
-    const primary = event.contact.contact_phones.find((p) => p.is_primary);
-    return primary?.phone_raw || event.contact.contact_phones[0].phone_raw;
+  const getContactPhone = (event: LeadEventResult) => {
+    return event.contact?.primary_phone || "—";
   };
 
   const getSourceBadgeVariant = (source: string) => {
@@ -218,16 +156,22 @@ export default function Events() {
         </Select>
       </div>
 
-      <div className="flex items-center justify-between">
-        <Label htmlFor="show-archived" className="text-sm">
-          Mostra archiviati
-        </Label>
-        <Switch
-          id="show-archived"
-          checked={showArchived}
-          onCheckedChange={setShowArchived}
-        />
-      </div>
+      {/* Admin/CEO only: show archived toggle */}
+      {canSeeArchived && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="show-archived" className="text-sm">
+              Mostra archiviati
+            </Label>
+          </div>
+          <Switch
+            id="show-archived"
+            checked={showArchived}
+            onCheckedChange={setShowArchived}
+          />
+        </div>
+      )}
       
       <div className="space-y-2">
         <label className="text-sm font-medium">Tag</label>
@@ -241,7 +185,7 @@ export default function Events() {
   );
 
   // Mobile card view for events
-  const MobileEventCard = ({ event }: { event: LeadEventWithContact }) => (
+  const MobileEventCard = ({ event }: { event: LeadEventResult }) => (
     <Card className={event.archived ? "opacity-50" : ""}>
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-2">
@@ -267,6 +211,19 @@ export default function Events() {
             <p className="text-xs text-muted-foreground">
               {format(new Date(event.received_at), "dd MMM HH:mm", { locale: it })}
             </p>
+            {/* Tags */}
+            {event.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {event.tags.slice(0, 3).map((tag) => (
+                  <TagBadge key={tag.id} name={tag.name} color={tag.color} size="sm" />
+                ))}
+                {event.tags.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{event.tags.length - 3}
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             {event.contact_id && (
@@ -304,7 +261,7 @@ export default function Events() {
           <div>
             <h1 className="text-lg md:text-2xl font-semibold">Eventi Lead</h1>
             <p className="text-xs md:text-sm text-muted-foreground">
-              {events?.length || 0} eventi
+              {totalCount} eventi{selectedTagIds.length > 0 && " (filtrati per tag)"}
             </p>
           </div>
         </div>
@@ -368,16 +325,20 @@ export default function Events() {
             </SelectContent>
           </Select>
 
-          <div className="flex items-center gap-2">
-            <Switch
-              id="show-archived-desktop"
-              checked={showArchived}
-              onCheckedChange={setShowArchived}
-            />
-            <Label htmlFor="show-archived-desktop" className="text-sm">
-              Mostra archiviati
-            </Label>
-          </div>
+          {/* Admin/CEO only: show archived toggle */}
+          {canSeeArchived && (
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <Switch
+                id="show-archived-desktop"
+                checked={showArchived}
+                onCheckedChange={setShowArchived}
+              />
+              <Label htmlFor="show-archived-desktop" className="text-sm">
+                Mostra archiviati
+              </Label>
+            </div>
+          )}
           
           <TagFilter
             selectedTagIds={selectedTagIds}
@@ -394,33 +355,37 @@ export default function Events() {
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>
-      ) : events?.length === 0 ? (
+      ) : events.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Inbox className="h-12 w-12 mx-auto mb-4 opacity-20" />
           <p>Nessun evento trovato</p>
+          {selectedTagIds.length > 0 && (
+            <p className="text-sm mt-2">Prova a rimuovere alcuni filtri tag</p>
+          )}
         </div>
       ) : isMobile ? (
         <div className="space-y-3">
-          {events?.map((event) => (
+          {events.map((event) => (
             <MobileEventCard key={event.id} event={event} />
           ))}
         </div>
       ) : (
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full min-w-[700px]">
+          <table className="w-full min-w-[800px]">
             <thead className="bg-muted/50">
               <tr>
                 <th className="text-left p-3 text-sm font-medium">Data/Ora</th>
                 <th className="text-left p-3 text-sm font-medium">Fonte</th>
                 <th className="text-left p-3 text-sm font-medium">Telefono</th>
                 <th className="text-left p-3 text-sm font-medium">Nome</th>
+                <th className="text-left p-3 text-sm font-medium">Tag</th>
                 <th className="text-left p-3 text-sm font-medium">Priorità</th>
                 <th className="text-left p-3 text-sm font-medium">Stato</th>
                 <th className="text-right p-3 text-sm font-medium">Azioni</th>
               </tr>
             </thead>
             <tbody>
-              {events?.map((event) => (
+              {events.map((event) => (
                 <tr key={event.id} className={`border-t ${event.archived ? "opacity-50" : ""}`}>
                   <td className="p-3 font-medium text-sm">
                     {format(new Date(event.received_at), "dd MMM HH:mm", { locale: it })}
@@ -434,6 +399,18 @@ export default function Events() {
                     {getContactPhone(event)}
                   </td>
                   <td className="p-3 text-sm">{getContactName(event)}</td>
+                  <td className="p-3">
+                    <div className="flex flex-wrap gap-1">
+                      {event.tags.slice(0, 2).map((tag) => (
+                        <TagBadge key={tag.id} name={tag.name} color={tag.color} size="sm" />
+                      ))}
+                      {event.tags.length > 2 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{event.tags.length - 2}
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-3">
                     {event.ai_priority !== null ? (
                       <Badge variant={event.ai_priority >= 8 ? "destructive" : event.ai_priority >= 5 ? "default" : "secondary"}>

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useBrand } from "@/contexts/BrandContext";
 import type { PipelineStage, DealWithContact, DealStatus } from "@/types/database";
@@ -10,6 +11,44 @@ const untypedClient = createClient(supabaseUrl, supabaseKey);
 
 // Typed client for existing tables
 import { supabase } from "@/integrations/supabase/client";
+
+// Tag type for deals
+interface DealTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+// Extended deal type with tags
+export interface DealWithContactAndTags extends DealWithContact {
+  tags?: DealTag[];
+}
+
+// Result from search_deals RPC
+interface SearchDealsResult {
+  total: number;
+  limit: number;
+  offset: number;
+  deals: Array<{
+    id: string;
+    brand_id: string;
+    contact_id: string;
+    current_stage_id: string | null;
+    status: DealStatus;
+    value: number | null;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+    closed_at: string | null;
+    contact: {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+    };
+    tags: DealTag[];
+  }>;
+}
 
 export function usePipelineStages() {
   const { currentBrand } = useBrand();
@@ -33,14 +72,35 @@ export function usePipelineStages() {
   });
 }
 
-export function useDeals(status?: DealStatus) {
+export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
   const { currentBrand } = useBrand();
 
   return useQuery({
-    queryKey: ["deals", currentBrand?.id, status],
-    queryFn: async (): Promise<DealWithContact[]> => {
+    queryKey: ["deals", currentBrand?.id, status, filterTagIds],
+    queryFn: async (): Promise<DealWithContactAndTags[]> => {
       if (!currentBrand) return [];
 
+      // If we have tag filters, use RPC for server-side filtering
+      if (filterTagIds && filterTagIds.length > 0) {
+        const { data, error } = await supabase.rpc("search_deals", {
+          p_brand_id: currentBrand.id,
+          p_status: status || "open",
+          p_tag_ids: filterTagIds,
+          p_match_all_tags: false,
+          p_limit: 500,
+          p_offset: 0,
+        });
+
+        if (error) throw error;
+        
+        const result = data as unknown as SearchDealsResult;
+        return result.deals.map(d => ({
+          ...d,
+          assigned_user_id: null,
+        })) as DealWithContactAndTags[];
+      }
+
+      // No tag filter - use direct query (faster)
       let query = untypedClient
         .from("deals")
         .select(`
@@ -57,7 +117,7 @@ export function useDeals(status?: DealStatus) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return (data || []) as DealWithContact[];
+      return (data || []) as DealWithContactAndTags[];
     },
     enabled: !!currentBrand,
   });

@@ -388,28 +388,43 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Find or create deal
-    const { data: dealId, error: dealError } = await supabaseAdmin.rpc(
-      "find_or_create_deal",
-      { p_brand_id: brandId, p_contact_id: contactId }
-    );
+    // STEP 2B: Check contact status for opt-out handling
+    const { data: contactData, error: contactFetchError } = await supabaseAdmin
+      .from("contacts")
+      .select("status")
+      .eq("id", contactId)
+      .single();
 
-    if (dealError) {
-      console.error("Failed to find/create deal:", dealError);
+    const isOptedOut = contactData?.status === "archived";
+    
+    // Find or create deal (SKIP if opted out - no automatic deal operations)
+    let dealId: string | null = null;
+    if (!isOptedOut) {
+      const { data: dealResult, error: dealError } = await supabaseAdmin.rpc(
+        "find_or_create_deal",
+        { p_brand_id: brandId, p_contact_id: contactId }
+      );
+
+      if (dealError) {
+        console.error("Failed to find/create deal:", dealError);
+      } else {
+        dealId = dealResult;
+      }
     }
 
-    // Create lead event (append-only)
+    // Create lead event (ALWAYS append-only, but mark archived if opt-out)
     const { data: leadEvent, error: leadEventError } = await supabaseAdmin
       .from("lead_events")
       .insert({
         brand_id: brandId,
         contact_id: contactId,
-        deal_id: dealId || null,
+        deal_id: dealId,
         source: "webhook",
         source_name: source.name,
         raw_payload: rawBody,
         occurred_at: new Date().toISOString(),
         received_at: new Date().toISOString(),
+        archived: isOptedOut, // STEP 2B: Auto-archive if opted out
       })
       .select("id")
       .single();
@@ -460,14 +475,17 @@ Deno.serve(async (req: Request) => {
       status: 200,
       contact_id: contactId,
       lead_event_id: leadEvent?.id,
+      archived: isOptedOut,
     }));
 
     return new Response(
       JSON.stringify({
         success: true,
         contact_id: contactId,
-        deal_id: dealId || null,
+        deal_id: dealId,
         lead_event_id: leadEvent?.id || null,
+        archived: isOptedOut,
+        contact_status: contactData?.status || "new",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

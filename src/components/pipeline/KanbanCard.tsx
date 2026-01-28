@@ -20,10 +20,11 @@ import {
 import { EntityTagList } from "@/components/tags/EntityTagList";
 import { useUpdateDealStatus, useUpdateDealStage, usePipelineStages } from "@/hooks/usePipeline";
 import { toast } from "sonner";
-import type { DealWithContact, DealStatus } from "@/types/database";
+import type { DealStatus } from "@/types/database";
+import type { DealWithContactAndTags } from "@/hooks/usePipeline";
 
 interface KanbanCardProps {
-  deal: DealWithContact;
+  deal: DealWithContactAndTags;
   onClick?: () => void;
 }
 

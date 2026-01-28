@@ -1557,6 +1557,38 @@ export type Database = {
           updated_at: string
         }[]
       }
+      search_deals: {
+        Args: {
+          p_brand_id: string
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_match_all_tags?: boolean
+          p_offset?: number
+          p_stage_ids?: string[]
+          p_status?: string
+          p_tag_ids?: string[]
+        }
+        Returns: Json
+      }
+      search_lead_events: {
+        Args: {
+          p_archived?: boolean
+          p_brand_id: string
+          p_date_from?: string
+          p_date_to?: string
+          p_include_archived?: boolean
+          p_limit?: number
+          p_match_all_tags?: boolean
+          p_offset?: number
+          p_priority_max?: number
+          p_priority_min?: number
+          p_source?: string
+          p_source_name?: string
+          p_tag_ids?: string[]
+        }
+        Returns: Json
+      }
       search_tickets_v1: {
         Args: {
           p_assignment_type?: string

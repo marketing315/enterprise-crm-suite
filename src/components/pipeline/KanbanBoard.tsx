@@ -9,7 +9,7 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { usePipelineStages, useDeals, useUpdateDealStage } from "@/hooks/usePipeline";
+import { usePipelineStages, useDeals, useUpdateDealStage, type DealWithContactAndTags } from "@/hooks/usePipeline";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCardPreview } from "./KanbanCardPreview";
 import { MobileKanbanView } from "./MobileKanbanView";
@@ -18,8 +18,6 @@ import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { DealWithContact } from "@/types/database";
-
 interface KanbanBoardProps {
   onDealClick?: (dealId: string) => void;
   filterTagIds?: string[];
@@ -27,7 +25,10 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps) {
   const { data: stages, isLoading: stagesLoading } = usePipelineStages();
-  const { data: deals, isLoading: dealsLoading } = useDeals("open");
+  const { data: deals, isLoading: dealsLoading } = useDeals(
+    "open",
+    filterTagIds.length > 0 ? filterTagIds : undefined
+  );
   const updateStage = useUpdateDealStage();
   const isMobile = useIsMobile();
 
@@ -43,7 +44,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
 
   // Group deals by stage
   const dealsByStage = useMemo(() => {
-    const grouped: Record<string, DealWithContact[]> = {};
+    const grouped: Record<string, DealWithContactAndTags[]> = {};
     stages?.forEach((stage) => {
       grouped[stage.id] = [];
     });
