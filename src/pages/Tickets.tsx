@@ -1,6 +1,13 @@
 import { useState, useCallback } from "react";
-import { Ticket, Download, CheckSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { Ticket, Download, CheckSquare, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
 import { TicketDetailSheet } from "@/components/tickets/TicketDetailSheet";
 import { TicketFilters } from "@/components/tickets/TicketFilters";
@@ -14,12 +21,15 @@ import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { exportTicketsToCSV } from "@/lib/ticketCsvExport";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 50;
 
 export default function Tickets() {
+  const isMobile = useIsMobile();
+  
   // URL-based state for refresh-safe navigation
   const { state: urlState, updateUrl, resetPagination } = useTicketUrlState();
   
@@ -37,6 +47,7 @@ export default function Tickets() {
   // Detail sheet
   const [selectedTicket, setSelectedTicket] = useState<TicketWithRelations | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -107,7 +118,6 @@ export default function Tickets() {
   const handleSearchChange = useCallback((query: string) => {
     updateUrl({ searchQuery: query });
     resetPagination();
-    // Don't clear selection on search - user might be refining
   }, [updateUrl, resetPagination]);
 
   const handleTagsChange = useCallback((tagIds: string[]) => {
@@ -125,7 +135,6 @@ export default function Tickets() {
   // Cursor pagination handlers
   const handleNextPage = useCallback(() => {
     if (!hasNext || !searchResult?.nextCursor) return;
-    // Save current page start for "back" navigation
     if (pageStartCursor) {
       updateUrl({ 
         cursor: searchResult.nextCursor, 
@@ -246,73 +255,118 @@ export default function Tickets() {
     }
   };
 
+  const activeFiltersCount = 
+    (searchQuery.trim() ? 1 : 0) + 
+    (selectedTagIds.length > 0 ? 1 : 0) + 
+    (assignmentTypeFilter !== "all" ? 1 : 0);
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Ticket className="h-6 w-6 md:h-8 md:w-8 text-primary" />
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold">Ticket</h1>
-            <p className="text-sm text-muted-foreground hidden sm:block">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 md:gap-3">
+          <Ticket className="h-5 w-5 md:h-6 md:w-6 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-2xl font-bold truncate">Ticket</h1>
+            <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
               Gestisci le richieste di assistenza
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={bulkMode ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => {
-              setBulkMode(!bulkMode);
-              if (bulkMode) setSelectedIds(new Set());
-            }}
-          >
-            <CheckSquare className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{bulkMode ? "Esci selezione" : "Selezione multipla"}</span>
-          </Button>
+        <div className="flex items-center gap-1 md:gap-2">
+          {!isMobile && (
+            <Button
+              variant={bulkMode ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => {
+                setBulkMode(!bulkMode);
+                if (bulkMode) setSelectedIds(new Set());
+              }}
+            >
+              <CheckSquare className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">{bulkMode ? "Esci selezione" : "Selezione multipla"}</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
             disabled={tickets.length === 0}
           >
-            <Download className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">({tickets.length})</span>
+            <Download className="h-4 w-4" />
+            <span className="hidden md:inline md:ml-2">Export</span>
           </Button>
+          {isMobile && (
+            <Sheet open={filtersSheetOpen} onOpenChange={setFiltersSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="relative">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[70vh]">
+                <SheetHeader>
+                  <SheetTitle>Filtri</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 space-y-4">
+                  <TicketFilters
+                    searchQuery={searchQuery}
+                    onSearchChange={handleSearchChange}
+                    selectedTagIds={selectedTagIds}
+                    onTagsChange={handleTagsChange}
+                    assigneeFilter="all"
+                    onAssigneeChange={() => {}}
+                    operators={operators}
+                    assignmentTypeFilter={assignmentTypeFilter}
+                    onAssignmentTypeChange={handleAssignmentTypeChange}
+                    autoCount={autoCount}
+                    manualCount={manualCount}
+                    hideAssigneeFilter={activeTab !== "all"}
+                    isMobileSheet
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
 
-      {/* Queue Tabs */}
-      <TicketQueueTabs
-        value={activeTab}
-        onChange={handleTabChange}
-        counts={{
-          all: queueCounts?.all ?? 0,
-          myQueue: queueCounts?.my_queue ?? 0,
-          unassigned: queueCounts?.unassigned ?? 0,
-          slaBreached: queueCounts?.sla_breached ?? 0,
-        }}
-        showMyQueue={isOperator}
-      />
+      {/* Queue Tabs - scrollable on mobile */}
+      <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+        <TicketQueueTabs
+          value={activeTab}
+          onChange={handleTabChange}
+          counts={{
+            all: queueCounts?.all ?? 0,
+            myQueue: queueCounts?.my_queue ?? 0,
+            unassigned: queueCounts?.unassigned ?? 0,
+            slaBreached: queueCounts?.sla_breached ?? 0,
+          }}
+          showMyQueue={isOperator}
+        />
+      </div>
 
-      {/* Advanced Filters */}
-      <TicketFilters
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        selectedTagIds={selectedTagIds}
-        onTagsChange={handleTagsChange}
-        assigneeFilter="all"
-        onAssigneeChange={() => {}}
-        operators={operators}
-        assignmentTypeFilter={assignmentTypeFilter}
-        onAssignmentTypeChange={handleAssignmentTypeChange}
-        autoCount={autoCount}
-        manualCount={manualCount}
-        hideAssigneeFilter={activeTab !== "all"}
-      />
+      {/* Desktop Filters */}
+      {!isMobile && (
+        <TicketFilters
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          selectedTagIds={selectedTagIds}
+          onTagsChange={handleTagsChange}
+          assigneeFilter="all"
+          onAssigneeChange={() => {}}
+          operators={operators}
+          assignmentTypeFilter={assignmentTypeFilter}
+          onAssignmentTypeChange={handleAssignmentTypeChange}
+          autoCount={autoCount}
+          manualCount={manualCount}
+          hideAssigneeFilter={activeTab !== "all"}
+        />
+      )}
 
       {/* Table */}
       {isLoading ? (
@@ -326,7 +380,7 @@ export default function Tickets() {
           onTakeOwnership={currentOperator ? handleTakeOwnership : undefined}
           showSlaIndicator
           slaThresholds={slaThresholds}
-          showCheckboxes={bulkMode}
+          showCheckboxes={bulkMode && !isMobile}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
         />
@@ -335,8 +389,8 @@ export default function Tickets() {
       {/* Cursor Pagination */}
       {(hasPrev || hasNext) && (
         <div className="flex items-center justify-between border-t pt-4">
-          <p className="text-sm text-muted-foreground">
-            {totalCount} ticket trovati
+          <p className="text-xs md:text-sm text-muted-foreground">
+            {totalCount} ticket
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -346,8 +400,8 @@ export default function Tickets() {
               disabled={!hasPrev || isLoading}
               data-testid="tickets-prev"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Precedenti
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Precedenti</span>
             </Button>
             <Button
               variant="outline"
@@ -356,8 +410,8 @@ export default function Tickets() {
               disabled={!hasNext || isLoading}
               data-testid="tickets-next"
             >
-              Successivi
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline mr-1">Successivi</span>
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

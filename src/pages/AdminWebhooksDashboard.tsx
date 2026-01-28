@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { MetricCard } from "@/components/admin/MetricCard";
 import { WebhookMetricsCharts } from "@/components/admin/WebhookMetricsCharts";
 import { WebhookErrorsTable } from "@/components/admin/WebhookErrorsTable";
@@ -43,10 +44,10 @@ export default function AdminWebhooksDashboard() {
 
   if (!hasBrandSelected) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Webhook className="h-16 w-16 text-muted-foreground mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Seleziona un Brand</h2>
-        <p className="text-muted-foreground max-w-md">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <Webhook className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground mb-4" />
+        <h2 className="text-xl md:text-2xl font-bold mb-2">Seleziona un Brand</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
           Utilizza il selettore nella sidebar per scegliere il brand.
         </p>
       </div>
@@ -73,84 +74,88 @@ export default function AdminWebhooksDashboard() {
   const queueDepth = (metrics?.pending_count || 0) + (metrics?.sending_count || 0);
 
   return (
-    <div className="space-y-6" data-testid="webhooks-dashboard-page">
+    <div className="space-y-4 md:space-y-6" data-testid="webhooks-dashboard-page">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Webhook className="h-8 w-8" />
-            Webhook Monitoring
-          </h1>
-          <p className="text-muted-foreground">
-            Dashboard metriche webhook per {currentBrand?.name} (ultime 24h)
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Webhook className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg md:text-2xl font-bold">Webhook Monitor</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              Ultime 24h · {currentBrand?.name}
+            </p>
+          </div>
         </div>
-        <Button variant="outline" onClick={handleRefreshAll} disabled={isLoading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-          Aggiorna tutto
+        <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
       {/* KPI Cards */}
       <div data-testid="webhooks-dashboard-kpis">
         {loadingMetrics ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-[120px]" />
+              <Skeleton key={i} className="h-[100px]" />
             ))}
           </div>
         ) : metrics ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-            <MetricCard
-              title="Total Deliveries"
-              value={metrics.total_deliveries}
-              icon={Activity}
-              subtitle="ultime 24h"
-            />
-            <MetricCard
-              title="Success Rate"
-              value={`${successRate}%`}
-              icon={CheckCircle2}
-              variant={successRate >= 95 ? "success" : successRate >= 80 ? "warning" : "danger"}
-              subtitle={`${metrics.success_count} completati`}
-            />
-            <MetricCard
-              title="Fail Rate"
-              value={`${failRate}%`}
-              icon={XCircle}
-              variant={failRate <= 5 ? "success" : failRate <= 15 ? "warning" : "danger"}
-              subtitle={`${metrics.failed_count} falliti`}
-            />
-            <MetricCard
-              title="Latency (ms)"
-              value={
-                metrics.p50_latency_ms != null || metrics.p95_latency_ms != null || metrics.p99_latency_ms != null
-                  ? `P50 ${metrics.p50_latency_ms ?? "N/A"} · P95 ${metrics.p95_latency_ms ?? "N/A"} · P99 ${metrics.p99_latency_ms ?? "N/A"}`
-                  : "N/A"
-              }
-              icon={Timer}
-              variant={
-                metrics.p95_latency_ms == null ? "default" :
-                metrics.p95_latency_ms <= 500 ? "success" :
-                metrics.p95_latency_ms <= 2000 ? "warning" : "danger"
-              }
-              subtitle={`avg: ${metrics.avg_latency_ms != null ? metrics.avg_latency_ms + "ms" : "N/A"}`}
-            />
-            <MetricCard
-              title="Queue Depth"
-              value={queueDepth}
-              icon={Clock}
-              variant={queueDepth > 50 ? "danger" : queueDepth > 10 ? "warning" : "success"}
-              subtitle={`${metrics.pending_count} pending + ${metrics.sending_count} sending`}
-            />
-            <MetricCard
-              title="Avg Attempts"
-              value={metrics.avg_attempts || 1}
-              icon={Send}
-              variant={metrics.avg_attempts > 2 ? "warning" : "success"}
-              subtitle="per delivery"
-            />
-          </div>
+          <ScrollArea className="w-full">
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-6 min-w-[600px] lg:min-w-0 pb-2">
+              <MetricCard
+                title="Deliveries"
+                value={metrics.total_deliveries}
+                icon={Activity}
+                subtitle="ultime 24h"
+              />
+              <MetricCard
+                title="Success"
+                value={`${successRate}%`}
+                icon={CheckCircle2}
+                variant={successRate >= 95 ? "success" : successRate >= 80 ? "warning" : "danger"}
+                subtitle={`${metrics.success_count} ok`}
+              />
+              <MetricCard
+                title="Fail"
+                value={`${failRate}%`}
+                icon={XCircle}
+                variant={failRate <= 5 ? "success" : failRate <= 15 ? "warning" : "danger"}
+                subtitle={`${metrics.failed_count} errori`}
+              />
+              <MetricCard
+                title="Latency"
+                value={
+                  metrics.p50_latency_ms != null
+                    ? `P50: ${metrics.p50_latency_ms}ms`
+                    : "N/A"
+                }
+                icon={Timer}
+                variant={
+                  metrics.p95_latency_ms == null ? "default" :
+                  metrics.p95_latency_ms <= 500 ? "success" :
+                  metrics.p95_latency_ms <= 2000 ? "warning" : "danger"
+                }
+                subtitle={metrics.p95_latency_ms != null ? `P95: ${metrics.p95_latency_ms}ms` : ""}
+              />
+              <MetricCard
+                title="Queue"
+                value={queueDepth}
+                icon={Clock}
+                variant={queueDepth > 50 ? "danger" : queueDepth > 10 ? "warning" : "success"}
+                subtitle={`${metrics.pending_count} pending`}
+              />
+              <MetricCard
+                title="Tentativi"
+                value={metrics.avg_attempts || 1}
+                icon={Send}
+                variant={metrics.avg_attempts > 2 ? "warning" : "success"}
+                subtitle="per delivery"
+              />
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         ) : null}
       </div>
 

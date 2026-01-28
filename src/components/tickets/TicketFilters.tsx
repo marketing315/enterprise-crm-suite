@@ -35,6 +35,8 @@ interface TicketFiltersProps {
   manualCount: number;
   // Hide assignee filter when using queue tabs
   hideAssigneeFilter?: boolean;
+  // Mobile sheet layout
+  isMobileSheet?: boolean;
 }
 
 export function TicketFilters({
@@ -50,6 +52,7 @@ export function TicketFilters({
   autoCount,
   manualCount,
   hideAssigneeFilter = false,
+  isMobileSheet = false,
 }: TicketFiltersProps) {
   // Local state for immediate input feedback
   const [localValue, setLocalValue] = useState(searchQuery);
@@ -109,7 +112,7 @@ export function TicketFilters({
   }, [localValue, onSearchChange]);
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <div className={isMobileSheet ? "space-y-4" : "space-y-3 md:space-y-4"}>
       {/* Search bar with debounce indicator */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -127,25 +130,34 @@ export function TicketFilters({
       </div>
 
       {/* Filter row */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap">
-        <div className="hidden sm:flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filtri:</span>
-        </div>
+      <div className={isMobileSheet ? "flex flex-col gap-4" : "flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap"}>
+        {!isMobileSheet && (
+          <div className="hidden sm:flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtri:</span>
+          </div>
+        )}
 
         {/* Tag/Category filter */}
-        <TagFilter
-          selectedTagIds={selectedTagIds}
-          onTagsChange={onTagsChange}
-          scope="ticket"
-        />
+        <div className={isMobileSheet ? "space-y-2" : ""}>
+          {isMobileSheet && <label className="text-sm font-medium">Categoria</label>}
+          <TagFilter
+            selectedTagIds={selectedTagIds}
+            onTagsChange={onTagsChange}
+            scope="ticket"
+          />
+        </div>
 
         {/* Assignee filter - hidden when using queue tabs */}
         {!hideAssigneeFilter && (
-          <div className="flex items-center gap-2">
-            <UserCircle className="h-4 w-4 text-muted-foreground hidden sm:block" />
+          <div className={isMobileSheet ? "space-y-2" : "flex items-center gap-2"}>
+            {isMobileSheet ? (
+              <label className="text-sm font-medium">Assegnatario</label>
+            ) : (
+              <UserCircle className="h-4 w-4 text-muted-foreground hidden sm:block" />
+            )}
             <Select value={assigneeFilter} onValueChange={onAssigneeChange}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className={isMobileSheet ? "w-full" : "w-full sm:w-[180px]"}>
                 <SelectValue placeholder="Assegnatario" />
               </SelectTrigger>
               <SelectContent>
@@ -162,33 +174,36 @@ export function TicketFilters({
         )}
 
         {/* Assignment type filter (Auto vs Manual) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 sm:border-l sm:pl-4 overflow-x-auto">
-          <Button
-            variant={assignmentTypeFilter === "all" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => onAssignmentTypeChange("all")}
-            className="text-xs sm:text-sm"
-          >
-            Tutti
-          </Button>
-          <Button
-            variant={assignmentTypeFilter === "auto" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => onAssignmentTypeChange("auto")}
-            className="gap-1 sm:gap-1.5 text-xs sm:text-sm"
-          >
-            <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-            <span className="hidden sm:inline">Auto</span> ({autoCount})
-          </Button>
-          <Button
-            variant={assignmentTypeFilter === "manual" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => onAssignmentTypeChange("manual")}
-            className="gap-1 sm:gap-1.5 text-xs sm:text-sm"
-          >
-            <Hand className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-            <span className="hidden sm:inline">Manuali</span> ({manualCount})
-          </Button>
+        <div className={isMobileSheet ? "space-y-2" : "flex items-center gap-1.5 sm:gap-2 sm:border-l sm:pl-4 overflow-x-auto"}>
+          {isMobileSheet && <label className="text-sm font-medium">Tipo assegnazione</label>}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant={assignmentTypeFilter === "all" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => onAssignmentTypeChange("all")}
+              className="text-xs sm:text-sm"
+            >
+              Tutti
+            </Button>
+            <Button
+              variant={assignmentTypeFilter === "auto" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => onAssignmentTypeChange("auto")}
+              className="gap-1 sm:gap-1.5 text-xs sm:text-sm"
+            >
+              <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              Auto ({autoCount})
+            </Button>
+            <Button
+              variant={assignmentTypeFilter === "manual" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => onAssignmentTypeChange("manual")}
+              className="gap-1 sm:gap-1.5 text-xs sm:text-sm"
+            >
+              <Hand className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              Manuali ({manualCount})
+            </Button>
+          </div>
         </div>
       </div>
     </div>

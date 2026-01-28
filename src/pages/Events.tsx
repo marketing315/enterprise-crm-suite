@@ -1,19 +1,12 @@
 import { useState } from "react";
 import { format, subDays, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
-import { Inbox, Filter, ExternalLink, Archive, Calendar, RefreshCw } from "lucide-react";
+import { Inbox, ExternalLink, Archive, Calendar, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -27,6 +20,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { ContactDetailSheet } from "@/components/contacts/ContactDetailSheet";
 import { TagFilter } from "@/components/tags/TagFilter";
 
@@ -53,6 +54,7 @@ interface LeadEventWithContact {
 export default function Events() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("7days");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -60,6 +62,7 @@ export default function Events() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: events, isLoading, refetch } = useQuery({
     queryKey: ["lead-events", currentBrand?.id, periodFilter, sourceFilter, showArchived],
@@ -161,9 +164,15 @@ export default function Events() {
     }
   };
 
+  const activeFiltersCount = 
+    (periodFilter !== "7days" ? 1 : 0) + 
+    (sourceFilter !== "all" ? 1 : 0) + 
+    (showArchived ? 1 : 0) +
+    (selectedTagIds.length > 0 ? 1 : 0);
+
   if (!hasBrandSelected) {
     return (
-      <div className="p-6">
+      <div className="p-4">
         <Alert>
           <Inbox className="h-4 w-4" />
           <AlertDescription>
@@ -174,33 +183,164 @@ export default function Events() {
     );
   }
 
+  const FiltersContent = () => (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Periodo</label>
+        <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as PeriodFilter)}>
+          <SelectTrigger className="w-full">
+            <Calendar className="h-4 w-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Oggi</SelectItem>
+            <SelectItem value="7days">Ultimi 7 giorni</SelectItem>
+            <SelectItem value="30days">Ultimi 30 giorni</SelectItem>
+            <SelectItem value="all">Tutti</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Fonte</label>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Fonte" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tutte le fonti</SelectItem>
+            {uniqueSources.map((source) => (
+              <SelectItem key={source} value={source}>
+                {source === "webhook" ? "Webhook" : source === "manual" ? "Manuale" : source}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label htmlFor="show-archived" className="text-sm">
+          Mostra archiviati
+        </Label>
+        <Switch
+          id="show-archived"
+          checked={showArchived}
+          onCheckedChange={setShowArchived}
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Tag</label>
+        <TagFilter
+          selectedTagIds={selectedTagIds}
+          onTagsChange={setSelectedTagIds}
+          scope="event"
+        />
+      </div>
+    </div>
+  );
+
+  // Mobile card view for events
+  const MobileEventCard = ({ event }: { event: LeadEventWithContact }) => (
+    <Card className={event.archived ? "opacity-50" : ""}>
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant={getSourceBadgeVariant(event.source)} className="text-xs">
+                {event.source_name || event.source}
+              </Badge>
+              {event.ai_priority !== null && (
+                <Badge 
+                  variant={event.ai_priority >= 8 ? "destructive" : event.ai_priority >= 5 ? "default" : "secondary"}
+                  className="text-xs"
+                >
+                  P{event.ai_priority}
+                </Badge>
+              )}
+              {event.archived && (
+                <Badge variant="outline" className="text-xs">Archiviato</Badge>
+              )}
+            </div>
+            <p className="font-medium text-sm truncate">{getContactName(event)}</p>
+            <p className="text-xs text-muted-foreground font-mono">{getContactPhone(event)}</p>
+            <p className="text-xs text-muted-foreground">
+              {format(new Date(event.received_at), "dd MMM HH:mm", { locale: it })}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            {event.contact_id && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleOpenContact(event.contact_id)}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => handleArchive(event.id, !event.archived)}
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Inbox className="h-5 w-5 text-primary" />
+          <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Inbox className="h-4 w-4 md:h-5 md:w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Eventi Lead</h1>
-            <p className="text-sm text-muted-foreground">
-              {events?.length || 0} eventi in {currentBrand?.name}
+            <h1 className="text-lg md:text-2xl font-semibold">Eventi Lead</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              {events?.length || 0} eventi
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Aggiorna
-        </Button>
+        <div className="flex items-center gap-2">
+          {isMobile ? (
+            <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="relative">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[60vh]">
+                <SheetHeader>
+                  <SheetTitle>Filtri</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4">
+                  <FiltersContent />
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Aggiorna</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          
-          {/* Period filter */}
+      {/* Desktop Filters */}
+      {!isMobile && (
+        <div className="flex flex-wrap items-center gap-4">
           <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as PeriodFilter)}>
             <SelectTrigger className="w-[140px]">
               <Calendar className="h-4 w-4 mr-2" />
@@ -214,7 +354,6 @@ export default function Events() {
             </SelectContent>
           </Select>
 
-          {/* Source filter */}
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Fonte" />
@@ -228,77 +367,74 @@ export default function Events() {
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        {/* Archived toggle */}
-        <div className="flex items-center gap-2">
-          <Switch
-            id="show-archived"
-            checked={showArchived}
-            onCheckedChange={setShowArchived}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-archived-desktop"
+              checked={showArchived}
+              onCheckedChange={setShowArchived}
+            />
+            <Label htmlFor="show-archived-desktop" className="text-sm">
+              Mostra archiviati
+            </Label>
+          </div>
+          
+          <TagFilter
+            selectedTagIds={selectedTagIds}
+            onTagsChange={setSelectedTagIds}
+            scope="event"
           />
-          <Label htmlFor="show-archived" className="text-sm">
-            Mostra archiviati
-          </Label>
         </div>
-        
-        {/* Tag Filter */}
-        <TagFilter
-          selectedTagIds={selectedTagIds}
-          onTagsChange={setSelectedTagIds}
-          scope="event"
-        />
-      </div>
+      )}
 
-      {/* Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Data/Ora</TableHead>
-              <TableHead>Fonte</TableHead>
-              <TableHead>Telefono</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Priorità</TableHead>
-              <TableHead>Stato</TableHead>
-              <TableHead className="text-right">Azioni</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                </TableRow>
-              ))
-            ) : events?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  Nessun evento trovato
-                </TableCell>
-              </TableRow>
-            ) : (
-              events?.map((event) => (
-                <TableRow key={event.id} className={event.archived ? "opacity-50" : ""}>
-                  <TableCell className="font-medium">
+      {/* Events List */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      ) : events?.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Inbox className="h-12 w-12 mx-auto mb-4 opacity-20" />
+          <p>Nessun evento trovato</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {events?.map((event) => (
+            <MobileEventCard key={event.id} event={event} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full min-w-[700px]">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-3 text-sm font-medium">Data/Ora</th>
+                <th className="text-left p-3 text-sm font-medium">Fonte</th>
+                <th className="text-left p-3 text-sm font-medium">Telefono</th>
+                <th className="text-left p-3 text-sm font-medium">Nome</th>
+                <th className="text-left p-3 text-sm font-medium">Priorità</th>
+                <th className="text-left p-3 text-sm font-medium">Stato</th>
+                <th className="text-right p-3 text-sm font-medium">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events?.map((event) => (
+                <tr key={event.id} className={`border-t ${event.archived ? "opacity-50" : ""}`}>
+                  <td className="p-3 font-medium text-sm">
                     {format(new Date(event.received_at), "dd MMM HH:mm", { locale: it })}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td className="p-3">
                     <Badge variant={getSourceBadgeVariant(event.source)}>
                       {event.source_name || event.source}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">
+                  </td>
+                  <td className="p-3 font-mono text-sm">
                     {getContactPhone(event)}
-                  </TableCell>
-                  <TableCell>{getContactName(event)}</TableCell>
-                  <TableCell>
+                  </td>
+                  <td className="p-3 text-sm">{getContactName(event)}</td>
+                  <td className="p-3">
                     {event.ai_priority !== null ? (
                       <Badge variant={event.ai_priority >= 8 ? "destructive" : event.ai_priority >= 5 ? "default" : "secondary"}>
                         {event.ai_priority}
@@ -306,15 +442,15 @@ export default function Events() {
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td className="p-3">
                     {event.archived ? (
                       <Badge variant="outline">Archiviato</Badge>
                     ) : (
                       <Badge variant="secondary">Attivo</Badge>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {event.contact_id && (
                         <Button
@@ -333,13 +469,13 @@ export default function Events() {
                         <Archive className="h-4 w-4" />
                       </Button>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Contact Detail Sheet */}
       <ContactDetailSheet
