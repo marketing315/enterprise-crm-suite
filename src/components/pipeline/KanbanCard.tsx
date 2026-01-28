@@ -116,7 +116,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
         style={style}
         {...attributes}
         {...(menuOpen ? {} : listeners)}
-        className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative group"
+        className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative group w-full max-w-full overflow-hidden"
         onClick={onClick}
       >
         {/* Action Menu Button */}
