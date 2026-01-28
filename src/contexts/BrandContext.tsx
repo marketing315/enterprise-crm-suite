@@ -22,6 +22,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch brands user has access to
+  // RLS now handles visibility: admins see ALL brands, others see only their assigned brands
   useEffect(() => {
     const fetchBrands = async () => {
       if (!user || authLoading) {
