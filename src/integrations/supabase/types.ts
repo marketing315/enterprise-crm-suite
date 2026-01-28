@@ -847,6 +847,133 @@ export type Database = {
           },
         ]
       }
+      meta_lead_events: {
+        Row: {
+          ad_id: string | null
+          brand_id: string
+          campaign_id: string | null
+          contact_id: string | null
+          error: string | null
+          fetched_payload: Json | null
+          form_id: string | null
+          id: string
+          lead_event_id: string | null
+          leadgen_id: string
+          page_id: string
+          processed_at: string | null
+          raw_event: Json
+          received_at: string
+          source_id: string
+          status: Database["public"]["Enums"]["meta_lead_status"]
+        }
+        Insert: {
+          ad_id?: string | null
+          brand_id: string
+          campaign_id?: string | null
+          contact_id?: string | null
+          error?: string | null
+          fetched_payload?: Json | null
+          form_id?: string | null
+          id?: string
+          lead_event_id?: string | null
+          leadgen_id: string
+          page_id: string
+          processed_at?: string | null
+          raw_event: Json
+          received_at?: string
+          source_id: string
+          status?: Database["public"]["Enums"]["meta_lead_status"]
+        }
+        Update: {
+          ad_id?: string | null
+          brand_id?: string
+          campaign_id?: string | null
+          contact_id?: string | null
+          error?: string | null
+          fetched_payload?: Json | null
+          form_id?: string | null
+          id?: string
+          lead_event_id?: string | null
+          leadgen_id?: string
+          page_id?: string
+          processed_at?: string | null
+          raw_event?: Json
+          received_at?: string
+          source_id?: string
+          status?: Database["public"]["Enums"]["meta_lead_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_events_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_events_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "meta_lead_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_lead_sources: {
+        Row: {
+          access_token: string
+          brand_id: string
+          created_at: string
+          form_id: string | null
+          id: string
+          is_active: boolean
+          page_id: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          brand_id: string
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          is_active?: boolean
+          page_id: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          brand_id?: string
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          is_active?: boolean
+          page_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_sources_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbound_webhook_deliveries: {
         Row: {
           attempt_count: number
@@ -1734,6 +1861,14 @@ export type Database = {
         }
         Returns: number
       }
+      find_meta_lead_source: {
+        Args: { p_form_id?: string; p_page_id: string }
+        Returns: {
+          access_token: string
+          brand_id: string
+          source_id: string
+        }[]
+      }
       find_or_create_contact: {
         Args: {
           p_assumed_country: boolean
@@ -1852,6 +1987,22 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      insert_meta_lead_event: {
+        Args: {
+          p_ad_id: string
+          p_brand_id: string
+          p_campaign_id: string
+          p_form_id: string
+          p_leadgen_id: string
+          p_page_id: string
+          p_raw_event: Json
+          p_source_id: string
+        }
+        Returns: {
+          event_id: string
+          is_duplicate: boolean
+        }[]
       }
       list_outbound_webhooks: {
         Args: { p_brand_id: string }
@@ -2051,6 +2202,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_meta_lead_event_status: {
+        Args: {
+          p_contact_id?: string
+          p_error?: string
+          p_event_id: string
+          p_fetched_payload?: Json
+          p_lead_event_id?: string
+          p_status: Database["public"]["Enums"]["meta_lead_status"]
+        }
+        Returns: undefined
+      }
       update_outbound_webhook: {
         Args: {
           p_event_types?: string[]
@@ -2116,6 +2278,12 @@ export type Database = {
       lead_source_channel: "tv" | "online" | "other"
       lead_source_type: "webhook" | "manual" | "import" | "api"
       lead_type: "trial" | "info" | "support" | "generic"
+      meta_lead_status:
+        | "received"
+        | "fetched"
+        | "ingested"
+        | "duplicate"
+        | "error"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       pacemaker_status: "assente" | "presente" | "non_chiaro"
       tag_scope:
@@ -2299,6 +2467,13 @@ export const Constants = {
       lead_source_channel: ["tv", "online", "other"],
       lead_source_type: ["webhook", "manual", "import", "api"],
       lead_type: ["trial", "info", "support", "generic"],
+      meta_lead_status: [
+        "received",
+        "fetched",
+        "ingested",
+        "duplicate",
+        "error",
+      ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       pacemaker_status: ["assente", "presente", "non_chiaro"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
