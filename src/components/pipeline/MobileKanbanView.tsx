@@ -69,9 +69,9 @@ export function MobileKanbanView({
   return (
     <div className="flex flex-col h-full overflow-hidden w-full max-w-full">
       {/* Stage Tabs - Scrollable horizontal tabs */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
-        <div className="overflow-x-auto scrollbar-hide">
-          <div className="flex gap-1 p-2 min-w-max">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 overflow-hidden">
+        <div className="overflow-x-auto scrollbar-hide w-full">
+          <div className="flex gap-1 p-2 w-max">
             {stages.map((stage, index) => {
               const stageDeals = dealsByStage[stage.id] || [];
               const isActive = index === activeStageIndex;
@@ -81,7 +81,7 @@ export function MobileKanbanView({
                   key={stage.id}
                   onClick={() => setActiveStageIndex(index)}
                   className={`
-                    flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
+                    flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
                     transition-all duration-200 whitespace-nowrap shrink-0
                     ${isActive 
                       ? "bg-primary text-primary-foreground shadow-sm" 
@@ -93,10 +93,10 @@ export function MobileKanbanView({
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{ backgroundColor: isActive ? "currentColor" : (stage.color || "hsl(var(--primary))") }}
                   />
-                  <span className="max-w-[100px] truncate">{stage.name}</span>
+                  <span className="max-w-[60px] truncate">{stage.name}</span>
                   <Badge 
                     variant={isActive ? "secondary" : "outline"}
-                    className="h-5 min-w-[20px] text-xs"
+                    className="h-4 min-w-[16px] text-[10px] px-1"
                   >
                     {stageDeals.length}
                   </Badge>
