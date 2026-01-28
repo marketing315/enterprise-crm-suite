@@ -21,20 +21,20 @@ export function KanbanColumn({ stage, deals, onDealClick }: KanbanColumnProps) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col w-64 md:w-72 shrink-0 bg-muted/30 rounded-lg border transition-colors ${
+      className={`flex flex-col w-[240px] sm:w-64 md:w-72 shrink-0 bg-muted/30 rounded-lg border transition-colors ${
         isOver ? "border-primary bg-primary/5" : "border-border"
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-2 md:p-3 border-b">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-2 border-b">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
           <div
-            className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full"
+            className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full shrink-0"
             style={{ backgroundColor: stage.color || "#6366f1" }}
           />
-          <h3 className="font-semibold text-xs md:text-sm truncate max-w-[140px] md:max-w-none">{stage.name}</h3>
+          <h3 className="font-semibold text-xs sm:text-sm truncate">{stage.name}</h3>
         </div>
-        <Badge variant="secondary" className="text-xs">
+        <Badge variant="secondary" className="text-[10px] sm:text-xs ml-1 shrink-0">
           {deals.length}
         </Badge>
       </div>
