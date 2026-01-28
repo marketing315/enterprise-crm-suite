@@ -1,117 +1,173 @@
-import { useBrand } from '@/contexts/BrandContext';
+import { useBrand, ALL_BRANDS_ID } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Users, Kanban, Calendar, Ticket, TrendingUp, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Building2, Users, Kanban, Calendar, Ticket, TrendingUp, CheckCircle2, AlertCircle, Clock, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfDay, endOfDay, subDays, format } from 'date-fns';
+import { useBrandFilter } from '@/hooks/useBrandFilter';
 
 export default function Dashboard() {
-  const { currentBrand, hasBrandSelected } = useBrand();
+  const { currentBrand, hasBrandSelected, isAllBrandsSelected } = useBrand();
   const { user, userRoles } = useAuth();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   // KPI: Lead oggi
   const { data: leadsToday = 0 } = useQuery({
-    queryKey: ['dashboard-leads-today', currentBrand?.id],
+    queryKey: ['dashboard-leads-today', getQueryKeyBrand()],
     queryFn: async () => {
-      if (!currentBrand?.id) return 0;
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return 0;
       const today = new Date();
-      const { count, error } = await supabase
+      
+      let query = supabase
         .from('lead_events')
         .select('*', { count: 'exact', head: true })
-        .eq('brand_id', currentBrand.id)
         .gte('received_at', startOfDay(today).toISOString())
         .lte('received_at', endOfDay(today).toISOString());
+      
+      if (brandIds.length === 1) {
+        query = query.eq('brand_id', brandIds[0]);
+      } else {
+        query = query.in('brand_id', brandIds);
+      }
+      
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!currentBrand?.id,
-    refetchInterval: 30000, // refresh every 30s
+    enabled: isQueryEnabled(),
+    refetchInterval: 30000,
   });
 
   // KPI: Deal aperti
   const { data: openDeals = 0 } = useQuery({
-    queryKey: ['dashboard-open-deals', currentBrand?.id],
+    queryKey: ['dashboard-open-deals', getQueryKeyBrand()],
     queryFn: async () => {
-      if (!currentBrand?.id) return 0;
-      const { count, error } = await supabase
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return 0;
+      
+      let query = supabase
         .from('deals')
         .select('*', { count: 'exact', head: true })
-        .eq('brand_id', currentBrand.id)
         .eq('status', 'open');
+      
+      if (brandIds.length === 1) {
+        query = query.eq('brand_id', brandIds[0]);
+      } else {
+        query = query.in('brand_id', brandIds);
+      }
+      
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 
   // KPI: Ticket aperti
   const { data: openTickets = 0 } = useQuery({
-    queryKey: ['dashboard-open-tickets', currentBrand?.id],
+    queryKey: ['dashboard-open-tickets', getQueryKeyBrand()],
     queryFn: async () => {
-      if (!currentBrand?.id) return 0;
-      const { count, error } = await supabase
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return 0;
+      
+      let query = supabase
         .from('tickets')
         .select('*', { count: 'exact', head: true })
-        .eq('brand_id', currentBrand.id)
         .in('status', ['open', 'in_progress', 'reopened']);
+      
+      if (brandIds.length === 1) {
+        query = query.eq('brand_id', brandIds[0]);
+      } else {
+        query = query.in('brand_id', brandIds);
+      }
+      
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 
   // KPI: Ticket con SLA breach
   const { data: slaBreachedTickets = 0 } = useQuery({
-    queryKey: ['dashboard-sla-breached', currentBrand?.id],
+    queryKey: ['dashboard-sla-breached', getQueryKeyBrand()],
     queryFn: async () => {
-      if (!currentBrand?.id) return 0;
-      const { count, error } = await supabase
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return 0;
+      
+      let query = supabase
         .from('tickets')
         .select('*', { count: 'exact', head: true })
-        .eq('brand_id', currentBrand.id)
         .in('status', ['open', 'in_progress', 'reopened'])
         .not('sla_breached_at', 'is', null);
+      
+      if (brandIds.length === 1) {
+        query = query.eq('brand_id', brandIds[0]);
+      } else {
+        query = query.in('brand_id', brandIds);
+      }
+      
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 
   // KPI: Contatti totali
   const { data: totalContacts = 0 } = useQuery({
-    queryKey: ['dashboard-total-contacts', currentBrand?.id],
+    queryKey: ['dashboard-total-contacts', getQueryKeyBrand()],
     queryFn: async () => {
-      if (!currentBrand?.id) return 0;
-      const { count, error } = await supabase
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return 0;
+      
+      let query = supabase
         .from('contacts')
-        .select('*', { count: 'exact', head: true })
-        .eq('brand_id', currentBrand.id);
+        .select('*', { count: 'exact', head: true });
+      
+      if (brandIds.length === 1) {
+        query = query.eq('brand_id', brandIds[0]);
+      } else {
+        query = query.in('brand_id', brandIds);
+      }
+      
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 60000,
   });
 
   // KPI: Lead ultimi 7 giorni
   const { data: leadsWeek = 0 } = useQuery({
-    queryKey: ['dashboard-leads-week', currentBrand?.id],
+    queryKey: ['dashboard-leads-week', getQueryKeyBrand()],
     queryFn: async () => {
-      if (!currentBrand?.id) return 0;
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return 0;
       const weekAgo = subDays(new Date(), 7);
-      const { count, error } = await supabase
+      
+      let query = supabase
         .from('lead_events')
         .select('*', { count: 'exact', head: true })
-        .eq('brand_id', currentBrand.id)
         .gte('received_at', weekAgo.toISOString());
+      
+      if (brandIds.length === 1) {
+        query = query.eq('brand_id', brandIds[0]);
+      } else {
+        query = query.in('brand_id', brandIds);
+      }
+      
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 60000,
   });
 
@@ -127,18 +183,29 @@ export default function Dashboard() {
     );
   }
 
-  const currentRole = userRoles.find(r => r.brand_id === currentBrand?.id);
+  const currentRole = !isAllBrandsSelected 
+    ? userRoles.find(r => r.brand_id === currentBrand?.id)
+    : null;
 
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+          {isAllBrandsSelected && <Globe className="h-6 w-6 text-primary" />}
+          Dashboard
+        </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Benvenuto in {currentBrand?.name}
-          {currentRole && (
-            <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {currentRole.role}
-            </span>
+          {isAllBrandsSelected ? (
+            <span>Vista globale di tutti i brand</span>
+          ) : (
+            <>
+              Benvenuto in {currentBrand?.name}
+              {currentRole && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  {currentRole.role}
+                </span>
+              )}
+            </>
           )}
         </p>
       </div>

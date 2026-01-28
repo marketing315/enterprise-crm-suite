@@ -1,15 +1,17 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBrand } from '@/contexts/BrandContext';
+import { useBrand, ALL_BRANDS } from '@/contexts/BrandContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, ArrowRight, Loader2 } from 'lucide-react';
+import { Building2, ArrowRight, Loader2, Globe } from 'lucide-react';
 
 export default function SelectBrand() {
-  const { user, isLoading: authLoading, signOut } = useAuth();
+  const { user, isLoading: authLoading, signOut, isAdmin, isCeo } = useAuth();
   const { brands, currentBrand, setCurrentBrand, isLoading: brandLoading } = useBrand();
   const navigate = useNavigate();
+
+  const canSeeAllBrands = isAdmin || isCeo;
 
   useEffect(() => {
     // If already has a brand selected, go to dashboard
@@ -20,6 +22,11 @@ export default function SelectBrand() {
 
   const handleSelectBrand = (brand: typeof brands[0]) => {
     setCurrentBrand(brand);
+    navigate('/dashboard');
+  };
+
+  const handleSelectAllBrands = () => {
+    setCurrentBrand(ALL_BRANDS);
     navigate('/dashboard');
   };
 
@@ -67,6 +74,25 @@ export default function SelectBrand() {
             </div>
           ) : (
             <div className="space-y-2">
+              {/* All Brands option for admins/CEOs */}
+              {canSeeAllBrands && (
+                <Button
+                  variant="default"
+                  className="w-full justify-between h-auto py-4"
+                  onClick={handleSelectAllBrands}
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-5 w-5" />
+                    <div className="text-left">
+                      <div className="font-medium">Tutti i brand</div>
+                      <div className="text-xs opacity-80">Vista globale aggregata</div>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+              
+              {/* Individual brands */}
               {brands.map((brand) => (
                 <Button
                   key={brand.id}

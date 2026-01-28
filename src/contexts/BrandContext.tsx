@@ -3,12 +3,27 @@ import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Brand } from '@/types/database';
 
+// Special constant for "All Brands" virtual brand
+export const ALL_BRANDS_ID = '__ALL_BRANDS__';
+
+export const ALL_BRANDS: Brand = {
+  id: ALL_BRANDS_ID,
+  name: 'Tutti i brand',
+  slug: 'all-brands',
+  auto_assign_enabled: false,
+  sla_thresholds_minutes: { "1": 60, "2": 120, "3": 240, "4": 480, "5": 1440 },
+  created_at: '',
+  updated_at: '',
+};
+
 interface BrandContextType {
   brands: Brand[];
   currentBrand: Brand | null;
   setCurrentBrand: (brand: Brand | null) => void;
   isLoading: boolean;
   hasBrandSelected: boolean;
+  isAllBrandsSelected: boolean;
+  allBrandIds: string[];
 }
 
 const BrandContext = createContext<BrandContextType | undefined>(undefined);
@@ -16,9 +31,9 @@ const BrandContext = createContext<BrandContextType | undefined>(undefined);
 const BRAND_STORAGE_KEY = 'crm_selected_brand_id';
 
 export function BrandProvider({ children }: { children: React.ReactNode }) {
-  const { user, userRoles, isLoading: authLoading } = useAuth();
+  const { user, userRoles, isLoading: authLoading, isAdmin, isCeo } = useAuth();
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [currentBrand, setCurrentBrandState] = useState<Brand | null>(null);
+  const [currentBrandState, setCurrentBrandState] = useState<Brand | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch brands user has access to
@@ -46,9 +61,13 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
           // Try to restore previously selected brand
           const storedBrandId = localStorage.getItem(BRAND_STORAGE_KEY);
           if (storedBrandId && data) {
-            const storedBrand = data.find(b => b.id === storedBrandId);
-            if (storedBrand) {
-              setCurrentBrandState(storedBrand as Brand);
+            if (storedBrandId === ALL_BRANDS_ID && (isAdmin || isCeo)) {
+              setCurrentBrandState(ALL_BRANDS);
+            } else {
+              const storedBrand = data.find(b => b.id === storedBrandId);
+              if (storedBrand) {
+                setCurrentBrandState(storedBrand as Brand);
+              }
             }
           }
         }
@@ -61,7 +80,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchBrands();
-  }, [user, userRoles, authLoading]);
+  }, [user, userRoles, authLoading, isAdmin, isCeo]);
 
   const setCurrentBrand = (brand: Brand | null) => {
     setCurrentBrandState(brand);
@@ -72,14 +91,19 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isAllBrandsSelected = currentBrandState?.id === ALL_BRANDS_ID;
+  const allBrandIds = brands.map(b => b.id);
+
   return (
     <BrandContext.Provider
       value={{
         brands,
-        currentBrand,
+        currentBrand: currentBrandState,
         setCurrentBrand,
         isLoading: isLoading || authLoading,
-        hasBrandSelected: currentBrand !== null
+        hasBrandSelected: currentBrandState !== null,
+        isAllBrandsSelected,
+        allBrandIds,
       }}
     >
       {children}
