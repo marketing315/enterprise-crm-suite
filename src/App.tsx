@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import Contacts from "@/pages/Contacts";
 import Pipeline from "@/pages/Pipeline";
 import Events from "@/pages/Events";
+import Appointments from "@/pages/Appointments";
 import Tickets from "@/pages/Tickets";
 import Settings from "@/pages/Settings";
 import AdminAIMetrics from "@/pages/AdminAIMetrics";
@@ -57,7 +58,7 @@ const App = () => (
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/pipeline" element={<Pipeline />} />
                 <Route path="/events" element={<Events />} />
-                <Route path="/appointments" element={<Dashboard />} />
+                <Route path="/appointments" element={<Appointments />} />
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/analytics" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />

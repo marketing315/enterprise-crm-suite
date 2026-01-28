@@ -168,3 +168,37 @@ export interface DealWithContact extends Deal {
     email: string | null;
   };
 }
+
+// Appointments
+export interface Appointment {
+  id: string;
+  brand_id: string;
+  contact_id: string;
+  deal_id: string | null;
+  scheduled_at: string;
+  duration_minutes: number;
+  address: string | null;
+  city: string | null;
+  cap: string | null;
+  notes: string | null;
+  status: AppointmentStatus;
+  assigned_sales_user_id: string | null;
+  created_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AppointmentWithRelations extends Appointment {
+  contact: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+    primary_phone: string | null;
+  };
+  sales_user: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  } | null;
+}

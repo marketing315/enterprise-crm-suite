@@ -68,6 +68,96 @@ export type Database = {
           },
         ]
       }
+      appointments: {
+        Row: {
+          address: string | null
+          assigned_sales_user_id: string | null
+          brand_id: string
+          cap: string | null
+          city: string | null
+          contact_id: string
+          created_at: string
+          created_by_user_id: string | null
+          deal_id: string | null
+          duration_minutes: number
+          id: string
+          notes: string | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          assigned_sales_user_id?: string | null
+          brand_id: string
+          cap?: string | null
+          city?: string | null
+          contact_id: string
+          created_at?: string
+          created_by_user_id?: string | null
+          deal_id?: string | null
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          scheduled_at: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          assigned_sales_user_id?: string | null
+          brand_id?: string
+          cap?: string | null
+          city?: string | null
+          contact_id?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          deal_id?: string | null
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_assigned_sales_user_id_fkey"
+            columns: ["assigned_sales_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_assignment_state: {
         Row: {
           brand_id: string
@@ -1285,6 +1375,10 @@ export type Database = {
         Args: { p_lead_event_id: string }
         Returns: undefined
       }
+      assign_appointment_sales: {
+        Args: { p_appointment_id: string; p_sales_user_id: string }
+        Returns: undefined
+      }
       assign_ticket_round_robin: {
         Args: { p_brand_id: string; p_ticket_id: string }
         Returns: string
@@ -1341,6 +1435,21 @@ export type Database = {
       consume_rate_limit_token: {
         Args: { p_source_id: string }
         Returns: boolean
+      }
+      create_appointment: {
+        Args: {
+          p_address?: string
+          p_assigned_sales_user_id?: string
+          p_brand_id: string
+          p_cap?: string
+          p_city?: string
+          p_contact_id: string
+          p_deal_id?: string
+          p_duration_minutes?: number
+          p_notes?: string
+          p_scheduled_at?: string
+        }
+        Returns: string
       }
       create_outbound_webhook: {
         Args: {
@@ -1534,6 +1643,19 @@ export type Database = {
         Args: { p_id: string; p_new_secret: string }
         Returns: string
       }
+      search_appointments: {
+        Args: {
+          p_brand_id: string
+          p_contact_id?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_offset?: number
+          p_sales_user_id?: string
+          p_status?: Database["public"]["Enums"]["appointment_status"]
+        }
+        Returns: Json
+      }
       search_contacts: {
         Args: {
           p_brand_id: string
@@ -1620,7 +1742,30 @@ export type Database = {
         }
         Returns: Json
       }
+      set_appointment_status: {
+        Args: {
+          p_appointment_id: string
+          p_status: Database["public"]["Enums"]["appointment_status"]
+        }
+        Returns: undefined
+      }
+      set_lead_event_archived: {
+        Args: { p_archived: boolean; p_event_id: string }
+        Returns: undefined
+      }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
+      update_appointment: {
+        Args: {
+          p_address?: string
+          p_appointment_id: string
+          p_cap?: string
+          p_city?: string
+          p_duration_minutes?: number
+          p_notes?: string
+          p_scheduled_at?: string
+        }
+        Returns: undefined
+      }
       update_outbound_webhook: {
         Args: {
           p_event_types?: string[]
@@ -1655,6 +1800,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "ceo" | "callcenter" | "sales"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "cancelled"
+        | "rescheduled"
+        | "visited"
+        | "no_show"
       assigned_by: "ai" | "user" | "rule"
       contact_status:
         | "new"
@@ -1827,6 +1979,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "ceo", "callcenter", "sales"],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "cancelled",
+        "rescheduled",
+        "visited",
+        "no_show",
+      ],
       assigned_by: ["ai", "user", "rule"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
       deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],

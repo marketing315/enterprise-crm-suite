@@ -71,10 +71,15 @@ export default function Events() {
   };
 
   const handleArchive = async (eventId: string, archived: boolean) => {
-    await supabase
-      .from("lead_events")
-      .update({ archived } as never)
-      .eq("id", eventId);
+    // FIX 2.2: Use RPC instead of direct update for controlled access
+    const { error } = await supabase.rpc("set_lead_event_archived", {
+      p_event_id: eventId,
+      p_archived: archived,
+    });
+    
+    if (error) {
+      console.error("Archive error:", error.message);
+    }
     
     queryClient.invalidateQueries({ queryKey: ["lead-events-rpc"] });
   };
