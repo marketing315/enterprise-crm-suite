@@ -262,9 +262,11 @@ serve(async (req: Request) => {
           });
         }
 
-        const { error: insertError } = await adminClient
+        const { data: insertedRole, error: insertError } = await adminClient
           .from("user_roles")
-          .insert({ user_id, brand_id, role });
+          .insert({ user_id, brand_id, role })
+          .select("id")
+          .single();
 
         if (insertError) {
           return new Response(JSON.stringify({ error: insertError.message }), {
@@ -273,7 +275,7 @@ serve(async (req: Request) => {
           });
         }
 
-        return new Response(JSON.stringify({ success: true }), {
+        return new Response(JSON.stringify({ success: true, role_id: insertedRole.id }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

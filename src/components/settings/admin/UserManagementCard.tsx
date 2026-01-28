@@ -298,14 +298,21 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
 
   const handleAddRoleToEditUser = () => {
     if (!editAddBrandId || !editingUser) return;
+    const brandIdToAdd = editAddBrandId;
+    const roleToAdd = editAddRole;
     addRoleMutation.mutate(
-      { user_id: editingUser.id, brand_id: editAddBrandId, role: editAddRole },
+      { user_id: editingUser.id, brand_id: brandIdToAdd, role: roleToAdd },
       {
-        onSuccess: () => {
-          // Refresh user roles from cache after adding
-          queryClient.invalidateQueries({ queryKey: ["admin-users-roles"] });
+        onSuccess: (data) => {
+          // Update local state immediately to prevent duplicate attempts
+          setEditUserRoles((prev) => [
+            ...prev,
+            { id: data?.role_id || `temp-${Date.now()}`, brand_id: brandIdToAdd, role: roleToAdd },
+          ]);
           setEditAddBrandId("");
           setEditAddRole("callcenter");
+          // Refresh from server
+          queryClient.invalidateQueries({ queryKey: ["admin-users-roles"] });
         },
       }
     );
