@@ -1,12 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginForm } from '@/components/auth/LoginForm';
-import { SignupForm } from '@/components/auth/SignupForm';
 import { Building2 } from 'lucide-react';
 
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true);
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -26,11 +24,7 @@ export default function Login() {
         <p className="text-muted-foreground">Gestione Lead Multi-Brand</p>
       </div>
 
-      {isLogin ? (
-        <LoginForm onToggleMode={() => setIsLogin(false)} />
-      ) : (
-        <SignupForm onToggleMode={() => setIsLogin(true)} />
-      )}
+      <LoginForm />
     </div>
   );
 }
