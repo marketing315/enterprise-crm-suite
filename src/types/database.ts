@@ -22,6 +22,16 @@ export type DeliveryStatus = 'pending' | 'success' | 'failed' | 'dead';
 
 export type CircuitBreakerState = 'closed' | 'open' | 'half_open';
 
+// New qualification types
+export type LeadSourceChannel = 'tv' | 'online' | 'other';
+export type ContactChannel = 'chat' | 'call';
+export type PacemakerStatus = 'assente' | 'presente' | 'non_chiaro';
+export type CustomerSentiment = 'positivo' | 'neutro' | 'negativo';
+export type DecisionStatus = 'pronto' | 'indeciso' | 'non_interessato';
+export type ObjectionType = 'prezzo' | 'tempo' | 'fiducia' | 'altro';
+export type AppointmentType = 'primo_appuntamento' | 'follow_up' | 'visita_tecnica';
+export type TopicCreatedBy = 'ai' | 'user';
+
 // Core entities
 export interface Brand {
   id: string;
@@ -182,6 +192,9 @@ export interface Appointment {
   cap: string | null;
   notes: string | null;
   status: AppointmentStatus;
+  appointment_type: AppointmentType | null;
+  appointment_order: number | null;
+  parent_appointment_id: string | null;
   assigned_sales_user_id: string | null;
   created_by_user_id: string | null;
   created_at: string;
@@ -189,6 +202,7 @@ export interface Appointment {
 }
 
 export interface AppointmentWithRelations extends Appointment {
+  brand_name?: string;
   contact: {
     id: string;
     first_name: string | null;
@@ -201,4 +215,71 @@ export interface AppointmentWithRelations extends Appointment {
     full_name: string | null;
     email: string;
   } | null;
+}
+
+// Clinical Topics
+export interface ClinicalTopic {
+  id: string;
+  brand_id: string;
+  canonical_name: string;
+  slug: string;
+  created_by: TopicCreatedBy;
+  needs_review: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ClinicalTopicAlias {
+  id: string;
+  brand_id: string;
+  topic_id: string;
+  alias_text: string;
+  created_by: TopicCreatedBy;
+  created_at: string;
+}
+
+export interface LeadEventClinicalTopic {
+  lead_event_id: string;
+  topic_id: string;
+  created_at: string;
+}
+
+// Extended Lead Event with qualification fields
+export interface LeadEventExtended {
+  id: string;
+  brand_id: string;
+  contact_id: string | null;
+  deal_id: string | null;
+  source: LeadSourceType;
+  source_name: string | null;
+  raw_payload: Record<string, unknown>;
+  occurred_at: string;
+  received_at: string;
+  ai_priority: number | null;
+  ai_confidence: number | null;
+  ai_rationale: string | null;
+  ai_processed: boolean;
+  lead_type: string | null;
+  archived: boolean;
+  // New qualification fields
+  lead_source_channel: LeadSourceChannel | null;
+  contact_channel: ContactChannel | null;
+  pacemaker_status: PacemakerStatus | null;
+  customer_sentiment: CustomerSentiment | null;
+  decision_status: DecisionStatus | null;
+  objection_type: ObjectionType | null;
+  booking_notes: string | null;
+  ai_conversation_summary: string | null;
+  logistics_notes: string | null;
+  created_at: string;
+  // Relations
+  clinical_topics?: ClinicalTopic[];
+  contact?: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+    primary_phone: string | null;
+  };
 }
