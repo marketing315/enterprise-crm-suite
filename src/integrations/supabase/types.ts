@@ -71,6 +71,10 @@ export type Database = {
       appointments: {
         Row: {
           address: string | null
+          appointment_order: number | null
+          appointment_type:
+            | Database["public"]["Enums"]["appointment_type"]
+            | null
           assigned_sales_user_id: string | null
           brand_id: string
           cap: string | null
@@ -82,12 +86,17 @@ export type Database = {
           duration_minutes: number
           id: string
           notes: string | null
+          parent_appointment_id: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
         }
         Insert: {
           address?: string | null
+          appointment_order?: number | null
+          appointment_type?:
+            | Database["public"]["Enums"]["appointment_type"]
+            | null
           assigned_sales_user_id?: string | null
           brand_id: string
           cap?: string | null
@@ -99,12 +108,17 @@ export type Database = {
           duration_minutes?: number
           id?: string
           notes?: string | null
+          parent_appointment_id?: string | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
         }
         Update: {
           address?: string | null
+          appointment_order?: number | null
+          appointment_type?:
+            | Database["public"]["Enums"]["appointment_type"]
+            | null
           assigned_sales_user_id?: string | null
           brand_id?: string
           cap?: string | null
@@ -116,6 +130,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           notes?: string | null
+          parent_appointment_id?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -154,6 +169,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_parent_appointment_id_fkey"
+            columns: ["parent_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
         ]
@@ -275,6 +297,92 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_topic_aliases: {
+        Row: {
+          alias_text: string
+          brand_id: string
+          created_at: string
+          created_by: Database["public"]["Enums"]["topic_created_by"]
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          alias_text: string
+          brand_id: string
+          created_at?: string
+          created_by?: Database["public"]["Enums"]["topic_created_by"]
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          alias_text?: string
+          brand_id?: string
+          created_at?: string
+          created_by?: Database["public"]["Enums"]["topic_created_by"]
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_topic_aliases_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_topic_aliases_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinical_topics: {
+        Row: {
+          brand_id: string
+          canonical_name: string
+          created_at: string
+          created_by: Database["public"]["Enums"]["topic_created_by"]
+          id: string
+          is_active: boolean
+          needs_review: boolean
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          brand_id: string
+          canonical_name: string
+          created_at?: string
+          created_by?: Database["public"]["Enums"]["topic_created_by"]
+          id?: string
+          is_active?: boolean
+          needs_review?: boolean
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          brand_id?: string
+          canonical_name?: string
+          created_at?: string
+          created_by?: Database["public"]["Enums"]["topic_created_by"]
+          id?: string
+          is_active?: boolean
+          needs_review?: boolean
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_topics_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_phones: {
         Row: {
           assumed_country: boolean
@@ -331,6 +439,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          address: string | null
           brand_id: string
           cap: string | null
           city: string | null
@@ -344,6 +453,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           brand_id: string
           cap?: string | null
           city?: string | null
@@ -357,6 +467,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           brand_id?: string
           cap?: string | null
           city?: string | null
@@ -566,9 +677,43 @@ export type Database = {
           },
         ]
       }
+      lead_event_clinical_topics: {
+        Row: {
+          created_at: string
+          lead_event_id: string
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          lead_event_id: string
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          lead_event_id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_event_clinical_topics_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_event_clinical_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_events: {
         Row: {
           ai_confidence: number | null
+          ai_conversation_summary: string | null
           ai_model_version: string | null
           ai_priority: number | null
           ai_processed: boolean
@@ -576,13 +721,27 @@ export type Database = {
           ai_prompt_version: string | null
           ai_rationale: string | null
           archived: boolean
+          booking_notes: string | null
           brand_id: string
+          contact_channel: Database["public"]["Enums"]["contact_channel"] | null
           contact_id: string | null
           created_at: string
+          customer_sentiment:
+            | Database["public"]["Enums"]["customer_sentiment"]
+            | null
           deal_id: string | null
+          decision_status: Database["public"]["Enums"]["decision_status"] | null
           id: string
+          lead_source_channel:
+            | Database["public"]["Enums"]["lead_source_channel"]
+            | null
           lead_type: Database["public"]["Enums"]["lead_type"] | null
+          logistics_notes: string | null
+          objection_type: Database["public"]["Enums"]["objection_type"] | null
           occurred_at: string
+          pacemaker_status:
+            | Database["public"]["Enums"]["pacemaker_status"]
+            | null
           raw_payload: Json
           received_at: string
           should_create_ticket: boolean | null
@@ -591,6 +750,7 @@ export type Database = {
         }
         Insert: {
           ai_confidence?: number | null
+          ai_conversation_summary?: string | null
           ai_model_version?: string | null
           ai_priority?: number | null
           ai_processed?: boolean
@@ -598,13 +758,31 @@ export type Database = {
           ai_prompt_version?: string | null
           ai_rationale?: string | null
           archived?: boolean
+          booking_notes?: string | null
           brand_id: string
+          contact_channel?:
+            | Database["public"]["Enums"]["contact_channel"]
+            | null
           contact_id?: string | null
           created_at?: string
+          customer_sentiment?:
+            | Database["public"]["Enums"]["customer_sentiment"]
+            | null
           deal_id?: string | null
+          decision_status?:
+            | Database["public"]["Enums"]["decision_status"]
+            | null
           id?: string
+          lead_source_channel?:
+            | Database["public"]["Enums"]["lead_source_channel"]
+            | null
           lead_type?: Database["public"]["Enums"]["lead_type"] | null
+          logistics_notes?: string | null
+          objection_type?: Database["public"]["Enums"]["objection_type"] | null
           occurred_at?: string
+          pacemaker_status?:
+            | Database["public"]["Enums"]["pacemaker_status"]
+            | null
           raw_payload?: Json
           received_at?: string
           should_create_ticket?: boolean | null
@@ -613,6 +791,7 @@ export type Database = {
         }
         Update: {
           ai_confidence?: number | null
+          ai_conversation_summary?: string | null
           ai_model_version?: string | null
           ai_priority?: number | null
           ai_processed?: boolean
@@ -620,13 +799,31 @@ export type Database = {
           ai_prompt_version?: string | null
           ai_rationale?: string | null
           archived?: boolean
+          booking_notes?: string | null
           brand_id?: string
+          contact_channel?:
+            | Database["public"]["Enums"]["contact_channel"]
+            | null
           contact_id?: string | null
           created_at?: string
+          customer_sentiment?:
+            | Database["public"]["Enums"]["customer_sentiment"]
+            | null
           deal_id?: string | null
+          decision_status?:
+            | Database["public"]["Enums"]["decision_status"]
+            | null
           id?: string
+          lead_source_channel?:
+            | Database["public"]["Enums"]["lead_source_channel"]
+            | null
           lead_type?: Database["public"]["Enums"]["lead_type"] | null
+          logistics_notes?: string | null
+          objection_type?: Database["public"]["Enums"]["objection_type"] | null
           occurred_at?: string
+          pacemaker_status?:
+            | Database["public"]["Enums"]["pacemaker_status"]
+            | null
           raw_payload?: Json
           received_at?: string
           should_create_ticket?: boolean | null
@@ -1425,6 +1622,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_contact_phone: {
+        Args: {
+          p_contact_id: string
+          p_is_primary?: boolean
+          p_phone_raw: string
+        }
+        Returns: string
+      }
       apply_ai_fallback: {
         Args: { p_lead_event_id: string }
         Returns: undefined
@@ -1671,6 +1876,7 @@ export type Database = {
         }
         Returns: Json
       }
+      normalize_topic_text: { Args: { p_text: string }; Returns: string }
       record_delivery_result:
         | {
             Args: {
@@ -1747,24 +1953,45 @@ export type Database = {
         }
         Returns: Json
       }
-      search_lead_events: {
-        Args: {
-          p_archived?: boolean
-          p_brand_id: string
-          p_date_from?: string
-          p_date_to?: string
-          p_include_archived?: boolean
-          p_limit?: number
-          p_match_all_tags?: boolean
-          p_offset?: number
-          p_priority_max?: number
-          p_priority_min?: number
-          p_source?: string
-          p_source_name?: string
-          p_tag_ids?: string[]
-        }
-        Returns: Json
-      }
+      search_lead_events:
+        | {
+            Args: {
+              p_archived?: boolean
+              p_brand_id: string
+              p_clinical_topic_ids?: string[]
+              p_date_from?: string
+              p_date_to?: string
+              p_include_archived?: boolean
+              p_limit?: number
+              p_match_all_tags?: boolean
+              p_match_all_topics?: boolean
+              p_offset?: number
+              p_priority_max?: number
+              p_priority_min?: number
+              p_source?: Database["public"]["Enums"]["lead_source_type"]
+              p_source_name?: string
+              p_tag_ids?: string[]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_archived?: boolean
+              p_brand_id: string
+              p_date_from?: string
+              p_date_to?: string
+              p_include_archived?: boolean
+              p_limit?: number
+              p_match_all_tags?: boolean
+              p_offset?: number
+              p_priority_max?: number
+              p_priority_min?: number
+              p_source?: string
+              p_source_name?: string
+              p_tag_ids?: string[]
+            }
+            Returns: Json
+          }
       search_tickets_v1: {
         Args: {
           p_assignment_type?: string
@@ -1807,6 +2034,10 @@ export type Database = {
         Args: { p_archived: boolean; p_event_id: string }
         Returns: undefined
       }
+      set_lead_event_clinical_topics: {
+        Args: { p_event_id: string; p_topic_ids: string[] }
+        Returns: undefined
+      }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
       update_appointment: {
         Args: {
@@ -1829,6 +2060,14 @@ export type Database = {
           p_url?: string
         }
         Returns: boolean
+      }
+      upsert_clinical_topics_from_strings: {
+        Args: {
+          p_brand_id: string
+          p_created_by?: Database["public"]["Enums"]["topic_created_by"]
+          p_strings: string[]
+        }
+        Returns: string[]
       }
       user_belongs_to_brand: {
         Args: { _brand_id: string; _user_id: string }
@@ -1861,17 +2100,24 @@ export type Database = {
         | "rescheduled"
         | "visited"
         | "no_show"
+      appointment_type: "primo_appuntamento" | "follow_up" | "visita_tecnica"
       assigned_by: "ai" | "user" | "rule"
+      contact_channel: "chat" | "call"
       contact_status:
         | "new"
         | "active"
         | "qualified"
         | "unqualified"
         | "archived"
+      customer_sentiment: "positivo" | "neutro" | "negativo"
       deal_status: "open" | "won" | "lost" | "closed" | "reopened_for_support"
+      decision_status: "pronto" | "indeciso" | "non_interessato"
       ingest_status: "pending" | "success" | "rejected" | "failed"
+      lead_source_channel: "tv" | "online" | "other"
       lead_source_type: "webhook" | "manual" | "import" | "api"
       lead_type: "trial" | "info" | "support" | "generic"
+      objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
+      pacemaker_status: "assente" | "presente" | "non_chiaro"
       tag_scope:
         | "contact"
         | "event"
@@ -1889,6 +2135,7 @@ export type Database = {
         | "sla_breach"
       ticket_creator: "ai" | "user" | "rule"
       ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
+      topic_created_by: "ai" | "user"
       webhook_delivery_status: "pending" | "sending" | "success" | "failed"
       webhook_event_type:
         | "ticket.created"
@@ -2041,12 +2288,19 @@ export const Constants = {
         "visited",
         "no_show",
       ],
+      appointment_type: ["primo_appuntamento", "follow_up", "visita_tecnica"],
       assigned_by: ["ai", "user", "rule"],
+      contact_channel: ["chat", "call"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
+      customer_sentiment: ["positivo", "neutro", "negativo"],
       deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],
+      decision_status: ["pronto", "indeciso", "non_interessato"],
       ingest_status: ["pending", "success", "rejected", "failed"],
+      lead_source_channel: ["tv", "online", "other"],
       lead_source_type: ["webhook", "manual", "import", "api"],
       lead_type: ["trial", "info", "support", "generic"],
+      objection_type: ["prezzo", "tempo", "fiducia", "altro"],
+      pacemaker_status: ["assente", "presente", "non_chiaro"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
       ticket_audit_action: [
         "created",
@@ -2059,6 +2313,7 @@ export const Constants = {
       ],
       ticket_creator: ["ai", "user", "rule"],
       ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
+      topic_created_by: ["ai", "user"],
       webhook_delivery_status: ["pending", "sending", "success", "failed"],
       webhook_event_type: [
         "ticket.created",
