@@ -206,7 +206,7 @@ export function MainLayout() {
               </div>
             )}
           </header>
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-hidden p-3 md:p-6">
             <Outlet />
           </main>
         </SidebarInset>
