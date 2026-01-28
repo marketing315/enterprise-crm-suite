@@ -10,7 +10,8 @@ interface CreateUserRequest {
   email: string;
   password: string;
   full_name: string;
-  brand_id: string;
+  brand_ids: string[];  // Support multiple brands
+  brand_id?: string;    // Legacy support for single brand
   role: "admin" | "ceo" | "callcenter" | "sales";
 }
 
@@ -81,9 +82,13 @@ serve(async (req: Request) => {
       });
     }
 
-    const { email, password, full_name, brand_id, role }: CreateUserRequest = await req.json();
+    const body: CreateUserRequest = await req.json();
+    const { email, password, full_name, role } = body;
+    
+    // Support both brand_ids (array) and legacy brand_id (single)
+    const brandIds = body.brand_ids?.length ? body.brand_ids : (body.brand_id ? [body.brand_id] : []);
 
-    if (!email || !password || !full_name || !brand_id || !role) {
+    if (!email || !password || !full_name || brandIds.length === 0 || !role) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -127,17 +132,19 @@ serve(async (req: Request) => {
       });
     }
 
-    // Assign role to user for the brand
+    // Assign role to user for each selected brand
+    const roleInserts = brandIds.map((brand_id: string) => ({
+      user_id: publicUser.id,
+      brand_id,
+      role,
+    }));
+
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
-      .insert({
-        user_id: publicUser.id,
-        brand_id,
-        role,
-      });
+      .insert(roleInserts);
 
     if (roleInsertError) {
-      console.error("Error assigning role:", roleInsertError);
+      console.error("Error assigning roles:", roleInsertError);
       // Rollback
       await adminClient.from("users").delete().eq("id", publicUser.id);
       await adminClient.auth.admin.deleteUser(authUser.user.id);
@@ -155,6 +162,7 @@ serve(async (req: Request) => {
           email: publicUser.email,
           full_name: publicUser.full_name,
         },
+        assigned_brands: brandIds.length,
       }),
       {
         status: 200,
