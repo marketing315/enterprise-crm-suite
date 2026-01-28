@@ -63,6 +63,9 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
   const [editingUser, setEditingUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
   const [editUserFullName, setEditUserFullName] = useState("");
   const [editUserEmail, setEditUserEmail] = useState("");
+  const [editUserRoles, setEditUserRoles] = useState<{ id: string; brand_id: string; role: AppRole }[]>([]);
+  const [editAddBrandId, setEditAddBrandId] = useState("");
+  const [editAddRole, setEditAddRole] = useState<AppRole>("callcenter");
 
   // Edit role state
   const [editRoleDialogOpen, setEditRoleDialogOpen] = useState(false);
@@ -277,7 +280,47 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setEditingUser(user);
     setEditUserFullName(user.full_name || "");
     setEditUserEmail(user.email);
+    // Populate user's current roles
+    const userRoles = usersWithRoles
+      ?.filter((entry) => entry.user.id === user.id)
+      .map((entry) => ({ id: entry.id, brand_id: entry.brand_id, role: entry.role as AppRole })) || [];
+    setEditUserRoles(userRoles);
+    setEditAddBrandId("");
+    setEditAddRole("callcenter");
     setEditDialogOpen(true);
+  };
+
+  // Get brands not yet assigned to the editing user
+  const getAvailableBrandsForEdit = () => {
+    const assignedBrandIds = editUserRoles.map((r) => r.brand_id);
+    return brands.filter((b) => !assignedBrandIds.includes(b.id));
+  };
+
+  const handleAddRoleToEditUser = () => {
+    if (!editAddBrandId || !editingUser) return;
+    addRoleMutation.mutate(
+      { user_id: editingUser.id, brand_id: editAddBrandId, role: editAddRole },
+      {
+        onSuccess: () => {
+          // Refresh user roles from cache after adding
+          queryClient.invalidateQueries({ queryKey: ["admin-users-roles"] });
+          setEditAddBrandId("");
+          setEditAddRole("callcenter");
+        },
+      }
+    );
+  };
+
+  const handleUpdateRoleInEdit = (roleId: string, newRole: AppRole) => {
+    updateRoleMutation.mutate({ role_id: roleId, role: newRole });
+  };
+
+  const handleRemoveRoleInEdit = (roleId: string) => {
+    deleteRoleMutation.mutate(roleId, {
+      onSuccess: () => {
+        setEditUserRoles((prev) => prev.filter((r) => r.id !== roleId));
+      },
+    });
   };
 
   const handleUpdateUser = () => {
@@ -602,6 +645,92 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                   onChange={(e) => setEditUserEmail(e.target.value)}
                 />
               </div>
+
+              {/* Roles Management Section */}
+              <div className="space-y-3 pt-4 border-t">
+                <Label>Brand e Ruoli</Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {editUserRoles.map((roleEntry) => {
+                    const brand = brands.find((b) => b.id === roleEntry.brand_id);
+                    return (
+                      <div key={roleEntry.id} className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
+                        <span className="flex-1 text-sm font-medium">{brand?.name || "—"}</span>
+                        <Select
+                          value={roleEntry.role}
+                          onValueChange={(v) => handleUpdateRoleInEdit(roleEntry.id, v as AppRole)}
+                        >
+                          <SelectTrigger className="w-32 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="ceo">CEO</SelectItem>
+                            <SelectItem value="callcenter">Call Center</SelectItem>
+                            <SelectItem value="sales">Sales</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveRoleInEdit(roleEntry.id)}
+                          disabled={deleteRoleMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {editUserRoles.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">Nessun ruolo assegnato</p>
+                  )}
+                </div>
+
+                {/* Add new role */}
+                {getAvailableBrandsForEdit().length > 0 && (
+                  <div className="flex items-end gap-2 pt-2">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Aggiungi Brand</Label>
+                      <Select value={editAddBrandId} onValueChange={setEditAddBrandId}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Seleziona brand" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAvailableBrandsForEdit().map((brand) => (
+                            <SelectItem key={brand.id} value={brand.id}>
+                              {brand.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-28 space-y-1">
+                      <Label className="text-xs">Ruolo</Label>
+                      <Select value={editAddRole} onValueChange={(v) => setEditAddRole(v as AppRole)}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="ceo">CEO</SelectItem>
+                          <SelectItem value="callcenter">Call Center</SelectItem>
+                          <SelectItem value="sales">Sales</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9"
+                      onClick={handleAddRoleToEditUser}
+                      disabled={!editAddBrandId || addRoleMutation.isPending}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <div className="pt-4 border-t">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
