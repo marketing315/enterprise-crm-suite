@@ -28,11 +28,11 @@ export default function Pipeline() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="p-3 md:p-4 border-b space-y-3 shrink-0">
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      <div className="p-3 md:p-4 border-b space-y-3 shrink-0 overflow-hidden">
         <div>
           <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground truncate">
             Gestisci i tuoi deal in {currentBrand?.name}
           </p>
         </div>

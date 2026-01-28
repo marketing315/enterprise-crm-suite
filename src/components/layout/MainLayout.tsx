@@ -195,8 +195,8 @@ export function MainLayout() {
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex flex-col min-h-screen">
-          <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6">
+        <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
+          <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0">
             <SidebarTrigger />
             <div className="flex-1" />
             {currentBrand && (
@@ -206,7 +206,7 @@ export function MainLayout() {
               </div>
             )}
           </header>
-          <main className="flex-1 p-3 md:p-6 overflow-x-hidden">
+          <main className="flex-1 overflow-hidden">
             <Outlet />
           </main>
         </SidebarInset>
