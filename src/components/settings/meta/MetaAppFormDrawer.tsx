@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -46,41 +46,51 @@ interface MetaAppFormDrawerProps {
 export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFormDrawerProps) {
   const { currentBrand } = useBrand();
   const { createMetaApp, updateMetaApp } = useMetaApps();
+  const lastEditingIdRef = useRef<string | null | undefined>(undefined);
+  const wasOpenRef = useRef(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       brand_slug: "",
-      verify_token: generateVerifyToken(),
+      verify_token: "",
       app_secret: "",
       page_id: "",
       access_token: "",
       is_active: true,
     },
   });
-
   useEffect(() => {
-    if (editingApp) {
-      form.reset({
-        brand_slug: editingApp.brand_slug,
-        verify_token: editingApp.verify_token,
-        app_secret: editingApp.app_secret,
-        page_id: editingApp.page_id || "",
-        access_token: editingApp.access_token,
-        is_active: editingApp.is_active,
-      });
-    } else {
-      form.reset({
-        brand_slug: currentBrand?.slug || "",
-        verify_token: generateVerifyToken(),
-        app_secret: "",
-        page_id: "",
-        access_token: "",
-        is_active: true,
-      });
+    // Only reset when drawer opens fresh or editingApp changes
+    const isOpening = open && !wasOpenRef.current;
+    const editingChanged = editingApp?.id !== lastEditingIdRef.current;
+    
+    if (isOpening || editingChanged) {
+      if (editingApp) {
+        form.reset({
+          brand_slug: editingApp.brand_slug,
+          verify_token: editingApp.verify_token,
+          app_secret: editingApp.app_secret,
+          page_id: editingApp.page_id || "",
+          access_token: editingApp.access_token,
+          is_active: editingApp.is_active,
+        });
+      } else if (isOpening) {
+        // Only generate new token when opening fresh (not editing)
+        form.reset({
+          brand_slug: currentBrand?.slug || "",
+          verify_token: generateVerifyToken(),
+          app_secret: "",
+          page_id: "",
+          access_token: "",
+          is_active: true,
+        });
+      }
+      lastEditingIdRef.current = editingApp?.id ?? null;
     }
-  }, [editingApp, open, currentBrand]);
-
+    
+    wasOpenRef.current = open;
+  }, [editingApp, open, currentBrand, form]);
   const onSubmit = async (data: FormData) => {
     if (!currentBrand) return;
 
