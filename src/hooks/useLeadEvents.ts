@@ -58,6 +58,8 @@ interface UseLeadEventsParams {
   matchAllTags?: boolean;
   priorityMin?: number;
   priorityMax?: number;
+  clinicalTopicIds?: string[];
+  matchAllTopics?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -75,6 +77,8 @@ export function useLeadEvents(params: UseLeadEventsParams = {}) {
     matchAllTags = false,
     priorityMin,
     priorityMax,
+    clinicalTopicIds = [],
+    matchAllTopics = false,
     limit = 100,
     offset = 0,
   } = params;
@@ -112,6 +116,8 @@ export function useLeadEvents(params: UseLeadEventsParams = {}) {
       matchAllTags,
       priorityMin,
       priorityMax,
+      clinicalTopicIds,
+      matchAllTopics,
       limit,
       offset,
     ],
@@ -133,6 +139,8 @@ export function useLeadEvents(params: UseLeadEventsParams = {}) {
         p_match_all_tags: matchAllTags,
         p_priority_min: priorityMin ?? null,
         p_priority_max: priorityMax ?? null,
+        p_clinical_topic_ids: clinicalTopicIds.length > 0 ? clinicalTopicIds : null,
+        p_match_all_topics: matchAllTopics,
         p_limit: limit,
         p_offset: offset,
       });
