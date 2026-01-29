@@ -2167,45 +2167,25 @@ export type Database = {
         }
         Returns: Json
       }
-      search_lead_events:
-        | {
-            Args: {
-              p_archived?: boolean
-              p_brand_id: string
-              p_clinical_topic_ids?: string[]
-              p_date_from?: string
-              p_date_to?: string
-              p_include_archived?: boolean
-              p_limit?: number
-              p_match_all_tags?: boolean
-              p_match_all_topics?: boolean
-              p_offset?: number
-              p_priority_max?: number
-              p_priority_min?: number
-              p_source?: Database["public"]["Enums"]["lead_source_type"]
-              p_source_name?: string
-              p_tag_ids?: string[]
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_archived?: boolean
-              p_brand_id: string
-              p_date_from?: string
-              p_date_to?: string
-              p_include_archived?: boolean
-              p_limit?: number
-              p_match_all_tags?: boolean
-              p_offset?: number
-              p_priority_max?: number
-              p_priority_min?: number
-              p_source?: string
-              p_source_name?: string
-              p_tag_ids?: string[]
-            }
-            Returns: Json
-          }
+      search_lead_events: {
+        Args: {
+          p_brand_id: string
+          p_clinical_topic_ids?: string[]
+          p_date_from?: string
+          p_date_to?: string
+          p_include_archived?: boolean
+          p_limit?: number
+          p_match_all_tags?: boolean
+          p_match_all_topics?: boolean
+          p_offset?: number
+          p_priority_max?: number
+          p_priority_min?: number
+          p_source?: string
+          p_source_name?: string
+          p_tag_ids?: string[]
+        }
+        Returns: Json
+      }
       search_tickets_v1: {
         Args: {
           p_assignment_type?: string
