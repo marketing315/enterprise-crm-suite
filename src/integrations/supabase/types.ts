@@ -1887,6 +1887,23 @@ export type Database = {
         }
         Returns: string
       }
+      create_manual_lead_event: {
+        Args: {
+          p_ai_conversation_summary?: string
+          p_booking_notes?: string
+          p_brand_id: string
+          p_contact_channel?: Database["public"]["Enums"]["contact_channel"]
+          p_contact_id: string
+          p_customer_sentiment?: Database["public"]["Enums"]["customer_sentiment"]
+          p_decision_status?: Database["public"]["Enums"]["decision_status"]
+          p_lead_source_channel?: Database["public"]["Enums"]["lead_source_channel"]
+          p_logistics_notes?: string
+          p_objection_type?: Database["public"]["Enums"]["objection_type"]
+          p_pacemaker_status?: Database["public"]["Enums"]["pacemaker_status"]
+          p_source_name?: string
+        }
+        Returns: string
+      }
       create_outbound_webhook: {
         Args: {
           p_brand_id: string
@@ -2067,6 +2084,10 @@ export type Database = {
           is_duplicate: boolean
         }[]
       }
+      list_contact_lead_events: {
+        Args: { p_contact_id: string; p_include_archived?: boolean }
+        Returns: Json
+      }
       list_outbound_webhooks: {
         Args: { p_brand_id: string }
         Returns: {
@@ -2242,6 +2263,21 @@ export type Database = {
           p_duration_minutes?: number
           p_notes?: string
           p_scheduled_at?: string
+        }
+        Returns: undefined
+      }
+      update_lead_event_qualification: {
+        Args: {
+          p_ai_conversation_summary?: string
+          p_booking_notes?: string
+          p_contact_channel?: Database["public"]["Enums"]["contact_channel"]
+          p_customer_sentiment?: Database["public"]["Enums"]["customer_sentiment"]
+          p_decision_status?: Database["public"]["Enums"]["decision_status"]
+          p_event_id: string
+          p_lead_source_channel?: Database["public"]["Enums"]["lead_source_channel"]
+          p_logistics_notes?: string
+          p_objection_type?: Database["public"]["Enums"]["objection_type"]
+          p_pacemaker_status?: Database["public"]["Enums"]["pacemaker_status"]
         }
         Returns: undefined
       }
