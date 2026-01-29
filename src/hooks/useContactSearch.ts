@@ -67,18 +67,43 @@ export function useContactSearch(
         }));
       }
 
-      // Use search RPC
+      // Use search RPC - returns { contacts, total, limit, offset }
       const { data, error } = await supabase.rpc("search_contacts", {
         p_brand_id: currentBrand.id,
         p_query: query.trim(),
-        p_status: status || null,
         p_limit: limit,
         p_offset: offset,
       });
 
       if (error) throw error;
 
-      return (data || []) as SearchResult[];
+      // Extract contacts from RPC response
+      const result = data as unknown as { contacts: Array<{
+        id: string;
+        first_name: string | null;
+        last_name: string | null;
+        email: string | null;
+        city: string | null;
+        status: ContactStatus;
+        created_at: string;
+        updated_at: string;
+        phones: Array<{ id: string; phone_normalized: string; is_primary: boolean }> | null;
+      }> } | null;
+
+      return (result?.contacts || []).map((c) => ({
+        id: c.id,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        email: c.email,
+        city: c.city,
+        cap: null,
+        status: c.status,
+        notes: null,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        primary_phone: c.phones?.find(p => p.is_primary)?.phone_normalized || c.phones?.[0]?.phone_normalized || null,
+        match_type: "search",
+      }));
     },
     enabled: !!currentBrand,
     staleTime: 1000 * 30, // 30 seconds

@@ -279,6 +279,26 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // SECURITY: Require CRON_SECRET for cron-triggered functions
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const providedSecret = req.headers.get("x-cron-secret");
+  
+  if (!cronSecret) {
+    console.error("[AUTH] CRON_SECRET environment variable not configured");
+    return new Response(
+      JSON.stringify({ error: "Server misconfiguration: CRON_SECRET not set" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  if (providedSecret !== cronSecret) {
+    console.error("[AUTH] Invalid or missing x-cron-secret");
+    return new Response(
+      JSON.stringify({ error: "unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

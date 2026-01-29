@@ -1094,6 +1094,13 @@ export type Database = {
             referencedRelation: "outbound_webhooks"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "outbound_webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_webhooks_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       outbound_webhooks: {
@@ -1796,7 +1803,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      outbound_webhooks_safe: {
+        Row: {
+          brand_id: string | null
+          created_at: string | null
+          event_types:
+            | Database["public"]["Enums"]["webhook_event_type"][]
+            | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string | null
+          event_types?:
+            | Database["public"]["Enums"]["webhook_event_type"][]
+            | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string | null
+          event_types?:
+            | Database["public"]["Enums"]["webhook_event_type"][]
+            | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_webhooks_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_contact_phone: {
@@ -2155,24 +2208,12 @@ export type Database = {
         Args: {
           p_brand_id: string
           p_limit?: number
+          p_match_all_tags?: boolean
           p_offset?: number
-          p_query: string
-          p_status?: Database["public"]["Enums"]["contact_status"]
+          p_query?: string
+          p_tag_ids?: string[]
         }
-        Returns: {
-          cap: string
-          city: string
-          created_at: string
-          email: string
-          first_name: string
-          id: string
-          last_name: string
-          match_type: string
-          notes: string
-          primary_phone: string
-          status: Database["public"]["Enums"]["contact_status"]
-          updated_at: string
-        }[]
+        Returns: Json
       }
       search_deals: {
         Args: {
