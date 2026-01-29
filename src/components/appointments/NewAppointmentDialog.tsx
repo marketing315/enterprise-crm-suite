@@ -7,9 +7,9 @@ import { useBrandOperators } from "@/hooks/useBrandOperators";
 import { useContactSearch } from "@/hooks/useContactSearch";
 import { useLeadEvents } from "@/hooks/useContacts";
 import { useSetLeadEventClinicalTopics } from "@/hooks/useClinicalTopics";
+import { useCreateManualLeadEvent, useUpdateLeadEventQualification } from "@/hooks/useLeadEventMutations";
 import { useBrand } from "@/contexts/BrandContext";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 import { LeadQualificationFields } from "./LeadQualificationFields";
 import type {
   LeadSourceChannel,
@@ -102,6 +102,8 @@ export function NewAppointmentDialog({
 
   const createAppointment = useCreateAppointment();
   const setEventTopics = useSetLeadEventClinicalTopics();
+  const createManualEvent = useCreateManualLeadEvent();
+  const updateEventQualification = useUpdateLeadEventQualification();
   const { data: operators } = useBrandOperators();
   const salesUsers = operators?.filter((op) => op.role === "sales") || [];
 
@@ -129,52 +131,36 @@ export function NewAppointmentDialog({
     scheduledAt.setHours(hours, minutes, 0, 0);
 
     try {
-      // 1. Create or get lead event
+      // 1. Create or get lead event via RPCs (no direct table access)
       let eventId = selectedEventId;
       
-      if (!eventId && currentBrand?.id) {
-        // Create manual lead event for qualification data
-        const { data: newEvent, error: eventError } = await supabase
-          .from("lead_events")
-          .insert({
-            brand_id: currentBrand.id,
-            contact_id: selectedContactId,
-            source: "manual" as const,
-            source_name: "Appuntamento manuale",
-            raw_payload: {},
-            lead_source_channel: leadSourceChannel,
-            contact_channel: contactChannel,
-            pacemaker_status: pacemakerStatus,
-            customer_sentiment: customerSentiment,
-            decision_status: decisionStatus,
-            objection_type: objectionType,
-            logistics_notes: logisticsNotes || null,
-            booking_notes: bookingNotes || null,
-          })
-          .select("id")
-          .single();
-
-        if (eventError) throw eventError;
-        eventId = newEvent.id;
-      } else if (eventId) {
-        // Update existing event with qualification data
-        const { error: updateError } = await supabase
-          .from("lead_events")
-          .update({
-            lead_source_channel: leadSourceChannel,
-            contact_channel: contactChannel,
-            pacemaker_status: pacemakerStatus,
-            customer_sentiment: customerSentiment,
-            decision_status: decisionStatus,
-            objection_type: objectionType,
-            logistics_notes: logisticsNotes || null,
-            booking_notes: bookingNotes || null,
-          })
-          .eq("id", eventId);
-
-        if (updateError) {
-          console.error("Error updating event:", updateError);
-        }
+      if (!eventId) {
+        // Create manual lead event via RPC
+        eventId = await createManualEvent.mutateAsync({
+          contactId: selectedContactId,
+          sourceName: "Appuntamento manuale",
+          leadSourceChannel,
+          contactChannel,
+          pacemakerStatus,
+          customerSentiment,
+          decisionStatus,
+          objectionType,
+          bookingNotes: bookingNotes || null,
+          logisticsNotes: logisticsNotes || null,
+        });
+      } else {
+        // Update existing event qualification via RPC
+        await updateEventQualification.mutateAsync({
+          eventId,
+          leadSourceChannel,
+          contactChannel,
+          pacemakerStatus,
+          customerSentiment,
+          decisionStatus,
+          objectionType,
+          bookingNotes: bookingNotes || null,
+          logisticsNotes: logisticsNotes || null,
+        });
       }
 
       // 2. Set clinical topics if any selected
