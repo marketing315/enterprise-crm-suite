@@ -158,13 +158,13 @@ export function useLeadEvents(params: UseLeadEventsParams = {}) {
   });
 }
 
-// Hook for archiving/unarchiving events
+// Hook for archiving/unarchiving events via RPC (no direct UPDATE)
 export function useArchiveEvent() {
   return async (eventId: string, archived: boolean) => {
-    const { error } = await supabase
-      .from("lead_events")
-      .update({ archived } as never)
-      .eq("id", eventId);
+    const { error } = await supabase.rpc("set_lead_event_archived", {
+      p_event_id: eventId,
+      p_archived: archived,
+    });
 
     if (error) throw error;
   };
