@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Zap, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Zap, RefreshCw, ExternalLink, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MetaApp } from "@/hooks/useMetaApps";
@@ -24,6 +25,7 @@ export function TestLeadDialog({ open, onOpenChange, metaApp }: TestLeadDialogPr
   const [selectedFormId, setSelectedFormId] = useState<string>("");
   const [loadingForms, setLoadingForms] = useState(false);
   const [creatingLead, setCreatingLead] = useState(false);
+  const [permissionError, setPermissionError] = useState(false);
 
   const fetchForms = async () => {
     if (!metaApp) return;
@@ -51,9 +53,15 @@ export function TestLeadDialog({ open, onOpenChange, metaApp }: TestLeadDialogPr
 
       const result = await response.json();
       if (!response.ok) {
+        // Check for specific permission error
+        if (result.fb_error?.code === 200 && result.fb_error?.message?.includes("pages_manage_ads")) {
+          setPermissionError(true);
+          return;
+        }
         throw new Error(result.error || "Errore nel caricamento dei form");
       }
 
+      setPermissionError(false);
       setForms(result.forms || []);
       if (result.forms?.length === 1) {
         setSelectedFormId(result.forms[0].id);
@@ -143,6 +151,28 @@ export function TestLeadDialog({ open, onOpenChange, metaApp }: TestLeadDialogPr
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
+            ) : permissionError ? (
+              <Alert variant="destructive" className="border-destructive/50">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="space-y-3">
+                  <p>
+                    Il token attuale non ha il permesso <strong>pages_manage_ads</strong> richiesto 
+                    per creare lead test via API.
+                  </p>
+                  <p className="text-sm">
+                    Puoi usare lo strumento ufficiale Meta:
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => window.open("https://developers.facebook.com/tools/lead-ads-testing", "_blank")}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Apri Meta Lead Ads Testing Tool
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : forms.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">
                 Nessun form trovato. Assicurati che la pagina abbia form lead attivi.
@@ -163,7 +193,7 @@ export function TestLeadDialog({ open, onOpenChange, metaApp }: TestLeadDialogPr
             )}
           </div>
 
-          {selectedFormId && (
+          {selectedFormId && !permissionError && (
             <div className="bg-muted/50 rounded-lg p-3 text-sm">
               <p className="text-muted-foreground">
                 Verrà creato un lead test con dati fittizi. Il lead arriverà al webhook 
