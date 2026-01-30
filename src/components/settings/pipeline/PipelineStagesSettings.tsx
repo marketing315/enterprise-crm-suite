@@ -51,9 +51,12 @@ import {
   useCreatePipelineStage, 
   useReorderPipelineStages,
   useDeactivatePipelineStage,
+  useReactivatePipelineStage,
+  useDeletePipelineStagePermanently,
 } from "@/hooks/usePipelineStagesAdmin";
-import { GitBranch, Plus, AlertCircle } from "lucide-react";
+import { GitBranch, Plus, AlertCircle, RotateCcw, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { PipelineStage } from "@/types/database";
 
 const STAGE_COLORS = [
@@ -74,6 +77,10 @@ export function PipelineStagesSettings() {
   const createStage = useCreatePipelineStage();
   const reorderStages = useReorderPipelineStages();
   const deactivateStage = useDeactivatePipelineStage();
+  const reactivateStage = useReactivatePipelineStage();
+  const deleteStage = useDeletePipelineStagePermanently();
+
+  const [stageToDeletePermanently, setStageToDeletePermanently] = useState<PipelineStage | null>(null);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newStageName, setNewStageName] = useState("");
@@ -211,17 +218,57 @@ export function PipelineStagesSettings() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Fasi Disattivate
             </CardTitle>
+            <CardDescription>
+              Puoi riattivare o eliminare definitivamente queste fasi.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
               {inactiveStages.map((stage) => (
-                <Badge key={stage.id} variant="secondary" className="opacity-60">
-                  <div 
-                    className="w-2 h-2 rounded-full mr-1.5" 
-                    style={{ backgroundColor: stage.color || "#6366f1" }} 
-                  />
-                  {stage.name}
-                </Badge>
+                <div 
+                  key={stage.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                >
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: stage.color || "#6366f1" }} 
+                    />
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {stage.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => reactivateStage.mutate(stage.id)}
+                          disabled={reactivateStage.isPending}
+                        >
+                          <RotateCcw className="h-4 w-4 text-primary" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Riattiva fase</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setStageToDeletePermanently(stage)}
+                          disabled={deleteStage.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Elimina definitivamente</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
               ))}
             </div>
           </CardContent>
@@ -325,6 +372,41 @@ export function PipelineStagesSettings() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deactivateStage.isPending ? "Disattivazione..." : "Disattiva"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Permanently Dialog */}
+      <AlertDialog 
+        open={!!stageToDeletePermanently} 
+        onOpenChange={(open) => !open && setStageToDeletePermanently(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Elimina definitivamente "{stageToDeletePermanently?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <p className="mb-2">
+                Questa azione è <strong>irreversibile</strong>. La fase verrà eliminata permanentemente dal sistema.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                L'eliminazione è possibile solo se nessun deal (attivo o storico) è associato a questa fase.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (stageToDeletePermanently) {
+                  deleteStage.mutate(stageToDeletePermanently.id);
+                  setStageToDeletePermanently(null);
+                }
+              }}
+              disabled={deleteStage.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteStage.isPending ? "Eliminazione..." : "Elimina definitivamente"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

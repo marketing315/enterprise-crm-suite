@@ -2960,6 +2960,10 @@ export type Database = {
         Returns: number
       }
       delete_outbound_webhook: { Args: { p_id: string }; Returns: boolean }
+      delete_pipeline_stage_permanently: {
+        Args: { p_stage_id: string }
+        Returns: Json
+      }
       delete_read_notifications: {
         Args: { p_brand_id?: string }
         Returns: number
@@ -3271,6 +3275,7 @@ export type Database = {
         }
         Returns: Json
       }
+      reactivate_pipeline_stage: { Args: { p_stage_id: string }; Returns: Json }
       rebuild_contact_search_index: { Args: never; Returns: number }
       record_delivery_result: {
         Args: {
