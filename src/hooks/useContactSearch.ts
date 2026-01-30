@@ -5,6 +5,7 @@ import type { ContactStatus } from "@/types/database";
 
 export interface SearchResult {
   id: string;
+  brand_id: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
@@ -24,24 +25,32 @@ export function useContactSearch(
   limit = 50,
   offset = 0
 ) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["contact-search", currentBrand?.id, query, status, limit, offset],
+    queryKey: ["contact-search", isAllBrandsSelected ? "all" : currentBrand?.id, query, status, limit, offset],
     queryFn: async (): Promise<SearchResult[]> => {
-      if (!currentBrand) return [];
+      // Check if we have valid brand selection
+      const hasValidBrands = isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand;
+      if (!hasValidBrands) return [];
 
       // If no query, fall back to regular listing
       if (!query.trim()) {
         let queryBuilder = supabase
           .from("contacts")
           .select(`
-            id, first_name, last_name, email, city, cap, status, notes, created_at, updated_at,
+            id, brand_id, first_name, last_name, email, city, cap, status, notes, created_at, updated_at,
             contact_phones(phone_normalized, is_primary, is_active)
           `)
-          .eq("brand_id", currentBrand.id)
           .order("updated_at", { ascending: false })
           .limit(limit);
+
+        // Apply brand filter based on selection mode
+        if (isAllBrandsSelected) {
+          queryBuilder = queryBuilder.in("brand_id", allBrandIds);
+        } else if (currentBrand) {
+          queryBuilder = queryBuilder.eq("brand_id", currentBrand.id);
+        }
 
         if (status) {
           queryBuilder = queryBuilder.eq("status", status);
@@ -58,6 +67,7 @@ export function useContactSearch(
             || null;
           return {
             id: c.id,
+            brand_id: c.brand_id,
             first_name: c.first_name,
             last_name: c.last_name,
             email: c.email,
@@ -73,9 +83,9 @@ export function useContactSearch(
         });
       }
 
-      // Use search RPC - returns { contacts, total, limit, offset }
+      // Use search RPC - pass null for p_brand_id when all brands selected
       const { data, error } = await supabase.rpc("search_contacts", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: isAllBrandsSelected ? null : currentBrand!.id,
         p_query: query.trim(),
         p_limit: limit,
         p_offset: offset,
@@ -86,6 +96,7 @@ export function useContactSearch(
       // Extract contacts from RPC response
       const result = data as unknown as { contacts: Array<{
         id: string;
+        brand_id: string;
         first_name: string | null;
         last_name: string | null;
         email: string | null;
@@ -98,6 +109,7 @@ export function useContactSearch(
 
       return (result?.contacts || []).map((c) => ({
         id: c.id,
+        brand_id: c.brand_id,
         first_name: c.first_name,
         last_name: c.last_name,
         email: c.email,
@@ -111,7 +123,7 @@ export function useContactSearch(
         match_type: "search",
       }));
     },
-    enabled: !!currentBrand,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand,
     staleTime: 1000 * 30, // 30 seconds
   });
 }
