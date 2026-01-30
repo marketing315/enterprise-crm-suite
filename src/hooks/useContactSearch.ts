@@ -37,7 +37,7 @@ export function useContactSearch(
           .from("contacts")
           .select(`
             id, first_name, last_name, email, city, cap, status, notes, created_at, updated_at,
-            contact_phones!inner(phone_raw)
+            contact_phones(phone_normalized, is_primary, is_active)
           `)
           .eq("brand_id", currentBrand.id)
           .order("updated_at", { ascending: false })
@@ -51,20 +51,26 @@ export function useContactSearch(
 
         if (error) throw error;
 
-        return (data || []).map((c) => ({
-          id: c.id,
-          first_name: c.first_name,
-          last_name: c.last_name,
-          email: c.email,
-          city: c.city,
-          cap: c.cap,
-          status: c.status as ContactStatus,
-          notes: c.notes,
-          created_at: c.created_at,
-          updated_at: c.updated_at,
-          primary_phone: (c.contact_phones as { phone_raw: string }[])?.[0]?.phone_raw || null,
-          match_type: "none",
-        }));
+        return (data || []).map((c) => {
+          const phones = c.contact_phones as { phone_normalized: string; is_primary: boolean; is_active: boolean }[] | null;
+          const primaryPhone = phones?.find(p => p.is_primary && p.is_active)?.phone_normalized 
+            || phones?.find(p => p.is_active)?.phone_normalized 
+            || null;
+          return {
+            id: c.id,
+            first_name: c.first_name,
+            last_name: c.last_name,
+            email: c.email,
+            city: c.city,
+            cap: c.cap,
+            status: c.status as ContactStatus,
+            notes: c.notes,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+            primary_phone: primaryPhone,
+            match_type: "none",
+          };
+        });
       }
 
       // Use search RPC - returns { contacts, total, limit, offset }
