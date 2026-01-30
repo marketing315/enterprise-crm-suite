@@ -77,6 +77,7 @@ export function InboundSourceFormDrawer({
   const { currentBrand } = useBrand();
   const queryClient = useQueryClient();
   const [generatedCredentials, setGeneratedCredentials] = useState<{
+    sourceId: string;
     apiKey: string;
     hmacSecret: string | null;
   } | null>(null);
@@ -132,7 +133,7 @@ export function InboundSourceFormDrawer({
         hmacSecretHash = await hashKey(hmacSecret);
       }
 
-      const { error } = await supabase.from("webhook_sources").insert({
+      const { data, error } = await supabase.from("webhook_sources").insert({
         brand_id: currentBrand.id,
         name: values.name,
         description: values.description || null,
@@ -142,10 +143,10 @@ export function InboundSourceFormDrawer({
         hmac_enabled: values.hmac_enabled,
         hmac_secret_hash: hmacSecretHash,
         replay_window_seconds: values.replay_window_seconds,
-      });
+      }).select("id").single();
 
       if (error) throw error;
-      return { apiKey, hmacSecret };
+      return { sourceId: data.id, apiKey, hmacSecret };
     },
     onSuccess: (result) => {
       setGeneratedCredentials(result);
@@ -227,6 +228,31 @@ export function InboundSourceFormDrawer({
                 la chiusura di questo pannello.
               </AlertDescription>
             </Alert>
+
+            {/* Webhook URL */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Webhook URL</label>
+              <div className="flex gap-2">
+                <Input
+                  value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}`}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => handleCopy(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}`,
+                    "Webhook URL"
+                  )}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Endpoint da chiamare con <code>POST</code>
+              </p>
+            </div>
             
             {/* API Key */}
             <div className="space-y-2">
