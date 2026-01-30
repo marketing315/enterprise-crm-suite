@@ -10,6 +10,7 @@ interface LeadEventRow {
   id: string;
   brand_id: string;
   contact_id: string | null;
+  deal_id: string | null;
   source: string;
   source_name: string | null;
   raw_payload: Record<string, unknown>;
@@ -30,6 +31,23 @@ interface PhoneInfo {
   phone_normalized: string;
 }
 
+interface DealInfo {
+  id: string;
+  status: string;
+  value: number | null;
+  current_stage_id: string | null;
+  closed_at: string | null;
+}
+
+interface StageInfo {
+  name: string;
+}
+
+interface AppointmentInfo {
+  status: string;
+  scheduled_at: string;
+}
+
 interface SheetProperties {
   sheetId: number;
   title: string;
@@ -39,23 +57,31 @@ interface SheetInfo {
   sheets: { properties: SheetProperties }[];
 }
 
-// Italian headers for C-level presentation
+// PRD-aligned Italian headers (20 columns)
 const HEADERS_ITA = [
-  "Timestamp",
-  "Brand",
-  "Fonte",
-  "Nome",
-  "Cognome",
-  "Telefono",
-  "Email",
-  "Città",
-  "Messaggio",
-  "Campagna",
-  "Priorità AI",
-  "Archiviato",
+  "Timestamp",           // A - received_at
+  "Brand",               // B - brand name
+  "Fonte",               // C - source_name
+  "Campagna",            // D - campaign_name
+  "AdSet",               // E - adset_name  
+  "Ad",                  // F - ad_name
+  "Nome",                // G - first_name
+  "Cognome",             // H - last_name
+  "Telefono",            // I - phone
+  "Email",               // J - email
+  "Città",               // K - city
+  "Messaggio/Pain Area", // L - message or pain_area
+  "Priorità AI",         // M - ai_priority (1-5)
+  "Stage Pipeline",      // N - current stage name
+  "Tags",                // O - comma-separated tags
+  "Appuntamento Status", // P - appointment status
+  "Appuntamento Data",   // Q - appointment scheduled_at
+  "Vendita Outcome",     // R - deal status (won/lost/open)
+  "Vendita Valore",      // S - deal value
+  "Operatore Ultima Azione", // T - last operator action timestamp
 ];
 
-// ALL_RAW tab name (aggregates all sources)
+const COLUMN_COUNT = HEADERS_ITA.length;
 const ALL_RAW_TAB = "ALL_RAW";
 
 // Google Sheets API helpers
@@ -115,7 +141,6 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
   return tokenData.access_token;
 }
 
-// Cached sheet info to minimize API calls
 class SheetInfoCache {
   cachedInfo: SheetInfo | null = null;
   
@@ -181,8 +206,9 @@ async function writeRange(
 }
 
 async function appendRow(accessToken: string, spreadsheetId: string, tabName: string, row: string[]): Promise<void> {
+  const colLetter = String.fromCharCode(64 + COLUMN_COUNT); // T for 20 columns
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName)}!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName)}!A:${colLetter}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -203,13 +229,13 @@ async function applyTabLayout(accessToken: string, spreadsheetId: string, sheetI
     // Set basic filter on all data
     {
       setBasicFilter: {
-        filter: { range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 12 } },
+        filter: { range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: COLUMN_COUNT } },
       },
     },
     // Bold + gray background for header row
     {
       repeatCell: {
-        range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 12 },
+        range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: COLUMN_COUNT },
         cell: {
           userEnteredFormat: {
             textFormat: { bold: true },
@@ -222,7 +248,7 @@ async function applyTabLayout(accessToken: string, spreadsheetId: string, sheetI
     // Auto-resize columns
     {
       autoResizeDimensions: {
-        dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 12 },
+        dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: COLUMN_COUNT },
       },
     },
   ];
@@ -251,8 +277,9 @@ async function ensureRawTab(
   }
 
   const sheetId = await createTab(accessToken, spreadsheetId, rawTabName);
-  await writeRange(accessToken, spreadsheetId, `${rawTabName}!A1:L1`, [HEADERS_ITA]);
-  cache.invalidate(); // Invalidate cache after creating new tab
+  const colLetter = String.fromCharCode(64 + COLUMN_COUNT);
+  await writeRange(accessToken, spreadsheetId, `${rawTabName}!A1:${colLetter}1`, [HEADERS_ITA]);
+  cache.invalidate();
   return { sheetId, created: true };
 }
 
@@ -272,14 +299,13 @@ async function ensureViewTab(
 
   const sheetId = await createTab(accessToken, spreadsheetId, viewTabName);
   
-  // ARRAYFORMULA to mirror RAW data
-  const formula = `=ARRAYFORMULA('${rawTabName}'!A:L)`;
+  const colLetter = String.fromCharCode(64 + COLUMN_COUNT);
+  const formula = `=ARRAYFORMULA('${rawTabName}'!A:${colLetter})`;
   await writeRange(accessToken, spreadsheetId, `${viewTabName}!A1`, [[formula]], "USER_ENTERED");
   
-  // Apply layout ONLY on creation (freeze, filter, format)
   await applyTabLayout(accessToken, spreadsheetId, sheetId);
   
-  cache.invalidate(); // Invalidate cache after creating new tab
+  cache.invalidate();
   return { sheetId, created: true };
 }
 
@@ -299,50 +325,58 @@ async function ensureRiepilogoTab(
   await cache.get(accessToken, spreadsheetId);
   
   if (cache.tabExists("Riepilogo")) {
-    return false; // Already exists
+    return false;
   }
 
   const sheetId = await createTab(accessToken, spreadsheetId, "Riepilogo");
 
-  // KPI formulas working on ALL_RAW with proper ISO timestamp conversion
-  // Helper formula to convert ISO timestamp (2026-01-27T12:30:00Z) to Sheets datetime
-  const timestampConversion = `DATEVALUE(LEFT(A2,10))+TIMEVALUE(MID(A2,12,8))`;
-  
+  // PRD KPIs 1-10 with formulas working on ALL_RAW
   const kpiData = [
-    ["📊 RIEPILOGO LEAD", "", "", ""],
-    ["", "", "", ""],
-    ["METRICHE GENERALI", "", "", ""],
-    ["Metrica", "Valore", "", ""],
-    ["Lead Totali", `=MAX(0,COUNTA('${ALL_RAW_TAB}'!A:A)-1)`, "", ""],
-    // Robust datetime KPIs using proper ISO→Sheets conversion
-    ["Lead Ultime 24h", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10))+IFERROR(TIMEVALUE(MID('${ALL_RAW_TAB}'!A2:A,12,8)),0))>=NOW()-1))`, "", ""],
-    ["Lead Ultimi 7 giorni", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10)))>=TODAY()-7))`, "", ""],
-    ["Lead Ultimi 30 giorni", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10)))>=TODAY()-30))`, "", ""],
-    ["", "", "", ""],
-    ["📈 LEAD PER FONTE", "", "", ""],
-    ["Fonte", "Conteggio", "", ""],
-    // Using QUERY for unique sources with counts
-    [`=IFERROR(QUERY('${ALL_RAW_TAB}'!C2:C,"SELECT C, COUNT(C) WHERE C<>'' GROUP BY C LABEL COUNT(C) 'Conteggio'",0),"Nessun dato")`, "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["🎯 LEAD PER CAMPAGNA", "", "", ""],
-    ["Campagna", "Conteggio", "", ""],
-    [`=IFERROR(QUERY('${ALL_RAW_TAB}'!J2:J,"SELECT J, COUNT(J) WHERE J<>'' GROUP BY J LABEL COUNT(J) 'Conteggio'",0),"Nessun dato")`, "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["", "", "", ""],
-    ["📁 STATO ARCHIVIAZIONE", "", "", ""],
-    ["Stato", "Conteggio", "%", ""],
-    ["Archiviati", `=COUNTIF('${ALL_RAW_TAB}'!L:L,"true")`, `=IFERROR(ROUND(B28/B5*100,1)&"%","0%")`, ""],
-    ["Non Archiviati", `=COUNTIF('${ALL_RAW_TAB}'!L:L,"false")`, `=IFERROR(ROUND(B29/B5*100,1)&"%","0%")`, ""],
+    ["📊 RIEPILOGO KPI ENTERPRISE", "", "", "", ""],
+    ["Ultimo aggiornamento:", "=NOW()", "", "", ""],
+    ["", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["📈 KPI 1-5: VOLUME & VELOCITÀ", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["KPI", "Valore", "Trend/Note", "", ""],
+    ["1. Lead Totali", `=MAX(0,COUNTA('${ALL_RAW_TAB}'!A:A)-1)`, "", "", ""],
+    ["2. Lead Ultime 24h", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10))+IFERROR(TIMEVALUE(MID('${ALL_RAW_TAB}'!A2:A,12,8)),0))>=NOW()-1))`, "", "", ""],
+    ["3. Lead Ultimi 7 giorni", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10)))>=TODAY()-7))`, "", "", ""],
+    ["4. Lead Ultimi 30 giorni", `=SUMPRODUCT(('${ALL_RAW_TAB}'!A2:A<>"")*((DATEVALUE(LEFT('${ALL_RAW_TAB}'!A2:A,10)))>=TODAY()-30))`, "", "", ""],
+    ["5. Media Giornaliera (30gg)", `=IFERROR(ROUND(B11/30,1),0)`, "", "", ""],
+    ["", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["🎯 KPI 6-7: CONVERSIONE", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["6. Appuntamenti Schedulati", `=COUNTIF('${ALL_RAW_TAB}'!P:P,"scheduled")`, "", "", ""],
+    ["7. Vendite Chiuse (Won)", `=COUNTIF('${ALL_RAW_TAB}'!R:R,"won")`, "", "", ""],
+    ["   Conversion Rate", `=IFERROR(ROUND(B18/B8*100,1)&"%","0%")`, "", "", ""],
+    ["", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["📊 KPI 8: DISTRIBUZIONE PRIORITÀ AI", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["Priorità 5 (Urgente)", `=COUNTIF('${ALL_RAW_TAB}'!M:M,"5")`, "", "", ""],
+    ["Priorità 4", `=COUNTIF('${ALL_RAW_TAB}'!M:M,"4")`, "", "", ""],
+    ["Priorità 3", `=COUNTIF('${ALL_RAW_TAB}'!M:M,"3")`, "", "", ""],
+    ["Priorità 2", `=COUNTIF('${ALL_RAW_TAB}'!M:M,"2")`, "", "", ""],
+    ["Priorità 1 (Bassa)", `=COUNTIF('${ALL_RAW_TAB}'!M:M,"1")`, "", "", ""],
+    ["", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["📈 KPI 9: PER FONTE", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    [`=IFERROR(QUERY('${ALL_RAW_TAB}'!C2:C,"SELECT C, COUNT(C) WHERE C<>'' GROUP BY C ORDER BY COUNT(C) DESC LABEL COUNT(C) 'Conteggio'",0),"Nessun dato")`, "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    ["🎯 KPI 10: PER CAMPAGNA (Top 10)", "", "", "", ""],
+    ["═══════════════════════════════════════", "", "", "", ""],
+    [`=IFERROR(QUERY('${ALL_RAW_TAB}'!D2:D,"SELECT D, COUNT(D) WHERE D<>'' GROUP BY D ORDER BY COUNT(D) DESC LIMIT 10 LABEL COUNT(D) 'Conteggio'",0),"Nessun dato")`, "", "", "", ""],
   ];
 
-  await writeRange(accessToken, spreadsheetId, "Riepilogo!A1:D30", kpiData, "USER_ENTERED");
+  await writeRange(accessToken, spreadsheetId, "Riepilogo!A1:E50", kpiData, "USER_ENTERED");
 
   // Format Riepilogo
   await fetch(
@@ -360,39 +394,10 @@ async function ensureRiepilogoTab(
               fields: "userEnteredFormat.textFormat",
             },
           },
-          // Bold section headers
-          {
-            repeatCell: {
-              range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 2 },
-              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
-              fields: "userEnteredFormat(textFormat,backgroundColor)",
-            },
-          },
-          {
-            repeatCell: {
-              range: { sheetId, startRowIndex: 9, endRowIndex: 10, startColumnIndex: 0, endColumnIndex: 2 },
-              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
-              fields: "userEnteredFormat(textFormat,backgroundColor)",
-            },
-          },
-          {
-            repeatCell: {
-              range: { sheetId, startRowIndex: 17, endRowIndex: 18, startColumnIndex: 0, endColumnIndex: 2 },
-              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
-              fields: "userEnteredFormat(textFormat,backgroundColor)",
-            },
-          },
-          {
-            repeatCell: {
-              range: { sheetId, startRowIndex: 25, endRowIndex: 26, startColumnIndex: 0, endColumnIndex: 3 },
-              cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } } },
-              fields: "userEnteredFormat(textFormat,backgroundColor)",
-            },
-          },
           // Auto-resize
           {
             autoResizeDimensions: {
-              dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 4 },
+              dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 5 },
             },
           },
         ],
@@ -401,28 +406,23 @@ async function ensureRiepilogoTab(
   );
 
   cache.invalidate();
-  return true; // Created
+  return true;
 }
 
-// Collision-safe tab naming with hash suffix if needed
 function getSourceTabNames(
   sourceName: string | null,
   existingTabs: string[]
 ): { raw: string; view: string } {
   const isMeta = sourceName?.toLowerCase().includes("meta");
   const baseName = isMeta ? "Meta" : (sourceName || "Generic");
-  // Clean tab name (remove special chars, limit to 50 chars)
   const cleanName = baseName.replace(/[^\w\s-]/g, "").substring(0, 50);
   
   let rawName = `${cleanName}_RAW`;
   let viewName = cleanName;
   
-  // Check for collision: if tab exists but is a different source, add hash suffix
   const rawExists = existingTabs.includes(rawName);
   const viewExists = existingTabs.includes(viewName);
   
-  // If both exist, we assume they are for the same source (no collision)
-  // If only one exists, might be a collision - add short hash
   if ((rawExists && !viewExists) || (!rawExists && viewExists)) {
     const hash = sourceName ? 
       Array.from(sourceName).reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0).toString(16).slice(-4) :
@@ -464,7 +464,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // FIX: Consume body ONCE at the start to avoid stream consumption issues in catch
   let bodyText = "";
   let payload: { lead_event_id?: string; force?: boolean } = {};
   
@@ -493,21 +492,18 @@ Deno.serve(async (req: Request) => {
   );
 
   try {
-    // RACE-SAFE IDEMPOTENCY: Insert 'processing' status first
-    // If conflict (unique constraint), another request is already handling this
+    // RACE-SAFE IDEMPOTENCY
     if (!force) {
       const { error: insertError } = await supabaseAdmin
         .from("sheets_export_logs")
         .insert({
           lead_event_id,
-          brand_id: "00000000-0000-0000-0000-000000000000", // Placeholder, will update on success
+          brand_id: "00000000-0000-0000-0000-000000000000",
           status: "processing",
         });
 
       if (insertError) {
-        // Check if it's a unique constraint violation (already exported or in progress)
         if (insertError.code === "23505") {
-          // Check if it was successful or still processing
           const { data: existingLog } = await supabaseAdmin
             .from("sheets_export_logs")
             .select("status")
@@ -515,42 +511,36 @@ Deno.serve(async (req: Request) => {
             .single();
 
           if (existingLog?.status === "success") {
-            console.log(`Lead event ${lead_event_id} already exported successfully, skipping`);
             return new Response(
               JSON.stringify({ success: true, skipped: true, reason: "already_exported" }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           } else if (existingLog?.status === "processing") {
-            console.log(`Lead event ${lead_event_id} is being processed by another request`);
             return new Response(
               JSON.stringify({ success: true, skipped: true, reason: "in_progress" }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          // If status is 'failed', we could retry - but for now just skip
-          console.log(`Lead event ${lead_event_id} has existing log with status: ${existingLog?.status}`);
           return new Response(
             JSON.stringify({ success: true, skipped: true, reason: existingLog?.status }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        // Other error, log and continue
         console.error("Insert processing log error:", insertError);
       }
     }
 
-    // Fetch lead event
+    // Fetch lead event with deal_id
     const { data: event, error: eventError } = await supabaseAdmin
       .from("lead_events")
       .select(`
-        id, brand_id, contact_id, source, source_name, 
+        id, brand_id, contact_id, deal_id, source, source_name, 
         raw_payload, occurred_at, received_at, ai_priority, archived
       `)
       .eq("id", lead_event_id)
       .single();
 
     if (eventError || !event) {
-      // Update log to failed
       await supabaseAdmin
         .from("sheets_export_logs")
         .update({ status: "failed", error: "Lead event not found" })
@@ -564,8 +554,7 @@ Deno.serve(async (req: Request) => {
 
     const leadEvent = event as LeadEventRow;
 
-    // SYSTEME.IO DEDUPLICATION: Skip if same contact has event within 5 seconds
-    // This prevents duplicate exports from systeme.io burst webhooks
+    // SYSTEME.IO DEDUPLICATION
     const isSystemeIo = (leadEvent.source_name || "").toLowerCase().includes("systeme");
     
     if (isSystemeIo && leadEvent.contact_id && !force) {
@@ -573,7 +562,6 @@ Deno.serve(async (req: Request) => {
       const windowStart = new Date(eventTime - 5000).toISOString();
       const windowEnd = new Date(eventTime + 5000).toISOString();
 
-      // Find sibling events for same contact within 5 second window
       const { data: siblingEvents } = await supabaseAdmin
         .from("lead_events")
         .select("id, received_at")
@@ -585,7 +573,6 @@ Deno.serve(async (req: Request) => {
         .order("received_at", { ascending: true });
 
       if (siblingEvents && siblingEvents.length > 0) {
-        // Check if any sibling arrived BEFORE this one and was exported
         const earlierSiblings = siblingEvents.filter(
           s => new Date(s.received_at).getTime() < eventTime
         );
@@ -600,8 +587,6 @@ Deno.serve(async (req: Request) => {
             .limit(1);
 
           if (exportedEarlier && exportedEarlier.length > 0) {
-            console.log(`Systeme.io dedup: contact ${leadEvent.contact_id} has earlier event within 5s, skipping ${lead_event_id}`);
-            
             await supabaseAdmin
               .from("sheets_export_logs")
               .upsert({
@@ -648,12 +633,82 @@ Deno.serve(async (req: Request) => {
       phone = phoneData as PhoneInfo | null;
     }
 
+    // Get deal + stage info
+    let deal: DealInfo | null = null;
+    let stage: StageInfo | null = null;
+    
+    if (leadEvent.deal_id) {
+      const { data: dealData } = await supabaseAdmin
+        .from("deals")
+        .select("id, status, value, current_stage_id, closed_at")
+        .eq("id", leadEvent.deal_id)
+        .single();
+      deal = dealData as DealInfo | null;
+      
+      if (deal?.current_stage_id) {
+        const { data: stageData } = await supabaseAdmin
+          .from("pipeline_stages")
+          .select("name")
+          .eq("id", deal.current_stage_id)
+          .single();
+        stage = stageData as StageInfo | null;
+      }
+    }
+
+    // Get tags for lead event
+    let tagsFlat = "";
+    const { data: tagAssignments } = await supabaseAdmin
+      .from("tag_assignments")
+      .select("tag_id, tags(name)")
+      .eq("lead_event_id", lead_event_id);
+    
+    if (tagAssignments && tagAssignments.length > 0) {
+      tagsFlat = tagAssignments
+        .map((ta) => {
+          const tags = ta.tags as unknown as { name: string } | { name: string }[] | null;
+          if (Array.isArray(tags)) return tags[0]?.name;
+          return tags?.name;
+        })
+        .filter(Boolean)
+        .join(", ");
+    }
+
+    // Get appointment info (most recent for contact)
+    let appointment: AppointmentInfo | null = null;
+    if (leadEvent.contact_id) {
+      const { data: apptData } = await supabaseAdmin
+        .from("appointments")
+        .select("status, scheduled_at")
+        .eq("contact_id", leadEvent.contact_id)
+        .eq("brand_id", leadEvent.brand_id)
+        .order("scheduled_at", { ascending: false })
+        .limit(1)
+        .single();
+      appointment = apptData as AppointmentInfo | null;
+    }
+
+    // Get last operator action (most recent ticket update)
+    let lastOperatorAction = "";
+    if (leadEvent.contact_id) {
+      const { data: auditData } = await supabaseAdmin
+        .from("ticket_audit_logs")
+        .select("created_at")
+        .eq("brand_id", leadEvent.brand_id)
+        .not("user_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (auditData) {
+        lastOperatorAction = auditData.created_at;
+      }
+    }
+
     // Get Google credentials
     const serviceAccountKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
     const spreadsheetId = Deno.env.get("GOOGLE_SHEETS_FILE_ID");
 
     if (!serviceAccountKey || !spreadsheetId) {
-      console.error("Missing Google Sheets configuration");
       await supabaseAdmin
         .from("sheets_export_logs")
         .update({ status: "failed", error: "Sheets not configured" })
@@ -673,49 +728,51 @@ Deno.serve(async (req: Request) => {
     }
 
     const accessToken = await getAccessToken(decodedKey);
-    
-    // Create cache instance for this request
     const cache = new SheetInfoCache();
     
-    // Pre-fetch sheet info once
     await cache.get(accessToken, spreadsheetId);
     const existingTabs = cache.getExistingTabNames();
 
-    // Get source-specific tab names (collision-safe)
     const { raw: sourceRawTab, view: sourceViewTab } = getSourceTabNames(leadEvent.source_name, existingTabs);
 
-    // Build row data
+    // Build PRD-aligned row data (20 columns)
     const rawPayload = leadEvent.raw_payload || {};
-    const message = String(rawPayload.message || rawPayload.messaggio || rawPayload.notes || "");
+    const message = String(rawPayload.message || rawPayload.messaggio || rawPayload.notes || rawPayload.pain_area || "");
     const campaignName = String(rawPayload.campaign_name || rawPayload.campagna || rawPayload.utm_campaign || "");
+    const adsetName = String(rawPayload.adset_name || rawPayload.adset || rawPayload.utm_content || "");
+    const adName = String(rawPayload.ad_name || rawPayload.ad || rawPayload.creative || "");
 
     const row = [
-      leadEvent.received_at,
-      brand?.name || "",
-      leadEvent.source_name || leadEvent.source,
-      contact?.first_name || "",
-      contact?.last_name || "",
-      phone?.phone_normalized || "",
-      contact?.email || "",
-      contact?.city || "",
-      message,
-      campaignName,
-      leadEvent.ai_priority?.toString() || "",
-      leadEvent.archived ? "true" : "false",
+      leadEvent.received_at,                              // A - Timestamp
+      brand?.name || "",                                  // B - Brand
+      leadEvent.source_name || leadEvent.source,          // C - Fonte
+      campaignName,                                       // D - Campagna
+      adsetName,                                          // E - AdSet
+      adName,                                             // F - Ad
+      contact?.first_name || "",                          // G - Nome
+      contact?.last_name || "",                           // H - Cognome
+      phone?.phone_normalized || "",                      // I - Telefono
+      contact?.email || "",                               // J - Email
+      contact?.city || "",                                // K - Città
+      message,                                            // L - Messaggio/Pain Area
+      leadEvent.ai_priority?.toString() || "",            // M - Priorità AI
+      stage?.name || "",                                  // N - Stage Pipeline
+      tagsFlat,                                           // O - Tags
+      appointment?.status || "",                          // P - Appuntamento Status
+      appointment?.scheduled_at || "",                    // Q - Appuntamento Data
+      deal?.status || "",                                 // R - Vendita Outcome
+      deal?.value?.toString() || "",                      // S - Vendita Valore
+      lastOperatorAction,                                 // T - Operatore Ultima Azione
     ];
 
-    // 1. Ensure ALL_RAW exists and append there (aggregate)
+    // Ensure tabs exist and append data
     await ensureAllRawTab(accessToken, spreadsheetId, cache);
     await appendRow(accessToken, spreadsheetId, ALL_RAW_TAB, row);
 
-    // 2. Ensure source-specific RAW tab and append
     await ensureRawTab(accessToken, spreadsheetId, sourceRawTab, cache);
     await appendRow(accessToken, spreadsheetId, sourceRawTab, row);
 
-    // 3. Ensure source-specific VIEW tab with ARRAYFORMULA + layout (layout ONLY on create)
     await ensureViewTab(accessToken, spreadsheetId, sourceViewTab, sourceRawTab, cache);
-
-    // 4. Ensure Riepilogo tab with KPIs (works on ALL_RAW) - only created once
     await ensureRiepilogoTab(accessToken, spreadsheetId, cache);
 
     // Update log to success
@@ -741,7 +798,6 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Sheets export error:", error);
     
-    // Update log to failed (using the already-parsed lead_event_id)
     if (lead_event_id) {
       try {
         await supabaseAdmin

@@ -118,22 +118,70 @@ The Riepilogo tab uses **SUMPRODUCT with proper ISO timestamp conversion**. Goog
 =SE.ERRORE(B18/(B18+B19);0)
 ```
 
-## Headers (Italian)
+## Headers (Italian) - PRD Aligned
 
-| Column | Header IT     | Description                    |
-|--------|---------------|--------------------------------|
-| A      | Timestamp     | ISO datetime received_at       |
-| B      | Brand         | Brand name                     |
-| C      | Fonte         | Source name (Meta, Generic...) |
-| D      | Nome          | First name                     |
-| E      | Cognome       | Last name                      |
-| F      | Telefono      | Normalized phone               |
-| G      | Email         | Email address                  |
-| H      | Città         | City                           |
-| I      | Messaggio     | Message/notes from payload     |
-| J      | Campagna      | Campaign name                  |
-| K      | Priorità AI   | AI priority score              |
-| L      | Archiviato    | Archived status (true/false)   |
+| Column | Header IT              | Description                         |
+|--------|------------------------|-------------------------------------|
+| A      | Timestamp              | ISO datetime received_at            |
+| B      | Brand                  | Brand name                          |
+| C      | Fonte                  | Source name (Meta, Generic...)      |
+| D      | Campagna               | Campaign name                       |
+| E      | AdSet                  | AdSet name                          |
+| F      | Ad                     | Ad creative name                    |
+| G      | Nome                   | First name                          |
+| H      | Cognome                | Last name                           |
+| I      | Telefono               | Normalized phone                    |
+| J      | Email                  | Email address                       |
+| K      | Città                  | City                                |
+| L      | Messaggio/Pain Area    | Message/notes/pain area             |
+| M      | Priorità AI            | AI priority (1=min, 5=urgent)       |
+| N      | Stage Pipeline         | Current deal stage name             |
+| O      | Tags                   | Comma-separated tags                |
+| P      | Appuntamento Status    | Appointment status                  |
+| Q      | Appuntamento Data      | Appointment scheduled datetime      |
+| R      | Vendita Outcome        | Deal status (won/lost/open)         |
+| S      | Vendita Valore         | Deal value                          |
+| T      | Operatore Ultima Azione| Last operator action timestamp      |
+
+## Scheduled KPI Refresh Job
+
+The `sheets-kpi-refresh` edge function updates the "Riepilogo" tab with live KPIs:
+
+### Invocation
+
+```bash
+# Manual refresh
+curl -X POST "${SUPABASE_URL}/functions/v1/sheets-kpi-refresh" \
+  -H "Authorization: Bearer ${ANON_KEY}"
+```
+
+### Cron Setup
+
+```sql
+SELECT cron.schedule(
+  'sheets-kpi-refresh-hourly',
+  '0 * * * *', -- Every hour
+  $$
+  SELECT net.http_post(
+    url := 'https://project-ref.supabase.co/functions/v1/sheets-kpi-refresh',
+    headers := '{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
+  );
+  $$
+);
+```
+
+### KPIs Included (1-10)
+
+1. **Lead Totali** - Total lead count
+2. **Lead Ultime 24h** - Leads in last 24 hours
+3. **Lead Ultimi 7 giorni** - Leads in last 7 days
+4. **Lead Ultimi 30 giorni** - Leads in last 30 days
+5. **Media Giornaliera** - Daily average (30 days)
+6. **Appuntamenti** - Appointment counts by status
+7. **Vendite** - Sales count (won/lost) with win rate
+8. **Distribuzione Priorità AI** - Priority distribution (1-5)
+9. **Lead per Fonte** - Leads grouped by source
+10. **Top 10 Campagne** - Top campaigns by volume
 
 ## Idempotency
 
