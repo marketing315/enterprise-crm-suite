@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Action: create_test_lead - Create a test lead
+    // Action: create_test_lead - Create a test lead (auto-deletes existing one first)
     if (action === "create_test_lead") {
       if (!form_id) {
         return new Response(JSON.stringify({ error: "form_id required" }), {
@@ -92,6 +92,25 @@ Deno.serve(async (req) => {
       }
 
       const testLeadUrl = `https://graph.facebook.com/v19.0/${form_id}/test_leads?access_token=${access_token}`;
+
+      // Step 1: Try to get existing test leads
+      console.log("[META-TEST] Checking for existing test leads...");
+      const getExistingRes = await fetch(testLeadUrl, { method: "GET" });
+      const existingData = await getExistingRes.json();
+
+      // Step 2: Delete existing test leads if any
+      if (existingData.data && existingData.data.length > 0) {
+        console.log("[META-TEST] Found existing test leads, deleting...");
+        for (const lead of existingData.data) {
+          const deleteUrl = `https://graph.facebook.com/v19.0/${lead.id}?access_token=${access_token}`;
+          const deleteRes = await fetch(deleteUrl, { method: "DELETE" });
+          const deleteData = await deleteRes.json();
+          console.log(`[META-TEST] Deleted test lead ${lead.id}:`, deleteData);
+        }
+      }
+
+      // Step 3: Create new test lead
+      console.log("[META-TEST] Creating new test lead...");
       const testLeadRes = await fetch(testLeadUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
