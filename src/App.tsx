@@ -20,6 +20,7 @@ import AdminAIMetrics from "@/pages/AdminAIMetrics";
 import AdminCallcenterKpi from "@/pages/AdminCallcenterKpi";
 import AdminTicketTrend from "@/pages/AdminTicketTrend";
 import AdminWebhooksDashboard from "@/pages/AdminWebhooksDashboard";
+import AdminDlqDashboard from "@/pages/AdminDlqDashboard";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ const App = () => (
                 <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
                 <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
                 <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
+                <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
               </Route>
               
               {/* Redirects */}
