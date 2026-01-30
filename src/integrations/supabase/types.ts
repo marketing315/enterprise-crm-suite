@@ -1761,6 +1761,7 @@ export type Database = {
           created_at: string
           description: string | null
           hmac_enabled: boolean
+          hmac_secret: string | null
           hmac_secret_hash: string | null
           id: string
           is_active: boolean
@@ -1776,6 +1777,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           hmac_enabled?: boolean
+          hmac_secret?: string | null
           hmac_secret_hash?: string | null
           id?: string
           is_active?: boolean
@@ -1791,6 +1793,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           hmac_enabled?: boolean
+          hmac_secret?: string | null
           hmac_secret_hash?: string | null
           id?: string
           is_active?: boolean
