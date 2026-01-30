@@ -3164,6 +3164,7 @@ export type Database = {
         }
         Returns: Json
       }
+      rebuild_contact_search_index: { Args: never; Returns: number }
       record_delivery_result: {
         Args: {
           p_delivery_id: string
@@ -3203,7 +3204,7 @@ export type Database = {
       }
       search_contacts: {
         Args: {
-          p_brand_id: string
+          p_brand_id?: string
           p_limit?: number
           p_match_all_tags?: boolean
           p_offset?: number
