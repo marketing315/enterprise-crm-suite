@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -6,6 +6,7 @@ import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { GoogleSheetsSettings } from "@/components/settings/GoogleSheetsSettings";
 import { AdminManagement } from "@/components/settings/AdminManagement";
 import { MetaAppsSettings } from "@/components/settings/meta/MetaAppsSettings";
+import { PipelineStagesSettings } from "@/components/settings/pipeline/PipelineStagesSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -54,6 +55,12 @@ export default function Settings() {
               <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span>Ticketing</span>
             </TabsTrigger>
+            {isBrandAdmin && (
+              <TabsTrigger value="pipeline" className="gap-1.5 px-3 text-xs md:text-sm">
+                <GitBranch className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Pipeline</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="tags" className="gap-1.5 px-3 text-xs md:text-sm">
               <Tags className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span>Tag</span>
@@ -89,6 +96,12 @@ export default function Settings() {
         <TabsContent value="ticketing" className="space-y-4">
           <TicketingSettings />
         </TabsContent>
+
+        {isBrandAdmin && (
+          <TabsContent value="pipeline" className="space-y-4">
+            <PipelineStagesSettings />
+          </TabsContent>
+        )}
 
         <TabsContent value="tags" className="space-y-4">
           <TagManager />

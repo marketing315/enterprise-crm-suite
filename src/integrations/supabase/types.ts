@@ -404,6 +404,196 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_message_reads: {
+        Row: {
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_reads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          ai_context: Json | null
+          attachments: Json | null
+          brand_id: string
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          id: string
+          message_text: string
+          sender_type: Database["public"]["Enums"]["chat_sender_type"]
+          sender_user_id: string | null
+          thread_id: string
+        }
+        Insert: {
+          ai_context?: Json | null
+          attachments?: Json | null
+          brand_id: string
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          message_text: string
+          sender_type?: Database["public"]["Enums"]["chat_sender_type"]
+          sender_user_id?: string | null
+          thread_id: string
+        }
+        Update: {
+          ai_context?: Json | null
+          attachments?: Json | null
+          brand_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          message_text?: string
+          sender_type?: Database["public"]["Enums"]["chat_sender_type"]
+          sender_user_id?: string | null
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_sender_user_id_fkey"
+            columns: ["sender_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_thread_members: {
+        Row: {
+          id: string
+          joined_at: string
+          left_at: string | null
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_thread_members_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_thread_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          title: string | null
+          type: Database["public"]["Enums"]["chat_thread_type"]
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          title?: string | null
+          type: Database["public"]["Enums"]["chat_thread_type"]
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          title?: string | null
+          type?: Database["public"]["Enums"]["chat_thread_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_threads_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_threads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_topic_aliases: {
         Row: {
           alias_text: string
@@ -665,6 +855,7 @@ export type Database = {
           current_stage_id: string | null
           id: string
           notes: string | null
+          stage_locked_by_user: boolean
           status: Database["public"]["Enums"]["deal_status"]
           updated_at: string
           value: number | null
@@ -677,6 +868,7 @@ export type Database = {
           current_stage_id?: string | null
           id?: string
           notes?: string | null
+          stage_locked_by_user?: boolean
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
           value?: number | null
@@ -689,6 +881,7 @@ export type Database = {
           current_stage_id?: string | null
           id?: string
           notes?: string | null
+          stage_locked_by_user?: boolean
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
           value?: number | null
@@ -1133,6 +1326,102 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          brand_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          brand_id: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          read_at: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          brand_id: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          read_at?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          brand_id?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2134,6 +2423,19 @@ export type Database = {
           webhook_id: string
         }[]
       }
+      create_pipeline_stage: {
+        Args: {
+          p_brand_id: string
+          p_color?: string
+          p_description?: string
+          p_name: string
+        }
+        Returns: string
+      }
+      deactivate_pipeline_stage: {
+        Args: { p_fallback_stage_id: string; p_stage_id: string }
+        Returns: Json
+      }
       delete_outbound_webhook: { Args: { p_id: string }; Returns: boolean }
       enqueue_webhook_delivery: {
         Args: {
@@ -2227,6 +2529,10 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_or_create_entity_thread: {
+        Args: { p_brand_id: string; p_entity_id: string; p_entity_type: string }
+        Returns: string
+      }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }
         Returns: {
@@ -2266,6 +2572,10 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_unread_notification_count: {
+        Args: { p_brand_id?: string }
+        Returns: number
+      }
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       get_webhook_delivery: { Args: { p_delivery_id: string }; Returns: Json }
@@ -2300,6 +2610,10 @@ export type Database = {
           is_duplicate: boolean
         }[]
       }
+      is_thread_member: {
+        Args: { p_thread_id: string; p_user_id: string }
+        Returns: boolean
+      }
       list_contact_lead_events: {
         Args: { p_contact_id: string; p_include_archived?: boolean }
         Returns: Json
@@ -2327,6 +2641,10 @@ export type Database = {
         }
         Returns: Json
       }
+      mark_notifications_read: {
+        Args: { p_notification_ids: string[] }
+        Returns: number
+      }
       normalize_topic_text: { Args: { p_text: string }; Returns: string }
       override_ai_decision: {
         Args: {
@@ -2348,6 +2666,10 @@ export type Database = {
           p_success: boolean
         }
         Returns: Json
+      }
+      reorder_pipeline_stages: {
+        Args: { p_stage_ids: string[] }
+        Returns: undefined
       }
       replay_ingest_dlq: { Args: { p_request_id: string }; Returns: Json }
       replay_outbound_dlq: {
@@ -2446,6 +2768,14 @@ export type Database = {
         }
         Returns: Json
       }
+      send_chat_message: {
+        Args: {
+          p_attachments?: Json
+          p_message_text: string
+          p_thread_id: string
+        }
+        Returns: string
+      }
       set_appointment_status: {
         Args: {
           p_appointment_id: string
@@ -2510,6 +2840,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_pipeline_stage: {
+        Args: {
+          p_color?: string
+          p_description?: string
+          p_name?: string
+          p_stage_id: string
+        }
+        Returns: undefined
+      }
       upsert_clinical_topics_from_strings: {
         Args: {
           p_brand_id: string
@@ -2551,6 +2890,8 @@ export type Database = {
         | "no_show"
       appointment_type: "primo_appuntamento" | "follow_up" | "visita_tecnica"
       assigned_by: "ai" | "user" | "rule"
+      chat_sender_type: "user" | "ai" | "system"
+      chat_thread_type: "direct" | "group" | "entity"
       contact_channel: "chat" | "call"
       contact_status:
         | "new"
@@ -2580,6 +2921,18 @@ export type Database = {
         | "ingested"
         | "duplicate"
         | "error"
+      notification_type:
+        | "lead_event_created"
+        | "pipeline_stage_changed"
+        | "ticket_created"
+        | "ticket_assigned"
+        | "ticket_status_changed"
+        | "appointment_created"
+        | "appointment_updated"
+        | "appointment_reminder"
+        | "tag_updated"
+        | "ai_decision_ready"
+        | "chat_message"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       pacemaker_status: "assente" | "presente" | "non_chiaro"
       tag_scope:
@@ -2765,6 +3118,8 @@ export const Constants = {
       ],
       appointment_type: ["primo_appuntamento", "follow_up", "visita_tecnica"],
       assigned_by: ["ai", "user", "rule"],
+      chat_sender_type: ["user", "ai", "system"],
+      chat_thread_type: ["direct", "group", "entity"],
       contact_channel: ["chat", "call"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
       customer_sentiment: ["positivo", "neutro", "negativo"],
@@ -2790,6 +3145,19 @@ export const Constants = {
         "ingested",
         "duplicate",
         "error",
+      ],
+      notification_type: [
+        "lead_event_created",
+        "pipeline_stage_changed",
+        "ticket_created",
+        "ticket_assigned",
+        "ticket_status_changed",
+        "appointment_created",
+        "appointment_updated",
+        "appointment_reminder",
+        "tag_updated",
+        "ai_decision_ready",
+        "chat_message",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       pacemaker_status: ["assente", "presente", "non_chiaro"],
