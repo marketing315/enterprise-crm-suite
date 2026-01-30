@@ -45,6 +45,7 @@ import {
   Webhook,
   AlertTriangle,
   MessageSquare,
+  Brain,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -62,6 +63,7 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
+  { icon: Brain, label: 'Gestione AI', path: '/admin/ai' },
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
   { icon: Headphones, label: 'KPI Call Center', path: '/admin/callcenter-kpi' },
   { icon: TrendingUp, label: 'Trend Ticket', path: '/admin/ticket-trend' },

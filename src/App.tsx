@@ -17,6 +17,7 @@ import Appointments from "@/pages/Appointments";
 import Tickets from "@/pages/Tickets";
 import Settings from "@/pages/Settings";
 import AdminAIMetrics from "@/pages/AdminAIMetrics";
+import AdminAI from "@/pages/AdminAI";
 import AdminCallcenterKpi from "@/pages/AdminCallcenterKpi";
 import AdminTicketTrend from "@/pages/AdminTicketTrend";
 import AdminWebhooksDashboard from "@/pages/AdminWebhooksDashboard";
@@ -65,6 +66,7 @@ const App = () => (
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/analytics" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/admin/ai" element={<AdminAI />} />
                 <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
                 <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
                 <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
