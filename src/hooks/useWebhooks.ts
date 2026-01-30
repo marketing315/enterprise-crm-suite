@@ -41,23 +41,78 @@ export interface DeliveriesResponse {
   offset: number;
 }
 
-// Supported event types for webhooks
-export const WEBHOOK_EVENT_TYPES = [
-  { value: "ticket.created", label: "Ticket Creato" },
-  { value: "ticket.updated", label: "Ticket Aggiornato" },
-  { value: "ticket.assigned", label: "Ticket Assegnato" },
-  { value: "ticket.status_changed", label: "Cambio Status" },
-  { value: "ticket.priority_changed", label: "Cambio Priorità" },
-  { value: "ticket.sla_breached", label: "SLA Violato" },
-  { value: "ticket.resolved", label: "Ticket Risolto" },
-  { value: "ticket.closed", label: "Ticket Chiuso" },
-  { value: "contact.created", label: "Contatto Creato" },
-  { value: "contact.updated", label: "Contatto Aggiornato" },
-  { value: "deal.created", label: "Deal Creato" },
-  { value: "deal.stage_changed", label: "Deal Stage Cambiato" },
-  { value: "deal.closed", label: "Deal Chiuso" },
-  { value: "webhook.test", label: "Test" },
-] as const;
+// Event type definition
+export interface WebhookEventType {
+  value: string;
+  label: string;
+}
+
+// PRD-aligned event types grouped by category
+export const WEBHOOK_EVENT_TYPE_CATEGORIES: Array<{
+  category: string;
+  events: WebhookEventType[];
+}> = [
+  {
+    category: "Lead Events",
+    events: [
+      { value: "lead_event.created", label: "Lead Event Creato" },
+    ],
+  },
+  {
+    category: "Pipeline",
+    events: [
+      { value: "pipeline.stage_changed", label: "Stage Pipeline Cambiato" },
+      { value: "sale.recorded", label: "Vendita Registrata" },
+    ],
+  },
+  {
+    category: "Tags",
+    events: [
+      { value: "tags.updated", label: "Tags Aggiornati" },
+    ],
+  },
+  {
+    category: "Appuntamenti",
+    events: [
+      { value: "appointment.created", label: "Appuntamento Creato" },
+      { value: "appointment.updated", label: "Appuntamento Aggiornato" },
+    ],
+  },
+  {
+    category: "Ticket",
+    events: [
+      { value: "ticket.created", label: "Ticket Creato" },
+      { value: "ticket.updated", label: "Ticket Aggiornato" },
+      { value: "ticket.assigned", label: "Ticket Assegnato" },
+      { value: "ticket.status_changed", label: "Cambio Status" },
+      { value: "ticket.priority_changed", label: "Cambio Priorità" },
+      { value: "ticket.sla_breached", label: "SLA Violato" },
+      { value: "ticket.resolved", label: "Ticket Risolto" },
+      { value: "ticket.closed", label: "Ticket Chiuso" },
+    ],
+  },
+  {
+    category: "Contatti & Deal",
+    events: [
+      { value: "contact.created", label: "Contatto Creato" },
+      { value: "contact.updated", label: "Contatto Aggiornato" },
+      { value: "deal.created", label: "Deal Creato" },
+      { value: "deal.stage_changed", label: "Deal Stage Cambiato" },
+      { value: "deal.closed", label: "Deal Chiuso" },
+    ],
+  },
+  {
+    category: "Sistema",
+    events: [
+      { value: "webhook.test", label: "Test" },
+    ],
+  },
+];
+
+// Flat list for backward compatibility
+export const WEBHOOK_EVENT_TYPES: WebhookEventType[] = WEBHOOK_EVENT_TYPE_CATEGORIES.flatMap(
+  (cat) => cat.events
+);
 
 // Generate a secure random secret
 export function generateWebhookSecret(): string {

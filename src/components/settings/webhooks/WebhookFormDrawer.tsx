@@ -23,7 +23,7 @@ import {
   useCreateWebhook,
   useUpdateWebhook,
   generateWebhookSecret,
-  WEBHOOK_EVENT_TYPES,
+  WEBHOOK_EVENT_TYPE_CATEGORIES,
 } from "@/hooks/useWebhooks";
 
 const formSchema = z.object({
@@ -247,23 +247,32 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
           {/* Event Types */}
           <div className="space-y-2">
             <Label>Eventi da ricevere</Label>
-            <div className="grid grid-cols-2 gap-2 rounded-md border p-4">
-              {WEBHOOK_EVENT_TYPES.map((event) => (
-                <div key={event.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={event.value}
-                    checked={eventTypes?.includes(event.value)}
-                    onCheckedChange={(checked) =>
-                      handleEventToggle(event.value, !!checked)
-                    }
-                    data-testid={`event-type-${event.value}`}
-                  />
-                  <label
-                    htmlFor={event.value}
-                    className="text-sm cursor-pointer"
-                  >
-                    {event.label}
-                  </label>
+            <div className="space-y-4 rounded-md border p-4 max-h-[300px] overflow-y-auto">
+              {WEBHOOK_EVENT_TYPE_CATEGORIES.map((category) => (
+                <div key={category.category}>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    {category.category}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {category.events.map((event) => (
+                      <div key={event.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={event.value}
+                          checked={eventTypes?.includes(event.value)}
+                          onCheckedChange={(checked) =>
+                            handleEventToggle(event.value, !!checked)
+                          }
+                          data-testid={`event-type-${event.value}`}
+                        />
+                        <label
+                          htmlFor={event.value}
+                          className="text-sm cursor-pointer"
+                        >
+                          {event.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

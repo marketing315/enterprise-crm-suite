@@ -1897,6 +1897,36 @@ export type Database = {
         Args: { p_brand_id: string }
         Returns: number
       }
+      build_contact_snapshot: { Args: { p_contact_id: string }; Returns: Json }
+      build_deal_snapshot: { Args: { p_deal_id: string }; Returns: Json }
+      build_entity_tags: {
+        Args: {
+          p_brand_id: string
+          p_contact_id?: string
+          p_deal_id?: string
+          p_lead_event_id?: string
+        }
+        Returns: Json
+      }
+      build_webhook_payload_v1: {
+        Args: {
+          p_appointment_snapshot?: Json
+          p_brand_id: string
+          p_contact_id?: string
+          p_deal_id?: string
+          p_event_id: string
+          p_event_snapshot?: Json
+          p_event_type: string
+          p_lead_event_id?: string
+          p_new_data?: Json
+          p_occurred_at: string
+          p_old_data?: Json
+          p_refs?: Json
+          p_sale_snapshot?: Json
+          p_stage_snapshot?: Json
+        }
+        Returns: Json
+      }
       check_all_brands_sla_breaches: { Args: never; Returns: Json }
       check_and_mark_sla_breaches: {
         Args: { p_brand_id: string }
@@ -2481,6 +2511,12 @@ export type Database = {
         | "deal.stage_changed"
         | "deal.closed"
         | "webhook.test"
+        | "lead_event.created"
+        | "pipeline.stage_changed"
+        | "tags.updated"
+        | "appointment.created"
+        | "appointment.updated"
+        | "sale.recorded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2682,6 +2718,12 @@ export const Constants = {
         "deal.stage_changed",
         "deal.closed",
         "webhook.test",
+        "lead_event.created",
+        "pipeline.stage_changed",
+        "tags.updated",
+        "appointment.created",
+        "appointment.updated",
+        "sale.recorded",
       ],
     },
   },
