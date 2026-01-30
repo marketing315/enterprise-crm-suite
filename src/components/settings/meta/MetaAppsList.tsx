@@ -4,16 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Edit, Trash2, ExternalLink, TestTube, Link } from "lucide-react";
+import { Copy, Edit, Trash2, TestTube, Link, Zap } from "lucide-react";
 import { useMetaApps, MetaApp } from "@/hooks/useMetaApps";
 import { MetaAppFormDrawer } from "./MetaAppFormDrawer";
 import { DeleteMetaAppDialog } from "./DeleteMetaAppDialog";
+import { TestLeadDialog } from "./TestLeadDialog";
 import { toast } from "sonner";
 
 export function MetaAppsList() {
   const { metaApps, isLoading, toggleActive, subscribePage } = useMetaApps();
   const [editingApp, setEditingApp] = useState<MetaApp | null>(null);
   const [deletingApp, setDeletingApp] = useState<MetaApp | null>(null);
+  const [testingApp, setTestingApp] = useState<MetaApp | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, label: string) => {
@@ -126,6 +128,14 @@ export function MetaAppsList() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => setTestingApp(app)}
+                    title="Crea Lead Test"
+                  >
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleSubscribePage(app)}
                     disabled={subscribingId === app.id}
                     title="Sottoscrivi Pagina a Leadgen"
@@ -136,7 +146,7 @@ export function MetaAppsList() {
                     variant="ghost"
                     size="icon"
                     onClick={() => testWebhook(app)}
-                    title="Test Webhook"
+                    title="Test Webhook Verifica"
                   >
                     <TestTube className="h-4 w-4" />
                   </Button>
@@ -173,6 +183,12 @@ export function MetaAppsList() {
         open={!!deletingApp}
         onOpenChange={(open) => !open && setDeletingApp(null)}
         metaApp={deletingApp}
+      />
+
+      <TestLeadDialog
+        open={!!testingApp}
+        onOpenChange={(open) => !open && setTestingApp(null)}
+        metaApp={testingApp}
       />
     </>
   );
