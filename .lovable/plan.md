@@ -1,138 +1,122 @@
 
-# Piano: Editor Avanzato Viste Tabella Contatti
+# Piano: Supporto "Tutti i brand" per Contatti
 
 ## Obiettivo
-Permettere agli utenti di personalizzare la tabella contatti con:
-- Selezione tra viste salvate
-- Salvataggio configurazione corrente come nuova vista
-- Modifica/eliminazione viste esistenti
-- Colonne custom fields dinamiche
-- Riordino colonne con drag & drop
+Quando viene selezionato "Tutti i brand", la sezione Contatti deve aggregare i contatti di tutti i brand accessibili all'utente. L'unica differenza rispetto alla vista singolo brand è la presenza di una colonna "Brand" che indica a quale brand appartiene ogni contatto.
 
-## Architettura della Soluzione
+## Problema attuale
+L'hook `useContactSearch` filtra sempre per `currentBrand.id` singolo, non supportando l'aggregazione multi-brand tramite `.in("brand_id", allBrandIds)` come fanno altri hook (es. `useNotifications`).
 
-### Flusso Utente
+## Modifiche necessarie
 
-```text
-+---------------------------+
-|  [Vista: Default v]       |  <- Selector viste salvate
-+---------------------------+
-|  [Colonne] [Salva vista]  |  <- Toolbar azioni
-+---------------------------+
-| Nome | Tel | Email | ...  |  <- Tabella con colonne configurabili
-+---------------------------+
-```
+### 1. Hook `useContactSearch` (`src/hooks/useContactSearch.ts`)
 
-## Componenti da Creare
+Aggiungere il supporto per la modalita "All Brands":
 
-### 1. TableViewSelector
-Dropdown per scegliere tra viste salvate:
-- Mostra lista viste dell'utente
-- Indica vista corrente attiva
-- Azione rapida "Nuova vista"
+- Importare `isAllBrandsSelected` e `allBrandIds` da `useBrand()`
+- Nella query senza ricerca testuale:
+  - Se `isAllBrandsSelected`: usare `.in("brand_id", allBrandIds)` invece di `.eq("brand_id", currentBrand.id)`
+- Nella query con ricerca (RPC `search_contacts`):
+  - Passare `null` come `p_brand_id` o modificare la RPC per accettare un array di brand IDs
+- Aggiungere `brand_id` al tipo `SearchResult` e ai dati restituiti
+- Aggiornare la `queryKey` per includere `isAllBrandsSelected`
 
-### 2. SaveViewDialog
-Dialog per salvare la configurazione attuale:
-- Input nome vista
-- Checkbox "Imposta come predefinita"
-- Salva colonne + filtri attivi
+### 2. Pagina Contatti (`src/pages/Contacts.tsx`)
 
-### 3. EditViewDialog  
-Dialog per modificare/eliminare vista:
-- Rinomina
-- Imposta come default
-- Elimina (con conferma)
+Il file gestisce gia correttamente la visualizzazione:
+- Passa `showBrandColumn={isAllBrandsSelected}` alla tabella
+- Ha un filtro per brand quando "Tutti i brand" e attivo
+- Mappa i contatti con `brand_name` cercando nel array `brands`
 
-### 4. ColumnReorderPanel
-Pannello avanzato per gestire colonne:
-- Lista colonne con drag & drop
-- Toggle visibilità per colonna
-- Mostra anche custom fields disponibili
+Problema: il mapping `brand_name` attuale non funziona perche `SearchResult` non include `brand_id`. Devo:
+- Aggiungere `brand_id` al tipo e ai dati in `useContactSearch`
+- Correggere il mapping in `Contacts.tsx` per usare il vero `brand_id`
 
-## Modifiche ai File Esistenti
+### 3. (Opzionale) RPC `search_contacts`
 
-### ContactsTableWithViews.tsx
-- Aggiungere stato per vista selezionata
-- Integrare custom fields come colonne opzionali
-- Connettere il selector e le azioni di salvataggio
+Se la RPC e usata per la ricerca testuale, potrebbe essere necessario modificarla per accettare un array di brand IDs o `NULL` per tutti i brand accessibili.
 
-### useTableViews.ts
-- Aggiungere hook per gestire lo stato della vista attiva
-- Merge colonne default + custom fields
-
-## Schema UI Finale
+## Schema della soluzione
 
 ```text
-┌────────────────────────────────────────────────────┐
-│ Vista: [Sales view ▼]    [⚙ Colonne] [💾 Salva]    │
-├────────────────────────────────────────────────────┤
-│ Nome       │ Telefono │ Email │ [custom1] │ Data  │
-├────────────┼──────────┼───────┼───────────┼───────┤
-│ Mario R.   │ 333...   │ m@... │ valore    │ 29 gen│
-└────────────────────────────────────────────────────┘
+useContactSearch()
+     |
+     v
+isAllBrandsSelected?
+     |
+   +---+---+
+   |       |
+  YES      NO
+   |       |
+   v       v
+.in()   .eq()
+   |       |
+   +---+---+
+       |
+       v
+  Risultati con brand_id
+       |
+       v
+  Contacts.tsx mappa brand_name
+       |
+       v
+  ContactsTableWithViews mostra colonna Brand
 ```
 
-## File da Creare
+## Dettaglio tecnico
 
-| File | Descrizione |
-|------|-------------|
-| `src/components/contacts/views/TableViewSelector.tsx` | Dropdown selezione vista |
-| `src/components/contacts/views/SaveViewDialog.tsx` | Dialog salvataggio nuova vista |
-| `src/components/contacts/views/EditViewDialog.tsx` | Dialog modifica/elimina vista |
-| `src/components/contacts/views/ColumnManager.tsx` | Pannello gestione colonne con drag & drop |
+### Modifica a `SearchResult` in `useContactSearch.ts`:
+```typescript
+export interface SearchResult {
+  id: string;
+  brand_id: string;        // <-- NUOVO
+  first_name: string | null;
+  // ... resto invariato
+}
+```
 
-## File da Modificare
+### Modifica alla query senza ricerca:
+```typescript
+const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
+
+let queryBuilder = supabase
+  .from("contacts")
+  .select(`
+    id, brand_id, first_name, ...  // <-- aggiunto brand_id
+  `)
+  .order("updated_at", { ascending: false })
+  .limit(limit);
+
+// Filtro brand
+if (isAllBrandsSelected) {
+  queryBuilder = queryBuilder.in("brand_id", allBrandIds);
+} else if (currentBrand) {
+  queryBuilder = queryBuilder.eq("brand_id", currentBrand.id);
+}
+```
+
+### Modifica al mapping in `Contacts.tsx`:
+```typescript
+const contactsForTable = contacts.map((c) => {
+  const brand = brands.find(b => b.id === c.brand_id);
+  return {
+    ...c,
+    brand_name: brand?.name || '',
+    // ... resto invariato
+  };
+});
+```
+
+## File da modificare
 
 | File | Modifiche |
 |------|-----------|
-| `src/components/contacts/ContactsTableWithViews.tsx` | Integrare selector, custom fields, salvataggio |
-| `src/hooks/useTableViews.ts` | Aggiungere hook per merging con custom fields |
+| `src/hooks/useContactSearch.ts` | Supporto multi-brand, aggiunta `brand_id` ai risultati |
+| `src/pages/Contacts.tsx` | Correzione mapping `brand_name` usando `c.brand_id` |
 
-## Dettaglio Tecnico
+## Risultato atteso
 
-### Integrazione Custom Fields nelle Colonne
-I custom fields (da `useFieldDefinitions`) vengono convertiti in `TableColumn`:
-
-```typescript
-const customFieldColumns: TableColumn[] = fieldDefinitions.map(f => ({
-  key: `cf_${f.key}`,
-  label: f.label,
-  visible: false, // nascosti di default
-  isCustomField: true,
-  fieldDefinitionId: f.id,
-}));
-```
-
-### Rendering Custom Fields nella Tabella
-Il `renderCell` viene esteso per gestire `cf_*` keys:
-
-```typescript
-case key.startsWith('cf_'):
-  const fieldKey = key.replace('cf_', '');
-  const fieldValue = contactCustomFields[fieldKey];
-  return <span>{fieldValue ?? '-'}</span>;
-```
-
-### Persistenza Vista Attiva
-La vista selezionata viene salvata in localStorage per persistere tra sessioni:
-
-```typescript
-const [activeViewId, setActiveViewId] = useLocalStorage('contacts-view', 'default');
-```
-
-## Comportamento Mobile
-
-Su mobile:
-- Il selector vista diventa un full-width dropdown
-- Il pannello colonne si apre come Sheet dal basso
-- Drag & drop usa `@dnd-kit/sortable` (già installato)
-
-## Sequenza Implementazione
-
-1. Creare `TableViewSelector` per switching tra viste
-2. Creare `SaveViewDialog` per salvare nuove viste  
-3. Modificare `ContactsTableWithViews` per integrare selector e actions
-4. Creare `ColumnManager` con drag & drop
-5. Integrare custom fields come colonne dinamiche
-6. Aggiungere `EditViewDialog` per modifica/eliminazione
-7. Testare il flusso completo
+1. Selezionando "Tutti i brand", la lista contatti mostra tutti i contatti di tutti i brand accessibili
+2. La colonna "Brand" appare automaticamente, mostrando il nome del brand per ogni contatto
+3. Il filtro per brand (gia presente) permette di restringere la vista a un singolo brand
+4. La ricerca testuale funziona anche in modalita multi-brand
