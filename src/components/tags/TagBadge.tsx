@@ -1,5 +1,6 @@
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AssignedBy } from "@/types/database";
 
 interface TagBadgeProps {
   name: string;
@@ -7,6 +8,8 @@ interface TagBadgeProps {
   onRemove?: () => void;
   size?: "sm" | "md";
   className?: string;
+  assignedBy?: AssignedBy;
+  confidence?: number | null;
 }
 
 export function TagBadge({ 
@@ -14,12 +17,16 @@ export function TagBadge({
   color = "#6366f1", 
   onRemove, 
   size = "md",
-  className 
+  className,
+  assignedBy,
+  confidence,
 }: TagBadgeProps) {
   const sizeClasses = {
     sm: "text-xs px-1.5 py-0.5",
     md: "text-sm px-2 py-1",
   };
+
+  const isAI = assignedBy === "ai";
 
   return (
     <span
@@ -33,7 +40,11 @@ export function TagBadge({
         color: color,
         border: `1px solid ${color}40`,
       }}
+      title={isAI && confidence ? `Suggerito da AI (${Math.round(confidence * 100)}% confidence)` : undefined}
     >
+      {isAI && (
+        <Sparkles className="h-3 w-3 shrink-0" />
+      )}
       <span className="truncate max-w-[120px]">{name}</span>
       {onRemove && (
         <button
