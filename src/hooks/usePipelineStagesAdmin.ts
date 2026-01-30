@@ -153,3 +153,51 @@ export function useDeactivatePipelineStage() {
     },
   });
 }
+
+export function useReactivatePipelineStage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (stageId: string) => {
+      const { data, error } = await supabase.rpc("reactivate_pipeline_stage", {
+        p_stage_id: stageId,
+      });
+
+      if (error) throw error;
+      return data as { success: boolean; stage_name: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["pipeline-stages-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline-stages"] });
+      toast.success(`Fase "${data.stage_name}" riattivata`);
+    },
+    onError: (error: Error) => {
+      console.error("Error reactivating pipeline stage:", error);
+      toast.error(error.message || "Errore nella riattivazione della fase");
+    },
+  });
+}
+
+export function useDeletePipelineStagePermanently() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (stageId: string) => {
+      const { data, error } = await supabase.rpc("delete_pipeline_stage_permanently", {
+        p_stage_id: stageId,
+      });
+
+      if (error) throw error;
+      return data as { success: boolean; stage_name: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["pipeline-stages-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline-stages"] });
+      toast.success(`Fase "${data.stage_name}" eliminata definitivamente`);
+    },
+    onError: (error: Error) => {
+      console.error("Error deleting pipeline stage:", error);
+      toast.error(error.message || "Errore nell'eliminazione della fase");
+    },
+  });
+}
