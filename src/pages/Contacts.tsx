@@ -66,19 +66,18 @@ export default function Contacts() {
     .filter(c => {
       // Apply brand filter in all-brands mode
       if (isAllBrandsSelected && brandFilter !== 'all') {
-        return c.id.startsWith(brandFilter); // Simplified - should match brand_id
+        return c.brand_id === brandFilter;
       }
       return true;
     })
     .map((c) => {
-      const brand = brands.find(b => b.id === (c as unknown as { brand_id?: string }).brand_id);
+      const brand = brands.find(b => b.id === c.brand_id);
       return {
         ...c,
-        brand_id: '',
         brand_name: brand?.name || '',
         address: null as string | null,
         contact_phones: c.primary_phone 
-          ? [{ id: '', brand_id: '', contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: c.primary_phone, country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
+          ? [{ id: '', brand_id: c.brand_id, contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: c.primary_phone, country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
           : [],
       };
     });
