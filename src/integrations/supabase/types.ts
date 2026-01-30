@@ -14,6 +14,126 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_chat_logs: {
+        Row: {
+          brand_id: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error: string | null
+          flagged_incorrect: boolean | null
+          flagged_reason: string | null
+          id: string
+          input_text: string
+          latency_ms: number | null
+          output_text: string | null
+          prompt_version: string | null
+          status: string
+          tokens_used: number | null
+          tool_name: string | null
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error?: string | null
+          flagged_incorrect?: boolean | null
+          flagged_reason?: string | null
+          id?: string
+          input_text: string
+          latency_ms?: number | null
+          output_text?: string | null
+          prompt_version?: string | null
+          status?: string
+          tokens_used?: number | null
+          tool_name?: string | null
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error?: string | null
+          flagged_incorrect?: boolean | null
+          flagged_reason?: string | null
+          id?: string
+          input_text?: string
+          latency_ms?: number | null
+          output_text?: string | null
+          prompt_version?: string | null
+          status?: string
+          tokens_used?: number | null
+          tool_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_configs: {
+        Row: {
+          active_prompt_version: string | null
+          brand_id: string
+          created_at: string
+          id: string
+          mode: Database["public"]["Enums"]["ai_mode"]
+          rules_json: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active_prompt_version?: string | null
+          brand_id: string
+          created_at?: string
+          id?: string
+          mode?: Database["public"]["Enums"]["ai_mode"]
+          rules_json?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active_prompt_version?: string | null
+          brand_id?: string
+          created_at?: string
+          id?: string
+          mode?: Database["public"]["Enums"]["ai_mode"]
+          rules_json?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_configs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_configs_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_decision_logs: {
         Row: {
           ai_job_id: string | null
@@ -121,6 +241,61 @@ export type Database = {
           },
         ]
       }
+      ai_feedback: {
+        Row: {
+          ai_decision_id: string
+          brand_id: string
+          corrected_output_json: Json | null
+          created_at: string
+          id: string
+          label: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_decision_id: string
+          brand_id: string
+          corrected_output_json?: Json | null
+          created_at?: string
+          id?: string
+          label: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_decision_id?: string
+          brand_id?: string
+          corrected_output_json?: Json | null
+          created_at?: string
+          id?: string
+          label?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_ai_decision_id_fkey"
+            columns: ["ai_decision_id"]
+            isOneToOne: false
+            referencedRelation: "ai_decision_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_jobs: {
         Row: {
           attempts: number
@@ -171,6 +346,54 @@ export type Database = {
             columns: ["lead_event_id"]
             isOneToOne: true
             referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_prompts: {
+        Row: {
+          brand_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          version: string
+        }
+        Insert: {
+          brand_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          version: string
+        }
+        Update: {
+          brand_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_prompts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_prompts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2495,6 +2718,7 @@ export type Database = {
       }
     }
     Functions: {
+      activate_ai_prompt: { Args: { p_prompt_id: string }; Returns: boolean }
       add_contact_phone: {
         Args: {
           p_contact_id: string
@@ -2745,6 +2969,10 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_ai_quality_metrics: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       get_brand_operators: {
         Args: { p_brand_id: string }
         Returns: {
@@ -2789,6 +3017,25 @@ export type Database = {
           options: Json
           scope: Database["public"]["Enums"]["custom_field_scope"]
         }[]
+      }
+      get_or_create_ai_config: {
+        Args: { p_brand_id: string }
+        Returns: {
+          active_prompt_version: string | null
+          brand_id: string
+          created_at: string
+          id: string
+          mode: Database["public"]["Enums"]["ai_mode"]
+          rules_json: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ai_configs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_or_create_entity_thread: {
         Args: { p_brand_id: string; p_entity_id: string; p_entity_type: string }
@@ -3155,6 +3402,7 @@ export type Database = {
       }
     }
     Enums: {
+      ai_mode: "off" | "suggest" | "auto_apply"
       app_role: "admin" | "ceo" | "callcenter" | "sales"
       appointment_status:
         | "scheduled"
@@ -3395,6 +3643,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_mode: ["off", "suggest", "auto_apply"],
       app_role: ["admin", "ceo", "callcenter", "sales"],
       appointment_status: [
         "scheduled",
