@@ -62,7 +62,7 @@ export default function Contacts() {
     ...c,
     brand_id: '',
     contact_phones: c.primary_phone 
-      ? [{ id: '', brand_id: '', contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: '', country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
+      ? [{ id: '', brand_id: '', contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: c.primary_phone, country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
       : [],
   }));
 
