@@ -398,6 +398,63 @@ export type Database = {
           },
         ]
       }
+      ai_tag_deal_jobs: {
+        Row: {
+          attempts: number | null
+          brand_id: string
+          completed_at: string | null
+          created_at: string | null
+          deal_id: string
+          id: string
+          last_error: string | null
+          max_attempts: number | null
+          started_at: string | null
+          status: string | null
+          trigger_reason: string
+        }
+        Insert: {
+          attempts?: number | null
+          brand_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          deal_id: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number | null
+          started_at?: string | null
+          status?: string | null
+          trigger_reason: string
+        }
+        Update: {
+          attempts?: number | null
+          brand_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          deal_id?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number | null
+          started_at?: string | null
+          status?: string | null
+          trigger_reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tag_deal_jobs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_tag_deal_jobs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           address: string | null
@@ -2727,6 +2784,10 @@ export type Database = {
         }
         Returns: string
       }
+      apply_ai_deal_tags: {
+        Args: { p_confidence?: number; p_deal_id: string; p_tag_ids: string[] }
+        Returns: number
+      }
       apply_ai_fallback: {
         Args: { p_lead_event_id: string }
         Returns: undefined
@@ -2822,6 +2883,10 @@ export type Database = {
       cleanup_outbound_webhook_deliveries: {
         Args: { p_limit?: number }
         Returns: number
+      }
+      complete_ai_tag_job: {
+        Args: { p_error?: string; p_job_id: string }
+        Returns: undefined
       }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
@@ -3069,6 +3134,15 @@ export type Database = {
           p_unread_only?: boolean
         }
         Returns: Json
+      }
+      get_pending_ai_tag_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          brand_id: string
+          deal_id: string
+          job_id: string
+          trigger_reason: string
+        }[]
       }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }

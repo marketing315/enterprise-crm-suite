@@ -91,6 +91,8 @@ export function EntityTagList({
           color={assignment.tag?.color}
           size={size}
           onRemove={editable ? () => handleRemove(assignment) : undefined}
+          assignedBy={assignment.assigned_by}
+          confidence={assignment.confidence}
         />
       ))}
       
