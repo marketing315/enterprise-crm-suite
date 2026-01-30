@@ -1760,11 +1760,14 @@ export type Database = {
           brand_id: string
           created_at: string
           description: string | null
+          hmac_enabled: boolean
+          hmac_secret_hash: string | null
           id: string
           is_active: boolean
           mapping: Json | null
           name: string
           rate_limit_per_min: number
+          replay_window_seconds: number
           updated_at: string
         }
         Insert: {
@@ -1772,11 +1775,14 @@ export type Database = {
           brand_id: string
           created_at?: string
           description?: string | null
+          hmac_enabled?: boolean
+          hmac_secret_hash?: string | null
           id?: string
           is_active?: boolean
           mapping?: Json | null
           name: string
           rate_limit_per_min?: number
+          replay_window_seconds?: number
           updated_at?: string
         }
         Update: {
@@ -1784,11 +1790,14 @@ export type Database = {
           brand_id?: string
           created_at?: string
           description?: string | null
+          hmac_enabled?: boolean
+          hmac_secret_hash?: string | null
           id?: string
           is_active?: boolean
           mapping?: Json | null
           name?: string
           rate_limit_per_min?: number
+          replay_window_seconds?: number
           updated_at?: string
         }
         Relationships: [

@@ -26,12 +26,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Copy, Key } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Copy, Key, Shield } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
   description: z.string().max(500).optional(),
   rate_limit_per_min: z.coerce.number().min(1).max(1000).default(60),
+  hmac_enabled: z.boolean().default(false),
+  replay_window_seconds: z.coerce.number().min(60).max(3600).default(300),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -44,6 +48,8 @@ interface InboundSourceFormDrawerProps {
     name: string;
     description: string | null;
     rate_limit_per_min: number;
+    hmac_enabled?: boolean;
+    replay_window_seconds?: number;
   } | null;
 }
 
@@ -78,6 +84,8 @@ export function InboundSourceFormDrawer({
       name: "",
       description: "",
       rate_limit_per_min: 60,
+      hmac_enabled: false,
+      replay_window_seconds: 300,
     },
   });
 
@@ -87,16 +95,22 @@ export function InboundSourceFormDrawer({
         name: editingSource.name,
         description: editingSource.description || "",
         rate_limit_per_min: editingSource.rate_limit_per_min,
+        hmac_enabled: editingSource.hmac_enabled ?? false,
+        replay_window_seconds: editingSource.replay_window_seconds ?? 300,
       });
     } else {
       form.reset({
         name: "",
         description: "",
         rate_limit_per_min: 60,
+        hmac_enabled: false,
+        replay_window_seconds: 300,
       });
     }
     setGeneratedApiKey(null);
   }, [editingSource, form, open]);
+
+  const hmacEnabled = form.watch("hmac_enabled");
 
   const createMutation = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -105,6 +119,10 @@ export function InboundSourceFormDrawer({
       const apiKey = generateApiKey();
       const apiKeyHash = await hashApiKey(apiKey);
 
+      // If HMAC is enabled, we'll use the same API key as the HMAC secret
+      // This simplifies key management - one key for auth + signing
+      const hmacSecretHash = values.hmac_enabled ? apiKeyHash : null;
+
       const { error } = await supabase.from("webhook_sources").insert({
         brand_id: currentBrand.id,
         name: values.name,
@@ -112,13 +130,16 @@ export function InboundSourceFormDrawer({
         rate_limit_per_min: values.rate_limit_per_min,
         api_key_hash: apiKeyHash,
         is_active: true,
+        hmac_enabled: values.hmac_enabled,
+        hmac_secret_hash: hmacSecretHash,
+        replay_window_seconds: values.replay_window_seconds,
       });
 
       if (error) throw error;
-      return apiKey;
+      return { apiKey, hmacEnabled: values.hmac_enabled };
     },
-    onSuccess: (apiKey) => {
-      setGeneratedApiKey(apiKey);
+    onSuccess: (result) => {
+      setGeneratedApiKey(result.apiKey);
       queryClient.invalidateQueries({ queryKey: ["inbound-sources"] });
       toast.success("Sorgente creata");
     },
@@ -137,6 +158,8 @@ export function InboundSourceFormDrawer({
           name: values.name,
           description: values.description || null,
           rate_limit_per_min: values.rate_limit_per_min,
+          hmac_enabled: values.hmac_enabled,
+          replay_window_seconds: values.replay_window_seconds,
         })
         .eq("id", editingSource.id);
 
@@ -176,7 +199,7 @@ export function InboundSourceFormDrawer({
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
             {editingSource ? "Modifica Sorgente" : "Nuova Sorgente Inbound"}
@@ -210,6 +233,23 @@ export function InboundSourceFormDrawer({
                 </Button>
               </div>
             </div>
+            
+            {hmacEnabled && (
+              <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+                <Shield className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
+                  <strong>HMAC attivo:</strong> Usa questa stessa API Key per firmare le richieste.
+                  <br />
+                  <code className="text-xs mt-1 block">
+                    X-Signature: sha256=HMAC(apiKey, "timestamp.body")
+                  </code>
+                  <code className="text-xs block">
+                    X-Timestamp: Unix timestamp (secondi)
+                  </code>
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <Button onClick={handleClose} className="w-full">
               Chiudi
             </Button>
@@ -267,6 +307,57 @@ export function InboundSourceFormDrawer({
                   </FormItem>
                 )}
               />
+
+              <Separator className="my-4" />
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Sicurezza Avanzata</span>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="hmac_enabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Verifica HMAC
+                        </FormLabel>
+                        <FormDescription>
+                          Richiedi firma HMAC-SHA256 + timestamp anti-replay
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {hmacEnabled && (
+                  <FormField
+                    control={form.control}
+                    name="replay_window_seconds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Finestra Anti-Replay (secondi)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={60} max={3600} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Tolleranza temporale per timestamp (60-3600s, default 300s = 5 min)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
 
               <div className="flex gap-2 pt-4">
                 <Button

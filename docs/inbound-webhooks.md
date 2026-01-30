@@ -16,6 +16,8 @@ Where `:sourceId` is the UUID of the configured inbound source.
 |--------|----------|-------------|
 | `Content-Type` | Yes | Must be `application/json` |
 | `X-API-Key` | Yes | The API key for this source (shown once on creation) |
+| `X-Signature` | If HMAC enabled | HMAC-SHA256 signature: `sha256=<hex>` |
+| `X-Timestamp` | If HMAC enabled | Unix timestamp in seconds |
 
 ## Request Body
 
@@ -175,11 +177,51 @@ curl -X POST \
 
 ## Security
 
+### API Key Authentication
 - API keys are hashed (SHA-256) before storage
 - Keys are shown only once at creation time
 - Rotate keys via admin UI if compromised
 - `brand_id` is derived server-side from source, never from client
 - All requests logged to `incoming_requests` for audit
+
+### HMAC Signature Verification (Optional, per-source)
+
+When HMAC is enabled for a source:
+
+1. **Signature Format**: `X-Signature: sha256=<hex>`
+2. **Message Format**: `{timestamp}.{body}`
+3. **Algorithm**: HMAC-SHA256 using the API key as secret
+
+**Anti-Replay Protection**:
+- Requires `X-Timestamp` header with Unix timestamp (seconds)
+- Configurable time window (60-3600 seconds, default 300s = 5 minutes)
+- Requests outside the window are rejected with `replay_detected`
+
+**Example (curl with HMAC)**:
+
+```bash
+# Generate signature
+TIMESTAMP=$(date +%s)
+BODY='{"phone":"+393331234567","first_name":"Mario"}'
+SIGNATURE=$(echo -n "${TIMESTAMP}.${BODY}" | openssl dgst -sha256 -hmac "$API_KEY" | awk '{print $2}')
+
+curl -X POST \
+  "https://qmqcjtmcxfqahhubpaea.supabase.co/functions/v1/webhook-ingest/YOUR-SOURCE-ID" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Signature: sha256=$SIGNATURE" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -d "$BODY"
+```
+
+**HMAC Error Codes**:
+| Error | Description |
+|-------|-------------|
+| `missing_signature` | X-Signature header required but not provided |
+| `missing_timestamp` | X-Timestamp header required for HMAC |
+| `invalid_timestamp_format` | Timestamp must be Unix seconds |
+| `replay_detected` | Timestamp outside allowed window |
+| `invalid_signature` | HMAC verification failed |
 
 ## Structured Logging
 

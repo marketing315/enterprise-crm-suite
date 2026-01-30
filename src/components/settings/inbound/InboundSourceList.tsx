@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Edit2, Key, Webhook } from "lucide-react";
+import { Plus, Copy, Trash2, Edit2, Key, Webhook, Shield } from "lucide-react";
 import { InboundSourceFormDrawer } from "./InboundSourceFormDrawer";
 import { DeleteInboundSourceDialog } from "./DeleteInboundSourceDialog";
 import { RotateInboundKeyDialog } from "./RotateInboundKeyDialog";
@@ -19,6 +19,8 @@ interface WebhookSource {
   description: string | null;
   is_active: boolean;
   rate_limit_per_min: number;
+  hmac_enabled: boolean;
+  replay_window_seconds: number;
   created_at: string;
   updated_at: string;
 }
@@ -39,7 +41,7 @@ export function InboundSourceList() {
       if (!currentBrand?.id) return [];
       const { data, error } = await supabase
         .from("webhook_sources")
-        .select("id, name, description, is_active, rate_limit_per_min, created_at, updated_at")
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -138,6 +140,12 @@ export function InboundSourceList() {
                     <Badge variant={source.is_active ? "default" : "secondary"}>
                       {source.is_active ? "Attivo" : "Inattivo"}
                     </Badge>
+                    {source.hmac_enabled && (
+                      <Badge variant="outline" className="gap-1">
+                        <Shield className="h-3 w-3" />
+                        HMAC
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
