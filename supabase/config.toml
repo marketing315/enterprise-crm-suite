@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.admin-manage-users]
 verify_jwt = false
+
+[functions.sheets-kpi-refresh]
+verify_jwt = false
+
+[functions.ai-chat]
+verify_jwt = false
+
+[functions.meta-subscribe-page]
+verify_jwt = false
