@@ -437,25 +437,14 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 2. Missing API key - audit without brand_id (source_id known)
-  const apiKey = req.headers.get("x-api-key");
-  if (!apiKey) {
-    console.log(JSON.stringify({ ...logContext, outcome: "missing_api_key", status: 401 }));
-    await createAuditRecord("rejected", "missing_api_key", sourceId, null);
-    return new Response(JSON.stringify({ error: "Missing X-API-Key header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // 3. Find webhook source (include HMAC fields)
+  // 2. Find webhook source first to check authentication mode
   const { data: source, error: sourceError } = await supabaseAdmin
     .from("webhook_sources")
     .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret_hash, replay_window_seconds")
     .eq("id", sourceId)
     .maybeSingle();
 
-  // 4. Source not found - audit with source_id but no brand_id
+  // 3. Source not found - audit with source_id but no brand_id
   if (sourceError || !source) {
     console.log(JSON.stringify({ ...logContext, outcome: "source_not_found", status: 404 }));
     await createAuditRecord("rejected", "source_not_found", sourceId, null);
@@ -468,7 +457,7 @@ Deno.serve(async (req: Request) => {
   // Now we have brand_id from source
   const brandId = source.brand_id;
 
-  // 5. Source inactive - full audit possible
+  // 4. Source inactive - full audit possible
   if (!source.is_active) {
     console.log(JSON.stringify({ ...logContext, outcome: "inactive_source", status: 409 }));
     await createAuditRecord("rejected", "inactive_source", sourceId, brandId);
@@ -478,16 +467,32 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 6. Invalid API key - full audit
-  const isValidKey = await verifyApiKey(apiKey, source.api_key_hash);
-  if (!isValidKey) {
-    console.log(JSON.stringify({ ...logContext, outcome: "invalid_api_key", status: 401 }));
-    await createAuditRecord("rejected", "invalid_api_key", sourceId, brandId);
-    return new Response(JSON.stringify({ error: "Invalid API key" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  // 5. Authentication: API Key is ONLY required if HMAC is NOT enabled
+  //    If HMAC is enabled, authentication is done via signature verification
+  const apiKey = req.headers.get("x-api-key");
+  
+  if (!source.hmac_enabled) {
+    // HMAC disabled: require API key
+    if (!apiKey) {
+      console.log(JSON.stringify({ ...logContext, outcome: "missing_api_key", status: 401 }));
+      await createAuditRecord("rejected", "missing_api_key", sourceId, brandId);
+      return new Response(JSON.stringify({ error: "Missing X-API-Key header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const isValidKey = await verifyApiKey(apiKey, source.api_key_hash);
+    if (!isValidKey) {
+      console.log(JSON.stringify({ ...logContext, outcome: "invalid_api_key", status: 401 }));
+      await createAuditRecord("rejected", "invalid_api_key", sourceId, brandId);
+      return new Response(JSON.stringify({ error: "Invalid API key" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
+  // If HMAC is enabled, API key is optional - authentication will be done via HMAC signature below
 
   // 7. HMAC Signature verification (if enabled for this source)
   if (source.hmac_enabled && source.hmac_secret_hash) {
