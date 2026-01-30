@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
+import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { TagFilter } from "@/components/tags/TagFilter";
 import { useBrand } from "@/contexts/BrandContext";
+import { useDeals } from "@/hooks/usePipeline";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Pipeline() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+
+  const { data: deals } = useDeals("open");
+  const selectedDeal = deals?.find((d) => d.id === selectedDealId) || null;
 
   const handleDealClick = (dealId: string) => {
-    // Navigate to contact detail in future
-    console.log("Deal clicked:", dealId);
+    setSelectedDealId(dealId);
   };
 
   if (!hasBrandSelected) {
@@ -51,6 +56,13 @@ export default function Pipeline() {
           filterTagIds={selectedTagIds}
         />
       </div>
+
+      {/* Deal Detail Sheet */}
+      <DealDetailSheet
+        deal={selectedDeal}
+        open={!!selectedDealId}
+        onOpenChange={(open) => !open && setSelectedDealId(null)}
+      />
     </div>
   );
 }

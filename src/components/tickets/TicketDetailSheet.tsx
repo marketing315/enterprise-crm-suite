@@ -24,6 +24,7 @@ import {
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
 import { TicketAuditTimeline } from "./TicketAuditTimeline";
+import { EntityChatBox } from "@/components/chat/EntityChatBox";
 import {
   TicketWithRelations,
   TicketStatus,
@@ -152,8 +153,9 @@ export function TicketDetailSheet({
         </SheetHeader>
 
         <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden mt-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Dettagli</TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-2">
               <History className="h-3.5 w-3.5" />
               Audit
@@ -403,6 +405,14 @@ export function TicketDetailSheet({
                 </div>
               </div>
             </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="chat" className="flex-1 overflow-hidden mt-4">
+            <EntityChatBox
+              entityType="ticket"
+              entityId={ticket.id}
+              className="h-full"
+            />
           </TabsContent>
           
           <TabsContent value="audit" className="flex-1 overflow-hidden mt-4">
