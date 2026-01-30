@@ -564,6 +564,62 @@ Deno.serve(async (req: Request) => {
 
     const leadEvent = event as LeadEventRow;
 
+    // SYSTEME.IO DEDUPLICATION: Skip if same contact has event within 5 seconds
+    // This prevents duplicate exports from systeme.io burst webhooks
+    const isSystemeIo = (leadEvent.source_name || "").toLowerCase().includes("systeme");
+    
+    if (isSystemeIo && leadEvent.contact_id && !force) {
+      const eventTime = new Date(leadEvent.received_at).getTime();
+      const windowStart = new Date(eventTime - 5000).toISOString();
+      const windowEnd = new Date(eventTime + 5000).toISOString();
+
+      // Find sibling events for same contact within 5 second window
+      const { data: siblingEvents } = await supabaseAdmin
+        .from("lead_events")
+        .select("id, received_at")
+        .eq("contact_id", leadEvent.contact_id)
+        .eq("source", leadEvent.source)
+        .gte("received_at", windowStart)
+        .lte("received_at", windowEnd)
+        .neq("id", lead_event_id)
+        .order("received_at", { ascending: true });
+
+      if (siblingEvents && siblingEvents.length > 0) {
+        // Check if any sibling arrived BEFORE this one and was exported
+        const earlierSiblings = siblingEvents.filter(
+          s => new Date(s.received_at).getTime() < eventTime
+        );
+
+        if (earlierSiblings.length > 0) {
+          const earlierIds = earlierSiblings.map(e => e.id);
+          const { data: exportedEarlier } = await supabaseAdmin
+            .from("sheets_export_logs")
+            .select("lead_event_id")
+            .eq("status", "success")
+            .in("lead_event_id", earlierIds)
+            .limit(1);
+
+          if (exportedEarlier && exportedEarlier.length > 0) {
+            console.log(`Systeme.io dedup: contact ${leadEvent.contact_id} has earlier event within 5s, skipping ${lead_event_id}`);
+            
+            await supabaseAdmin
+              .from("sheets_export_logs")
+              .upsert({
+                lead_event_id,
+                brand_id: leadEvent.brand_id,
+                status: "skipped",
+                error: "systeme_duplicate_within_5s",
+              }, { onConflict: "lead_event_id" });
+
+            return new Response(
+              JSON.stringify({ success: true, skipped: true, reason: "systeme_duplicate_within_5s" }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      }
+    }
+
     // Get brand name
     const { data: brand } = await supabaseAdmin
       .from("brands")
