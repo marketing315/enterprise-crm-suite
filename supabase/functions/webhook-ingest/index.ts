@@ -375,7 +375,30 @@ Deno.serve(async (req: Request) => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const isValidUuid = sourceId && sourceId !== "webhook-ingest" && uuidRegex.test(sourceId);
 
-  // Helper to create audit record
+  // DLQ reason mapping
+  type DlqReason = 
+    | "invalid_json"
+    | "mapping_error"
+    | "missing_required"
+    | "signature_failed"
+    | "rate_limited"
+    | "ai_extraction_failed"
+    | "contact_creation_failed"
+    | "unknown_error";
+
+  function mapErrorToDlqReason(errorMessage: string | null): DlqReason | null {
+    if (!errorMessage) return null;
+    if (errorMessage === "invalid_json") return "invalid_json";
+    if (errorMessage.includes("signature") || errorMessage === "invalid_signature" || errorMessage === "invalid_signature_format") return "signature_failed";
+    if (errorMessage === "rate_limited") return "rate_limited";
+    if (errorMessage.includes("mapping")) return "mapping_error";
+    if (errorMessage.includes("ai_extraction") || errorMessage === "phone_required") return "ai_extraction_failed";
+    if (errorMessage.includes("contact_creation")) return "contact_creation_failed";
+    if (errorMessage === "missing_phone" || errorMessage.includes("missing_required")) return "missing_required";
+    return null; // Don't set dlq_reason for auth failures like invalid_api_key, source_not_found, etc.
+  }
+
+  // Helper to create audit record with DLQ support
   async function createAuditRecord(
     status: "pending" | "success" | "rejected" | "failed",
     errorMessage: string | null,
@@ -383,12 +406,15 @@ Deno.serve(async (req: Request) => {
     resolvedBrandId: string | null,
     leadEventId: string | null = null
   ): Promise<string | null> {
+    const dlqReason = mapErrorToDlqReason(errorMessage);
+    
     const { data, error } = await supabaseAdmin
       .from("incoming_requests")
       .insert({
         source_id: resolvedSourceId,
         brand_id: resolvedBrandId,
         raw_body: rawBody, // null if JSON invalid
+        raw_body_text: jsonParseError ? bodyText : null, // Save raw text only if JSON parse failed
         headers: filteredHeaders,
         ip_address: ipAddress,
         user_agent: userAgent,
@@ -396,6 +422,7 @@ Deno.serve(async (req: Request) => {
         processed: status !== "pending",
         error_message: errorMessage,
         lead_event_id: leadEventId,
+        dlq_reason: dlqReason,
       })
       .select("id")
       .single();
@@ -407,13 +434,15 @@ Deno.serve(async (req: Request) => {
     return data?.id || null;
   }
 
-  // Helper to update existing audit record
+  // Helper to update existing audit record with DLQ support
   async function updateAuditRecord(
     auditId: string,
     status: "success" | "rejected" | "failed",
     errorMessage: string | null,
     leadEventId: string | null = null
   ) {
+    const dlqReason = mapErrorToDlqReason(errorMessage);
+    
     await supabaseAdmin
       .from("incoming_requests")
       .update({
@@ -421,6 +450,7 @@ Deno.serve(async (req: Request) => {
         processed: true,
         error_message: errorMessage,
         lead_event_id: leadEventId,
+        dlq_reason: dlqReason,
       })
       .eq("id", auditId);
   }

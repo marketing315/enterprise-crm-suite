@@ -614,6 +614,7 @@ export type Database = {
         Row: {
           brand_id: string | null
           created_at: string
+          dlq_reason: Database["public"]["Enums"]["dlq_reason"] | null
           error_message: string | null
           headers: Json | null
           id: string
@@ -621,6 +622,7 @@ export type Database = {
           lead_event_id: string | null
           processed: boolean
           raw_body: Json | null
+          raw_body_text: string | null
           source_id: string | null
           status: Database["public"]["Enums"]["ingest_status"] | null
           user_agent: string | null
@@ -628,6 +630,7 @@ export type Database = {
         Insert: {
           brand_id?: string | null
           created_at?: string
+          dlq_reason?: Database["public"]["Enums"]["dlq_reason"] | null
           error_message?: string | null
           headers?: Json | null
           id?: string
@@ -635,6 +638,7 @@ export type Database = {
           lead_event_id?: string | null
           processed?: boolean
           raw_body?: Json | null
+          raw_body_text?: string | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["ingest_status"] | null
           user_agent?: string | null
@@ -642,6 +646,7 @@ export type Database = {
         Update: {
           brand_id?: string | null
           created_at?: string
+          dlq_reason?: Database["public"]["Enums"]["dlq_reason"] | null
           error_message?: string | null
           headers?: Json | null
           id?: string
@@ -649,6 +654,7 @@ export type Database = {
           lead_event_id?: string | null
           processed?: boolean
           raw_body?: Json | null
+          raw_body_text?: string | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["ingest_status"] | null
           user_agent?: string | null
@@ -1029,6 +1035,7 @@ export type Database = {
           attempt_count: number
           brand_id: string
           created_at: string
+          dead_at: string | null
           duration_ms: number | null
           event_id: string
           event_type: Database["public"]["Enums"]["webhook_event_type"]
@@ -1047,6 +1054,7 @@ export type Database = {
           attempt_count?: number
           brand_id: string
           created_at?: string
+          dead_at?: string | null
           duration_ms?: number | null
           event_id: string
           event_type: Database["public"]["Enums"]["webhook_event_type"]
@@ -1065,6 +1073,7 @@ export type Database = {
           attempt_count?: number
           brand_id?: string
           created_at?: string
+          dead_at?: string | null
           duration_ms?: number | null
           event_id?: string
           event_type?: Database["public"]["Enums"]["webhook_event_type"]
@@ -1908,6 +1917,7 @@ export type Database = {
           attempt_count: number
           brand_id: string
           created_at: string
+          dead_at: string | null
           duration_ms: number | null
           event_id: string
           event_type: Database["public"]["Enums"]["webhook_event_type"]
@@ -2199,6 +2209,11 @@ export type Database = {
             }
             Returns: undefined
           }
+      replay_ingest_dlq: { Args: { p_request_id: string }; Returns: Json }
+      replay_outbound_dlq: {
+        Args: { p_delivery_id: string; p_override_url?: string }
+        Returns: Json
+      }
       rotate_outbound_webhook_secret: {
         Args: { p_id: string; p_new_secret: string }
         Returns: string
@@ -2406,6 +2421,15 @@ export type Database = {
       customer_sentiment: "positivo" | "neutro" | "negativo"
       deal_status: "open" | "won" | "lost" | "closed" | "reopened_for_support"
       decision_status: "pronto" | "indeciso" | "non_interessato"
+      dlq_reason:
+        | "invalid_json"
+        | "mapping_error"
+        | "missing_required"
+        | "signature_failed"
+        | "rate_limited"
+        | "ai_extraction_failed"
+        | "contact_creation_failed"
+        | "unknown_error"
       ingest_status: "pending" | "success" | "rejected" | "failed"
       lead_source_channel: "tv" | "online" | "other"
       lead_source_type: "webhook" | "manual" | "import" | "api"
@@ -2436,7 +2460,12 @@ export type Database = {
       ticket_creator: "ai" | "user" | "rule"
       ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
       topic_created_by: "ai" | "user"
-      webhook_delivery_status: "pending" | "sending" | "success" | "failed"
+      webhook_delivery_status:
+        | "pending"
+        | "sending"
+        | "success"
+        | "failed"
+        | "dead"
       webhook_event_type:
         | "ticket.created"
         | "ticket.updated"
@@ -2595,6 +2624,16 @@ export const Constants = {
       customer_sentiment: ["positivo", "neutro", "negativo"],
       deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],
       decision_status: ["pronto", "indeciso", "non_interessato"],
+      dlq_reason: [
+        "invalid_json",
+        "mapping_error",
+        "missing_required",
+        "signature_failed",
+        "rate_limited",
+        "ai_extraction_failed",
+        "contact_creation_failed",
+        "unknown_error",
+      ],
       ingest_status: ["pending", "success", "rejected", "failed"],
       lead_source_channel: ["tv", "online", "other"],
       lead_source_type: ["webhook", "manual", "import", "api"],
@@ -2621,7 +2660,13 @@ export const Constants = {
       ticket_creator: ["ai", "user", "rule"],
       ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
       topic_created_by: ["ai", "user"],
-      webhook_delivery_status: ["pending", "sending", "success", "failed"],
+      webhook_delivery_status: [
+        "pending",
+        "sending",
+        "success",
+        "failed",
+        "dead",
+      ],
       webhook_event_type: [
         "ticket.created",
         "ticket.updated",
