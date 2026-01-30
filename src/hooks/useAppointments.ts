@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useBrand } from "@/contexts/BrandContext";
+import { useBrand, ALL_BRANDS_ID } from "@/contexts/BrandContext";
 import type { AppointmentStatus, AppointmentWithRelations } from "@/types/database";
 
 interface AppointmentSearchParams {
@@ -9,6 +9,7 @@ interface AppointmentSearchParams {
   status?: AppointmentStatus;
   salesUserId?: string;
   contactId?: string;
+  brandId?: string; // For filtering in "All Brands" mode
 }
 
 interface AppointmentSearchResult {
@@ -19,13 +20,45 @@ interface AppointmentSearchResult {
 }
 
 export function useAppointments(params: AppointmentSearchParams = {}) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
     queryKey: ["appointments", currentBrand?.id, params],
     queryFn: async (): Promise<AppointmentSearchResult> => {
       if (!currentBrand?.id) {
         return { total: 0, limit: 100, offset: 0, appointments: [] };
+      }
+
+      // In "All Brands" mode, fetch from all brands or filtered brand
+      if (isAllBrandsSelected) {
+        const brandIdsToFetch = params.brandId ? [params.brandId] : allBrandIds;
+        
+        // Fetch appointments from all brands in parallel
+        const results = await Promise.all(
+          brandIdsToFetch.map(async (brandId) => {
+            const { data, error } = await supabase.rpc("search_appointments", {
+              p_brand_id: brandId,
+              p_date_from: params.dateFrom || null,
+              p_date_to: params.dateTo || null,
+              p_status: params.status || null,
+              p_sales_user_id: params.salesUserId || null,
+              p_contact_id: params.contactId || null,
+              p_limit: 100,
+              p_offset: 0,
+            });
+            if (error) throw error;
+            return data as unknown as AppointmentSearchResult;
+          })
+        );
+
+        // Merge all appointments
+        const allAppointments = results.flatMap(r => r.appointments);
+        return {
+          total: allAppointments.length,
+          limit: 100,
+          offset: 0,
+          appointments: allAppointments,
+        };
       }
 
       const { data, error } = await supabase.rpc("search_appointments", {

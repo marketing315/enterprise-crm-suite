@@ -19,11 +19,13 @@ import {
   Clock,
   MapPin,
   Phone,
+  Building2,
+  Stethoscope,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointments, useSetAppointmentStatus, useAssignAppointmentSales } from "@/hooks/useAppointments";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
-import type { AppointmentStatus, AppointmentWithRelations } from "@/types/database";
+import type { AppointmentStatus, AppointmentType, AppointmentWithRelations } from "@/types/database";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,13 +57,20 @@ const STATUS_CONFIG: Record<AppointmentStatus, { label: string; variant: "defaul
   no_show: { label: "Non presentato", variant: "destructive" },
 };
 
+const APPOINTMENT_TYPE_CONFIG: Record<AppointmentType, { label: string; color: string }> = {
+  primo_appuntamento: { label: "Primo", color: "bg-blue-100 text-blue-700 border-blue-300" },
+  follow_up: { label: "Follow-up", color: "bg-amber-100 text-amber-700 border-amber-300" },
+  visita_tecnica: { label: "Visita Tecnica", color: "bg-purple-100 text-purple-700 border-purple-300" },
+};
+
 export default function Appointments() {
-  const { currentBrand, hasBrandSelected } = useBrand();
+  const { currentBrand, hasBrandSelected, isAllBrandsSelected, brands } = useBrand();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | "all">("all");
   const [salesFilter, setSalesFilter] = useState<string>("all");
+  const [brandFilter, setBrandFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const weekEnd = addDays(weekStart, 6);
@@ -71,6 +80,7 @@ export default function Appointments() {
     dateTo: weekEnd.toISOString(),
     status: statusFilter !== "all" ? statusFilter : undefined,
     salesUserId: salesFilter !== "all" ? salesFilter : undefined,
+    brandId: brandFilter !== "all" ? brandFilter : undefined,
   });
 
   const { data: operators } = useBrandOperators();
@@ -134,6 +144,8 @@ export default function Appointments() {
       .filter(Boolean)
       .join(" ") || "Senza nome";
 
+    const typeConfig = apt.appointment_type ? APPOINTMENT_TYPE_CONFIG[apt.appointment_type] : null;
+
     return (
       <Card className="mb-2">
         <CardContent className="p-3">
@@ -143,11 +155,26 @@ export default function Appointments() {
                 <Badge variant={STATUS_CONFIG[apt.status].variant}>
                   {STATUS_CONFIG[apt.status].label}
                 </Badge>
+                {typeConfig && (
+                  <Badge variant="outline" className={typeConfig.color}>
+                    <Stethoscope className="h-3 w-3 mr-1" />
+                    {typeConfig.label}
+                  </Badge>
+                )}
                 <span className="text-xs text-muted-foreground">
                   <Clock className="h-3 w-3 inline mr-1" />
                   {format(parseISO(apt.scheduled_at), "HH:mm")} - {apt.duration_minutes}min
                 </span>
               </div>
+              {/* Brand badge in "All Brands" mode */}
+              {isAllBrandsSelected && apt.brand_name && (
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-xs bg-muted/50">
+                    <Building2 className="h-3 w-3 mr-1" />
+                    {apt.brand_name}
+                  </Badge>
+                </div>
+              )}
               <p className="font-medium text-sm truncate">{contactName}</p>
               {apt.contact?.primary_phone && (
                 <p className="text-xs text-muted-foreground">
@@ -268,6 +295,24 @@ export default function Appointments() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
+        {/* Brand filter - only in "All Brands" mode */}
+        {isAllBrandsSelected && (
+          <Select value={brandFilter} onValueChange={setBrandFilter}>
+            <SelectTrigger className="w-[180px]">
+              <Building2 className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Brand" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti i brand</SelectItem>
+              {brands.map((brand) => (
+                <SelectItem key={brand.id} value={brand.id}>
+                  {brand.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as AppointmentStatus | "all")}
