@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Phone, Mail, MapPin, Calendar, FileJson, Tags } from 'lucide-react';
@@ -14,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContactStatusBadge } from './ContactStatusBadge';
 import { EntityTagList } from '@/components/tags/EntityTagList';
 import { WebsiteTagsSection } from './WebsiteTagsSection';
+import { CorrectPhoneDialog } from './CorrectPhoneDialog';
 import { useContact, useLeadEvents } from '@/hooks/useContacts';
 
 interface ContactDetailSheetProps {
@@ -23,8 +25,18 @@ interface ContactDetailSheetProps {
 }
 
 export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDetailSheetProps) {
+  const [conflictContactId, setConflictContactId] = useState<string | null>(null);
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
+
+  // Handle phone conflict navigation
+  const handlePhoneConflict = (conflictId: string) => {
+    setConflictContactId(conflictId);
+    // Could navigate to conflicting contact or show merge UI
+    // For now, just close and the parent can handle navigation
+    onOpenChange(false);
+    // Parent component can listen to this via a callback if needed
+  };
 
   const getFullName = () => {
     if (!contact) return '';
@@ -63,7 +75,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 <h3 className="text-sm font-medium text-muted-foreground">Informazioni</h3>
                 
                 {contact.contact_phones?.map((phone) => (
-                  <div key={phone.id} className="flex items-center gap-2">
+                  <div key={phone.id} className="flex items-center gap-2 group">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span>{phone.phone_normalized}</span>
                     {phone.is_primary && (
@@ -72,6 +84,12 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     {phone.assumed_country && (
                       <Badge variant="outline" className="text-xs">{phone.country_code} (assunto)</Badge>
                     )}
+                    <CorrectPhoneDialog
+                      contactId={contact.id}
+                      currentPhone={phone.phone_normalized}
+                      isPrimary={phone.is_primary}
+                      onConflict={handlePhoneConflict}
+                    />
                   </div>
                 ))}
 
