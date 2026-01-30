@@ -80,6 +80,7 @@ export function InboundSourceFormDrawer({
     sourceId: string;
     apiKey: string;
     hmacSecret: string | null;
+    hmacEnabled: boolean;
   } | null>(null);
 
   const form = useForm<FormValues>({
@@ -120,11 +121,11 @@ export function InboundSourceFormDrawer({
     mutationFn: async (values: FormValues) => {
       if (!currentBrand?.id) throw new Error("No brand selected");
       
-      // Generate API key (always required)
+      // Generate API key (always required for non-HMAC sources)
       const apiKey = generateSecureKey();
       const apiKeyHash = await hashKey(apiKey);
 
-      // Generate separate HMAC secret if enabled
+      // Generate HMAC secret if enabled (stored both plain and hashed)
       let hmacSecret: string | null = null;
       let hmacSecretHash: string | null = null;
       
@@ -141,12 +142,13 @@ export function InboundSourceFormDrawer({
         api_key_hash: apiKeyHash,
         is_active: true,
         hmac_enabled: values.hmac_enabled,
-        hmac_secret_hash: hmacSecretHash,
+        hmac_secret: hmacSecret, // Plain text for signature verification
+        hmac_secret_hash: hmacSecretHash, // Hash for backward compatibility
         replay_window_seconds: values.replay_window_seconds,
       }).select("id").single();
 
       if (error) throw error;
-      return { sourceId: data.id, apiKey, hmacSecret };
+      return { sourceId: data.id, apiKey, hmacSecret, hmacEnabled: values.hmac_enabled };
     },
     onSuccess: (result) => {
       setGeneratedCredentials(result);
@@ -254,27 +256,29 @@ export function InboundSourceFormDrawer({
               </p>
             </div>
             
-            {/* API Key */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">API Key (autenticazione)</label>
-              <div className="flex gap-2">
-                <Input
-                  value={generatedCredentials.apiKey}
-                  readOnly
-                  className="font-mono text-xs"
-                />
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => handleCopy(generatedCredentials.apiKey, "API Key")}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+            {/* API Key - only show prominently if HMAC is disabled */}
+            {!generatedCredentials.hmacEnabled && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">API Key (autenticazione)</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={generatedCredentials.apiKey}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => handleCopy(generatedCredentials.apiKey, "API Key")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Header richiesto: <code>X-API-Key</code>
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Header: <code>X-API-Key</code>
-              </p>
-            </div>
+            )}
             
             {/* HMAC Secret (if enabled) */}
             {generatedCredentials.hmacSecret && (
@@ -310,11 +314,12 @@ export function InboundSourceFormDrawer({
                   </code>
                   <p className="text-xs">Headers richiesti:</p>
                   <ul className="text-xs list-disc list-inside">
-                    <li><code>X-API-Key: &lt;api_key&gt;</code> (autenticazione)</li>
-                    <li><code>X-Webhook-Secret: &lt;secret&gt;</code> (per verifica)</li>
                     <li><code>X-Signature: sha256=&lt;hex&gt;</code></li>
                     <li><code>X-Timestamp: &lt;unix_seconds&gt;</code></li>
                   </ul>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+                    ✓ Con HMAC abilitato, <strong>non serve</strong> X-API-Key
+                  </p>
                 </AlertDescription>
               </Alert>
             )}

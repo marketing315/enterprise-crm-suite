@@ -440,7 +440,7 @@ Deno.serve(async (req: Request) => {
   // 2. Find webhook source first to check authentication mode
   const { data: source, error: sourceError } = await supabaseAdmin
     .from("webhook_sources")
-    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret_hash, replay_window_seconds")
+    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds")
     .eq("id", sourceId)
     .maybeSingle();
 
@@ -494,34 +494,13 @@ Deno.serve(async (req: Request) => {
   }
   // If HMAC is enabled, API key is optional - authentication will be done via HMAC signature below
 
-  // 7. HMAC Signature verification (if enabled for this source)
-  if (source.hmac_enabled && source.hmac_secret_hash) {
+  // 6. HMAC Signature verification (if enabled for this source)
+  // Standard HMAC: caller sends X-Signature and X-Timestamp, server verifies using stored secret
+  if (source.hmac_enabled && source.hmac_secret) {
     const signatureHeader = req.headers.get("x-signature");
     const timestampHeader = req.headers.get("x-timestamp");
-    const webhookSecret = req.headers.get("x-webhook-secret");
 
-    // 7a. Missing webhook secret header
-    if (!webhookSecret) {
-      console.log(JSON.stringify({ ...logContext, outcome: "missing_webhook_secret", status: 401 }));
-      await createAuditRecord("rejected", "missing_webhook_secret", sourceId, brandId);
-      return new Response(
-        JSON.stringify({ error: "missing_webhook_secret", message: "X-Webhook-Secret header required for this source" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 7b. Verify webhook secret matches stored hash
-    const providedSecretHash = await hashSha256(webhookSecret);
-    if (!constantTimeCompare(providedSecretHash, source.hmac_secret_hash)) {
-      console.log(JSON.stringify({ ...logContext, outcome: "invalid_webhook_secret", status: 401 }));
-      await createAuditRecord("rejected", "invalid_webhook_secret", sourceId, brandId);
-      return new Response(
-        JSON.stringify({ error: "invalid_webhook_secret", message: "Invalid webhook secret" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 7c. Missing signature header
+    // 6a. Missing signature header
     if (!signatureHeader) {
       console.log(JSON.stringify({ ...logContext, outcome: "missing_signature", status: 401 }));
       await createAuditRecord("rejected", "missing_signature", sourceId, brandId);
@@ -531,7 +510,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 7d. Missing timestamp header
+    // 6b. Missing timestamp header
     if (!timestampHeader) {
       console.log(JSON.stringify({ ...logContext, outcome: "missing_timestamp", status: 401 }));
       await createAuditRecord("rejected", "missing_timestamp", sourceId, brandId);
@@ -541,7 +520,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 7e. Validate timestamp format (Unix seconds)
+    // 6c. Validate timestamp format (Unix seconds)
     const timestamp = parseInt(timestampHeader, 10);
     if (isNaN(timestamp)) {
       console.log(JSON.stringify({ ...logContext, outcome: "invalid_timestamp_format", status: 400 }));
@@ -552,7 +531,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 7f. Anti-replay check: timestamp within window
+    // 6d. Anti-replay check: timestamp within window
     const nowSeconds = Math.floor(Date.now() / 1000);
     const replayWindow = source.replay_window_seconds || 300; // Default 5 minutes
     const timeDiff = Math.abs(nowSeconds - timestamp);
@@ -577,7 +556,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 7g. Verify HMAC signature
+    // 6e. Verify HMAC signature
     // Signature format: sha256=<hex>
     // Message format: {timestamp}.{body}
     const signatureMatch = signatureHeader.match(/^sha256=([a-f0-9]+)$/i);
@@ -592,9 +571,9 @@ Deno.serve(async (req: Request) => {
 
     const providedSignature = signatureMatch[1].toLowerCase();
     
-    // Compute expected signature using the webhook secret
+    // Compute expected signature using the stored secret
     const signedMessage = `${timestampHeader}.${bodyText}`;
-    const expectedSignature = await computeHmacSha256(webhookSecret, signedMessage);
+    const expectedSignature = await computeHmacSha256(source.hmac_secret, signedMessage);
 
     if (!constantTimeCompare(providedSignature, expectedSignature)) {
       console.log(JSON.stringify({ ...logContext, outcome: "invalid_signature", status: 401 }));
