@@ -22,6 +22,7 @@ import AdminCallcenterKpi from "@/pages/AdminCallcenterKpi";
 import AdminTicketTrend from "@/pages/AdminTicketTrend";
 import AdminWebhooksDashboard from "@/pages/AdminWebhooksDashboard";
 import AdminDlqDashboard from "@/pages/AdminDlqDashboard";
+import AdminAnalytics from "@/pages/AdminAnalytics";
 import Chat from "@/pages/Chat";
 import Notifications from "@/pages/Notifications";
 import NotFound from "@/pages/NotFound";
@@ -66,14 +67,16 @@ const App = () => (
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/notifications" element={<Notifications />} />
-                <Route path="/analytics" element={<Dashboard />} />
+                <Route path="/analytics" element={<AdminAnalytics />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/admin/ai" element={<AdminAI />} />
                 <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
                 <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
                 <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
                 <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
-                <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
+                <Route path="/admin/dlq" element={<AdminDlqDashboard />}
+                />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
               </Route>
               
               {/* Redirects */}

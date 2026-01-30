@@ -3095,6 +3095,14 @@ export type Database = {
           scope: Database["public"]["Enums"]["custom_field_scope"]
         }[]
       }
+      get_deal_velocity_metrics: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      get_lead_source_analytics: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
+      }
       get_notification_preferences: {
         Args: { p_brand_id: string }
         Returns: {
@@ -3147,6 +3155,10 @@ export type Database = {
           job_id: string
           trigger_reason: string
         }[]
+      }
+      get_pipeline_funnel_analytics: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
       }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }
