@@ -37,10 +37,17 @@ export interface Brand {
   id: string;
   name: string;
   slug: string;
+  parent_brand_id: string | null;
   auto_assign_enabled: boolean;
   sla_thresholds_minutes: Record<string, number>;
   created_at: string;
   updated_at: string;
+}
+
+export interface BrandWithHierarchy extends Brand {
+  parent_brand_name: string | null;
+  is_parent: boolean;
+  child_count: number;
 }
 
 export interface User {

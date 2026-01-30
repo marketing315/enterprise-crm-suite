@@ -380,6 +380,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          parent_brand_id: string | null
           sla_thresholds_minutes: Json
           slug: string
           updated_at: string
@@ -389,6 +390,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          parent_brand_id?: string | null
           sla_thresholds_minutes?: Json
           slug: string
           updated_at?: string
@@ -398,11 +400,20 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          parent_brand_id?: string | null
           sla_thresholds_minutes?: Json
           slug?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brands_parent_brand_id_fkey"
+            columns: ["parent_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_message_reads: {
         Row: {
@@ -680,6 +691,132 @@ export type Database = {
           },
         ]
       }
+      contact_field_definitions: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          description: string | null
+          display_order: number
+          field_type: Database["public"]["Enums"]["custom_field_type"]
+          id: string
+          is_active: boolean
+          is_indexed: boolean
+          is_required: boolean
+          key: string
+          label: string
+          options: Json | null
+          scope: Database["public"]["Enums"]["custom_field_scope"]
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          display_order?: number
+          field_type?: Database["public"]["Enums"]["custom_field_type"]
+          id?: string
+          is_active?: boolean
+          is_indexed?: boolean
+          is_required?: boolean
+          key: string
+          label: string
+          options?: Json | null
+          scope?: Database["public"]["Enums"]["custom_field_scope"]
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          display_order?: number
+          field_type?: Database["public"]["Enums"]["custom_field_type"]
+          id?: string
+          is_active?: boolean
+          is_indexed?: boolean
+          is_required?: boolean
+          key?: string
+          label?: string
+          options?: Json | null
+          scope?: Database["public"]["Enums"]["custom_field_scope"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_field_definitions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_field_values: {
+        Row: {
+          brand_id: string
+          contact_id: string
+          field_definition_id: string
+          id: string
+          updated_at: string
+          updated_by_user_id: string | null
+          value_bool: boolean | null
+          value_date: string | null
+          value_json: Json | null
+          value_number: number | null
+          value_text: string | null
+        }
+        Insert: {
+          brand_id: string
+          contact_id: string
+          field_definition_id: string
+          id?: string
+          updated_at?: string
+          updated_by_user_id?: string | null
+          value_bool?: boolean | null
+          value_date?: string | null
+          value_json?: Json | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          brand_id?: string
+          contact_id?: string
+          field_definition_id?: string
+          id?: string
+          updated_at?: string
+          updated_by_user_id?: string | null
+          value_bool?: boolean | null
+          value_date?: string | null
+          value_json?: Json | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_field_values_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_field_values_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "contact_field_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_phones: {
         Row: {
           assumed_country: boolean
@@ -730,6 +867,92 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_search_index: {
+        Row: {
+          brand_id: string
+          contact_id: string
+          search_text: string
+          search_vector: unknown
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          contact_id: string
+          search_text?: string
+          search_vector?: unknown
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          contact_id?: string
+          search_text?: string
+          search_vector?: unknown
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_search_index_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_search_index_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_table_views: {
+        Row: {
+          brand_id: string | null
+          brand_scope: Database["public"]["Enums"]["table_view_scope"]
+          columns: Json
+          created_at: string
+          filters: Json | null
+          id: string
+          is_default: boolean
+          name: string
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          brand_scope?: Database["public"]["Enums"]["table_view_scope"]
+          columns?: Json
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          is_default?: boolean
+          name: string
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          brand_scope?: Database["public"]["Enums"]["table_view_scope"]
+          columns?: Json
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_table_views_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
             referencedColumns: ["id"]
           },
         ]
@@ -2093,6 +2316,7 @@ export type Database = {
       user_roles: {
         Row: {
           brand_id: string
+          can_access_children: boolean
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -2100,6 +2324,7 @@ export type Database = {
         }
         Insert: {
           brand_id: string
+          can_access_children?: boolean
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
@@ -2107,6 +2332,7 @@ export type Database = {
         }
         Update: {
           brand_id?: string
+          can_access_children?: boolean
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -2292,6 +2518,10 @@ export type Database = {
       assign_unassigned_support_tickets: {
         Args: { p_brand_id: string }
         Returns: number
+      }
+      build_contact_search_text: {
+        Args: { p_contact_id: string }
+        Returns: string
       }
       build_contact_snapshot: { Args: { p_contact_id: string }; Returns: Json }
       build_deal_snapshot: { Args: { p_deal_id: string }; Returns: Json }
@@ -2503,6 +2733,10 @@ export type Database = {
           ticket_id: string
         }[]
       }
+      get_accessible_brand_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
+      }
       get_ai_metrics_errors: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
@@ -2521,6 +2755,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_brands_with_hierarchy: {
+        Args: { p_user_id: string }
+        Returns: {
+          child_count: number
+          id: string
+          is_parent: boolean
+          name: string
+          parent_brand_id: string
+          parent_brand_name: string
+          slug: string
+        }[]
+      }
       get_callcenter_kpis_by_operator: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
@@ -2528,6 +2774,21 @@ export type Database = {
       get_callcenter_kpis_overview: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
+      }
+      get_contact_field_definitions: {
+        Args: { p_brand_id: string }
+        Returns: {
+          brand_id: string
+          description: string
+          display_order: number
+          field_type: Database["public"]["Enums"]["custom_field_type"]
+          id: string
+          is_required: boolean
+          key: string
+          label: string
+          options: Json
+          scope: Database["public"]["Enums"]["custom_field_scope"]
+        }[]
       }
       get_or_create_entity_thread: {
         Args: { p_brand_id: string; p_entity_id: string; p_entity_type: string }
@@ -2791,6 +3052,8 @@ export type Database = {
         Args: { p_event_id: string; p_topic_ids: string[] }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
       update_appointment: {
         Args: {
@@ -2802,6 +3065,10 @@ export type Database = {
           p_notes?: string
           p_scheduled_at?: string
         }
+        Returns: undefined
+      }
+      update_contact_search_index: {
+        Args: { p_contact_id: string }
         Returns: undefined
       }
       update_lead_event_qualification: {
@@ -2857,8 +3124,16 @@ export type Database = {
         }
         Returns: string[]
       }
+      upsert_contact_field_values: {
+        Args: { p_brand_id: string; p_contact_id: string; p_values: Json }
+        Returns: Json
+      }
       user_belongs_to_brand: {
         Args: { _brand_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_access_brand: {
+        Args: { p_brand_id: string; p_user_id: string }
         Returns: boolean
       }
       webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
@@ -2899,6 +3174,18 @@ export type Database = {
         | "qualified"
         | "unqualified"
         | "archived"
+      custom_field_scope: "global" | "brand"
+      custom_field_type:
+        | "text"
+        | "number"
+        | "date"
+        | "bool"
+        | "select"
+        | "multiselect"
+        | "email"
+        | "phone"
+        | "url"
+        | "textarea"
       customer_sentiment: "positivo" | "neutro" | "negativo"
       deal_status: "open" | "won" | "lost" | "closed" | "reopened_for_support"
       decision_status: "pronto" | "indeciso" | "non_interessato"
@@ -2935,6 +3222,7 @@ export type Database = {
         | "chat_message"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       pacemaker_status: "assente" | "presente" | "non_chiaro"
+      table_view_scope: "single_brand" | "all_accessible"
       tag_scope:
         | "contact"
         | "event"
@@ -3122,6 +3410,19 @@ export const Constants = {
       chat_thread_type: ["direct", "group", "entity"],
       contact_channel: ["chat", "call"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
+      custom_field_scope: ["global", "brand"],
+      custom_field_type: [
+        "text",
+        "number",
+        "date",
+        "bool",
+        "select",
+        "multiselect",
+        "email",
+        "phone",
+        "url",
+        "textarea",
+      ],
       customer_sentiment: ["positivo", "neutro", "negativo"],
       deal_status: ["open", "won", "lost", "closed", "reopened_for_support"],
       decision_status: ["pronto", "indeciso", "non_interessato"],
@@ -3161,6 +3462,7 @@ export const Constants = {
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       pacemaker_status: ["assente", "presente", "non_chiaro"],
+      table_view_scope: ["single_brand", "all_accessible"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
       ticket_audit_action: [
         "created",

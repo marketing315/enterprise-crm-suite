@@ -10,6 +10,7 @@ export const ALL_BRANDS: Brand = {
   id: ALL_BRANDS_ID,
   name: 'Tutti i brand',
   slug: 'all-brands',
+  parent_brand_id: null,
   auto_assign_enabled: false,
   sla_thresholds_minutes: { "1": 60, "2": 120, "3": 240, "4": 480, "5": 1440 },
   created_at: '',

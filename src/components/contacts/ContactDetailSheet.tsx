@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContactStatusBadge } from './ContactStatusBadge';
+import { CustomFieldsSection } from './CustomFieldsSection';
 import { EntityTagList } from '@/components/tags/EntityTagList';
 import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
@@ -130,6 +131,10 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   scope="contact"
                 />
               </div>
+
+              {/* Custom Fields */}
+              <Separator />
+              <CustomFieldsSection contactId={contact.id} />
 
               {/* Website Tags (from webhooks) */}
               {events && events.length > 0 && (
