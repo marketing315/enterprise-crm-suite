@@ -81,6 +81,7 @@ export interface Contact {
   email: string | null;
   city: string | null;
   cap: string | null;
+  address: string | null;
   status: ContactStatus;
   notes: string | null;
   created_at: string;
