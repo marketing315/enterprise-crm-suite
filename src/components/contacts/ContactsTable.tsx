@@ -45,7 +45,7 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
 
   const getPrimaryPhone = (contact: ContactWithPhones) => {
     const primary = contact.contact_phones?.find(p => p.is_primary && p.is_active);
-    return primary?.phone_raw || contact.contact_phones?.[0]?.phone_raw || '-';
+    return primary?.phone_normalized || contact.contact_phones?.[0]?.phone_normalized || '-';
   };
 
   const getFullName = (contact: ContactWithPhones) => {
