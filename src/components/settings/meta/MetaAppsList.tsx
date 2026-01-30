@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Edit, Trash2, ExternalLink, TestTube } from "lucide-react";
+import { Copy, Edit, Trash2, ExternalLink, TestTube, Link } from "lucide-react";
 import { useMetaApps, MetaApp } from "@/hooks/useMetaApps";
 import { MetaAppFormDrawer } from "./MetaAppFormDrawer";
 import { DeleteMetaAppDialog } from "./DeleteMetaAppDialog";
 import { toast } from "sonner";
 
 export function MetaAppsList() {
-  const { metaApps, isLoading, toggleActive } = useMetaApps();
+  const { metaApps, isLoading, toggleActive, subscribePage } = useMetaApps();
   const [editingApp, setEditingApp] = useState<MetaApp | null>(null);
   const [deletingApp, setDeletingApp] = useState<MetaApp | null>(null);
+  const [subscribingId, setSubscribingId] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -43,6 +44,19 @@ export function MetaAppsList() {
       }
     } catch (error) {
       toast.error("Errore nella verifica del webhook");
+    }
+  };
+
+  const handleSubscribePage = async (app: MetaApp) => {
+    if (!app.page_id) {
+      toast.error("Inserisci prima il Page ID nella configurazione");
+      return;
+    }
+    setSubscribingId(app.id);
+    try {
+      await subscribePage.mutateAsync(app.id);
+    } finally {
+      setSubscribingId(null);
     }
   };
 
@@ -109,6 +123,15 @@ export function MetaAppsList() {
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleSubscribePage(app)}
+                    disabled={subscribingId === app.id}
+                    title="Sottoscrivi Pagina a Leadgen"
+                  >
+                    <Link className={`h-4 w-4 ${subscribingId === app.id ? 'animate-spin' : ''}`} />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
