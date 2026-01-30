@@ -1,62 +1,138 @@
 
+# Piano: Editor Avanzato Viste Tabella Contatti
 
-# Piano di Fix: Creazione Contatti per Meta Lead Ads
+## Obiettivo
+Permettere agli utenti di personalizzare la tabella contatti con:
+- Selezione tra viste salvate
+- Salvataggio configurazione corrente come nuova vista
+- Modifica/eliminazione viste esistenti
+- Colonne custom fields dinamiche
+- Riordino colonne con drag & drop
 
-## Problema
+## Architettura della Soluzione
 
-Il lead di test Meta è stato creato correttamente nella tabella `lead_events`, ma il contatto non compare nella sezione Contatti perché:
+### Flusso Utente
 
-1. L'edge function `meta-leads-webhook` non chiama la RPC `find_or_create_contact` 
-2. Il `lead_event` viene inserito con `contact_id: null`
-3. La pagina Contatti mostra solo record dalla tabella `contacts`, non `lead_events`
+```text
++---------------------------+
+|  [Vista: Default v]       |  <- Selector viste salvate
++---------------------------+
+|  [Colonne] [Salva vista]  |  <- Toolbar azioni
++---------------------------+
+| Nome | Tel | Email | ...  |  <- Tabella con colonne configurabili
++---------------------------+
+```
 
-## Soluzione
+## Componenti da Creare
 
-Modificare `meta-leads-webhook` per allinearla al pattern di `webhook-ingest`:
+### 1. TableViewSelector
+Dropdown per scegliere tra viste salvate:
+- Mostra lista viste dell'utente
+- Indica vista corrente attiva
+- Azione rapida "Nuova vista"
 
-1. **Normalizzare il telefono** usando la stessa logica di `webhook-ingest`
-2. **Chiamare `find_or_create_contact`** per creare/recuperare il contatto
-3. **Chiamare `find_or_create_deal`** per gestire la pipeline
-4. **Aggiornare `lead_event`** con il `contact_id` corretto
-5. **Aggiornare `meta_lead_events`** con il `contact_id`
+### 2. SaveViewDialog
+Dialog per salvare la configurazione attuale:
+- Input nome vista
+- Checkbox "Imposta come predefinita"
+- Salva colonne + filtri attivi
+
+### 3. EditViewDialog  
+Dialog per modificare/eliminare vista:
+- Rinomina
+- Imposta come default
+- Elimina (con conferma)
+
+### 4. ColumnReorderPanel
+Pannello avanzato per gestire colonne:
+- Lista colonne con drag & drop
+- Toggle visibilità per colonna
+- Mostra anche custom fields disponibili
+
+## Modifiche ai File Esistenti
+
+### ContactsTableWithViews.tsx
+- Aggiungere stato per vista selezionata
+- Integrare custom fields come colonne opzionali
+- Connettere il selector e le azioni di salvataggio
+
+### useTableViews.ts
+- Aggiungere hook per gestire lo stato della vista attiva
+- Merge colonne default + custom fields
+
+## Schema UI Finale
+
+```text
+┌────────────────────────────────────────────────────┐
+│ Vista: [Sales view ▼]    [⚙ Colonne] [💾 Salva]    │
+├────────────────────────────────────────────────────┤
+│ Nome       │ Telefono │ Email │ [custom1] │ Data  │
+├────────────┼──────────┼───────┼───────────┼───────┤
+│ Mario R.   │ 333...   │ m@... │ valore    │ 29 gen│
+└────────────────────────────────────────────────────┘
+```
+
+## File da Creare
+
+| File | Descrizione |
+|------|-------------|
+| `src/components/contacts/views/TableViewSelector.tsx` | Dropdown selezione vista |
+| `src/components/contacts/views/SaveViewDialog.tsx` | Dialog salvataggio nuova vista |
+| `src/components/contacts/views/EditViewDialog.tsx` | Dialog modifica/elimina vista |
+| `src/components/contacts/views/ColumnManager.tsx` | Pannello gestione colonne con drag & drop |
+
+## File da Modificare
+
+| File | Modifiche |
+|------|-----------|
+| `src/components/contacts/ContactsTableWithViews.tsx` | Integrare selector, custom fields, salvataggio |
+| `src/hooks/useTableViews.ts` | Aggiungere hook per merging con custom fields |
 
 ## Dettaglio Tecnico
 
-### File da modificare
+### Integrazione Custom Fields nelle Colonne
+I custom fields (da `useFieldDefinitions`) vengono convertiti in `TableColumn`:
 
-`supabase/functions/meta-leads-webhook/index.ts`
+```typescript
+const customFieldColumns: TableColumn[] = fieldDefinitions.map(f => ({
+  key: `cf_${f.key}`,
+  label: f.label,
+  visible: false, // nascosti di default
+  isCustomField: true,
+  fieldDefinitionId: f.id,
+}));
+```
 
-### Modifiche richieste
+### Rendering Custom Fields nella Tabella
+Il `renderCell` viene esteso per gestire `cf_*` keys:
 
-1. **Aggiungere funzione `normalizePhone`** (copia da webhook-ingest)
-   - Normalizza i numeri rimuovendo prefissi internazionali
-   - Rileva automaticamente il paese
+```typescript
+case key.startsWith('cf_'):
+  const fieldKey = key.replace('cf_', '');
+  const fieldValue = contactCustomFields[fieldKey];
+  return <span>{fieldValue ?? '-'}</span>;
+```
 
-2. **Dopo aver mappato i dati del lead** (dopo linea 225), aggiungere:
-   ```text
-   - Normalizzare il telefono se presente
-   - Chiamare RPC find_or_create_contact con i campi estratti
-   - Chiamare RPC find_or_create_deal 
-   - Passare contact_id e deal_id all'INSERT di lead_events
-   ```
+### Persistenza Vista Attiva
+La vista selezionata viene salvata in localStorage per persistere tra sessioni:
 
-3. **Aggiornare meta_lead_events** con il contact_id
+```typescript
+const [activeViewId, setActiveViewId] = useLocalStorage('contacts-view', 'default');
+```
 
-4. **Gestire edge case**: se manca il telefono, loggare un warning ma continuare (il lead viene comunque registrato)
+## Comportamento Mobile
 
-### Comportamento atteso post-fix
+Su mobile:
+- Il selector vista diventa un full-width dropdown
+- Il pannello colonne si apre come Sheet dal basso
+- Drag & drop usa `@dnd-kit/sortable` (già installato)
 
-| Flusso | Prima | Dopo |
-|--------|-------|------|
-| Lead Meta ricevuto | Solo `lead_event` creato | `contact` + `deal` + `lead_event` creati |
-| `lead_event.contact_id` | `null` | UUID del contatto |
-| Contatto visibile | No | Si |
-| Deal in pipeline | No | Si |
+## Sequenza Implementazione
 
-## Compatibilità
-
-Il fix è compatibile con la logica esistente di deduplicazione:
-- `find_or_create_contact` usa il telefono normalizzato come chiave
-- Se un contatto esiste già, viene riutilizzato
-- I lead duplicati vengono già gestiti via `leadgen_id` unique constraint
-
+1. Creare `TableViewSelector` per switching tra viste
+2. Creare `SaveViewDialog` per salvare nuove viste  
+3. Modificare `ContactsTableWithViews` per integrare selector e actions
+4. Creare `ColumnManager` con drag & drop
+5. Integrare custom fields come colonne dinamiche
+6. Aggiungere `EditViewDialog` per modifica/eliminazione
+7. Testare il flusso completo
