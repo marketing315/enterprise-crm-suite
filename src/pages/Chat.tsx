@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   MessageSquare,
   Send,
@@ -14,6 +16,7 @@ import {
   User,
   Bot,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -21,16 +24,21 @@ import {
   useChatThreads,
   useChatMessages,
   useSendChatMessage,
+  useSendAIMessage,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBrand } from "@/contexts/BrandContext";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function Chat() {
   const { user } = useAuth();
+  const { currentBrand } = useBrand();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState("");
+  const [askAI, setAskAI] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: threads = [], isLoading: threadsLoading } = useChatThreads();
@@ -38,6 +46,9 @@ export default function Chat() {
     selectedThreadId || ""
   );
   const sendMessage = useSendChatMessage();
+  const sendAIMessage = useSendAIMessage();
+
+  const selectedThread = threads.find((t) => t.id === selectedThreadId);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -46,16 +57,39 @@ export default function Chat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !selectedThreadId) return;
+    if (!messageInput.trim() || !selectedThreadId || !currentBrand) return;
 
-    await sendMessage.mutateAsync({
-      threadId: selectedThreadId,
-      messageText: messageInput.trim(),
-    });
+    const text = messageInput.trim();
     setMessageInput("");
+
+    if (askAI) {
+      // First send user message to thread
+      await sendMessage.mutateAsync({
+        threadId: selectedThreadId,
+        messageText: text,
+      });
+
+      // Then get AI response
+      try {
+        await sendAIMessage.mutateAsync({
+          threadId: selectedThreadId,
+          message: text,
+          entityType: selectedThread?.entity_type || undefined,
+          entityId: selectedThread?.entity_id || undefined,
+          brandId: currentBrand.id,
+        });
+      } catch (error) {
+        toast.error("Errore nella risposta AI");
+      }
+    } else {
+      await sendMessage.mutateAsync({
+        threadId: selectedThreadId,
+        messageText: text,
+      });
+    }
   };
 
-  const selectedThread = threads.find((t) => t.id === selectedThreadId);
+  const isPending = sendMessage.isPending || sendAIMessage.isPending;
 
   return (
     <div className="h-full flex gap-4">
@@ -147,27 +181,53 @@ export default function Chat() {
                 )}
               </ScrollArea>
               <Separator />
-              <form
-                onSubmit={handleSendMessage}
-                className="p-4 flex gap-2"
-              >
-                <Input
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder="Scrivi un messaggio..."
-                  disabled={sendMessage.isPending}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={!messageInput.trim() || sendMessage.isPending}
-                >
-                  {sendMessage.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
+              <form onSubmit={handleSendMessage} className="p-4 space-y-3">
+                {/* AI Toggle for entity threads */}
+                {selectedThread?.type === "entity" && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="ai-mode"
+                        checked={askAI}
+                        onCheckedChange={setAskAI}
+                      />
+                      <Label
+                        htmlFor="ai-mode"
+                        className="text-sm flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Sparkles className={cn("h-4 w-4", askAI && "text-primary")} />
+                        Chiedi all'AI
+                      </Label>
+                    </div>
+                    {askAI && (
+                      <Badge variant="secondary" className="text-xs">
+                        L'AI analizzerà il contesto
+                      </Badge>
+                    )}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    placeholder={askAI ? "Chiedi all'assistente AI..." : "Scrivi un messaggio..."}
+                    disabled={isPending}
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!messageInput.trim() || isPending}
+                    className={askAI ? "bg-primary" : ""}
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : askAI ? (
+                      <Sparkles className="h-4 w-4" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </>

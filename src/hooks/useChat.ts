@@ -202,3 +202,39 @@ export function useChatThreads() {
     enabled: !!currentBrand || isAllBrandsSelected,
   });
 }
+
+// Send message to AI assistant
+export function useSendAIMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      threadId,
+      message,
+      entityType,
+      entityId,
+      brandId,
+    }: {
+      threadId: string;
+      message: string;
+      entityType?: string;
+      entityId?: string;
+      brandId: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("ai-chat", {
+        body: { threadId, message, entityType, entityId, brandId },
+      });
+
+      if (error) throw error;
+      return data as { message: string; messageId: string };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", variables.threadId] });
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+    },
+    onError: (error: Error) => {
+      console.error("Error sending AI message:", error);
+      toast.error("Errore nella risposta AI");
+    },
+  });
+}
