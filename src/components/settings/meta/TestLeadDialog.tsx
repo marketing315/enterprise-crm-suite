@@ -58,6 +58,11 @@ export function TestLeadDialog({ open, onOpenChange, metaApp }: TestLeadDialogPr
           setPermissionError(true);
           return;
         }
+        // Check for Page Access Token error
+        if (result.fb_error?.code === 190 && result.fb_error?.message?.includes("Page Access Token")) {
+          setPermissionError(true);
+          return;
+        }
         throw new Error(result.error || "Errore nel caricamento dei form");
       }
 
@@ -156,11 +161,12 @@ export function TestLeadDialog({ open, onOpenChange, metaApp }: TestLeadDialogPr
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="space-y-3">
                   <p>
-                    Il token attuale non ha il permesso <strong>pages_manage_ads</strong> richiesto 
-                    per creare lead test via API.
+                    Il token attuale non è un <strong>Page Access Token</strong> valido o non ha 
+                    i permessi necessari (<code>pages_manage_ads</code>, <code>leads_retrieval</code>).
                   </p>
                   <p className="text-sm">
-                    Puoi usare lo strumento ufficiale Meta:
+                    Assicurati di usare un <strong>Long-Lived Page Access Token</strong> con i permessi corretti, 
+                    oppure usa lo strumento ufficiale Meta:
                   </p>
                   <Button
                     variant="outline"
