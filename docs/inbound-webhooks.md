@@ -15,7 +15,8 @@ Where `:sourceId` is the UUID of the configured inbound source.
 | Header | Required | Description |
 |--------|----------|-------------|
 | `Content-Type` | Yes | Must be `application/json` |
-| `X-API-Key` | Yes | The API key for this source (shown once on creation) |
+| `X-API-Key` | Yes | The API key for this source (authentication) |
+| `X-Webhook-Secret` | If HMAC enabled | The webhook signing secret |
 | `X-Signature` | If HMAC enabled | HMAC-SHA256 signature: `sha256=<hex>` |
 | `X-Timestamp` | If HMAC enabled | Unix timestamp in seconds |
 
@@ -186,11 +187,18 @@ curl -X POST \
 
 ### HMAC Signature Verification (Optional, per-source)
 
-When HMAC is enabled for a source:
+When HMAC is enabled for a source, you receive TWO secrets:
+1. **API Key** - For authentication (`X-API-Key` header)
+2. **Webhook Secret** - For signing requests (`X-Webhook-Secret` header)
 
-1. **Signature Format**: `X-Signature: sha256=<hex>`
-2. **Message Format**: `{timestamp}.{body}`
-3. **Algorithm**: HMAC-SHA256 using the API key as secret
+**Verification Flow**:
+1. Server verifies `X-Webhook-Secret` matches stored hash
+2. Server verifies `X-Timestamp` is within replay window
+3. Server computes `HMAC-SHA256(secret, "{timestamp}.{body}")`
+4. Server compares computed signature with `X-Signature`
+
+**Signature Format**: `X-Signature: sha256=<hex>`
+**Message Format**: `{timestamp}.{body}`
 
 **Anti-Replay Protection**:
 - Requires `X-Timestamp` header with Unix timestamp (seconds)
@@ -200,15 +208,20 @@ When HMAC is enabled for a source:
 **Example (curl with HMAC)**:
 
 ```bash
-# Generate signature
+# Variables
+API_KEY="your-api-key"
+WEBHOOK_SECRET="your-webhook-secret"
 TIMESTAMP=$(date +%s)
 BODY='{"phone":"+393331234567","first_name":"Mario"}'
-SIGNATURE=$(echo -n "${TIMESTAMP}.${BODY}" | openssl dgst -sha256 -hmac "$API_KEY" | awk '{print $2}')
+
+# Generate signature
+SIGNATURE=$(echo -n "${TIMESTAMP}.${BODY}" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | awk '{print $2}')
 
 curl -X POST \
   "https://qmqcjtmcxfqahhubpaea.supabase.co/functions/v1/webhook-ingest/YOUR-SOURCE-ID" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $API_KEY" \
+  -H "X-Webhook-Secret: $WEBHOOK_SECRET" \
   -H "X-Signature: sha256=$SIGNATURE" \
   -H "X-Timestamp: $TIMESTAMP" \
   -d "$BODY"
@@ -217,8 +230,10 @@ curl -X POST \
 **HMAC Error Codes**:
 | Error | Description |
 |-------|-------------|
-| `missing_signature` | X-Signature header required but not provided |
-| `missing_timestamp` | X-Timestamp header required for HMAC |
+| `missing_webhook_secret` | X-Webhook-Secret header required but not provided |
+| `invalid_webhook_secret` | Webhook secret doesn't match |
+| `missing_signature` | X-Signature header required |
+| `missing_timestamp` | X-Timestamp header required |
 | `invalid_timestamp_format` | Timestamp must be Unix seconds |
 | `replay_detected` | Timestamp outside allowed window |
 | `invalid_signature` | HMAC verification failed |
