@@ -140,6 +140,184 @@ function applyMapping(
   return result;
 }
 
+// AI Gateway for extracting contact data from unstructured payloads
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_MODEL = "google/gemini-3-flash-preview";
+
+interface ExtractedContactData {
+  phone: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  city: string | null;
+  cap: string | null;
+  notes: string | null;
+}
+
+const AI_EXTRACTION_PROMPT = `Sei un estrattore di dati contatto. Analizza il payload JSON e estrai le informazioni del contatto.
+
+REGOLE:
+- Cerca campi che contengono: telefono, nome, cognome, email, città, CAP
+- I campi possono avere nomi diversi (phone, telefono, mobile, cellulare, name, nome, ecc.)
+- Se non trovi un campo, restituisci null per quel campo
+- Il telefono è OBBLIGATORIO: cercalo in qualsiasi campo che possa contenerlo
+- Se trovi testo libero, cerca di estrarre i dati da lì
+- Per le note, includi qualsiasi informazione aggiuntiva rilevante (messaggio, richiesta, ecc.)
+
+Rispondi SOLO con JSON valido nel formato:
+{
+  "phone": "numero telefono o null",
+  "first_name": "nome o null",
+  "last_name": "cognome o null", 
+  "email": "email o null",
+  "city": "città o null",
+  "cap": "CAP o null",
+  "notes": "note/messaggio o null"
+}`;
+
+async function extractContactDataWithAI(
+  payload: Record<string, unknown>,
+  apiKey: string
+): Promise<ExtractedContactData | null> {
+  try {
+    const response = await fetch(AI_GATEWAY_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        messages: [
+          { role: "system", content: AI_EXTRACTION_PROMPT },
+          { 
+            role: "user", 
+            content: `Estrai i dati contatto da questo payload:\n${JSON.stringify(payload, null, 2)}` 
+          },
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("AI Gateway error:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      console.error("No content in AI response");
+      return null;
+    }
+
+    // Parse JSON from response (handle markdown code blocks)
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith("```json")) {
+      jsonStr = jsonStr.slice(7);
+    }
+    if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith("```")) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+
+    const result = JSON.parse(jsonStr.trim()) as ExtractedContactData;
+    console.log("AI extracted contact data:", JSON.stringify(result));
+    return result;
+  } catch (error) {
+    console.error("AI extraction error:", error);
+    return null;
+  }
+}
+
+// Try to extract phone from payload using common field names
+function tryExtractPhone(payload: Record<string, unknown>): string | null {
+  const phoneFields = [
+    "phone", "telefono", "mobile", "cellulare", "tel", 
+    "Phone", "Telefono", "Mobile", "Cellulare", "Tel",
+    "phone_number", "phoneNumber", "numero_telefono", "numeroTelefono",
+    "contact_phone", "contactPhone"
+  ];
+  
+  for (const field of phoneFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+// Try to extract other contact fields from payload
+function tryExtractContactFields(payload: Record<string, unknown>): Partial<ExtractedContactData> {
+  const result: Partial<ExtractedContactData> = {};
+  
+  // First name
+  const firstNameFields = ["first_name", "firstName", "nome", "name", "Nome", "Name"];
+  for (const field of firstNameFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.first_name = value.trim();
+      break;
+    }
+  }
+  
+  // Last name
+  const lastNameFields = ["last_name", "lastName", "cognome", "surname", "Cognome", "Surname"];
+  for (const field of lastNameFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.last_name = value.trim();
+      break;
+    }
+  }
+  
+  // Email
+  const emailFields = ["email", "Email", "e-mail", "mail"];
+  for (const field of emailFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.email = value.trim().toLowerCase();
+      break;
+    }
+  }
+  
+  // City
+  const cityFields = ["city", "citta", "città", "City", "Citta"];
+  for (const field of cityFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.city = value.trim();
+      break;
+    }
+  }
+  
+  // CAP
+  const capFields = ["cap", "zip", "postal_code", "postalCode", "CAP", "Zip"];
+  for (const field of capFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.cap = value.trim();
+      break;
+    }
+  }
+  
+  // Notes/Message
+  const notesFields = ["notes", "note", "message", "messaggio", "richiesta", "Notes", "Message"];
+  for (const field of notesFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.notes = value.trim();
+      break;
+    }
+  }
+  
+  return result;
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -467,44 +645,55 @@ Deno.serve(async (req: Request) => {
       ? applyMapping(rawBody, source.mapping as Record<string, string>)
       : rawBody;
 
-    // Extract phone and normalize
-    const phoneRaw = String(
-      mappedPayload.phone || mappedPayload.telefono || mappedPayload.mobile || ""
-    ).trim();
+    // Try to extract contact data from standard fields first
+    let phoneRaw = tryExtractPhone(mappedPayload);
+    let extractedFields = tryExtractContactFields(mappedPayload);
+    let usedAI = false;
 
+    // If no phone found in standard fields, use AI to extract
+    if (!phoneRaw) {
+      console.log(JSON.stringify({ ...logContext, action: "using_ai_extraction" }));
+      
+      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+      if (lovableApiKey) {
+        const aiResult = await extractContactDataWithAI(mappedPayload, lovableApiKey);
+        if (aiResult) {
+          usedAI = true;
+          phoneRaw = aiResult.phone;
+          // Merge AI results with any existing extracted fields (AI fills gaps)
+          extractedFields = {
+            first_name: extractedFields.first_name || aiResult.first_name,
+            last_name: extractedFields.last_name || aiResult.last_name,
+            email: extractedFields.email || aiResult.email,
+            city: extractedFields.city || aiResult.city,
+            cap: extractedFields.cap || aiResult.cap,
+            notes: extractedFields.notes || aiResult.notes,
+          };
+        }
+      } else {
+        console.warn("LOVABLE_API_KEY not configured, cannot use AI extraction");
+      }
+    }
+
+    // Still no phone after AI extraction
     if (!phoneRaw) {
       if (auditId) {
         await updateAuditRecord(auditId, "rejected", "missing_phone");
       }
       return new Response(
-        JSON.stringify({ error: "Phone number is required" }),
+        JSON.stringify({ error: "Phone number is required and could not be extracted from payload" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const normalizedPhone = normalizePhone(phoneRaw);
 
-    // Extract other fields with email normalization (trim + lowercase for dedup)
-    const firstName = String(
-      mappedPayload.first_name ||
-        mappedPayload.firstName ||
-        mappedPayload.nome ||
-        ""
-    ).trim() || null;
-
-    const lastName = String(
-      mappedPayload.last_name ||
-        mappedPayload.lastName ||
-        mappedPayload.cognome ||
-        ""
-    ).trim() || null;
-
-    const email = String(mappedPayload.email || "")
-      .trim()
-      .toLowerCase() || null;
-
-    const city = String(mappedPayload.city || mappedPayload.citta || "").trim() || null;
-    const cap = String(mappedPayload.cap || mappedPayload.zip || "").trim() || null;
+    // Use extracted fields
+    const firstName = extractedFields.first_name || null;
+    const lastName = extractedFields.last_name || null;
+    const email = extractedFields.email || null;
+    const city = extractedFields.city || null;
+    const cap = extractedFields.cap || null;
 
     // Find or create contact
     const { data: contactId, error: contactError } = await supabaseAdmin.rpc(
@@ -534,8 +723,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // STEP 2B: Check contact status for opt-out handling
-    const { data: contactData, error: contactFetchError } = await supabaseAdmin
+    // Update contact notes if AI extracted any
+    if (extractedFields.notes) {
+      await supabaseAdmin
+        .from("contacts")
+        .update({ notes: extractedFields.notes })
+        .eq("id", contactId)
+        .is("notes", null); // Only update if notes are empty
+    }
+
+    // Check contact status for opt-out handling
+    const { data: contactData } = await supabaseAdmin
       .from("contacts")
       .select("status")
       .eq("id", contactId)
@@ -570,7 +768,7 @@ Deno.serve(async (req: Request) => {
         raw_payload: rawBody,
         occurred_at: new Date().toISOString(),
         received_at: new Date().toISOString(),
-        archived: isOptedOut, // STEP 2B: Auto-archive if opted out
+        archived: isOptedOut, // Auto-archive if opted out
       })
       .select("id")
       .single();
@@ -623,6 +821,7 @@ Deno.serve(async (req: Request) => {
       lead_event_id: leadEvent?.id,
       archived: isOptedOut,
       hmac_enabled: source.hmac_enabled,
+      used_ai_extraction: usedAI,
     }));
 
     return new Response(
@@ -633,6 +832,7 @@ Deno.serve(async (req: Request) => {
         lead_event_id: leadEvent?.id || null,
         archived: isOptedOut,
         contact_status: contactData?.status || "new",
+        used_ai_extraction: usedAI,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
