@@ -159,6 +159,7 @@ Deno.serve(async (req) => {
           .from("meta_lead_events")
           .insert({
             brand_id: metaApp.brand_id,
+            source_id: metaApp.id, // Use meta_apps.id as source_id
             leadgen_id: leadgenId,
             page_id: pageId || metaApp.page_id || "unknown",
             form_id: formId,
