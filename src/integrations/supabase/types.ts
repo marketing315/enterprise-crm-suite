@@ -14,6 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_decision_logs: {
+        Row: {
+          ai_job_id: string | null
+          appointment_action: string | null
+          brand_id: string
+          confidence: number | null
+          created_at: string
+          id: string
+          initial_stage_name: string | null
+          lead_event_id: string
+          lead_type: string
+          model_version: string
+          original_decision: Json | null
+          overridden_at: string | null
+          overridden_by_user_id: string | null
+          override_reason: string | null
+          priority: number
+          prompt_version: string
+          rationale: string
+          raw_response: Json | null
+          should_create_or_update_appointment: boolean
+          should_create_ticket: boolean
+          tags_to_apply: string[]
+          ticket_type: string | null
+          was_overridden: boolean
+        }
+        Insert: {
+          ai_job_id?: string | null
+          appointment_action?: string | null
+          brand_id: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          initial_stage_name?: string | null
+          lead_event_id: string
+          lead_type: string
+          model_version: string
+          original_decision?: Json | null
+          overridden_at?: string | null
+          overridden_by_user_id?: string | null
+          override_reason?: string | null
+          priority: number
+          prompt_version?: string
+          rationale: string
+          raw_response?: Json | null
+          should_create_or_update_appointment?: boolean
+          should_create_ticket?: boolean
+          tags_to_apply?: string[]
+          ticket_type?: string | null
+          was_overridden?: boolean
+        }
+        Update: {
+          ai_job_id?: string | null
+          appointment_action?: string | null
+          brand_id?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          initial_stage_name?: string | null
+          lead_event_id?: string
+          lead_type?: string
+          model_version?: string
+          original_decision?: Json | null
+          overridden_at?: string | null
+          overridden_by_user_id?: string | null
+          override_reason?: string | null
+          priority?: number
+          prompt_version?: string
+          rationale?: string
+          raw_response?: Json | null
+          should_create_or_update_appointment?: boolean
+          should_create_ticket?: boolean
+          tags_to_apply?: string[]
+          ticket_type?: string | null
+          was_overridden?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_decision_logs_ai_job_id_fkey"
+            columns: ["ai_job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_decision_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_decision_logs_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_decision_logs_overridden_by_user_id_fkey"
+            columns: ["overridden_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_jobs: {
         Row: {
           attempts: number
@@ -2221,6 +2328,16 @@ export type Database = {
         Returns: Json
       }
       normalize_topic_text: { Args: { p_text: string }; Returns: string }
+      override_ai_decision: {
+        Args: {
+          p_lead_event_id: string
+          p_new_lead_type?: string
+          p_new_priority?: number
+          p_new_should_create_ticket?: boolean
+          p_override_reason?: string
+        }
+        Returns: Json
+      }
       record_delivery_result:
         | {
             Args: {
