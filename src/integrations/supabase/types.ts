@@ -1507,7 +1507,7 @@ export type Database = {
             foreignKeyName: "meta_lead_events_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
-            referencedRelation: "meta_lead_sources"
+            referencedRelation: "meta_apps"
             referencedColumns: ["id"]
           },
         ]
