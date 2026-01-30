@@ -1,122 +1,250 @@
 
-# Piano: Supporto "Tutti i brand" per Contatti
+# Piano: Ricerca Contatti Completa su Tutti i Dati
 
 ## Obiettivo
-Quando viene selezionato "Tutti i brand", la sezione Contatti deve aggregare i contatti di tutti i brand accessibili all'utente. L'unica differenza rispetto alla vista singolo brand è la presenza di una colonna "Brand" che indica a quale brand appartiene ogni contatto.
+Permettere la ricerca di contatti su **tutti i campi disponibili**: nome, cognome, email, telefono, città, CAP, indirizzo, note, tag e custom fields.
 
-## Problema attuale
-L'hook `useContactSearch` filtra sempre per `currentBrand.id` singolo, non supportando l'aggregazione multi-brand tramite `.in("brand_id", allBrandIds)` come fanno altri hook (es. `useNotifications`).
+## Stato Attuale
 
-## Modifiche necessarie
+### Cosa c'è già
+- Tabella `contact_search_index` con `search_text` e `search_vector` (tsvector + trigram)
+- Funzione `build_contact_search_text()` che concatena: nome, cognome, email, città, CAP, telefoni, tag, custom fields
+- Trigger su `contacts` per aggiornare l'indice
 
-### 1. Hook `useContactSearch` (`src/hooks/useContactSearch.ts`)
+### Problemi identificati
 
-Aggiungere il supporto per la modalita "All Brands":
+1. **RPC `search_contacts` non usa l'indice** - fa solo ILIKE su pochi campi (first_name, last_name, email, city, phone)
+2. **Mancano trigger per tabelle correlate**:
+   - `contact_phones` (quando aggiungi/modifichi un telefono)
+   - `tag_assignments` (quando aggiungi/rimuovi tag)
+   - `contact_field_values` (quando modifichi custom fields)
+3. **Campi mancanti nella ricerca**: address, notes
 
-- Importare `isAllBrandsSelected` e `allBrandIds` da `useBrand()`
-- Nella query senza ricerca testuale:
-  - Se `isAllBrandsSelected`: usare `.in("brand_id", allBrandIds)` invece di `.eq("brand_id", currentBrand.id)`
-- Nella query con ricerca (RPC `search_contacts`):
-  - Passare `null` come `p_brand_id` o modificare la RPC per accettare un array di brand IDs
-- Aggiungere `brand_id` al tipo `SearchResult` e ai dati restituiti
-- Aggiornare la `queryKey` per includere `isAllBrandsSelected`
+## Modifiche Database
 
-### 2. Pagina Contatti (`src/pages/Contacts.tsx`)
+### 1. Aggiornare `build_contact_search_text()` per includere address e notes
 
-Il file gestisce gia correttamente la visualizzazione:
-- Passa `showBrandColumn={isAllBrandsSelected}` alla tabella
-- Ha un filtro per brand quando "Tutti i brand" e attivo
-- Mappa i contatti con `brand_name` cercando nel array `brands`
-
-Problema: il mapping `brand_name` attuale non funziona perche `SearchResult` non include `brand_id`. Devo:
-- Aggiungere `brand_id` al tipo e ai dati in `useContactSearch`
-- Correggere il mapping in `Contacts.tsx` per usare il vero `brand_id`
-
-### 3. (Opzionale) RPC `search_contacts`
-
-Se la RPC e usata per la ricerca testuale, potrebbe essere necessario modificarla per accettare un array di brand IDs o `NULL` per tutti i brand accessibili.
-
-## Schema della soluzione
-
-```text
-useContactSearch()
-     |
-     v
-isAllBrandsSelected?
-     |
-   +---+---+
-   |       |
-  YES      NO
-   |       |
-   v       v
-.in()   .eq()
-   |       |
-   +---+---+
-       |
-       v
-  Risultati con brand_id
-       |
-       v
-  Contacts.tsx mappa brand_name
-       |
-       v
-  ContactsTableWithViews mostra colonna Brand
+```sql
+CREATE OR REPLACE FUNCTION public.build_contact_search_text(p_contact_id UUID)
+RETURNS TEXT
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_text TEXT := '';
+  v_contact RECORD;
+BEGIN
+  SELECT c.first_name, c.last_name, c.email, c.city, c.cap, 
+         c.address, c.notes, b.name as brand_name
+  INTO v_contact FROM contacts c 
+  LEFT JOIN brands b ON b.id = c.brand_id 
+  WHERE c.id = p_contact_id;
+  
+  IF v_contact IS NULL THEN RETURN ''; END IF;
+  
+  v_text := COALESCE(v_contact.first_name, '') || ' ' || 
+            COALESCE(v_contact.last_name, '') || ' ' ||
+            COALESCE(v_contact.email, '') || ' ' || 
+            COALESCE(v_contact.city, '') || ' ' ||
+            COALESCE(v_contact.cap, '') || ' ' || 
+            COALESCE(v_contact.address, '') || ' ' ||
+            COALESCE(v_contact.notes, '') || ' ' ||
+            COALESCE(v_contact.brand_name, '');
+  
+  -- Telefoni
+  v_text := v_text || ' ' || COALESCE((
+    SELECT string_agg(phone_normalized, ' ') 
+    FROM contact_phones WHERE contact_id = p_contact_id AND is_active
+  ), '');
+  
+  -- Tag
+  v_text := v_text || ' ' || COALESCE((
+    SELECT string_agg(t.name, ' ') 
+    FROM tag_assignments ta JOIN tags t ON t.id = ta.tag_id 
+    WHERE ta.contact_id = p_contact_id
+  ), '');
+  
+  -- Custom fields
+  v_text := v_text || ' ' || COALESCE((
+    SELECT string_agg(value_text, ' ') 
+    FROM contact_field_values WHERE contact_id = p_contact_id AND value_text IS NOT NULL
+  ), '');
+  
+  RETURN lower(regexp_replace(trim(v_text), '\s+', ' ', 'g'));
+END;
+$$;
 ```
 
-## Dettaglio tecnico
+### 2. Aggiungere trigger per tabelle correlate
 
-### Modifica a `SearchResult` in `useContactSearch.ts`:
-```typescript
-export interface SearchResult {
-  id: string;
-  brand_id: string;        // <-- NUOVO
-  first_name: string | null;
-  // ... resto invariato
-}
+```sql
+-- Trigger per contact_phones
+CREATE OR REPLACE FUNCTION public.trigger_phone_search_sync() 
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM public.update_contact_search_index(OLD.contact_id);
+    RETURN OLD;
+  ELSE
+    PERFORM public.update_contact_search_index(NEW.contact_id);
+    RETURN NEW;
+  END IF;
+END; $$;
+
+CREATE TRIGGER trg_phone_search_sync 
+  AFTER INSERT OR UPDATE OR DELETE ON public.contact_phones 
+  FOR EACH ROW EXECUTE FUNCTION public.trigger_phone_search_sync();
+
+-- Trigger per tag_assignments
+CREATE OR REPLACE FUNCTION public.trigger_tag_search_sync() 
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.contact_id IS NOT NULL THEN
+      PERFORM public.update_contact_search_index(OLD.contact_id);
+    END IF;
+    RETURN OLD;
+  ELSE
+    IF NEW.contact_id IS NOT NULL THEN
+      PERFORM public.update_contact_search_index(NEW.contact_id);
+    END IF;
+    RETURN NEW;
+  END IF;
+END; $$;
+
+CREATE TRIGGER trg_tag_search_sync 
+  AFTER INSERT OR DELETE ON public.tag_assignments 
+  FOR EACH ROW EXECUTE FUNCTION public.trigger_tag_search_sync();
+
+-- Trigger per contact_field_values
+CREATE OR REPLACE FUNCTION public.trigger_field_values_search_sync() 
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM public.update_contact_search_index(OLD.contact_id);
+    RETURN OLD;
+  ELSE
+    PERFORM public.update_contact_search_index(NEW.contact_id);
+    RETURN NEW;
+  END IF;
+END; $$;
+
+CREATE TRIGGER trg_field_values_search_sync 
+  AFTER INSERT OR UPDATE OR DELETE ON public.contact_field_values 
+  FOR EACH ROW EXECUTE FUNCTION public.trigger_field_values_search_sync();
 ```
 
-### Modifica alla query senza ricerca:
-```typescript
-const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
+### 3. Aggiornare RPC `search_contacts` per usare l'indice
 
-let queryBuilder = supabase
-  .from("contacts")
-  .select(`
-    id, brand_id, first_name, ...  // <-- aggiunto brand_id
-  `)
-  .order("updated_at", { ascending: false })
-  .limit(limit);
+```sql
+CREATE OR REPLACE FUNCTION public.search_contacts(
+  p_brand_id uuid,
+  p_query text DEFAULT NULL,
+  p_tag_ids uuid[] DEFAULT NULL,
+  p_match_all_tags boolean DEFAULT FALSE,
+  p_limit int DEFAULT 50,
+  p_offset int DEFAULT 0
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_result json;
+  v_tag_count int := COALESCE(array_length(p_tag_ids, 1), 0);
+  v_clean_query text;
+BEGIN
+  -- Autenticazione e validazione (invariato)
+  SELECT u.id INTO v_user_id FROM public.users u WHERE u.supabase_auth_id = auth.uid();
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+  
+  -- Supporto multi-brand: se p_brand_id è NULL, usa tutti i brand dell'utente
+  IF p_brand_id IS NOT NULL AND NOT user_belongs_to_brand(v_user_id, p_brand_id) THEN
+    RAISE EXCEPTION 'Forbidden: no access to brand';
+  END IF;
+  
+  IF p_query IS NOT NULL AND length(p_query) > 200 THEN
+    RAISE EXCEPTION 'Query too long: max 200 characters';
+  END IF;
+  
+  p_limit := LEAST(p_limit, 500);
+  p_offset := GREATEST(p_offset, 0);
+  v_clean_query := NULLIF(TRIM(p_query), '');
 
-// Filtro brand
-if (isAllBrandsSelected) {
-  queryBuilder = queryBuilder.in("brand_id", allBrandIds);
-} else if (currentBrand) {
-  queryBuilder = queryBuilder.eq("brand_id", currentBrand.id);
-}
+  WITH user_brands AS (
+    SELECT ur.brand_id FROM user_roles ur WHERE ur.user_id = v_user_id
+  ),
+  filtered AS (
+    SELECT 
+      c.id, c.brand_id, c.first_name, c.last_name, c.email, c.city, c.status,
+      c.created_at, c.updated_at,
+      (SELECT json_agg(...) FROM contact_phones cp ...) AS phones
+    FROM contacts c
+    JOIN contact_search_index csi ON csi.contact_id = c.id
+    WHERE 
+      -- Filtro brand
+      (p_brand_id IS NULL AND csi.brand_id IN (SELECT brand_id FROM user_brands))
+      OR (p_brand_id IS NOT NULL AND c.brand_id = p_brand_id)
+      -- Ricerca full-text usando l'indice
+      AND (
+        v_clean_query IS NULL
+        OR csi.search_text ILIKE '%' || v_clean_query || '%'
+        OR csi.search_vector @@ plainto_tsquery('simple', v_clean_query)
+      )
+      -- Filtro tag (invariato)
+      AND (v_tag_count = 0 OR ...)
+  )
+  -- Resto invariato (paginazione, conteggio, JSON)
+  ...
+END;
+$$;
 ```
 
-### Modifica al mapping in `Contacts.tsx`:
-```typescript
-const contactsForTable = contacts.map((c) => {
-  const brand = brands.find(b => b.id === c.brand_id);
-  return {
-    ...c,
-    brand_name: brand?.name || '',
-    // ... resto invariato
-  };
-});
+### 4. Rigenerare l'indice per i contatti esistenti
+
+```sql
+-- Funzione per rebuild completo
+CREATE OR REPLACE FUNCTION public.rebuild_contact_search_index()
+RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_count INTEGER := 0;
+BEGIN
+  DELETE FROM contact_search_index;
+  INSERT INTO contact_search_index (contact_id, brand_id, search_text, search_vector, updated_at)
+  SELECT 
+    c.id, c.brand_id, 
+    public.build_contact_search_text(c.id),
+    to_tsvector('simple', public.build_contact_search_text(c.id)),
+    now()
+  FROM contacts c;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END; $$;
+
+-- Esegui rebuild
+SELECT public.rebuild_contact_search_index();
 ```
 
-## File da modificare
+## File da Modificare
 
 | File | Modifiche |
 |------|-----------|
-| `src/hooks/useContactSearch.ts` | Supporto multi-brand, aggiunta `brand_id` ai risultati |
-| `src/pages/Contacts.tsx` | Correzione mapping `brand_name` usando `c.brand_id` |
+| **Nuova migrazione SQL** | Aggiornare funzioni, trigger e RPC |
 
-## Risultato atteso
+## Frontend
 
-1. Selezionando "Tutti i brand", la lista contatti mostra tutti i contatti di tutti i brand accessibili
-2. La colonna "Brand" appare automaticamente, mostrando il nome del brand per ogni contatto
-3. Il filtro per brand (gia presente) permette di restringere la vista a un singolo brand
-4. La ricerca testuale funziona anche in modalita multi-brand
+Nessuna modifica frontend necessaria: l'hook `useContactSearch` già chiama la RPC che verrà potenziata.
+
+## Risultato Atteso
+
+La ricerca troverà contatti cercando in:
+- Nome e cognome
+- Email
+- Telefono (qualsiasi formato)
+- Città e CAP
+- Indirizzo
+- Note
+- Nome tag assegnati
+- Valori custom fields
+
+La ricerca sarà anche più veloce grazie all'uso degli indici GIN (trigram + tsvector).
