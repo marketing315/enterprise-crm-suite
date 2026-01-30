@@ -257,13 +257,29 @@ Deno.serve(async (req) => {
           return field?.values?.[0] || null;
         };
 
+        // Helper to detect Meta test lead placeholder data
+        const isTestPlaceholder = (value: string | null): boolean => {
+          return value !== null && value.includes("<test lead:");
+        };
+
         const fullName = getField("full_name");
-        const firstName = getField("first_name") || (fullName ? fullName.split(" ")[0] : null);
-        const lastName = getField("last_name") || (fullName ? fullName.split(" ").slice(1).join(" ") : null);
-        const email = getField("email");
-        const phone = getField("phone_number");
+        let firstName = getField("first_name") || getField("nome") || (fullName ? fullName.split(" ")[0] : null);
+        let lastName = getField("last_name") || getField("cognome") || (fullName ? fullName.split(" ").slice(1).join(" ") : null);
+        let email = getField("email") || getField("e-mail");
+        let phone = getField("phone_number") || getField("phone");
         const city = getField("city");
-        const cap = getField("zip") || getField("postal_code");
+        let cap = getField("zip") || getField("postal_code") || getField("codice_postale");
+
+        // For Meta test leads, replace placeholder data with usable test values
+        if (isTestPlaceholder(firstName)) firstName = "Test";
+        if (isTestPlaceholder(lastName)) lastName = "Meta Lead";
+        if (isTestPlaceholder(phone)) {
+          // Generate a synthetic phone number using leadgenId suffix for uniqueness
+          const leadSuffix = leadgenId.slice(-6);
+          phone = `3331234${leadSuffix}`;
+          console.log(`[META-EVENT] Generated synthetic phone for test lead: ${phone}`);
+        }
+        if (isTestPlaceholder(cap)) cap = "00100";
 
         // === Contact & Deal Creation (aligned with webhook-ingest) ===
         let contactId: string | null = null;
