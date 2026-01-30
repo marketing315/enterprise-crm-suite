@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, x-signature, x-timestamp",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -17,7 +17,7 @@ const HEADER_WHITELIST = [
   "accept",
   "accept-language",
   // Excluded: referer (may contain PII in query strings)
-  // Excluded: authorization, cookie, x-api-key (credentials)
+  // Excluded: authorization, cookie, x-api-key, x-signature (credentials)
 ];
 
 function filterHeaders(headers: Headers): Record<string, string> {
@@ -70,19 +70,51 @@ function normalizePhone(phone: string, defaultCountry = "IT"): NormalizedPhone {
   return { normalized, countryCode, assumedCountry, raw };
 }
 
+// Hash a string using SHA-256 (for API key and HMAC secret verification)
+async function hashSha256(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Compute HMAC-SHA256 signature
+async function computeHmacSha256(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  const hashArray = Array.from(new Uint8Array(signature));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Constant-time string comparison to prevent timing attacks
+function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 // Verify API key using constant-time comparison
 async function verifyApiKey(
   providedKey: string,
   storedHash: string
 ): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(providedKey);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const providedHash = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return providedHash === storedHash;
+  const providedHash = await hashSha256(providedKey);
+  return constantTimeCompare(providedHash, storedHash);
 }
 
 // Apply field mapping from webhook source config
@@ -238,10 +270,10 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // 3. Find webhook source
+  // 3. Find webhook source (include HMAC fields)
   const { data: source, error: sourceError } = await supabaseAdmin
     .from("webhook_sources")
-    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active")
+    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret_hash, replay_window_seconds")
     .eq("id", sourceId)
     .maybeSingle();
 
@@ -279,7 +311,102 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // 7. Rate limit - full audit
+  // 7. HMAC Signature verification (if enabled for this source)
+  if (source.hmac_enabled && source.hmac_secret_hash) {
+    const signatureHeader = req.headers.get("x-signature");
+    const timestampHeader = req.headers.get("x-timestamp");
+
+    // 7a. Missing signature header
+    if (!signatureHeader) {
+      console.log(JSON.stringify({ ...logContext, outcome: "missing_signature", status: 401 }));
+      await createAuditRecord("rejected", "missing_signature", sourceId, brandId);
+      return new Response(
+        JSON.stringify({ error: "missing_signature", message: "X-Signature header required for this source" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 7b. Missing timestamp header
+    if (!timestampHeader) {
+      console.log(JSON.stringify({ ...logContext, outcome: "missing_timestamp", status: 401 }));
+      await createAuditRecord("rejected", "missing_timestamp", sourceId, brandId);
+      return new Response(
+        JSON.stringify({ error: "missing_timestamp", message: "X-Timestamp header required for HMAC verification" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 7c. Validate timestamp format (Unix seconds)
+    const timestamp = parseInt(timestampHeader, 10);
+    if (isNaN(timestamp)) {
+      console.log(JSON.stringify({ ...logContext, outcome: "invalid_timestamp_format", status: 400 }));
+      await createAuditRecord("rejected", "invalid_timestamp_format", sourceId, brandId);
+      return new Response(
+        JSON.stringify({ error: "invalid_timestamp", message: "X-Timestamp must be Unix timestamp in seconds" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 7d. Anti-replay check: timestamp within window
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const replayWindow = source.replay_window_seconds || 300; // Default 5 minutes
+    const timeDiff = Math.abs(nowSeconds - timestamp);
+
+    if (timeDiff > replayWindow) {
+      console.log(JSON.stringify({ 
+        ...logContext, 
+        outcome: "replay_detected", 
+        status: 401,
+        timestamp,
+        now: nowSeconds,
+        diff: timeDiff,
+        window: replayWindow
+      }));
+      await createAuditRecord("rejected", `replay_detected: timestamp=${timestamp}, now=${nowSeconds}, diff=${timeDiff}s, window=${replayWindow}s`, sourceId, brandId);
+      return new Response(
+        JSON.stringify({ 
+          error: "replay_detected", 
+          message: `Request timestamp outside allowed window (${replayWindow}s)` 
+        }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 7e. Verify HMAC signature
+    // Signature format: sha256=<hex>
+    // Message format: {timestamp}.{body}
+    const signatureMatch = signatureHeader.match(/^sha256=([a-f0-9]+)$/i);
+    if (!signatureMatch) {
+      console.log(JSON.stringify({ ...logContext, outcome: "invalid_signature_format", status: 400 }));
+      await createAuditRecord("rejected", "invalid_signature_format", sourceId, brandId);
+      return new Response(
+        JSON.stringify({ error: "invalid_signature", message: "X-Signature must be in format: sha256=<hex>" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const providedSignature = signatureMatch[1].toLowerCase();
+    
+    // To verify, we need to know the original secret - but we only store the hash
+    // The client computes: HMAC-SHA256(secret, "{timestamp}.{body}")
+    // We need to use apiKey as the HMAC secret (since we have it in this request)
+    // This allows verification without storing the secret in plain text
+    const signedMessage = `${timestampHeader}.${bodyText}`;
+    const expectedSignature = await computeHmacSha256(apiKey, signedMessage);
+
+    if (!constantTimeCompare(providedSignature, expectedSignature)) {
+      console.log(JSON.stringify({ ...logContext, outcome: "invalid_signature", status: 401 }));
+      await createAuditRecord("rejected", "invalid_signature", sourceId, brandId);
+      return new Response(
+        JSON.stringify({ error: "invalid_signature", message: "HMAC signature verification failed" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(JSON.stringify({ ...logContext, hmac_verified: true, timestamp }));
+  }
+
+  // 8. Rate limit - full audit
   const { data: hasToken, error: rateLimitError } = await supabaseAdmin.rpc(
     "consume_rate_limit_token",
     { p_source_id: source.id }
@@ -301,7 +428,7 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 8. Invalid JSON body - full audit (raw_body will be null)
+  // 9. Invalid JSON body - full audit (raw_body will be null)
   if (jsonParseError || !rawBody) {
     console.log(JSON.stringify({ ...logContext, outcome: "invalid_json", status: 400 }));
     await createAuditRecord("rejected", "invalid_json", sourceId, brandId);
@@ -476,6 +603,7 @@ Deno.serve(async (req: Request) => {
       contact_id: contactId,
       lead_event_id: leadEvent?.id,
       archived: isOptedOut,
+      hmac_enabled: source.hmac_enabled,
     }));
 
     return new Response(
