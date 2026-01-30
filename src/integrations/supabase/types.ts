@@ -2890,7 +2890,15 @@ export type Database = {
         Args: { p_fallback_stage_id: string; p_stage_id: string }
         Returns: Json
       }
+      delete_notifications: {
+        Args: { p_notification_ids: string[] }
+        Returns: number
+      }
       delete_outbound_webhook: { Args: { p_id: string }; Returns: boolean }
+      delete_read_notifications: {
+        Args: { p_brand_id?: string }
+        Returns: number
+      }
       enqueue_webhook_delivery: {
         Args: {
           p_brand_id: string
@@ -3018,6 +3026,17 @@ export type Database = {
           scope: Database["public"]["Enums"]["custom_field_scope"]
         }[]
       }
+      get_notification_preferences: {
+        Args: { p_brand_id: string }
+        Returns: {
+          brand_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          notification_type: string
+          user_id: string
+        }[]
+      }
       get_or_create_ai_config: {
         Args: { p_brand_id: string }
         Returns: {
@@ -3040,6 +3059,16 @@ export type Database = {
       get_or_create_entity_thread: {
         Args: { p_brand_id: string; p_entity_id: string; p_entity_type: string }
         Returns: string
+      }
+      get_paginated_notifications: {
+        Args: {
+          p_brand_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_type_filter?: string
+          p_unread_only?: boolean
+        }
+        Returns: Json
       }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }
@@ -3148,6 +3177,10 @@ export type Database = {
           p_webhook_id?: string
         }
         Returns: Json
+      }
+      mark_all_notifications_read: {
+        Args: { p_brand_id?: string }
+        Returns: number
       }
       mark_notifications_read: {
         Args: { p_notification_ids: string[] }
@@ -3374,6 +3407,14 @@ export type Database = {
       }
       upsert_contact_field_values: {
         Args: { p_brand_id: string; p_contact_id: string; p_values: Json }
+        Returns: Json
+      }
+      upsert_notification_preference: {
+        Args: {
+          p_brand_id: string
+          p_enabled: boolean
+          p_notification_type: string
+        }
         Returns: Json
       }
       user_belongs_to_brand: {

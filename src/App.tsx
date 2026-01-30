@@ -23,6 +23,7 @@ import AdminTicketTrend from "@/pages/AdminTicketTrend";
 import AdminWebhooksDashboard from "@/pages/AdminWebhooksDashboard";
 import AdminDlqDashboard from "@/pages/AdminDlqDashboard";
 import Chat from "@/pages/Chat";
+import Notifications from "@/pages/Notifications";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/chat" element={<Chat />} />
+                <Route path="/notifications" element={<Notifications />} />
                 <Route path="/analytics" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/admin/ai" element={<AdminAI />} />
