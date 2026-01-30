@@ -130,6 +130,38 @@ export function useMetaApps() {
     },
   });
 
+  const subscribePage = useMutation({
+    mutationFn: async (id: string) => {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        throw new Error("Sessione non trovata");
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/meta-subscribe-page`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+        body: JSON.stringify({ meta_app_id: id }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || result.error || "Errore nella sottoscrizione");
+      }
+      return result;
+    },
+    onSuccess: () => {
+      toast.success("Pagina sottoscritta ai webhook leadgen!");
+    },
+    onError: (error: any) => {
+      console.error("Error subscribing page:", error);
+      toast.error(error.message || "Errore nella sottoscrizione della pagina");
+    },
+  });
+
   return {
     metaApps,
     isLoading,
@@ -138,6 +170,7 @@ export function useMetaApps() {
     updateMetaApp,
     deleteMetaApp,
     toggleActive,
+    subscribePage,
   };
 }
 
