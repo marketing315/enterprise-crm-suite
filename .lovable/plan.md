@@ -1,229 +1,156 @@
 
-# Piano: AI Autotagging Pipeline + Gestione Fasi Kanban Avanzata
+
+# Piano: M11 - Analytics Avanzati
 
 ## Panoramica
 
-Questo piano implementa due funzionalità correlate:
-1. **AI Autotagging per Deal**: Suggerimento e applicazione automatica di tag sui deal basandosi su contesto (contatto, lead events, stage)
-2. **Gestione Fasi Pipeline Completa**: Miglioramento dell'editing inline per includere modifica colore
+M11 introduce una suite di analytics avanzati orientati al business e alle decisioni strategiche, complementando le dashboard operative esistenti (AI Metrics, Callcenter KPI, Webhook Monitor).
 
 ---
 
-## Parte 1: AI Autotagging per Deal
+## Nuove Funzionalita
 
-### Obiettivo
+### 1. Dashboard Analytics Unificata
 
-Quando un deal viene creato o cambia stato/stage, l'AI analizza il contesto e suggerisce tag appropriati. L'utente può accettare, rifiutare o modificare i suggerimenti.
+Una nuova pagina `/admin/analytics` che aggrega metriche strategiche in un'unica vista executive.
 
-### Architettura
+**Sezioni:**
 
-```text
-Deal Created/Updated
-         |
-         v
-+--------------------+
-|  trigger_deal_tag  |  (Database Trigger)
-+--------+-----------+
-         |
-         v
-+--------------------+
-|   ai_tag_deals     |  (pg_cron ogni 2 min)
-+--------+-----------+
-         |
-         v
-+--------------------+         +----------------------+
-|  ai-tag-deals      |  <-->   |  Lovable AI Gateway  |
-|  Edge Function     |         |  (Gemini 3 Flash)    |
-+--------+-----------+         +----------------------+
-         |
-         v
-+--------------------+
-|  tag_assignments   |  (con assigned_by='ai', confidence)
-+--------------------+
-```
+| Sezione | Metriche |
+|---------|----------|
+| **Funnel Lead-to-Deal** | Conversion rate per stage, drop-off points, tempo medio per stage |
+| **Revenue Analytics** | Valore pipeline per stage, win rate, deal velocity, valore medio deal |
+| **Lead Source Analysis** | Performance per fonte (Meta, Web, Referral), costo per lead (se disponibile), quality score |
+| **Cohort Analysis** | Retention leads per settimana/mese, lifecycle value |
+| **Forecast** | Proiezione chiusure basata su velocity storica |
 
-### Database Changes
+### 2. Funnel Pipeline Analytics
 
-**1. Nuova tabella coda AI per tag deal**
+Visualizzazione del funnel di conversione con:
 
-```sql
-CREATE TABLE public.ai_tag_deal_jobs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  brand_id UUID NOT NULL REFERENCES brands(id),
-  deal_id UUID NOT NULL REFERENCES deals(id),
-  trigger_reason TEXT NOT NULL, -- 'deal_created', 'stage_changed', 'manual'
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
-  attempts INT DEFAULT 0,
-  max_attempts INT DEFAULT 3,
-  last_error TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ
-);
+- **Conversion Rate per Stage**: % di deal che avanzano da ogni stage
+- **Drop-off Analysis**: Dove si perdono i deal (stage con maggior abbandono)
+- **Stage Duration**: Tempo medio in ogni stage (identificare colli di bottiglia)
+- **Velocity Metrics**: Deal velocity (giorni medi da creazione a chiusura)
 
-CREATE INDEX idx_ai_tag_deal_jobs_pending ON ai_tag_deal_jobs(status, created_at) 
-  WHERE status = 'pending';
-```
+### 3. Lead Source Performance
 
-**2. Trigger per creare job di tagging**
+Dashboard per analizzare le fonti lead:
+
+- **Volume per fonte**: Leads da Meta, Webhook, Manuale
+- **Quality Score**: Conversion rate per fonte
+- **Cost per Lead**: Se integrato con Meta Ads spend
+- **Best Performing Campaigns**: Top campagne/form
+
+### 4. Time-based Analytics
+
+- **Heatmap attivita**: Orari/giorni con piu lead
+- **Seasonality Analysis**: Pattern stagionali
+- **Trend YoY/MoM**: Confronti anno su anno, mese su mese
+
+### 5. Export e Scheduled Reports
+
+- **Export PDF/CSV**: Report esportabili
+- **Scheduled Email**: Report automatici (fase 2)
+
+---
+
+## Architettura Tecnica
+
+### Database: Nuove RPC per Analytics
 
 ```sql
-CREATE OR REPLACE FUNCTION trigger_ai_tag_deal()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Solo se AI mode non è 'off'
-  IF EXISTS (
-    SELECT 1 FROM ai_configs 
-    WHERE brand_id = NEW.brand_id 
-    AND mode != 'off'
-  ) THEN
-    INSERT INTO ai_tag_deal_jobs (brand_id, deal_id, trigger_reason)
-    VALUES (
-      NEW.brand_id, 
-      NEW.id, 
-      CASE 
-        WHEN TG_OP = 'INSERT' THEN 'deal_created'
-        WHEN OLD.current_stage_id IS DISTINCT FROM NEW.current_stage_id THEN 'stage_changed'
-        ELSE 'manual'
-      END
-    )
-    ON CONFLICT DO NOTHING;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Funnel conversion rates
+CREATE FUNCTION get_pipeline_funnel_analytics(
+  p_brand_id UUID,
+  p_from TIMESTAMPTZ,
+  p_to TIMESTAMPTZ
+) RETURNS JSON
 
-CREATE TRIGGER trg_ai_tag_deal
-  AFTER INSERT OR UPDATE OF current_stage_id ON deals
-  FOR EACH ROW
-  EXECUTE FUNCTION trigger_ai_tag_deal();
+-- Lead source performance
+CREATE FUNCTION get_lead_source_analytics(
+  p_brand_id UUID,
+  p_from TIMESTAMPTZ,
+  p_to TIMESTAMPTZ
+) RETURNS JSON
+
+-- Deal velocity metrics
+CREATE FUNCTION get_deal_velocity_metrics(
+  p_brand_id UUID,
+  p_from TIMESTAMPTZ,
+  p_to TIMESTAMPTZ
+) RETURNS JSON
 ```
 
-**3. RPC per applicare tag suggeriti**
-
-```sql
-CREATE OR REPLACE FUNCTION apply_ai_deal_tags(
-  p_deal_id UUID,
-  p_tag_ids UUID[],
-  p_confidence FLOAT DEFAULT 0.8
-)
-RETURNS INTEGER AS $$
-DECLARE
-  v_brand_id UUID;
-  v_count INTEGER := 0;
-BEGIN
-  SELECT brand_id INTO v_brand_id FROM deals WHERE id = p_deal_id;
-  
-  FOREACH tag_id IN ARRAY p_tag_ids LOOP
-    INSERT INTO tag_assignments (brand_id, tag_id, deal_id, assigned_by, confidence)
-    VALUES (v_brand_id, tag_id, p_deal_id, 'ai', p_confidence)
-    ON CONFLICT (tag_id, deal_id) DO NOTHING;
-    v_count := v_count + 1;
-  END LOOP;
-  
-  RETURN v_count;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-### Edge Function `ai-tag-deals`
+### Struttura Dati Funnel
 
 ```typescript
-// supabase/functions/ai-tag-deals/index.ts
+interface FunnelStage {
+  stage_id: string;
+  stage_name: string;
+  stage_color: string;
+  deals_entered: number;
+  deals_exited_to_next: number;
+  deals_won: number;
+  deals_lost: number;
+  conversion_rate: number; // % che avanza
+  avg_days_in_stage: number;
+}
 
-const SYSTEM_PROMPT = `Sei un assistente AI per tagging automatico di deal CRM.
-Analizza il contesto del deal (contatto, lead events, stage attuale) e suggerisci tag appropriati.
-
-REGOLE:
-1. Suggerisci 1-5 tag pertinenti
-2. Usa tag esistenti nel brand (forniti nel contesto)
-3. Prioritizza tag specifici rispetto a generici
-4. Considera: interesse prodotto, fonte lead, comportamento cliente, fase pipeline
-
-OUTPUT: Array di nomi tag esatti da applicare`;
-
-// Tool per output strutturato
-const TAG_SUGGESTION_TOOL = {
-  name: "suggest_deal_tags",
-  parameters: {
-    type: "object",
-    properties: {
-      tags_to_apply: {
-        type: "array",
-        items: { type: "string" },
-        description: "Nomi esatti dei tag da applicare"
-      },
-      rationale: {
-        type: "string",
-        description: "Motivazione breve"
-      }
-    },
-    required: ["tags_to_apply", "rationale"]
-  }
-};
+interface FunnelAnalytics {
+  stages: FunnelStage[];
+  total_deals: number;
+  overall_win_rate: number;
+  avg_deal_velocity_days: number;
+  total_pipeline_value: number;
+}
 ```
 
-### Frontend: Indicatore Tag AI
+### Struttura Lead Source
 
-Nel `KanbanCard` e `DealDetailSheet`, mostrare badge speciale per tag applicati da AI:
-
-```tsx
-// In EntityTagList - badge con icona sparkle per tag AI
-{assignment.assigned_by === 'ai' && (
-  <Sparkles className="h-3 w-3 text-primary" />
-)}
+```typescript
+interface LeadSourceMetrics {
+  source: string; // 'meta', 'webhook', 'manual'
+  source_name: string; // Nome specifico
+  leads_count: number;
+  deals_created: number;
+  deals_won: number;
+  total_value_won: number;
+  conversion_rate: number;
+  avg_deal_value: number;
+}
 ```
 
 ---
 
-## Parte 2: Gestione Fasi Pipeline Avanzata
+## UI/UX Design
 
-### Miglioramenti UI
+### Pagina AdminAnalytics
 
-**1. Editing colore inline nel SortableStageItem**
-
-Aggiungere popover per selezione colore quando si edita una fase:
-
-```tsx
-// In SortableStageItem.tsx
-{isEditing && (
-  <Popover>
-    <PopoverTrigger asChild>
-      <button 
-        className="w-6 h-6 rounded-full border-2"
-        style={{ backgroundColor: editColor }}
-      />
-    </PopoverTrigger>
-    <PopoverContent className="w-auto p-2">
-      <div className="grid grid-cols-5 gap-1">
-        {STAGE_COLORS.map((c) => (
-          <button
-            key={c.value}
-            className={cn("w-6 h-6 rounded-full", editColor === c.value && "ring-2")}
-            style={{ backgroundColor: c.value }}
-            onClick={() => setEditColor(c.value)}
-          />
-        ))}
-      </div>
-    </PopoverContent>
-  </Popover>
-)}
+```text
++------------------------------------------+
+|  📊 Analytics Avanzati     [Date Range]  |
++------------------------------------------+
+|  KPI Cards (4 principali)                |
+|  [Pipeline Value] [Win Rate] [Velocity] [Leads] |
++------------------------------------------+
+|  [Tabs: Funnel | Sources | Trends | Forecast]   |
++------------------------------------------+
+|  Tab Content:                            |
+|  - Funnel: Sankey/Funnel chart           |
+|  - Sources: Bar chart + table            |
+|  - Trends: Line charts                   |
+|  - Forecast: Projection chart            |
++------------------------------------------+
 ```
 
-**2. Salvataggio colore nella mutazione**
+### Componenti Grafici
 
-```tsx
-const handleSave = async () => {
-  if (editName.trim() !== stage.name || editColor !== stage.color) {
-    await updateStage.mutateAsync({ 
-      stageId: stage.id, 
-      name: editName,
-      color: editColor,
-    });
-  }
-  setIsEditing(false);
-};
-```
+- **Funnel Chart**: Visualizzazione stages con conversion rates
+- **Sankey Diagram**: Flusso deals tra stages (opzionale, fase 2)
+- **Bar Chart orizzontale**: Source comparison
+- **Area Chart stacked**: Trend temporali
+- **KPI Cards animati**: Metriche principali con delta vs periodo precedente
 
 ---
 
@@ -231,59 +158,82 @@ const handleSave = async () => {
 
 | File | Descrizione |
 |------|-------------|
-| `supabase/functions/ai-tag-deals/index.ts` | Edge function per suggerimento tag AI |
-| `src/hooks/useAIDealTags.ts` | Hook per gestione tag AI sui deal |
+| `src/pages/AdminAnalytics.tsx` | Pagina principale analytics |
+| `src/hooks/useAdvancedAnalytics.ts` | Hook per fetch dati analytics |
+| `src/components/admin/analytics/FunnelChart.tsx` | Visualizzazione funnel |
+| `src/components/admin/analytics/SourcePerformanceChart.tsx` | Performance fonti |
+| `src/components/admin/analytics/TrendComparisonChart.tsx` | Confronti temporali |
+| `src/components/admin/analytics/AnalyticsKpiCards.tsx` | KPI cards principali |
+| `src/components/admin/analytics/ForecastChart.tsx` | Proiezione revenue |
+| Migrazione SQL | RPC functions per analytics |
 
 ## File da Modificare
 
 | File | Modifiche |
 |------|-----------|
-| `src/components/settings/pipeline/SortableStageItem.tsx` | Editing colore inline |
-| `src/components/tags/EntityTagList.tsx` | Badge sparkle per tag AI |
-| `src/components/tags/TagBadge.tsx` | Prop per indicare origine AI |
-| `supabase/config.toml` | Registrare nuova edge function |
-| Nuova migrazione SQL | Tabella jobs, trigger, RPC |
+| `src/App.tsx` | Aggiungere route `/admin/analytics` |
+| `src/components/layout/MainLayout.tsx` | Sostituire link Analytics generico con nuova pagina |
+| `src/components/dashboard/DashboardMilestones.tsx` | Aggiornare M11 a "current" |
 
 ---
 
-## Flusso Utente
+## Metriche Calcolate
 
-### AI Autotagging
+### Win Rate
+```sql
+win_rate = deals_won / (deals_won + deals_lost) * 100
+```
 
-1. Utente crea un deal o lo sposta di stage
-2. Trigger DB crea job nella coda
-3. Cron job (ogni 2 min) processa la coda
-4. Edge function analizza contesto e suggerisce tag
-5. Se AI mode = `auto_apply`: tag applicati automaticamente con badge "AI"
-6. Se AI mode = `suggest`: notifica con suggerimenti (futura implementazione)
-7. Utente puo rimuovere tag AI come qualsiasi altro tag
+### Deal Velocity
+```sql
+avg_velocity = AVG(closed_at - created_at) WHERE status IN ('won', 'lost')
+```
 
-### Gestione Fasi
+### Funnel Conversion
+```sql
+stage_conversion = deals_moved_to_next_stage / deals_entered_stage * 100
+```
 
-1. Admin va in Impostazioni > Pipeline
-2. Click su icona matita di una fase
-3. Modifica nome e/o click sul pallino colore
-4. Seleziona nuovo colore dal popover
-5. Click su check per salvare
+### Lead Quality Score
+```sql
+quality_score = (deals_won_from_source / leads_from_source) * 100
+```
 
 ---
 
-## Configurazione AI Mode
+## Navigazione
 
-Riutilizza la configurazione esistente in `ai_configs`:
+Il menu Admin verra aggiornato:
 
-| Mode | Comportamento Tagging Deal |
-|------|---------------------------|
-| `off` | Nessun autotagging |
-| `suggest` | Crea notifica con suggerimenti (fase 2) |
-| `auto_apply` | Applica tag automaticamente |
+| Attuale | Nuovo |
+|---------|-------|
+| Analytics (link a Dashboard) | Analytics Avanzati (nuova pagina) |
+
+---
+
+## Fasi di Implementazione
+
+### Fase 1 (Core)
+1. Migrazione SQL con RPC analytics
+2. Hook `useAdvancedAnalytics`
+3. Pagina `AdminAnalytics` con tabs
+4. Funnel Chart e Source Performance
+5. KPI Cards con delta
+
+### Fase 2 (Enhancement)
+1. Forecast/proiezioni
+2. Sankey diagram
+3. Export PDF
+4. Heatmap attivita
 
 ---
 
 ## Risultato Atteso
 
-1. Deal ricevono tag automatici basati su contesto (contatto, lead, stage)
-2. Tag AI identificabili visivamente (icona sparkle)
-3. Admin possono modificare colore fasi pipeline con un click
-4. Sistema configurabile per brand tramite AI mode esistente
-5. Audit trail completo tramite `assigned_by='ai'` e `confidence`
+1. Dashboard analytics unificata accessibile da Admin > Analytics
+2. Visualizzazione funnel pipeline con conversion rates
+3. Analisi performance fonti lead
+4. Trend temporali con confronti (WoW, MoM)
+5. KPI strategici: Win Rate, Deal Velocity, Pipeline Value
+6. Aggiornamento roadmap con M11 come milestone corrente
+
