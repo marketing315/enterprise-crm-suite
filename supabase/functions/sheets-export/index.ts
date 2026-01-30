@@ -564,46 +564,6 @@ Deno.serve(async (req: Request) => {
 
     const leadEvent = event as LeadEventRow;
 
-    // DEDUPLICATION: Skip if this contact already has an exported event
-    // Only export the FIRST event per contact
-    if (leadEvent.contact_id && !force) {
-      // Get all other lead events for this contact
-      const { data: siblingEvents } = await supabaseAdmin
-        .from("lead_events")
-        .select("id")
-        .eq("contact_id", leadEvent.contact_id)
-        .neq("id", lead_event_id);
-
-      if (siblingEvents && siblingEvents.length > 0) {
-        const siblingIds = siblingEvents.map(e => e.id);
-        const { data: exportedSiblings } = await supabaseAdmin
-          .from("sheets_export_logs")
-          .select("lead_event_id")
-          .eq("status", "success")
-          .in("lead_event_id", siblingIds)
-          .limit(1);
-
-        if (exportedSiblings && exportedSiblings.length > 0) {
-          console.log(`Contact ${leadEvent.contact_id} already has exported event, skipping ${lead_event_id}`);
-          
-          // Mark this one as skipped (not failed)
-          await supabaseAdmin
-            .from("sheets_export_logs")
-            .upsert({
-              lead_event_id,
-              brand_id: leadEvent.brand_id,
-              status: "skipped",
-              error: "contact_already_exported",
-            }, { onConflict: "lead_event_id" });
-
-          return new Response(
-            JSON.stringify({ success: true, skipped: true, reason: "contact_already_exported" }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-    }
-
     // Get brand name
     const { data: brand } = await supabaseAdmin
       .from("brands")
