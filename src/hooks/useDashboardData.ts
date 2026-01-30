@@ -7,7 +7,7 @@ import { useBrandFilter } from "@/hooks/useBrandFilter";
 export function useDashboardData() {
   const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
-  // KPI: Lead oggi
+  // KPI: Lead oggi (contatti unici, non eventi)
   const leadsToday = useQuery({
     queryKey: ["dashboard-leads-today", getQueryKeyBrand()],
     queryFn: async () => {
@@ -15,11 +15,13 @@ export function useDashboardData() {
       if (brandIds.length === 0) return 0;
       const today = new Date();
 
+      // Get unique contact_ids from lead_events for today
       let query = supabase
         .from("lead_events")
-        .select("*", { count: "exact", head: true })
+        .select("contact_id")
         .gte("received_at", startOfDay(today).toISOString())
-        .lte("received_at", endOfDay(today).toISOString());
+        .lte("received_at", endOfDay(today).toISOString())
+        .not("contact_id", "is", null);
 
       if (brandIds.length === 1) {
         query = query.eq("brand_id", brandIds[0]);
@@ -27,15 +29,18 @@ export function useDashboardData() {
         query = query.in("brand_id", brandIds);
       }
 
-      const { count, error } = await query;
+      const { data, error } = await query;
       if (error) throw error;
-      return count || 0;
+      
+      // Count unique contacts
+      const uniqueContacts = new Set(data?.map(e => e.contact_id) || []);
+      return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 
-  // KPI: Lead ultimi 7 giorni
+  // KPI: Lead ultimi 7 giorni (contatti unici, non eventi)
   const leadsWeek = useQuery({
     queryKey: ["dashboard-leads-week", getQueryKeyBrand()],
     queryFn: async () => {
@@ -45,8 +50,9 @@ export function useDashboardData() {
 
       let query = supabase
         .from("lead_events")
-        .select("*", { count: "exact", head: true })
-        .gte("received_at", weekAgo.toISOString());
+        .select("contact_id")
+        .gte("received_at", weekAgo.toISOString())
+        .not("contact_id", "is", null);
 
       if (brandIds.length === 1) {
         query = query.eq("brand_id", brandIds[0]);
@@ -54,9 +60,12 @@ export function useDashboardData() {
         query = query.in("brand_id", brandIds);
       }
 
-      const { count, error } = await query;
+      const { data, error } = await query;
       if (error) throw error;
-      return count || 0;
+      
+      // Count unique contacts
+      const uniqueContacts = new Set(data?.map(e => e.contact_id) || []);
+      return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
     refetchInterval: 60000,
@@ -206,12 +215,13 @@ export function useDashboardData() {
         const dateStr = format(date, "yyyy-MM-dd");
         const label = format(date, "EEE", { locale: it });
 
-        // Count leads for this day
+        // Count unique contacts for this day (not events)
         let leadsQuery = supabase
           .from("lead_events")
-          .select("*", { count: "exact", head: true })
+          .select("contact_id")
           .gte("received_at", startOfDay(date).toISOString())
-          .lte("received_at", endOfDay(date).toISOString());
+          .lte("received_at", endOfDay(date).toISOString())
+          .not("contact_id", "is", null);
 
         if (brandIds.length === 1) {
           leadsQuery = leadsQuery.eq("brand_id", brandIds[0]);
@@ -219,7 +229,8 @@ export function useDashboardData() {
           leadsQuery = leadsQuery.in("brand_id", brandIds);
         }
 
-        const { count: leadsCount } = await leadsQuery;
+        const { data: leadsData } = await leadsQuery;
+        const leadsCount = new Set(leadsData?.map(e => e.contact_id) || []).size;
 
         // Count tickets for this day
         let ticketsQuery = supabase
@@ -239,7 +250,7 @@ export function useDashboardData() {
         days.push({
           date: dateStr,
           label: label.charAt(0).toUpperCase() + label.slice(1),
-          leads: leadsCount || 0,
+          leads: leadsCount,
           tickets: ticketsCount || 0,
         });
       }
