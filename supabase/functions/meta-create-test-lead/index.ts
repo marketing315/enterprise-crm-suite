@@ -91,14 +91,10 @@ Deno.serve(async (req) => {
         });
       }
 
-      const testLeadUrl = `https://graph.facebook.com/v19.0/${page_id}/leadgen_test_leads`;
+      const testLeadUrl = `https://graph.facebook.com/v19.0/${form_id}/test_leads?access_token=${access_token}`;
       const testLeadRes = await fetch(testLeadUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          form_id: form_id,
-          access_token: access_token,
-        }),
       });
       const testLeadData = await testLeadRes.json();
 
