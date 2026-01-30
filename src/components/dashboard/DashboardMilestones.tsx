@@ -9,14 +9,18 @@ interface Milestone {
 }
 
 const milestones: Milestone[] = [
-  { id: "m0", label: "Setup Fondamentale", status: "completed" },
-  { id: "m1", label: "Webhook Inbound & Contatti", status: "completed" },
-  { id: "m2", label: "Deal & Pipeline", status: "completed" },
-  { id: "m5", label: "Sistema Ticketing + SLA", status: "completed" },
-  { id: "m8", label: "Outbound Webhooks", status: "completed" },
-  { id: "m9", label: "Google Sheets Export", status: "completed" },
-  { id: "m10", label: "Meta Lead Ads", status: "current" },
-  { id: "m11", label: "Analytics Avanzati", status: "upcoming" },
+  { id: "m1", label: "M1 – Webhook Inbound & Contatti", status: "completed" },
+  { id: "m2", label: "M2 – Deal & Pipeline", status: "completed" },
+  { id: "m3", label: "M3 – Gestione Eventi", status: "completed" },
+  { id: "m4", label: "M4 – AI Classification", status: "completed" },
+  { id: "m5", label: "M5 – Sistema Ticketing + SLA", status: "completed" },
+  { id: "m6", label: "M6 – Appuntamenti", status: "completed" },
+  { id: "m7", label: "M7 – Tag & Filtri", status: "completed" },
+  { id: "m8", label: "M8 – Outbound Webhooks", status: "completed" },
+  { id: "m9", label: "M9 – Google Sheets Export", status: "completed" },
+  { id: "m10", label: "M10 – Meta Lead Ads", status: "current" },
+  { id: "m11", label: "M11 – Analytics Avanzati", status: "upcoming" },
+  { id: "m12", label: "M12 – Mobile & PWA", status: "upcoming" },
 ];
 
 export function DashboardMilestones() {
