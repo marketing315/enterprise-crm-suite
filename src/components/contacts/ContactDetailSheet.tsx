@@ -65,7 +65,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 {contact.contact_phones?.map((phone) => (
                   <div key={phone.id} className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{phone.phone_raw}</span>
+                    <span>{phone.phone_normalized}</span>
                     {phone.is_primary && (
                       <Badge variant="secondary" className="text-xs">Principale</Badge>
                     )}
