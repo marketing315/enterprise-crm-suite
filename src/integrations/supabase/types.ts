@@ -1977,6 +1977,10 @@ export type Database = {
         Args: { p_source_id: string }
         Returns: boolean
       }
+      correct_contact_phone: {
+        Args: { p_contact_id: string; p_new_phone: string; p_old_phone: string }
+        Returns: Json
+      }
       create_appointment: {
         Args: {
           p_address?: string
