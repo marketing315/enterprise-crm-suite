@@ -6,6 +6,7 @@ import { DashboardKpiGrid, KpiItem } from '@/components/dashboard/DashboardKpiGr
 import { DashboardTrendChart } from '@/components/dashboard/DashboardTrendChart';
 import { DashboardMilestones } from '@/components/dashboard/DashboardMilestones';
 import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemStatus';
+import { TutorialSheet } from '@/components/dashboard/TutorialSheet';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function Dashboard() {
@@ -93,25 +94,28 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
-          {isAllBrandsSelected && <Globe className="h-6 w-6 text-primary" />}
-          Dashboard
-        </h1>
-        <p className="text-sm md:text-base text-muted-foreground">
-          {isAllBrandsSelected ? (
-            <span>Vista globale di tutti i brand</span>
-          ) : (
-            <>
-              Benvenuto in {currentBrand?.name}
-              {currentRole && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                  {currentRole.role}
-                </span>
-              )}
-            </>
-          )}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            {isAllBrandsSelected && <Globe className="h-6 w-6 text-primary" />}
+            Dashboard
+          </h1>
+          <p className="text-sm md:text-base text-muted-foreground">
+            {isAllBrandsSelected ? (
+              <span>Vista globale di tutti i brand</span>
+            ) : (
+              <>
+                Benvenuto in {currentBrand?.name}
+                {currentRole && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    {currentRole.role}
+                  </span>
+                )}
+              </>
+            )}
+          </p>
+        </div>
+        <TutorialSheet />
       </div>
 
       {/* Primary KPIs */}
