@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContactStatusBadge } from './ContactStatusBadge';
 import { EntityTagList } from '@/components/tags/EntityTagList';
+import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { useContact, useLeadEvents } from '@/hooks/useContacts';
 
 interface ContactDetailSheetProps {
@@ -98,12 +99,12 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 </div>
               </div>
 
-              {/* Tags */}
+              {/* CRM Tags */}
               <Separator />
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
                   <Tags className="h-4 w-4" />
-                  Tag
+                  Tag CRM
                 </h3>
                 <EntityTagList 
                   entityType="contact" 
@@ -111,6 +112,14 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   scope="contact"
                 />
               </div>
+
+              {/* Website Tags (from webhooks) */}
+              {events && events.length > 0 && (
+                <>
+                  <Separator />
+                  <WebsiteTagsSection events={events} />
+                </>
+              )}
 
               {contact.notes && (
                 <>
