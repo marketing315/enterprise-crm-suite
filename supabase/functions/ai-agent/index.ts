@@ -681,12 +681,15 @@ async function getTrendComparison(supabase: SupabaseClient, brandId: string, met
 
   switch (metric) {
     case "leads": {
-      const [current, previous] = await Promise.all([
-        supabase.from("lead_events").select("id", { count: "exact" }).eq("brand_id", brandId).gte("received_at", periods.current.from).lte("received_at", periods.current.to),
-        supabase.from("lead_events").select("id", { count: "exact" }).eq("brand_id", brandId).gte("received_at", periods.previous.from).lte("received_at", periods.previous.to),
+      // Count unique contacts, not events
+      const [currentData, previousData] = await Promise.all([
+        supabase.from("lead_events").select("contact_id").eq("brand_id", brandId).gte("received_at", periods.current.from).lte("received_at", periods.current.to).not("contact_id", "is", null),
+        supabase.from("lead_events").select("contact_id").eq("brand_id", brandId).gte("received_at", periods.previous.from).lte("received_at", periods.previous.to).not("contact_id", "is", null),
       ]);
-      currentCount = current.count || 0;
-      previousCount = previous.count || 0;
+      const currentContacts = new Set((currentData.data || []).map((e: { contact_id: string }) => e.contact_id));
+      const previousContacts = new Set((previousData.data || []).map((e: { contact_id: string }) => e.contact_id));
+      currentCount = currentContacts.size;
+      previousCount = previousContacts.size;
       break;
     }
     case "tickets": {
