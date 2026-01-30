@@ -38,6 +38,10 @@ const roleLabels: Record<AppRole, string> = {
   ceo: "CEO",
   callcenter: "Call Center",
   sales: "Sales",
+  responsabile_venditori: "Resp. Venditori",
+  responsabile_callcenter: "Resp. Call Center",
+  venditore: "Venditore",
+  operatore_callcenter: "Op. Call Center",
 };
 
 const roleColors: Record<AppRole, "default" | "secondary" | "destructive" | "outline"> = {
@@ -45,6 +49,10 @@ const roleColors: Record<AppRole, "default" | "secondary" | "destructive" | "out
   ceo: "default",
   callcenter: "secondary",
   sales: "outline",
+  responsabile_venditori: "default",
+  responsabile_callcenter: "default",
+  venditore: "outline",
+  operatore_callcenter: "secondary",
 };
 
 export function UserManagementCard({ brands }: UserManagementCardProps) {

@@ -2599,6 +2599,7 @@ export type Database = {
           can_access_children: boolean
           created_at: string
           id: string
+          is_active: boolean
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -2607,6 +2608,7 @@ export type Database = {
           can_access_children?: boolean
           created_at?: string
           id?: string
+          is_active?: boolean
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -2615,6 +2617,7 @@ export type Database = {
           can_access_children?: boolean
           created_at?: string
           id?: string
+          is_active?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -2838,6 +2841,20 @@ export type Database = {
         }
         Returns: Json
       }
+      can_manage_role: {
+        Args: {
+          manager_role: Database["public"]["Enums"]["app_role"]
+          target_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
+      can_manage_role_in_brand: {
+        Args: {
+          p_brand_id: string
+          target_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       check_all_brands_sla_breaches: { Args: never; Returns: Json }
       check_and_mark_sla_breaches: {
         Args: { p_brand_id: string }
@@ -2951,6 +2968,10 @@ export type Database = {
         }
         Returns: string
       }
+      current_brand_role: {
+        Args: { p_brand_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       deactivate_pipeline_stage: {
         Args: { p_fallback_stage_id: string; p_stage_id: string }
         Returns: Json
@@ -3049,6 +3070,13 @@ export type Database = {
       get_ai_quality_metrics: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
+      }
+      get_assignable_roles: {
+        Args: { p_brand_id: string }
+        Returns: {
+          role_label: string
+          role_value: Database["public"]["Enums"]["app_role"]
+        }[]
       }
       get_brand_operators: {
         Args: { p_brand_id: string }
@@ -3160,6 +3188,10 @@ export type Database = {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
       }
+      get_role_level: {
+        Args: { p_role: Database["public"]["Enums"]["app_role"] }
+        Returns: number
+      }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }
         Returns: {
@@ -3255,6 +3287,23 @@ export type Database = {
           name: string
           updated_at: string
           url: string
+        }[]
+      }
+      list_team_members: {
+        Args: {
+          p_active_only?: boolean
+          p_brand_id: string
+          p_role_filter?: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: {
+          can_edit: boolean
+          created_at: string
+          email: string
+          full_name: string
+          is_active: boolean
+          membership_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
         }[]
       }
       list_webhook_deliveries: {
@@ -3488,6 +3537,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_team_member: {
+        Args: {
+          p_is_active?: boolean
+          p_membership_id: string
+          p_new_role?: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: undefined
+      }
       upsert_clinical_topics_from_strings: {
         Args: {
           p_brand_id: string
@@ -3536,7 +3593,15 @@ export type Database = {
     }
     Enums: {
       ai_mode: "off" | "suggest" | "auto_apply"
-      app_role: "admin" | "ceo" | "callcenter" | "sales"
+      app_role:
+        | "admin"
+        | "ceo"
+        | "callcenter"
+        | "sales"
+        | "responsabile_venditori"
+        | "responsabile_callcenter"
+        | "operatore_callcenter"
+        | "venditore"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -3777,7 +3842,16 @@ export const Constants = {
   public: {
     Enums: {
       ai_mode: ["off", "suggest", "auto_apply"],
-      app_role: ["admin", "ceo", "callcenter", "sales"],
+      app_role: [
+        "admin",
+        "ceo",
+        "callcenter",
+        "sales",
+        "responsabile_venditori",
+        "responsabile_callcenter",
+        "operatore_callcenter",
+        "venditore",
+      ],
       appointment_status: [
         "scheduled",
         "confirmed",

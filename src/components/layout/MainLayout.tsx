@@ -46,6 +46,7 @@ import {
   AlertTriangle,
   MessageSquare,
   Brain,
+  UsersRound,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -62,6 +63,7 @@ const menuItems = [
 ];
 
 const adminMenuItems = [
+  { icon: UsersRound, label: 'Team', path: '/team' },
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
   { icon: Brain, label: 'Gestione AI', path: '/admin/ai' },
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
