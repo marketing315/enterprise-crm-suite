@@ -1,6 +1,14 @@
 // CRM Enterprise Multi-Brand - TypeScript Types
 
-export type AppRole = 'admin' | 'ceo' | 'callcenter' | 'sales';
+export type AppRole = 
+  | 'admin' 
+  | 'ceo' 
+  | 'responsabile_venditori' 
+  | 'responsabile_callcenter' 
+  | 'venditore' 
+  | 'operatore_callcenter'
+  | 'callcenter' 
+  | 'sales';
 
 export type ContactStatus = 'new' | 'active' | 'qualified' | 'unqualified' | 'archived';
 
