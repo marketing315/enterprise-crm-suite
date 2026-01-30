@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.meta-subscribe-page]
 verify_jwt = false
+
+[functions.meta-create-test-lead]
+verify_jwt = false
