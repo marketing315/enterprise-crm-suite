@@ -44,8 +44,10 @@ import {
   TrendingUp,
   Webhook,
   AlertTriangle,
+  MessageSquare,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -54,6 +56,7 @@ const menuItems = [
   { icon: Kanban, label: 'Pipeline', path: '/pipeline' },
   { icon: Calendar, label: 'Appuntamenti', path: '/appointments' },
   { icon: Ticket, label: 'Ticket', path: '/tickets' },
+  { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
 ];
 
@@ -201,6 +204,7 @@ export function MainLayout() {
           <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0">
             <SidebarTrigger />
             <div className="flex-1" />
+            <NotificationBell />
             {currentBrand && (
               <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
                 <Building2 className="h-4 w-4 hidden sm:block" />
