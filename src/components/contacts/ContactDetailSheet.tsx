@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, FileJson, Tags } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -9,15 +9,28 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ContactStatusBadge } from './ContactStatusBadge';
 import { CustomFieldsSection } from './CustomFieldsSection';
 import { EntityTagList } from '@/components/tags/EntityTagList';
 import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
-import { useContact, useLeadEvents } from '@/hooks/useContacts';
+import { useContact, useLeadEvents, useUpdateContact } from '@/hooks/useContacts';
+import { toast } from 'sonner';
+import type { ContactStatus } from '@/types/database';
 
 interface ContactDetailSheetProps {
   contactId: string | null;
@@ -25,18 +38,93 @@ interface ContactDetailSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface EditFormData {
+  first_name: string;
+  last_name: string;
+  email: string;
+  city: string;
+  cap: string;
+  address: string;
+  notes: string;
+  status: ContactStatus;
+}
+
 export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDetailSheetProps) {
   const [conflictContactId, setConflictContactId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<EditFormData>({
+    first_name: '',
+    last_name: '',
+    email: '',
+    city: '',
+    cap: '',
+    address: '',
+    notes: '',
+    status: 'new',
+  });
+
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
+  const updateContact = useUpdateContact();
+
+  // Initialize form data when contact loads
+  useEffect(() => {
+    if (contact) {
+      setFormData({
+        first_name: contact.first_name || '',
+        last_name: contact.last_name || '',
+        email: contact.email || '',
+        city: contact.city || '',
+        cap: contact.cap || '',
+        address: contact.address || '',
+        notes: contact.notes || '',
+        status: contact.status || 'new',
+      });
+    }
+  }, [contact]);
+
+  // Reset editing state when sheet closes
+  useEffect(() => {
+    if (!open) {
+      setIsEditing(false);
+    }
+  }, [open]);
 
   // Handle phone conflict navigation
   const handlePhoneConflict = (conflictId: string) => {
     setConflictContactId(conflictId);
-    // Could navigate to conflicting contact or show merge UI
-    // For now, just close and the parent can handle navigation
     onOpenChange(false);
-    // Parent component can listen to this via a callback if needed
+  };
+
+  const handleSave = async () => {
+    if (!contact?.id) return;
+
+    try {
+      await updateContact.mutateAsync({
+        id: contact.id,
+        updates: formData,
+      });
+      toast.success('Contatto aggiornato');
+      setIsEditing(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Errore durante il salvataggio');
+    }
+  };
+
+  const handleCancel = () => {
+    if (contact) {
+      setFormData({
+        first_name: contact.first_name || '',
+        last_name: contact.last_name || '',
+        email: contact.email || '',
+        city: contact.city || '',
+        cap: contact.cap || '',
+        address: contact.address || '',
+        notes: contact.notes || '',
+        status: contact.status || 'new',
+      });
+    }
+    setIsEditing(false);
   };
 
   const getFullName = () => {
@@ -45,11 +133,37 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     return parts.length > 0 ? parts.join(' ') : 'Senza nome';
   };
 
+  const STATUS_OPTIONS: { value: ContactStatus; label: string }[] = [
+    { value: 'new', label: 'Nuovo' },
+    { value: 'active', label: 'Attivo' },
+    { value: 'qualified', label: 'Qualificato' },
+    { value: 'unqualified', label: 'Non qualificato' },
+    { value: 'archived', label: 'Archiviato' },
+  ];
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
+        <SheetHeader className="flex flex-row items-center justify-between">
           <SheetTitle>Dettaglio Contatto</SheetTitle>
+          {contact && !isEditing && (
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4 mr-1" />
+              Modifica
+            </Button>
+          )}
+          {isEditing && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCancel}>
+                <X className="h-4 w-4 mr-1" />
+                Annulla
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={updateContact.isPending}>
+                <Save className="h-4 w-4 mr-1" />
+                Salva
+              </Button>
+            </div>
+          )}
         </SheetHeader>
 
         {contactLoading ? (
@@ -61,13 +175,110 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         ) : contact ? (
           <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
             <div className="space-y-6">
-              {/* Header */}
-              <div>
-                <h2 className="text-2xl font-semibold">{getFullName()}</h2>
-                <div className="mt-2">
-                  <ContactStatusBadge status={contact.status} />
+              {/* Header / Edit Form */}
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="first_name">Nome</Label>
+                      <Input
+                        id="first_name"
+                        value={formData.first_name}
+                        onChange={(e) => setFormData((p) => ({ ...p, first_name: e.target.value }))}
+                        placeholder="Nome"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="last_name">Cognome</Label>
+                      <Input
+                        id="last_name"
+                        value={formData.last_name}
+                        onChange={(e) => setFormData((p) => ({ ...p, last_name: e.target.value }))}
+                        placeholder="Cognome"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="email@esempio.com"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="city">Città</Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => setFormData((p) => ({ ...p, city: e.target.value }))}
+                        placeholder="Città"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cap">CAP</Label>
+                      <Input
+                        id="cap"
+                        value={formData.cap}
+                        onChange={(e) => setFormData((p) => ({ ...p, cap: e.target.value }))}
+                        placeholder="00000"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="address">Indirizzo</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
+                      placeholder="Via, numero civico"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="status">Stato</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(v) => setFormData((p) => ({ ...p, status: v as ContactStatus }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona stato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="notes">Note</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+                      placeholder="Note sul contatto..."
+                      rows={3}
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <h2 className="text-2xl font-semibold">{getFullName()}</h2>
+                  <div className="mt-2">
+                    <ContactStatusBadge status={contact.status} />
+                  </div>
+                </div>
+              )}
 
               <Separator />
 
