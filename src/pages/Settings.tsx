@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -8,6 +8,7 @@ import { AdminManagement } from "@/components/settings/AdminManagement";
 import { MetaAppsSettings } from "@/components/settings/meta/MetaAppsSettings";
 import { PipelineStagesSettings } from "@/components/settings/pipeline/PipelineStagesSettings";
 import { CustomFieldsSettings } from "@/components/settings/CustomFieldsSettings";
+import { NotificationPreferencesSettings } from "@/components/settings/NotificationPreferencesSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -72,6 +73,10 @@ export default function Settings() {
               <Tags className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span>Tag</span>
             </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-1.5 px-3 text-xs md:text-sm">
+              <Bell className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span>Notifiche</span>
+            </TabsTrigger>
             {isBrandAdmin && (
               <TabsTrigger value="webhooks" className="gap-1.5 px-3 text-xs md:text-sm" data-testid="webhooks-settings-tab">
                 <Webhook className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -118,6 +123,10 @@ export default function Settings() {
 
         <TabsContent value="tags" className="space-y-4">
           <TagManager />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <NotificationPreferencesSettings />
         </TabsContent>
 
         {isBrandAdmin && (

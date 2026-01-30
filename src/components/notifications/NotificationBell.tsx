@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +10,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import { Link, useNavigate } from "react-router-dom";
 import {
   useNotifications,
   useUnreadNotificationCount,
@@ -19,6 +20,14 @@ import {
 } from "@/hooks/useNotifications";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const entityRoutes: Record<string, (id: string) => string> = {
+  ticket: (id) => `/tickets?open=${id}`,
+  contact: (id) => `/contacts?open=${id}`,
+  deal: (id) => `/pipeline?deal=${id}`,
+  appointment: (id) => `/appointments?open=${id}`,
+  lead_event: (id) => `/events?event=${id}`,
+};
 
 const notificationTypeLabels: Record<string, string> = {
   lead_event_created: "Nuovo Lead",
@@ -44,6 +53,7 @@ const notificationTypeColors: Record<string, string> = {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const { data: notifications = [], isLoading } = useNotifications(30);
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const markRead = useMarkNotificationsRead();
@@ -70,6 +80,18 @@ export function NotificationBell() {
       }
     }
   }, [open, notifications]);
+
+  const handleNotificationClick = (notification: Notification) => {
+    setOpen(false);
+    
+    // Navigate to entity if available
+    if (notification.entity_type && notification.entity_id) {
+      const routeBuilder = entityRoutes[notification.entity_type];
+      if (routeBuilder) {
+        navigate(routeBuilder(notification.entity_id));
+      }
+    }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -118,20 +140,42 @@ export function NotificationBell() {
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
+                  onClick={() => handleNotificationClick(notification)}
                 />
               ))}
             </div>
           )}
         </ScrollArea>
+        <div className="border-t p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-center text-xs"
+            asChild
+            onClick={() => setOpen(false)}
+          >
+            <Link to="/notifications">
+              Vedi tutte le notifiche
+              <ChevronRight className="h-3 w-3 ml-1" />
+            </Link>
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
 }
 
-function NotificationItem({ notification }: { notification: Notification }) {
+function NotificationItem({ 
+  notification,
+  onClick,
+}: { 
+  notification: Notification;
+  onClick: () => void;
+}) {
   const isUnread = !notification.read_at;
   const typeLabel = notificationTypeLabels[notification.type] || notification.type;
   const dotColor = notificationTypeColors[notification.type] || "bg-gray-400";
+  const hasDeepLink = notification.entity_type && notification.entity_id;
 
   return (
     <div
@@ -139,6 +183,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
         "p-3 hover:bg-muted/50 cursor-pointer transition-colors",
         isUnread && "bg-muted/30"
       )}
+      onClick={onClick}
     >
       <div className="flex gap-3">
         <div className={cn("w-2 h-2 rounded-full mt-2 shrink-0", dotColor)} />
@@ -164,6 +209,9 @@ function NotificationItem({ notification }: { notification: Notification }) {
             })}
           </p>
         </div>
+        {hasDeepLink && (
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
+        )}
       </div>
     </div>
   );
