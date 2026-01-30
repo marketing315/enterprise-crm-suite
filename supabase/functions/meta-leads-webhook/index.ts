@@ -5,6 +5,47 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-hub-signature-256",
 };
 
+// Phone normalization with country detection (same as webhook-ingest)
+interface NormalizedPhone {
+  normalized: string;
+  countryCode: string;
+  assumedCountry: boolean;
+  raw: string;
+}
+
+function normalizePhone(phone: string, defaultCountry = "IT"): NormalizedPhone {
+  const raw = phone;
+  let normalized = phone.replace(/\D/g, "");
+  let countryCode = defaultCountry;
+  let assumedCountry = true;
+
+  const prefixes: Record<string, string> = {
+    "39": "IT",
+    "44": "GB",
+    "49": "DE",
+    "33": "FR",
+    "34": "ES",
+    "41": "CH",
+    "43": "AT",
+    "1": "US",
+  };
+
+  const sortedPrefixes = Object.entries(prefixes).sort(
+    (a, b) => b[0].length - a[0].length
+  );
+
+  for (const [prefix, country] of sortedPrefixes) {
+    if (normalized.startsWith(prefix) && normalized.length > 10) {
+      normalized = normalized.slice(prefix.length);
+      countryCode = country;
+      assumedCountry = false;
+      break;
+    }
+  }
+
+  return { normalized, countryCode, assumedCountry, raw };
+}
+
 // HMAC-SHA256 signature verification
 async function verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
   if (!signature || !signature.startsWith("sha256=")) {
@@ -224,11 +265,61 @@ Deno.serve(async (req) => {
         const city = getField("city");
         const cap = getField("zip") || getField("postal_code");
 
-        // Create lead_event with deduplication
+        // === Contact & Deal Creation (aligned with webhook-ingest) ===
+        let contactId: string | null = null;
+        let dealId: string | null = null;
+
+        if (phone) {
+          const normalizedPhone = normalizePhone(phone);
+          console.log(`[META-EVENT] Normalized phone for ${leadgenId}: ${normalizedPhone.normalized} (country: ${normalizedPhone.countryCode})`);
+
+          // Find or create contact
+          const { data: contactResult, error: contactError } = await supabase.rpc(
+            "find_or_create_contact",
+            {
+              p_brand_id: metaApp.brand_id,
+              p_phone_normalized: normalizedPhone.normalized,
+              p_phone_raw: normalizedPhone.raw,
+              p_country_code: normalizedPhone.countryCode,
+              p_assumed_country: normalizedPhone.assumedCountry,
+              p_first_name: firstName,
+              p_last_name: lastName,
+              p_email: email,
+              p_city: city,
+              p_cap: cap,
+            }
+          );
+
+          if (contactError || !contactResult) {
+            console.error(`[META-EVENT] Failed to create contact for ${leadgenId}:`, contactError);
+          } else {
+            contactId = contactResult;
+            console.log(`[META-EVENT] Contact created/found for ${leadgenId}: ${contactId}`);
+
+            // Find or create deal
+            const { data: dealResult, error: dealError } = await supabase.rpc(
+              "find_or_create_deal",
+              { p_brand_id: metaApp.brand_id, p_contact_id: contactId }
+            );
+
+            if (dealError) {
+              console.error(`[META-EVENT] Failed to create deal for ${leadgenId}:`, dealError);
+            } else {
+              dealId = dealResult;
+              console.log(`[META-EVENT] Deal created/found for ${leadgenId}: ${dealId}`);
+            }
+          }
+        } else {
+          console.warn(`[META-EVENT] No phone found for ${leadgenId}, skipping contact creation`);
+        }
+
+        // Create lead_event with contact_id and deal_id
         const { data: leadEvent, error: leadEventError } = await supabase
           .from("lead_events")
           .insert({
             brand_id: metaApp.brand_id,
+            contact_id: contactId,
+            deal_id: dealId,
             source: "webhook",
             source_name: leadData?.campaign_name || leadData?.ad_name || "Meta Lead Ads",
             external_id: leadgenId,
@@ -265,17 +356,24 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Update meta_lead_events with lead_event_id
+        // Update meta_lead_events with lead_event_id and contact_id
         await supabase
           .from("meta_lead_events")
           .update({
             lead_event_id: leadEvent.id,
+            contact_id: contactId,
             status: "ingested",
           })
           .eq("id", metaEvent.id);
 
-        results.push({ leadgen_id: leadgenId, status: "ingested", lead_event_id: leadEvent.id });
-        console.log(`[META-EVENT] Ingested leadgen_id=${leadgenId} -> lead_event_id=${leadEvent.id}`);
+        results.push({ 
+          leadgen_id: leadgenId, 
+          status: "ingested", 
+          lead_event_id: leadEvent.id,
+          contact_id: contactId,
+          deal_id: dealId
+        });
+        console.log(`[META-EVENT] Ingested leadgen_id=${leadgenId} -> lead_event_id=${leadEvent.id}, contact_id=${contactId}, deal_id=${dealId}`);
       }
     }
 
