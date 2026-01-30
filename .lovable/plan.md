@@ -1,413 +1,289 @@
 
-# Piano: Chatbot AI Avanzato di Livello C con Accesso a Tutti i Dati della Piattaforma
+# Piano: AI Autotagging Pipeline + Gestione Fasi Kanban Avanzata
 
-## Obiettivo
+## Panoramica
 
-Creare un assistente AI executive (livello C-suite) capace di:
-- Accedere a **tutti i dati della piattaforma** (contatti, lead, deal, ticket, appuntamenti, analytics)
-- Eseguire **query analitiche** in tempo reale (KPI, trend, performance operatori)
-- Fornire **insight strategici** e raccomandazioni actionable
-- Supportare **tool calling** per query strutturate (es. "quanti lead questa settimana?")
-- Rendere i dati **conversazionali** senza richiedere navigazione manuale
+Questo piano implementa due funzionalità correlate:
+1. **AI Autotagging per Deal**: Suggerimento e applicazione automatica di tag sui deal basandosi su contesto (contatto, lead events, stage)
+2. **Gestione Fasi Pipeline Completa**: Miglioramento dell'editing inline per includere modifica colore
 
-## Architettura
+---
 
-```text
-+------------------+
-|  Chat Frontend   |
-|  (src/pages/Chat)|
-+--------+---------+
-         |
-         v
-+------------------+          +------------------------+
-|  ai-agent Edge   |  <---->  |  Lovable AI Gateway    |
-|  Function        |          |  (Gemini 3 Flash)      |
-+--------+---------+          +------------------------+
-         |
-         v
-+------------------+
-|  Tool Functions  |
-|  (Query DB)      |
-+------------------+
-         |
-         v
-+------------------+
-|  Supabase DB     |
-|  (Analytics RPC) |
-+------------------+
-```
+## Parte 1: AI Autotagging per Deal
 
-## Tools AI Agent
+### Obiettivo
 
-L'agente avra accesso a questi strumenti tramite function calling:
+Quando un deal viene creato o cambia stato/stage, l'AI analizza il contesto e suggerisce tag appropriati. L'utente può accettare, rifiutare o modificare i suggerimenti.
 
-| Tool | Descrizione | Esempio Query |
-|------|-------------|---------------|
-| `get_dashboard_kpis` | KPI principali (lead, deal, ticket, appuntamenti) | "Come sta andando oggi?" |
-| `get_lead_analytics` | Analisi lead (fonte, conversione, trend) | "Da dove arrivano i lead?" |
-| `get_pipeline_status` | Stato pipeline (deal per stage, valore totale) | "Quanti deal abbiamo in trattativa?" |
-| `get_ticket_overview` | Overview ticket (backlog, SLA, operatori) | "Quanti ticket aperti abbiamo?" |
-| `get_operator_performance` | Performance operatori (tempo risposta, risoluzione) | "Chi e il miglior operatore?" |
-| `get_appointment_summary` | Riepilogo appuntamenti (oggi, settimana, esiti) | "Quanti appuntamenti oggi?" |
-| `search_contacts` | Cerca contatti per nome/email/telefono | "Trova il contatto Mario Rossi" |
-| `get_contact_timeline` | Timeline completa di un contatto | "Mostrami la storia di questo cliente" |
-| `get_ai_decisions_summary` | Riepilogo decisioni AI (accuracy, override) | "Come sta performando l'AI?" |
-| `get_trend_comparison` | Confronto periodi (WoW, MoM) | "Confronta questa settimana con la scorsa" |
-
-## Dettaglio Tecnico
-
-### 1. Nuova Edge Function `ai-agent` (Backend)
-
-```typescript
-// supabase/functions/ai-agent/index.ts
-
-// System prompt per agente executive
-const EXECUTIVE_AGENT_PROMPT = `
-Sei un assistente AI executive per il CRM. Hai accesso completo ai dati della piattaforma.
-
-CAPACITA:
-1. Analisi KPI in tempo reale (lead, deal, ticket, appuntamenti)
-2. Report performance operatori e team
-3. Trend analysis e confronti temporali
-4. Ricerca contatti e timeline complete
-5. Insight strategici basati sui dati
-6. Raccomandazioni actionable per il management
-
-STILE:
-- Rispondi in italiano
-- Usa dati concreti con numeri e percentuali
-- Evidenzia trend positivi/negativi
-- Suggerisci azioni concrete
-- Usa emoji per evidenziare metriche chiave (📈📉⚠️✅)
-- Formatta con markdown per chiarezza
-
-LIMITI:
-- Non inventare dati non presenti
-- Se non hai dati sufficienti, chiedili
-- Per operazioni di modifica, spiega cosa faresti ma non eseguire
-`;
-
-// Definizione tools
-const AGENT_TOOLS = [
-  {
-    type: "function",
-    function: {
-      name: "get_dashboard_kpis",
-      description: "Ottiene i KPI principali della dashboard: lead oggi/settimana, deal aperti, ticket, appuntamenti",
-      parameters: {
-        type: "object",
-        properties: {
-          period: { type: "string", enum: ["today", "week", "month"], description: "Periodo di riferimento" }
-        },
-        required: ["period"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_pipeline_status",
-      description: "Stato della pipeline: deal per stage, valore totale, deal aging",
-      parameters: { type: "object", properties: {}, required: [] }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_ticket_overview",
-      description: "Overview ticket: aperti, backlog, SLA breach, distribuzione priorita",
-      parameters: {
-        type: "object",
-        properties: {
-          period: { type: "string", enum: ["today", "7d", "30d"] }
-        },
-        required: ["period"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_operator_performance",
-      description: "Performance operatori: ticket gestiti, tempo risposta, risoluzione",
-      parameters: {
-        type: "object",
-        properties: {
-          period: { type: "string", enum: ["today", "7d", "30d"] }
-        },
-        required: ["period"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "search_contacts",
-      description: "Cerca contatti per nome, email o telefono",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Termine di ricerca" },
-          limit: { type: "integer", default: 5 }
-        },
-        required: ["query"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_contact_timeline",
-      description: "Timeline completa di un contatto: lead, deal, ticket, appuntamenti, note",
-      parameters: {
-        type: "object",
-        properties: {
-          contact_id: { type: "string" }
-        },
-        required: ["contact_id"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_lead_analytics",
-      description: "Analisi lead: fonte, tipo, conversione, trend",
-      parameters: {
-        type: "object",
-        properties: {
-          period: { type: "string", enum: ["today", "7d", "30d"] }
-        },
-        required: ["period"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_trend_comparison",
-      description: "Confronto tra due periodi (es. questa settimana vs scorsa)",
-      parameters: {
-        type: "object",
-        properties: {
-          metric: { type: "string", enum: ["leads", "tickets", "deals", "appointments"] },
-          comparison: { type: "string", enum: ["wow", "mom"] }
-        },
-        required: ["metric", "comparison"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_ai_decisions_summary",
-      description: "Riepilogo performance AI: decisioni, override rate, accuracy",
-      parameters: {
-        type: "object",
-        properties: {
-          period: { type: "string", enum: ["today", "7d", "30d"] }
-        },
-        required: ["period"]
-      }
-    }
-  }
-];
-```
-
-### 2. Implementazione Tool Handlers
-
-Ogni tool esegue query DB e restituisce dati strutturati:
-
-```typescript
-async function handleTool(supabase, brandId, toolName, args) {
-  switch (toolName) {
-    case "get_dashboard_kpis":
-      return await getDashboardKpis(supabase, brandId, args.period);
-    case "get_pipeline_status":
-      return await getPipelineStatus(supabase, brandId);
-    case "get_ticket_overview":
-      return await getTicketOverview(supabase, brandId, args.period);
-    case "get_operator_performance":
-      return await getOperatorPerformance(supabase, brandId, args.period);
-    case "search_contacts":
-      return await searchContacts(supabase, brandId, args.query, args.limit);
-    case "get_contact_timeline":
-      return await getContactTimeline(supabase, brandId, args.contact_id);
-    // ... altri tool
-  }
-}
-
-// Esempio implementazione
-async function getDashboardKpis(supabase, brandId, period) {
-  const { from, to } = getPeriodDates(period);
-  
-  const [leads, deals, tickets, appointments] = await Promise.all([
-    supabase.from("lead_events").select("contact_id").eq("brand_id", brandId).gte("received_at", from),
-    supabase.from("deals").select("*", { count: "exact" }).eq("brand_id", brandId).eq("status", "open"),
-    supabase.from("tickets").select("*", { count: "exact" }).eq("brand_id", brandId).in("status", ["open", "in_progress"]),
-    supabase.from("appointments").select("*", { count: "exact" }).eq("brand_id", brandId).gte("scheduled_at", from).lte("scheduled_at", to),
-  ]);
-  
-  return {
-    leads_count: new Set(leads.data?.map(e => e.contact_id) || []).size,
-    open_deals: deals.count || 0,
-    open_tickets: tickets.count || 0,
-    appointments_today: appointments.count || 0,
-    period,
-  };
-}
-```
-
-### 3. Flusso Conversazionale con Tool Calling
+### Architettura
 
 ```text
-User: "Come stiamo andando questa settimana?"
-       |
-       v
-AI Agent riceve messaggio
-       |
-       v
-AI decide: chiama tool "get_dashboard_kpis" con period="week"
-       |
-       v
-Tool restituisce: { leads: 45, deals: 12, tickets: 8, appointments: 23 }
-       |
-       v
-AI formula risposta naturale:
-"📊 **Riepilogo Settimana**
-
-- 📈 **45 nuovi lead** (contatti unici)
-- 💼 **12 deal aperti** in pipeline
-- 🎫 **8 ticket** da gestire
-- 📅 **23 appuntamenti** schedulati
-
-Rispetto alla settimana scorsa, i lead sono in crescita del 15%. 
-Suggerisco di focalizzare il team sui deal in fase avanzata."
+Deal Created/Updated
+         |
+         v
++--------------------+
+|  trigger_deal_tag  |  (Database Trigger)
++--------+-----------+
+         |
+         v
++--------------------+
+|   ai_tag_deals     |  (pg_cron ogni 2 min)
++--------+-----------+
+         |
+         v
++--------------------+         +----------------------+
+|  ai-tag-deals      |  <-->   |  Lovable AI Gateway  |
+|  Edge Function     |         |  (Gemini 3 Flash)    |
++--------+-----------+         +----------------------+
+         |
+         v
++--------------------+
+|  tag_assignments   |  (con assigned_by='ai', confidence)
++--------------------+
 ```
 
-### 4. Nuovo Hook `useAIAgent`
+### Database Changes
+
+**1. Nuova tabella coda AI per tag deal**
+
+```sql
+CREATE TABLE public.ai_tag_deal_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID NOT NULL REFERENCES brands(id),
+  deal_id UUID NOT NULL REFERENCES deals(id),
+  trigger_reason TEXT NOT NULL, -- 'deal_created', 'stage_changed', 'manual'
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+  attempts INT DEFAULT 0,
+  max_attempts INT DEFAULT 3,
+  last_error TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_ai_tag_deal_jobs_pending ON ai_tag_deal_jobs(status, created_at) 
+  WHERE status = 'pending';
+```
+
+**2. Trigger per creare job di tagging**
+
+```sql
+CREATE OR REPLACE FUNCTION trigger_ai_tag_deal()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Solo se AI mode non è 'off'
+  IF EXISTS (
+    SELECT 1 FROM ai_configs 
+    WHERE brand_id = NEW.brand_id 
+    AND mode != 'off'
+  ) THEN
+    INSERT INTO ai_tag_deal_jobs (brand_id, deal_id, trigger_reason)
+    VALUES (
+      NEW.brand_id, 
+      NEW.id, 
+      CASE 
+        WHEN TG_OP = 'INSERT' THEN 'deal_created'
+        WHEN OLD.current_stage_id IS DISTINCT FROM NEW.current_stage_id THEN 'stage_changed'
+        ELSE 'manual'
+      END
+    )
+    ON CONFLICT DO NOTHING;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_ai_tag_deal
+  AFTER INSERT OR UPDATE OF current_stage_id ON deals
+  FOR EACH ROW
+  EXECUTE FUNCTION trigger_ai_tag_deal();
+```
+
+**3. RPC per applicare tag suggeriti**
+
+```sql
+CREATE OR REPLACE FUNCTION apply_ai_deal_tags(
+  p_deal_id UUID,
+  p_tag_ids UUID[],
+  p_confidence FLOAT DEFAULT 0.8
+)
+RETURNS INTEGER AS $$
+DECLARE
+  v_brand_id UUID;
+  v_count INTEGER := 0;
+BEGIN
+  SELECT brand_id INTO v_brand_id FROM deals WHERE id = p_deal_id;
+  
+  FOREACH tag_id IN ARRAY p_tag_ids LOOP
+    INSERT INTO tag_assignments (brand_id, tag_id, deal_id, assigned_by, confidence)
+    VALUES (v_brand_id, tag_id, p_deal_id, 'ai', p_confidence)
+    ON CONFLICT (tag_id, deal_id) DO NOTHING;
+    v_count := v_count + 1;
+  END LOOP;
+  
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### Edge Function `ai-tag-deals`
 
 ```typescript
-// src/hooks/useAIAgent.ts
-export function useAIAgentChat() {
-  const { currentBrand } = useBrand();
-  const queryClient = useQueryClient();
+// supabase/functions/ai-tag-deals/index.ts
 
-  return useMutation({
-    mutationFn: async ({ message, threadId }: { message: string; threadId: string }) => {
-      const { data, error } = await supabase.functions.invoke("ai-agent", {
-        body: { message, threadId, brandId: currentBrand?.id },
-      });
-      
-      if (error) throw error;
-      return data;
+const SYSTEM_PROMPT = `Sei un assistente AI per tagging automatico di deal CRM.
+Analizza il contesto del deal (contatto, lead events, stage attuale) e suggerisci tag appropriati.
+
+REGOLE:
+1. Suggerisci 1-5 tag pertinenti
+2. Usa tag esistenti nel brand (forniti nel contesto)
+3. Prioritizza tag specifici rispetto a generici
+4. Considera: interesse prodotto, fonte lead, comportamento cliente, fase pipeline
+
+OUTPUT: Array di nomi tag esatti da applicare`;
+
+// Tool per output strutturato
+const TAG_SUGGESTION_TOOL = {
+  name: "suggest_deal_tags",
+  parameters: {
+    type: "object",
+    properties: {
+      tags_to_apply: {
+        type: "array",
+        items: { type: "string" },
+        description: "Nomi esatti dei tag da applicare"
+      },
+      rationale: {
+        type: "string",
+        description: "Motivazione breve"
+      }
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["chat-messages", variables.threadId] });
-    },
-  });
-}
+    required: ["tags_to_apply", "rationale"]
+  }
+};
 ```
 
-### 5. UI Chat con Modalita Agent
+### Frontend: Indicatore Tag AI
 
-Estensione della pagina Chat per supportare modalita "Agent AI":
+Nel `KanbanCard` e `DealDetailSheet`, mostrare badge speciale per tag applicati da AI:
 
-```typescript
-// Nuovo toggle per attivare Agent mode
-<Switch checked={agentMode} onCheckedChange={setAgentMode} />
-<Label>🤖 Agente AI Executive</Label>
-
-// Quick actions per domande comuni
-<div className="flex gap-2 flex-wrap">
-  <Button variant="outline" size="sm" onClick={() => askAgent("Come stiamo andando oggi?")}>
-    📊 KPI Oggi
-  </Button>
-  <Button variant="outline" size="sm" onClick={() => askAgent("Quanti ticket aperti?")}>
-    🎫 Ticket
-  </Button>
-  <Button variant="outline" size="sm" onClick={() => askAgent("Stato pipeline")}>
-    💼 Pipeline
-  </Button>
-  <Button variant="outline" size="sm" onClick={() => askAgent("Performance team")}>
-    👥 Team
-  </Button>
-</div>
+```tsx
+// In EntityTagList - badge con icona sparkle per tag AI
+{assignment.assigned_by === 'ai' && (
+  <Sparkles className="h-3 w-3 text-primary" />
+)}
 ```
+
+---
+
+## Parte 2: Gestione Fasi Pipeline Avanzata
+
+### Miglioramenti UI
+
+**1. Editing colore inline nel SortableStageItem**
+
+Aggiungere popover per selezione colore quando si edita una fase:
+
+```tsx
+// In SortableStageItem.tsx
+{isEditing && (
+  <Popover>
+    <PopoverTrigger asChild>
+      <button 
+        className="w-6 h-6 rounded-full border-2"
+        style={{ backgroundColor: editColor }}
+      />
+    </PopoverTrigger>
+    <PopoverContent className="w-auto p-2">
+      <div className="grid grid-cols-5 gap-1">
+        {STAGE_COLORS.map((c) => (
+          <button
+            key={c.value}
+            className={cn("w-6 h-6 rounded-full", editColor === c.value && "ring-2")}
+            style={{ backgroundColor: c.value }}
+            onClick={() => setEditColor(c.value)}
+          />
+        ))}
+      </div>
+    </PopoverContent>
+  </Popover>
+)}
+```
+
+**2. Salvataggio colore nella mutazione**
+
+```tsx
+const handleSave = async () => {
+  if (editName.trim() !== stage.name || editColor !== stage.color) {
+    await updateStage.mutateAsync({ 
+      stageId: stage.id, 
+      name: editName,
+      color: editColor,
+    });
+  }
+  setIsEditing(false);
+};
+```
+
+---
 
 ## File da Creare
 
 | File | Descrizione |
 |------|-------------|
-| `supabase/functions/ai-agent/index.ts` | Edge function agente AI con tool calling |
-| `src/hooks/useAIAgent.ts` | Hook per interazione con agente |
-| `src/components/chat/AgentChatPanel.tsx` | Pannello chat dedicato all'agente |
-| `src/components/chat/AgentQuickActions.tsx` | Bottoni azioni rapide |
+| `supabase/functions/ai-tag-deals/index.ts` | Edge function per suggerimento tag AI |
+| `src/hooks/useAIDealTags.ts` | Hook per gestione tag AI sui deal |
 
 ## File da Modificare
 
 | File | Modifiche |
 |------|-----------|
-| `src/pages/Chat.tsx` | Aggiungere toggle Agent mode e pannello dedicato |
-| `src/hooks/useChat.ts` | Aggiungere hook per Agent mode |
+| `src/components/settings/pipeline/SortableStageItem.tsx` | Editing colore inline |
+| `src/components/tags/EntityTagList.tsx` | Badge sparkle per tag AI |
+| `src/components/tags/TagBadge.tsx` | Prop per indicare origine AI |
 | `supabase/config.toml` | Registrare nuova edge function |
-
-## Esempi Conversazioni
-
-**Domanda semplice:**
-> "Quanti lead abbiamo avuto oggi?"
-
-**Risposta:**
-> 📈 **Oggi abbiamo ricevuto 12 nuovi lead** (contatti unici).
-> 
-> **Distribuzione per fonte:**
-> - Meta Ads: 7 (58%)
-> - Sito Web: 3 (25%)
-> - Referral: 2 (17%)
->
-> Il picco e stato alle 14:00. Vuoi vedere i dettagli di qualche lead specifico?
+| Nuova migrazione SQL | Tabella jobs, trigger, RPC |
 
 ---
 
-**Analisi comparativa:**
-> "Confronta questa settimana con la scorsa"
+## Flusso Utente
 
-**Risposta:**
-> 📊 **Confronto WoW (Week over Week)**
->
-> | Metrica | Scorsa | Questa | Δ |
-> |---------|--------|--------|---|
-> | Lead | 38 | 45 | +18% 📈 |
-> | Ticket chiusi | 22 | 28 | +27% 📈 |
-> | Appuntamenti | 25 | 23 | -8% 📉 |
-> | Deal chiusi | 3 | 2 | -33% 📉 |
->
-> ⚠️ **Attenzione**: Gli appuntamenti sono in calo. Consiglio di verificare la disponibilita del team vendite.
+### AI Autotagging
+
+1. Utente crea un deal o lo sposta di stage
+2. Trigger DB crea job nella coda
+3. Cron job (ogni 2 min) processa la coda
+4. Edge function analizza contesto e suggerisce tag
+5. Se AI mode = `auto_apply`: tag applicati automaticamente con badge "AI"
+6. Se AI mode = `suggest`: notifica con suggerimenti (futura implementazione)
+7. Utente puo rimuovere tag AI come qualsiasi altro tag
+
+### Gestione Fasi
+
+1. Admin va in Impostazioni > Pipeline
+2. Click su icona matita di una fase
+3. Modifica nome e/o click sul pallino colore
+4. Seleziona nuovo colore dal popover
+5. Click su check per salvare
 
 ---
 
-**Ricerca contatto:**
-> "Trova il contatto Mario Rossi e dimmi la sua storia"
+## Configurazione AI Mode
 
-**Risposta:**
-> 👤 **Mario Rossi** - mario.rossi@email.com
-> 📍 Milano | Status: Attivo
->
-> **Timeline:**
-> - 15 Gen: Lead da Meta Ads (Trial)
-> - 17 Gen: Chiamata follow-up (esito positivo)
-> - 20 Gen: Appuntamento in sede ✅
-> - 22 Gen: Deal aperto - €5.000
-> - 25 Gen: Attualmente in stage "Proposta Inviata"
->
-> **Suggerimento**: Il cliente e caldo, consiglio follow-up entro 48h per chiudere.
+Riutilizza la configurazione esistente in `ai_configs`:
+
+| Mode | Comportamento Tagging Deal |
+|------|---------------------------|
+| `off` | Nessun autotagging |
+| `suggest` | Crea notifica con suggerimenti (fase 2) |
+| `auto_apply` | Applica tag automaticamente |
+
+---
 
 ## Risultato Atteso
 
-1. Assistente AI accessibile dalla pagina Chat con toggle dedicato
-2. Query conversazionali su tutti i dati del CRM
-3. Report e analytics in formato naturale
-4. Confronti temporali (WoW, MoM)
-5. Ricerca contatti e timeline complete
-6. Quick actions per domande frequenti
-7. Suggerimenti strategici basati sui dati
+1. Deal ricevono tag automatici basati su contesto (contatto, lead, stage)
+2. Tag AI identificabili visivamente (icona sparkle)
+3. Admin possono modificare colore fasi pipeline con un click
+4. Sistema configurabile per brand tramite AI mode esistente
+5. Audit trail completo tramite `assigned_by='ai'` e `confidence`
