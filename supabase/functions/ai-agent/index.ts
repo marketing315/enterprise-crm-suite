@@ -350,8 +350,8 @@ async function getDashboardKpis(supabase: SupabaseClient, brandId: string, perio
 
   return {
     period,
-    leads_count: leads.length,
-    unique_contacts: uniqueContacts.size,
+    leads_count: uniqueContacts.size, // Contatti unici, non eventi totali
+    lead_events_count: leads.length, // Eventi totali per dettaglio
     open_deals: deals.length,
     total_deal_value: totalDealValue,
     open_tickets: tickets.length,
