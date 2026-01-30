@@ -21,6 +21,7 @@ import AdminCallcenterKpi from "@/pages/AdminCallcenterKpi";
 import AdminTicketTrend from "@/pages/AdminTicketTrend";
 import AdminWebhooksDashboard from "@/pages/AdminWebhooksDashboard";
 import AdminDlqDashboard from "@/pages/AdminDlqDashboard";
+import Chat from "@/pages/Chat";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/events" element={<Events />} />
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/tickets" element={<Tickets />} />
+                <Route path="/chat" element={<Chat />} />
                 <Route path="/analytics" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
