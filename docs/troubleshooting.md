@@ -225,6 +225,51 @@ LIMIT 50;
 
 ---
 
+## Outbound Webhooks (M8)
+
+### Delivery Status Lifecycle
+
+```
+pending → processing → success
+                    ↘ failed → (retry with backoff) → success
+                              ↘ dead (after max attempts)
+```
+
+**Status definitions:**
+- `pending`: Queued, waiting for dispatcher
+- `processing`: Claimed by dispatcher, in-flight
+- `success`: Delivered (2xx response)
+- `failed`: Attempt failed, will retry
+- `dead`: All retries exhausted (max_attempts reached)
+
+### Exponential Backoff Schedule
+
+| Attempt | Delay | Cumulative |
+|---------|-------|------------|
+| 1 | immediate | 0 |
+| 2 | 1 min | 1 min |
+| 3 | 5 min | 6 min |
+| 4 | 15 min | 21 min |
+| 5 | 1 hour | 1h 21m |
+| 6 | 6 hours | 7h 21m |
+| 7+ | 24 hours | varies |
+
+**Note:** Jitter of ±30s added to prevent thundering herd.
+
+### Dead Letter Queue (DLQ)
+
+Dead deliveries can be replayed from Admin → DLQ Dashboard:
+
+```sql
+-- Find dead deliveries
+SELECT id, webhook_id, event_type, last_error, dead_at
+FROM outbound_webhook_deliveries
+WHERE status = 'dead'
+ORDER BY dead_at DESC;
+```
+
+---
+
 ## Log Strutturati (Edge Functions)
 
 I log contengono:
@@ -243,4 +288,19 @@ I log contengono:
   "contact_id": "ghi-789",
   "lead_event_id": "jkl-012"
 }
+```
+
+---
+
+## Inbound DLQ Reasons
+
+| Reason | Description | Resolution |
+|--------|-------------|------------|
+| `invalid_json` | Request body not valid JSON | Check sender payload format |
+| `signature_failed` | HMAC signature mismatch | Verify shared secret |
+| `rate_limited` | Rate limit exceeded | Reduce send frequency |
+| `mapping_error` | Field mapping failed | Check source mapping config |
+| `ai_extraction_failed` | AI couldn't extract contact data | Add explicit phone field |
+| `contact_creation_failed` | DB error creating contact | Check constraints |
+| `missing_required` | Phone number not found | Include phone in payload |
 ```
