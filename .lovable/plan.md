@@ -1,5 +1,3 @@
-
-
 # Piano Finale v2: Campi Lead Estesi + Sistema Clinical Topics Scalabile
 
 ## Panoramica
@@ -8,7 +6,205 @@ Questo piano espande il sistema di gestione lead e appuntamenti con nuovi campi 
 
 ---
 
-## Fase 1: Schema Database - Nuove Tabelle e Colonne
+# CRM Enterprise Features - Implementation Plan (v2)
+
+## Overview
+This section outlines the implementation plan for 5 major CRM features, ordered by dependency.
+
+## Implementation Order
+
+### 1. Pipeline CRUD (add/remove/rename/reorder) ✅
+**Status**: In Progress  
+**Priority**: P0 - Unlocks everything else
+
+#### Database
+- `pipeline_stages(id, brand_id, name, order_index, is_active, color, description, created_at, updated_at)`
+- Constraint: `unique(brand_id, lower(name)) where is_active=true`
+- Soft delete: `is_active=false` with fallback stage handling
+
+#### API/RPC
+- `create_pipeline_stage(brand_id, name, color, order_index)` - Create new stage
+- `update_pipeline_stage(stage_id, name, color)` - Update stage
+- `reorder_pipeline_stages(stage_ids[])` - Reorder stages
+- `deactivate_pipeline_stage(stage_id, fallback_stage_id)` - Soft delete with fallback
+
+#### UI
+- Settings → Pipeline Stages tab
+- Drag & drop reorder
+- Inline rename
+- Add new stage button
+- Deactivate with warning dialog
+
+---
+
+### 2. AI Autotagging + Initial Stage ⏳
+**Status**: Pending  
+**Depends on**: Pipeline CRUD
+
+#### Database
+- `ai_decision_logs` table (already exists)
+- `deals.stage_locked_by_user` boolean flag
+- `tag_assignments` with `assigned_by='ai'`
+
+#### Flow
+1. `lead_event` created → normalize → resolve contact → create/find deal
+2. Enqueue `ai_decide(lead_event_id)`
+3. AI produces JSON: `{ priority, initial_stage, tags_to_apply, rationale }`
+4. Apply:
+   - Set stage on deal (if not locked by user)
+   - Create tag_assignments (assigned_by='ai')
+   - Save to ai_decision_logs
+
+#### Rules
+- If contact is `archived_optout`: no appointment/ticket, archive event
+- Human override: set `stage_locked_by_user=true` on deal
+
+#### UI
+- AI Decision box in event/deal detail
+- Priority, suggested tags, stage, rationale
+- Apply/Restore/Ignore buttons
+
+---
+
+### 3. In-App Notifications ⏳
+**Status**: Pending  
+**Depends on**: Pipeline CRUD, AI Autotagging
+
+#### Database
+```sql
+notifications(
+  id, brand_id, user_id, 
+  type, title, body, 
+  entity_type, entity_id, 
+  read_at, created_at
+)
+
+notification_preferences(
+  id, user_id, brand_id,
+  notification_type, enabled,
+  created_at
+)
+```
+
+#### Trigger Events
+- `lead_event_created` (priority >= X or specific sources)
+- `pipeline_stage_changed`
+- `tags_updated`
+- `appointment_created/updated`
+- `ticket_status_changed`
+- `ticket_assigned`
+
+#### Delivery
+- Supabase Realtime subscription
+- Badge counter in sidebar
+- Dropdown notification center
+
+---
+
+### 4. Employee Chat (Thread-based) ⏳
+**Status**: Pending  
+**Depends on**: Notifications
+
+#### Database
+```sql
+chat_threads(
+  id, brand_id, 
+  type ('direct'|'group'|'entity'),
+  entity_type, entity_id,
+  title,
+  created_by, created_at
+)
+
+chat_thread_members(
+  thread_id, user_id, 
+  role ('member'|'admin'),
+  joined_at, left_at
+)
+
+chat_messages(
+  id, thread_id, brand_id,
+  sender_user_id, sender_type ('user'|'ai'),
+  message_text, attachments jsonb,
+  created_at, edited_at, deleted_at
+)
+
+chat_message_reads(
+  message_id, user_id, read_at
+)
+```
+
+#### Thread Types
+- **Direct**: 1:1 between users
+- **Group**: Team channels
+- **Entity**: Attached to contact/deal/ticket/appointment (killer CRM feature)
+
+#### UI
+- Sidebar "Chat" tab
+- Entity detail → "Discussion" box opens entity thread
+- Realtime message updates
+
+#### Security (RLS)
+- Access only if thread member + brand match
+- Admin/CEO can view all threads in their brands
+
+---
+
+### 5. AI Chat Assistant ⏳
+**Status**: Pending  
+**Depends on**: Employee Chat
+
+#### UX Model
+- Toggle in entity threads: "Write to team" / "Ask AI"
+- Or prefix with `/ai ...`
+
+#### AI Capabilities (Tools)
+- Summarize contact timeline
+- Suggest next action (call script, follow-up)
+- Propose tags/stage with rationale
+- Generate response drafts (email/WhatsApp)
+
+#### Database
+- Reuse `chat_messages` with `sender_type='ai'`
+- Log `prompt_version` + redacted input context for audit
+
+#### Security
+- AI receives only brand data + user-accessible entities
+- Respect RLS boundaries
+
+---
+
+## Definition of Done
+
+| Feature | Acceptance Criteria |
+|---------|---------------------|
+| Pipeline CRUD | Admin can create/rename/reorder/deactivate stages; deals auto-migrate to fallback |
+| AI Autotagging | LeadEvent → AI decision → stage + tags applied with human override |
+| Notifications | Realtime in-app notifications for key events with badge counter |
+| Employee Chat | Working team chat with threads attachable to deals/tickets |
+| AI Chat | AI assistant in entity threads produces useful + auditable output |
+
+---
+
+## Technical Notes
+
+### RLS Pattern
+All new tables use the established pattern:
+- `user_belongs_to_brand(get_user_id(auth.uid()), brand_id)` for SELECT
+- `has_role_for_brand(...)` for admin operations
+
+### Realtime
+Enable realtime for:
+- `notifications`
+- `chat_messages`
+- `chat_message_reads`
+
+### Audit
+All significant actions logged to `audit_log` table with:
+- `actor_user_id`, `entity_type`, `entity_id`, `action`, `old_value`, `new_value`
+
+---
+
+## Fase 1 (Legacy): Schema Database - Nuove Tabelle e Colonne
 
 ### 1.1 Nuovi Tipi ENUM
 
@@ -460,4 +656,3 @@ Pagina per admin in Settings:
 6. **Audit Trail**: Ogni modifica topics viene loggata con before/after
 7. **Concurrency-Safe**: Lock riga previene race condition
 8. **Retrocompatibilita**: Tutti i nuovi campi sono opzionali
-
