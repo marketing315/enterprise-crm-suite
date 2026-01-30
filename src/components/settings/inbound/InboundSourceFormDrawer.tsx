@@ -53,15 +53,15 @@ interface InboundSourceFormDrawerProps {
   } | null;
 }
 
-// Generate a secure random API key
-function generateApiKey(): string {
+// Generate a secure random key (64 hex chars = 32 bytes)
+function generateSecureKey(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Hash API key for storage (matching edge function logic)
-async function hashApiKey(key: string): Promise<string> {
+// Hash key for storage (SHA-256)
+async function hashKey(key: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(key);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -76,7 +76,10 @@ export function InboundSourceFormDrawer({
 }: InboundSourceFormDrawerProps) {
   const { currentBrand } = useBrand();
   const queryClient = useQueryClient();
-  const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{
+    apiKey: string;
+    hmacSecret: string | null;
+  } | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -107,7 +110,7 @@ export function InboundSourceFormDrawer({
         replay_window_seconds: 300,
       });
     }
-    setGeneratedApiKey(null);
+    setGeneratedCredentials(null);
   }, [editingSource, form, open]);
 
   const hmacEnabled = form.watch("hmac_enabled");
@@ -116,12 +119,18 @@ export function InboundSourceFormDrawer({
     mutationFn: async (values: FormValues) => {
       if (!currentBrand?.id) throw new Error("No brand selected");
       
-      const apiKey = generateApiKey();
-      const apiKeyHash = await hashApiKey(apiKey);
+      // Generate API key (always required)
+      const apiKey = generateSecureKey();
+      const apiKeyHash = await hashKey(apiKey);
 
-      // If HMAC is enabled, we'll use the same API key as the HMAC secret
-      // This simplifies key management - one key for auth + signing
-      const hmacSecretHash = values.hmac_enabled ? apiKeyHash : null;
+      // Generate separate HMAC secret if enabled
+      let hmacSecret: string | null = null;
+      let hmacSecretHash: string | null = null;
+      
+      if (values.hmac_enabled) {
+        hmacSecret = generateSecureKey();
+        hmacSecretHash = await hashKey(hmacSecret);
+      }
 
       const { error } = await supabase.from("webhook_sources").insert({
         brand_id: currentBrand.id,
@@ -136,10 +145,10 @@ export function InboundSourceFormDrawer({
       });
 
       if (error) throw error;
-      return { apiKey, hmacEnabled: values.hmac_enabled };
+      return { apiKey, hmacSecret };
     },
     onSuccess: (result) => {
-      setGeneratedApiKey(result.apiKey);
+      setGeneratedCredentials(result);
       queryClient.invalidateQueries({ queryKey: ["inbound-sources"] });
       toast.success("Sorgente creata");
     },
@@ -183,15 +192,13 @@ export function InboundSourceFormDrawer({
     }
   };
 
-  const handleCopyApiKey = () => {
-    if (generatedApiKey) {
-      navigator.clipboard.writeText(generatedApiKey);
-      toast.success("API Key copiata");
-    }
+  const handleCopy = (value: string, label: string) => {
+    navigator.clipboard.writeText(value);
+    toast.success(`${label} copiata`);
   };
 
   const handleClose = () => {
-    setGeneratedApiKey(null);
+    setGeneratedCredentials(null);
     onOpenChange(false);
   };
 
@@ -211,41 +218,77 @@ export function InboundSourceFormDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        {generatedApiKey ? (
+        {generatedCredentials ? (
           <div className="mt-6 space-y-4">
             <Alert>
               <Key className="h-4 w-4" />
               <AlertDescription>
-                <strong>Salva questa API Key!</strong> Non sarà più visibile dopo
+                <strong>Salva queste credenziali!</strong> Non saranno più visibili dopo
                 la chiusura di questo pannello.
               </AlertDescription>
             </Alert>
+            
+            {/* API Key */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">API Key</label>
+              <label className="text-sm font-medium">API Key (autenticazione)</label>
               <div className="flex gap-2">
                 <Input
-                  value={generatedApiKey}
+                  value={generatedCredentials.apiKey}
                   readOnly
                   className="font-mono text-xs"
                 />
-                <Button variant="outline" size="icon" onClick={handleCopyApiKey}>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => handleCopy(generatedCredentials.apiKey, "API Key")}
+                >
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Header: <code>X-API-Key</code>
+              </p>
             </div>
             
-            {hmacEnabled && (
+            {/* HMAC Secret (if enabled) */}
+            {generatedCredentials.hmacSecret && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-blue-600" />
+                  Webhook Secret (firma HMAC)
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    value={generatedCredentials.hmacSecret}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => handleCopy(generatedCredentials.hmacSecret!, "Webhook Secret")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {generatedCredentials.hmacSecret && (
               <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
                 <Shield className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 dark:text-blue-200">
-                  <strong>HMAC attivo:</strong> Usa questa stessa API Key per firmare le richieste.
-                  <br />
-                  <code className="text-xs mt-1 block">
-                    X-Signature: sha256=HMAC(apiKey, "timestamp.body")
+                <AlertDescription className="text-blue-800 dark:text-blue-200 space-y-2">
+                  <p><strong>Come firmare le richieste:</strong></p>
+                  <code className="text-xs block bg-blue-100 dark:bg-blue-900 p-2 rounded">
+                    signature = HMAC-SHA256(secret, "timestamp.body")
                   </code>
-                  <code className="text-xs block">
-                    X-Timestamp: Unix timestamp (secondi)
-                  </code>
+                  <p className="text-xs">Headers richiesti:</p>
+                  <ul className="text-xs list-disc list-inside">
+                    <li><code>X-API-Key: &lt;api_key&gt;</code> (autenticazione)</li>
+                    <li><code>X-Webhook-Secret: &lt;secret&gt;</code> (per verifica)</li>
+                    <li><code>X-Signature: sha256=&lt;hex&gt;</code></li>
+                    <li><code>X-Timestamp: &lt;unix_seconds&gt;</code></li>
+                  </ul>
                 </AlertDescription>
               </Alert>
             )}
@@ -326,7 +369,7 @@ export function InboundSourceFormDrawer({
                           Verifica HMAC
                         </FormLabel>
                         <FormDescription>
-                          Richiedi firma HMAC-SHA256 + timestamp anti-replay
+                          Genera un webhook secret separato per firmare le richieste
                         </FormDescription>
                       </div>
                       <FormControl>
