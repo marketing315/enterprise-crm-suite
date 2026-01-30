@@ -36,6 +36,8 @@ export interface TagAssignment {
   contact_id: string | null;
   lead_event_id: string | null;
   deal_id: string | null;
+  appointment_id: string | null;
+  ticket_id: string | null;
   assigned_by: AssignedBy;
   assigned_at: string;
   assigned_by_user_id: string | null;
@@ -154,7 +156,7 @@ function buildTagTree(items: Array<{
 }
 
 // Fetch tags assigned to a specific entity
-export function useEntityTags(entityType: "contact" | "event" | "deal", entityId: string | null) {
+export function useEntityTags(entityType: "contact" | "event" | "deal" | "appointment" | "ticket", entityId: string | null) {
   const { currentBrand } = useBrand();
 
   return useQuery({
@@ -166,6 +168,8 @@ export function useEntityTags(entityType: "contact" | "event" | "deal", entityId
         contact: "contact_id",
         event: "lead_event_id",
         deal: "deal_id",
+        appointment: "appointment_id",
+        ticket: "ticket_id",
       };
 
       const { data, error } = await untypedClient
@@ -289,7 +293,7 @@ export function useAssignTag() {
   return useMutation({
     mutationFn: async (params: {
       tagId: string;
-      entityType: "contact" | "event" | "deal";
+      entityType: "contact" | "event" | "deal" | "appointment" | "ticket";
       entityId: string;
       assignedBy?: AssignedBy;
       confidence?: number;
@@ -304,6 +308,8 @@ export function useAssignTag() {
         contact_id?: string;
         lead_event_id?: string;
         deal_id?: string;
+        appointment_id?: string;
+        ticket_id?: string;
       } = {
         brand_id: currentBrand.id,
         tag_id: params.tagId,
@@ -321,6 +327,12 @@ export function useAssignTag() {
           break;
         case "deal":
           assignmentData.deal_id = params.entityId;
+          break;
+        case "appointment":
+          assignmentData.appointment_id = params.entityId;
+          break;
+        case "ticket":
+          assignmentData.ticket_id = params.entityId;
           break;
       }
 
@@ -348,7 +360,7 @@ export function useRemoveTag() {
   return useMutation({
     mutationFn: async (params: {
       assignmentId: string;
-      entityType: "contact" | "event" | "deal";
+      entityType: "contact" | "event" | "deal" | "appointment" | "ticket";
       entityId: string;
     }) => {
       const { error } = await untypedClient

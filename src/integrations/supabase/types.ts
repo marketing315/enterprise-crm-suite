@@ -2338,28 +2338,17 @@ export type Database = {
         }
         Returns: Json
       }
-      record_delivery_result:
-        | {
-            Args: {
-              p_delivery_id: string
-              p_error?: string
-              p_response_body?: string
-              p_response_status?: number
-              p_success: boolean
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_delivery_id: string
-              p_duration_ms?: number
-              p_error?: string
-              p_response_body?: string
-              p_response_status?: number
-              p_success: boolean
-            }
-            Returns: undefined
-          }
+      record_delivery_result: {
+        Args: {
+          p_delivery_id: string
+          p_duration_ms?: number
+          p_error?: string
+          p_response_body?: string
+          p_response_status?: number
+          p_success: boolean
+        }
+        Returns: Json
+      }
       replay_ingest_dlq: { Args: { p_request_id: string }; Returns: Json }
       replay_outbound_dlq: {
         Args: { p_delivery_id: string; p_override_url?: string }
