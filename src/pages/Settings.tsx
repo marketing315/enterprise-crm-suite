@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -7,6 +7,7 @@ import { GoogleSheetsSettings } from "@/components/settings/GoogleSheetsSettings
 import { AdminManagement } from "@/components/settings/AdminManagement";
 import { MetaAppsSettings } from "@/components/settings/meta/MetaAppsSettings";
 import { PipelineStagesSettings } from "@/components/settings/pipeline/PipelineStagesSettings";
+import { CustomFieldsSettings } from "@/components/settings/CustomFieldsSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -61,6 +62,12 @@ export default function Settings() {
                 <span>Pipeline</span>
               </TabsTrigger>
             )}
+            {isBrandAdmin && (
+              <TabsTrigger value="custom-fields" className="gap-1.5 px-3 text-xs md:text-sm">
+                <FormInput className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Campi</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="tags" className="gap-1.5 px-3 text-xs md:text-sm">
               <Tags className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span>Tag</span>
@@ -100,6 +107,12 @@ export default function Settings() {
         {isBrandAdmin && (
           <TabsContent value="pipeline" className="space-y-4">
             <PipelineStagesSettings />
+          </TabsContent>
+        )}
+
+        {isBrandAdmin && (
+          <TabsContent value="custom-fields" className="space-y-4">
+            <CustomFieldsSettings />
           </TabsContent>
         )}
 

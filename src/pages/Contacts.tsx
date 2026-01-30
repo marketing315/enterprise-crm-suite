@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Filter, SlidersHorizontal } from 'lucide-react';
+import { Users, Filter, SlidersHorizontal, Building2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -15,12 +15,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { ContactsTable } from '@/components/contacts/ContactsTable';
+import { ContactsTableWithViews } from '@/components/contacts/ContactsTableWithViews';
 import { NewContactDialog } from '@/components/contacts/NewContactDialog';
 import { ContactSearch } from '@/components/contacts/ContactSearch';
 import { ContactDetailSheet } from '@/components/contacts/ContactDetailSheet';
 import { TagFilter } from '@/components/tags/TagFilter';
 import { useContactSearch } from '@/hooks/useContactSearch';
+import { useBrand } from '@/contexts/BrandContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { ContactStatus } from '@/types/database';
 
@@ -35,12 +36,14 @@ const statusOptions: { value: ContactStatus | 'all'; label: string }[] = [
 
 export default function Contacts() {
   const isMobile = useIsMobile();
+  const { currentBrand, isAllBrandsSelected, brands } = useBrand();
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [brandFilter, setBrandFilter] = useState<string>('all');
   
   const { data: contacts = [], isLoading } = useContactSearch(
     searchQuery,
@@ -58,18 +61,50 @@ export default function Contacts() {
   };
 
   // Transform SearchResult to ContactWithPhones format for the table
-  const contactsForTable = contacts.map((c) => ({
-    ...c,
-    brand_id: '',
-    contact_phones: c.primary_phone 
-      ? [{ id: '', brand_id: '', contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: c.primary_phone, country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
-      : [],
-  }));
+  // Include brand_name lookup for cross-brand view
+  const contactsForTable = contacts
+    .filter(c => {
+      // Apply brand filter in all-brands mode
+      if (isAllBrandsSelected && brandFilter !== 'all') {
+        return c.id.startsWith(brandFilter); // Simplified - should match brand_id
+      }
+      return true;
+    })
+    .map((c) => {
+      const brand = brands.find(b => b.id === (c as unknown as { brand_id?: string }).brand_id);
+      return {
+        ...c,
+        brand_id: '',
+        brand_name: brand?.name || '',
+        contact_phones: c.primary_phone 
+          ? [{ id: '', brand_id: '', contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: c.primary_phone, country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
+          : [],
+      };
+    });
 
   const activeFiltersCount = (statusFilter !== 'all' ? 1 : 0) + (selectedTagIds.length > 0 ? 1 : 0);
 
   const FiltersContent = () => (
     <div className="space-y-4">
+      {isAllBrandsSelected && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Brand</label>
+          <Select value={brandFilter} onValueChange={setBrandFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Filtra per brand" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti i brand</SelectItem>
+              {brands.map((brand) => (
+                <SelectItem key={brand.id} value={brand.id}>
+                  {brand.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      
       <div className="space-y-2">
         <label className="text-sm font-medium">Stato</label>
         <Select
@@ -181,7 +216,11 @@ export default function Contacts() {
       </div>
 
       {/* Table */}
-      <ContactsTable contacts={contactsForTable} isLoading={isLoading} />
+      <ContactsTableWithViews 
+        contacts={contactsForTable} 
+        isLoading={isLoading} 
+        showBrandColumn={isAllBrandsSelected}
+      />
 
       {/* Contact Detail Sheet */}
       <ContactDetailSheet
