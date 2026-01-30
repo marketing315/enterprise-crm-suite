@@ -18,8 +18,8 @@ const milestones: Milestone[] = [
   { id: "m7", label: "M7 – Tag & Filtri", status: "completed" },
   { id: "m8", label: "M8 – Outbound Webhooks", status: "completed" },
   { id: "m9", label: "M9 – Google Sheets Export", status: "completed" },
-  { id: "m10", label: "M10 – Meta Lead Ads", status: "current" },
-  { id: "m11", label: "M11 – Analytics Avanzati", status: "upcoming" },
+  { id: "m10", label: "M10 – Meta Lead Ads", status: "completed" },
+  { id: "m11", label: "M11 – Analytics Avanzati", status: "current" },
   { id: "m12", label: "M12 – Mobile & PWA", status: "upcoming" },
 ];
 

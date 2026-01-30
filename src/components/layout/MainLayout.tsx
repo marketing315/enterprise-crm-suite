@@ -58,7 +58,7 @@ const menuItems = [
   { icon: Calendar, label: 'Appuntamenti', path: '/appointments' },
   { icon: Ticket, label: 'Ticket', path: '/tickets' },
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+  { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
 ];
 
 const adminMenuItems = [
