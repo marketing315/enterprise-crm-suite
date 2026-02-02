@@ -8,6 +8,7 @@ import { BrandProvider } from "@/contexts/BrandContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Login from "@/pages/Login";
+import ResetPassword from "@/pages/ResetPassword";
 import SelectBrand from "@/pages/SelectBrand";
 import Dashboard from "@/pages/Dashboard";
 import Contacts from "@/pages/Contacts";
@@ -52,6 +53,7 @@ const App = () => (
             <Routes>
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* Brand selection (requires auth) */}
               <Route

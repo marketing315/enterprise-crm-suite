@@ -138,6 +138,30 @@ export function useUpdateTeamMember() {
   });
 }
 
+export function useResetUserPassword() {
+  return useMutation({
+    mutationFn: async (params: { target_user_id: string; new_password: string }) => {
+      const { data, error } = await supabase.functions.invoke('admin-manage-team', {
+        body: {
+          action: 'reset_password',
+          ...params,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Password aggiornata con successo');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Errore durante l\'aggiornamento della password');
+    },
+  });
+}
+
 // Role display helpers
 export const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Admin',

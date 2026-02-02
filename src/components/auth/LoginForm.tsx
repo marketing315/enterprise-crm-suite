@@ -7,13 +7,27 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
 
-export function LoginForm() {
+interface LoginFormProps {
+  showForgotPassword?: boolean;
+  onForgotPasswordChange?: (show: boolean) => void;
+}
+
+export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordChange }: LoginFormProps = {}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPasswordInternal, setShowForgotPasswordInternal] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+
+  const showForgotPassword = externalShow ?? showForgotPasswordInternal;
+  const setShowForgotPassword = onForgotPasswordChange ?? setShowForgotPasswordInternal;
+
+  if (showForgotPassword) {
+    return <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +82,7 @@ export function LoginForm() {
             />
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
@@ -78,6 +92,14 @@ export function LoginForm() {
             ) : (
               'Accedi'
             )}
+          </Button>
+          <Button 
+            variant="link" 
+            className="text-sm text-muted-foreground" 
+            onClick={() => setShowForgotPassword(true)}
+            type="button"
+          >
+            Password dimenticata?
           </Button>
         </CardFooter>
       </form>

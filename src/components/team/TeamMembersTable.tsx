@@ -32,6 +32,7 @@ import {
   Loader2,
   Users,
   Filter,
+  KeyRound,
 } from 'lucide-react';
 import { 
   useTeamMembers, 
@@ -44,6 +45,7 @@ import {
 import type { AppRole } from '@/types/database';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { ResetPasswordDialog } from './ResetPasswordDialog';
 
 interface TeamMembersTableProps {
   roleFilter?: AppRole;
@@ -64,6 +66,7 @@ export function TeamMembersTable({
   
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<AppRole | ''>('');
+  const [passwordResetMember, setPasswordResetMember] = useState<TeamMember | null>(null);
 
   const handleToggleActive = async (member: TeamMember) => {
     await updateMutation.mutateAsync({
@@ -259,6 +262,12 @@ export function TeamMembersTable({
                             <Edit className="mr-2 h-4 w-4" />
                             Cambia ruolo
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setPasswordResetMember(member)}
+                          >
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            Reimposta password
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleToggleActive(member)}
@@ -286,6 +295,14 @@ export function TeamMembersTable({
           </TableBody>
         </Table>
       </div>
+
+      {/* Reset Password Dialog */}
+      <ResetPasswordDialog
+        open={!!passwordResetMember}
+        onOpenChange={(open) => !open && setPasswordResetMember(null)}
+        userId={passwordResetMember?.user_id || ''}
+        userName={passwordResetMember?.full_name || passwordResetMember?.email || ''}
+      />
     </div>
   );
 }

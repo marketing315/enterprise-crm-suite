@@ -50,7 +50,13 @@ interface AssignToAllBrandsRequest {
   role: AppRole;
 }
 
-type RequestBody = InviteUserRequest | UpdateMemberRequest | ListMembersRequest | GetAssignableRolesRequest | AssignToAllBrandsRequest;
+interface ResetPasswordRequest {
+  action: "reset_password";
+  target_user_id: string;
+  new_password: string;
+}
+
+type RequestBody = InviteUserRequest | UpdateMemberRequest | ListMembersRequest | GetAssignableRolesRequest | AssignToAllBrandsRequest | ResetPasswordRequest;
 
 async function getCallerContext(authHeader: string) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -601,6 +607,91 @@ serve(async (req: Request) => {
           success: true, 
           brands_assigned: allBrands?.length || 0 
         }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "reset_password": {
+        const { target_user_id, new_password } = body as ResetPasswordRequest;
+
+        if (!new_password || new_password.length < 6) {
+          return new Response(JSON.stringify({ error: "La password deve essere di almeno 6 caratteri" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Get target user's roles to check if caller can manage them
+        const { data: targetRoles, error: targetRolesError } = await adminClient
+          .from("user_roles")
+          .select("role, brand_id")
+          .eq("user_id", target_user_id)
+          .eq("is_active", true);
+
+        if (targetRolesError || !targetRoles || targetRoles.length === 0) {
+          return new Response(JSON.stringify({ error: "Utente non trovato o senza ruoli attivi" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Check if caller can manage this user (must be able to manage at least one of their roles)
+        let canManage = false;
+        for (const targetRole of targetRoles) {
+          const callerRoleInBrand = await getCallerRoleInBrand(adminClient, callerId, targetRole.brand_id);
+          if (callerRoleInBrand && canManageRole(callerRoleInBrand, targetRole.role as AppRole)) {
+            canManage = true;
+            break;
+          }
+        }
+
+        // Also check if caller is admin/ceo globally
+        const callerGlobalRole = await getCallerRoleInBrand(adminClient, callerId, "__ALL_BRANDS__");
+        if (callerGlobalRole === "admin" || callerGlobalRole === "ceo") {
+          // Admin can reset anyone except other admins (unless they're admin themselves)
+          const targetHasAdminRole = targetRoles.some(r => r.role === "admin");
+          if (callerGlobalRole === "admin" || !targetHasAdminRole) {
+            canManage = true;
+          }
+        }
+
+        if (!canManage) {
+          return new Response(JSON.stringify({ error: "Non sei autorizzato a modificare la password di questo utente" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Get the target user's supabase_auth_id
+        const { data: targetUser, error: targetUserError } = await adminClient
+          .from("users")
+          .select("supabase_auth_id")
+          .eq("id", target_user_id)
+          .single();
+
+        if (targetUserError || !targetUser) {
+          return new Response(JSON.stringify({ error: "Utente non trovato" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Update password via admin API
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(
+          targetUser.supabase_auth_id,
+          { password: new_password }
+        );
+
+        if (updateError) {
+          console.error("Error updating password:", updateError);
+          return new Response(JSON.stringify({ error: `Errore durante l'aggiornamento: ${updateError.message}` }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
