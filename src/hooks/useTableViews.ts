@@ -35,13 +35,19 @@ export interface ContactTableView {
 
 // Default columns configuration
 export const DEFAULT_COLUMNS: TableColumn[] = [
-  { key: "full_name", label: "Nome", visible: true },
+  { key: "full_name", label: "Nome completo", visible: true },
+  { key: "first_name", label: "Nome", visible: false },
+  { key: "last_name", label: "Cognome", visible: false },
   { key: "primary_phone", label: "Telefono", visible: true },
   { key: "email", label: "Email", visible: true },
   { key: "city", label: "Città", visible: true },
+  { key: "cap", label: "CAP", visible: false },
+  { key: "address", label: "Indirizzo", visible: false },
   { key: "status", label: "Stato", visible: true },
+  { key: "notes", label: "Note", visible: false },
   { key: "brand_name", label: "Brand", visible: false }, // Hidden by default, shown in all-brands view
-  { key: "created_at", label: "Data", visible: true },
+  { key: "created_at", label: "Data creazione", visible: true },
+  { key: "updated_at", label: "Ultimo aggiornamento", visible: false },
 ];
 
 export function useTableViews() {
