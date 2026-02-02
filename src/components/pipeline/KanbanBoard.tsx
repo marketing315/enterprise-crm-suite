@@ -47,7 +47,8 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        // Lower distance for easier drag activation
+        distance: 5,
       },
     })
   );
