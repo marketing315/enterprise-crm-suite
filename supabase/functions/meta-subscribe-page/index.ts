@@ -89,15 +89,35 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Subscribe page to leadgen webhooks via Graph API
-  const graphUrl = `https://graph.facebook.com/v20.0/${metaApp.page_id}/subscribed_apps`;
-  
-  console.log(`[META-SUBSCRIBE] Subscribing page ${metaApp.page_id} to leadgen webhooks`);
+  // First, we need to get a Page Access Token from the stored token
+  // The stored token might be a User Access Token or System User token
+  console.log(`[META-SUBSCRIBE] Getting Page Access Token for page ${metaApp.page_id}`);
 
   try {
+    // Try to get Page Access Token
+    const pageTokenUrl = `https://graph.facebook.com/v20.0/${metaApp.page_id}?fields=access_token&access_token=${metaApp.access_token}`;
+    const pageTokenRes = await fetch(pageTokenUrl);
+    const pageTokenData = await pageTokenRes.json();
+
+    let pageAccessToken = metaApp.access_token;
+
+    if (pageTokenData.access_token) {
+      pageAccessToken = pageTokenData.access_token;
+      console.log(`[META-SUBSCRIBE] Successfully obtained Page Access Token`);
+    } else if (pageTokenData.error) {
+      // If we can't get a page token, the stored token might already be a page token
+      // or there might be permission issues - try with the original token
+      console.log(`[META-SUBSCRIBE] Could not get Page Access Token, trying with stored token. Error: ${pageTokenData.error?.message}`);
+    }
+
+    // Subscribe page to leadgen webhooks via Graph API
+    const graphUrl = `https://graph.facebook.com/v20.0/${metaApp.page_id}/subscribed_apps`;
+    
+    console.log(`[META-SUBSCRIBE] Subscribing page ${metaApp.page_id} to leadgen webhooks`);
+
     const formData = new URLSearchParams();
     formData.append("subscribed_fields", "leadgen");
-    formData.append("access_token", metaApp.access_token);
+    formData.append("access_token", pageAccessToken);
 
     const graphRes = await fetch(graphUrl, {
       method: "POST",
