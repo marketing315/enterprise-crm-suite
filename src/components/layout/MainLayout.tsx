@@ -62,9 +62,15 @@ const menuItems = [
   { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
 ];
 
-const adminMenuItems = [
+// Admin menu items with optional role requirements
+const adminMenuItems: Array<{
+  icon: typeof UsersRound;
+  label: string;
+  path: string;
+  requiresRole?: ('admin' | 'ceo' | 'responsabile_venditori')[];
+}> = [
   { icon: UsersRound, label: 'Team', path: '/team' },
-  { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons' },
+  { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
   { icon: Brain, label: 'Gestione AI', path: '/admin/ai' },
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
@@ -75,7 +81,7 @@ const adminMenuItems = [
 ];
 
 export function MainLayout() {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, isCeo, hasRole } = useAuth();
   const { currentBrand, hasBrandSelected } = useBrand();
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,6 +89,17 @@ export function MainLayout() {
   // Realtime ticket notifications
   const { newTicketsCount, myNewAssignmentsCount, slaBreachCount, resetCounts } = useTicketRealtime();
   const ticketActivityCount = newTicketsCount + myNewAssignmentsCount;
+
+  // Filter admin menu items based on role requirements
+  const filteredAdminItems = adminMenuItems.filter(item => {
+    if (!item.requiresRole) return true; // No role requirement
+    // Check if user has any of the required roles
+    return item.requiresRole.some(role => {
+      if (role === 'admin') return isAdmin;
+      if (role === 'ceo') return isCeo;
+      return currentBrand && hasRole(role as any, currentBrand.id);
+    });
+  });
 
   // Reset badge when viewing tickets page
   useEffect(() => {
@@ -159,7 +176,7 @@ export function MainLayout() {
                 <SidebarGroupLabel>Amministrazione</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {adminMenuItems.map((item) => (
+                    {filteredAdminItems.map((item) => (
                       <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton
                           isActive={location.pathname === item.path}
