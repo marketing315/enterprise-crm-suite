@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Phone, Mail, MapPin, Eye, Building2, Settings2, Save } from "lucide-react";
+import { Phone, Mail, MapPin, Eye, Building2, Settings2, Save, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDeleteContact } from "@/hooks/useContacts";
+import { toast } from "sonner";
 import { ContactStatusBadge } from "./ContactStatusBadge";
 import { ContactDetailSheet } from "./ContactDetailSheet";
 import { TableViewSelector } from "./views/TableViewSelector";
@@ -54,6 +66,12 @@ export function ContactsTableWithViews({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [editingView, setEditingView] = useState<ContactTableView | null>(null);
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<ContactWithBrand | null>(null);
+  const deleteContact = useDeleteContact();
   
   const { isAllBrandsSelected } = useBrand();
   const {
@@ -132,6 +150,40 @@ export function ContactsTableWithViews({
   const handleEditView = (view: ContactTableView) => {
     setEditingView(view);
     setEditDialogOpen(true);
+  };
+
+  // Delete handlers
+  const handleDeleteClick = (contact: ContactWithBrand, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setContactToDelete(contact);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleFirstConfirm = () => {
+    setDeleteDialogOpen(false);
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleFinalDelete = () => {
+    if (!contactToDelete) return;
+    
+    deleteContact.mutate(contactToDelete.id, {
+      onSuccess: () => {
+        toast.success("Contatto eliminato con successo");
+        setConfirmDeleteOpen(false);
+        setContactToDelete(null);
+      },
+      onError: (error) => {
+        toast.error("Errore durante l'eliminazione del contatto");
+        console.error("Delete error:", error);
+      },
+    });
+  };
+
+  const getContactName = (contact: ContactWithBrand | null) => {
+    if (!contact) return "";
+    const parts = [contact.first_name, contact.last_name].filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : "Senza nome";
   };
 
   if (isLoading) {
@@ -289,13 +341,23 @@ export function ContactsTableWithViews({
                   <TableCell key={col.key}>{renderCell(contact, col.key)}</TableCell>
                 ))}
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedContactId(contact.id)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedContactId(contact.id)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleDeleteClick(contact, e)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -337,6 +399,51 @@ export function ContactsTableWithViews({
         onDelete={handleDeleteView}
         isPending={updateView.isPending}
       />
+
+      {/* First Delete Confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questo contatto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare il contatto <strong>{getContactName(contactToDelete)}</strong>.
+              Vuoi procedere?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFirstConfirm}>
+              Continua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Second Delete Confirmation */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">
+              Conferma eliminazione definitiva
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>Attenzione:</strong> questa azione è irreversibile. 
+              Il contatto <strong>{getContactName(contactToDelete)}</strong> e tutti i dati associati 
+              verranno eliminati permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFinalDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteContact.isPending}
+            >
+              {deleteContact.isPending ? "Eliminazione..." : "Elimina definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
