@@ -1,40 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { PipelineStage } from "@/types/database";
 
+// Pipeline stages are now global (shared across all brands)
 export function usePipelineStagesAdmin() {
-  const { currentBrand } = useBrand();
-
   return useQuery({
-    queryKey: ["pipeline-stages-admin", currentBrand?.id],
+    queryKey: ["pipeline-stages-admin"],
     queryFn: async (): Promise<PipelineStage[]> => {
-      if (!currentBrand) return [];
-
       const { data, error } = await supabase
         .from("pipeline_stages")
         .select("*")
-        .eq("brand_id", currentBrand.id)
         .order("order_index", { ascending: true });
 
       if (error) throw error;
       return (data || []) as unknown as PipelineStage[];
     },
-    enabled: !!currentBrand,
   });
 }
 
 export function useCreatePipelineStage() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ name, color }: { name: string; color?: string }) => {
-      if (!currentBrand) throw new Error("No brand selected");
-
       const { data, error } = await supabase.rpc("create_pipeline_stage", {
-        p_brand_id: currentBrand.id,
         p_name: name,
         p_color: color || "#6366f1",
       });
