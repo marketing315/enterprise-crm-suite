@@ -165,9 +165,28 @@ serve(async (req: Request) => {
     const { adminClient, callerId } = await getCallerContext(authHeader);
     const body: RequestBody = await req.json();
 
+    // Helper to check if brand_id is the special "all brands" constant
+    const isAllBrands = (brandId: string) => brandId === "__ALL_BRANDS__";
+
     switch (body.action) {
       case "get_assignable_roles": {
         const { brand_id } = body;
+        
+        // For all brands view, check if caller is admin/ceo globally
+        if (isAllBrands(brand_id)) {
+          const callerRole = await getCallerRoleInBrand(adminClient, callerId, brand_id);
+          if (!callerRole || (callerRole !== "admin" && callerRole !== "ceo")) {
+            return new Response(JSON.stringify({ error: "Solo Admin e CEO possono gestire tutti i brand" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          const roles = getAssignableRolesForRole(callerRole);
+          return new Response(JSON.stringify({ roles }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         
         const callerRole = await getCallerRoleInBrand(adminClient, callerId, brand_id);
         if (!callerRole) {
@@ -186,6 +205,65 @@ serve(async (req: Request) => {
 
       case "list": {
         const { brand_id, role_filter, active_only = true } = body;
+        
+        // Handle "all brands" view - only for admin/ceo
+        if (isAllBrands(brand_id)) {
+          const callerRole = await getCallerRoleInBrand(adminClient, callerId, brand_id);
+          if (!callerRole || (callerRole !== "admin" && callerRole !== "ceo")) {
+            return new Response(JSON.stringify({ error: "Solo Admin e CEO possono visualizzare tutti i brand" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Get all members from all brands
+          let query = adminClient
+            .from("user_roles")
+            .select(`
+              id,
+              user_id,
+              role,
+              is_active,
+              created_at,
+              brand_id,
+              users!inner(id, email, full_name),
+              brands!inner(id, name)
+            `);
+
+          if (role_filter) {
+            query = query.eq("role", role_filter);
+          }
+          if (active_only) {
+            query = query.eq("is_active", true);
+          }
+
+          const { data: members, error } = await query.order("created_at", { ascending: false });
+
+          if (error) {
+            return new Response(JSON.stringify({ error: error.message }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const mappedMembers = (members || []).map((m: any) => ({
+            membership_id: m.id,
+            user_id: m.user_id,
+            email: m.users?.email,
+            full_name: m.users?.full_name,
+            role: m.role,
+            is_active: m.is_active,
+            created_at: m.created_at,
+            brand_id: m.brand_id,
+            brand_name: m.brands?.name,
+            can_edit: callerRole === "admin" || (callerRole === "ceo" && m.role !== "admin"),
+          }));
+
+          return new Response(JSON.stringify({ members: mappedMembers }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         
         const callerRole = await getCallerRoleInBrand(adminClient, callerId, brand_id);
         if (!callerRole) {
