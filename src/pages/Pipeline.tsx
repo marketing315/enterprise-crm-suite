@@ -2,9 +2,9 @@ import { useState } from "react";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { TagFilter } from "@/components/tags/TagFilter";
-import { useBrand } from "@/contexts/BrandContext";
+import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { useDeals } from "@/hooks/usePipeline";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Building2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Pipeline() {
@@ -19,6 +19,9 @@ export default function Pipeline() {
     setSelectedDealId(dealId);
   };
 
+  // Check if system brand (Azienda Intera) is selected
+  const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
+
   if (!hasBrandSelected) {
     return (
       <div className="p-6">
@@ -26,6 +29,26 @@ export default function Pipeline() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Seleziona un brand dalla sidebar per visualizzare la pipeline.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Show message for system brand - pipeline is brand-specific
+  if (isSystemBrand) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
+          <p className="text-sm text-muted-foreground">
+            Gestione deal e opportunità
+          </p>
+        </div>
+        <Alert>
+          <Building2 className="h-4 w-4" />
+          <AlertDescription>
+            La pipeline è specifica per ogni brand. Seleziona un brand dalla sidebar per visualizzare e gestire i deal.
           </AlertDescription>
         </Alert>
       </div>
