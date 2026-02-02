@@ -244,7 +244,11 @@ export function DealDetailSheet({
                       <User className="h-4 w-4" />
                       Contatto
                     </h4>
-                    <Button variant="ghost" size="sm">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/contacts?open=${deal.contact_id}`)}
+                    >
                       <ExternalLink className="h-3.5 w-3.5 mr-1" />
                       Apri
                     </Button>

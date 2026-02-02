@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Users, Filter, SlidersHorizontal, Building2 } from 'lucide-react';
 import {
   Select,
@@ -37,6 +38,7 @@ const statusOptions: { value: ContactStatus | 'all'; label: string }[] = [
 export default function Contacts() {
   const isMobile = useIsMobile();
   const { currentBrand, isAllBrandsSelected, brands } = useBrand();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -44,6 +46,19 @@ export default function Contacts() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [brandFilter, setBrandFilter] = useState<string>('all');
+
+  // Handle URL param to open contact detail
+  useEffect(() => {
+    const openContactId = searchParams.get('open');
+    if (openContactId) {
+      setSelectedContactId(openContactId);
+      setSheetOpen(true);
+      // Clean up the URL param
+      searchParams.delete('open');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+  
   
   const { data: contacts = [], isLoading } = useContactSearch(
     searchQuery,
