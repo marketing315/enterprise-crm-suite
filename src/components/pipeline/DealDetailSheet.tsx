@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
 import {
@@ -12,6 +13,7 @@ import {
   Tag,
   Calendar,
   UserCheck,
+  ShoppingCart,
 } from "lucide-react";
 import {
   Sheet,
@@ -28,6 +30,7 @@ import { EntityTagList } from "@/components/tags/EntityTagList";
 import { EntityChatBox } from "@/components/chat/EntityChatBox";
 import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssignmentSelect";
 import { useUpdateDealStatus, useAssignDealToUser } from "@/hooks/usePipeline";
+import { useDealSalesOrder, useCreateSalesOrderFromDeal } from "@/hooks/useSalesOrders";
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
@@ -43,8 +46,11 @@ export function DealDetailSheet({
   open,
   onOpenChange,
 }: DealDetailSheetProps) {
+  const navigate = useNavigate();
   const updateStatus = useUpdateDealStatus();
   const assignDeal = useAssignDealToUser();
+  const { data: existingSalesOrder } = useDealSalesOrder(deal?.id || null);
+  const createSalesOrder = useCreateSalesOrderFromDeal();
 
   if (!deal) return null;
 
@@ -60,6 +66,17 @@ export function DealDetailSheet({
         },
       }
     );
+  };
+
+  const handleCreateSalesOrder = async () => {
+    try {
+      const orderId = await createSalesOrder.mutateAsync(deal.id);
+      if (orderId) {
+        navigate("/sales");
+      }
+    } catch (error) {
+      // Error already handled by mutation
+    }
   };
 
   const getContactName = () => {
@@ -230,6 +247,45 @@ export function DealDetailSheet({
                     </p>
                   </div>
                 )}
+
+                {/* Sales Order */}
+                <div className="rounded-lg border p-4">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <ShoppingCart className="h-4 w-4" />
+                    Vendita
+                  </h4>
+                  {existingSalesOrder ? (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{existingSalesOrder.order_number}</p>
+                        <p className="text-sm text-muted-foreground">
+                          €{existingSalesOrder.total_amount.toLocaleString("it-IT")}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate("/sales")}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                        Apri
+                      </Button>
+                    </div>
+                  ) : deal.status === "won" ? (
+                    <Button
+                      onClick={handleCreateSalesOrder}
+                      disabled={createSalesOrder.isPending}
+                      className="w-full"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      {createSalesOrder.isPending ? "Creazione..." : "Crea Vendita"}
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Segna il deal come "Vinto" per creare una vendita
+                    </p>
+                  )}
+                </div>
 
                 {/* Tags */}
                 <div className="rounded-lg border p-4">

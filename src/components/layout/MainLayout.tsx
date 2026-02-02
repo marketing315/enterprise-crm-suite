@@ -47,6 +47,8 @@ import {
   MessageSquare,
   Brain,
   UsersRound,
+  ShoppingCart,
+  Package,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -56,6 +58,7 @@ const menuItems = [
   { icon: Users, label: 'Contatti', path: '/contacts' },
   { icon: Inbox, label: 'Eventi', path: '/events' },
   { icon: Kanban, label: 'Pipeline', path: '/pipeline' },
+  { icon: ShoppingCart, label: 'Vendite', path: '/sales' },
   { icon: Calendar, label: 'Appuntamenti', path: '/appointments' },
   { icon: Ticket, label: 'Ticket', path: '/tickets' },
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
@@ -71,6 +74,7 @@ const adminMenuItems: Array<{
 }> = [
   { icon: UsersRound, label: 'Team', path: '/team' },
   { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
+  { icon: Package, label: 'Prodotti', path: '/products', requiresRole: ['admin', 'ceo'] },
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
   { icon: Brain, label: 'Gestione AI', path: '/admin/ai' },
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
