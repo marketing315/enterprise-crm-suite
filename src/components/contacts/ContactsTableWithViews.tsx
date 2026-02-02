@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -27,6 +28,7 @@ import { useDeleteContact } from "@/hooks/useContacts";
 import { toast } from "sonner";
 import { ContactStatusBadge } from "./ContactStatusBadge";
 import { ContactDetailSheet } from "./ContactDetailSheet";
+import { ContactsBulkActionsBar } from "./ContactsBulkActionsBar";
 import { TableViewSelector } from "./views/TableViewSelector";
 import { SaveViewDialog } from "./views/SaveViewDialog";
 import { EditViewDialog } from "./views/EditViewDialog";
@@ -62,6 +64,7 @@ export function ContactsTableWithViews({
   filters = {},
 }: ContactsTableProps) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
@@ -72,6 +75,33 @@ export function ContactsTableWithViews({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<ContactWithBrand | null>(null);
   const deleteContact = useDeleteContact();
+
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(contacts.map(c => c.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const next = new Set(selectedIds);
+    if (checked) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    setSelectedIds(next);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
+  const allSelected = contacts.length > 0 && selectedIds.size === contacts.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < contacts.length;
   
   const { isAllBrandsSelected } = useBrand();
   const {
@@ -371,9 +401,21 @@ export function ContactsTableWithViews({
 
       {/* Table */}
       <div className="rounded-md border overflow-x-auto">
-        <Table className="min-w-[700px]">
+        <Table className="min-w-[750px]">
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) {
+                      (el as any).indeterminate = someSelected;
+                    }
+                  }}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Seleziona tutti"
+                />
+              </TableHead>
               {visibleColumns.map((col) => (
                 <TableHead key={col.key} className="min-w-[100px]">
                   {col.label}
@@ -384,7 +426,17 @@ export function ContactsTableWithViews({
           </TableHeader>
           <TableBody>
             {contacts.map((contact) => (
-              <TableRow key={contact.id}>
+              <TableRow 
+                key={contact.id}
+                className={selectedIds.has(contact.id) ? "bg-muted/50" : undefined}
+              >
+                <TableCell>
+                  <Checkbox
+                    checked={selectedIds.has(contact.id)}
+                    onCheckedChange={(checked) => handleSelectOne(contact.id, !!checked)}
+                    aria-label={`Seleziona ${getFullName(contact)}`}
+                  />
+                </TableCell>
                 {visibleColumns.map((col) => (
                   <TableCell key={col.key}>{renderCell(contact, col.key)}</TableCell>
                 ))}
@@ -412,6 +464,13 @@ export function ContactsTableWithViews({
           </TableBody>
         </Table>
       </div>
+
+      {/* Bulk actions bar */}
+      <ContactsBulkActionsBar
+        selectedContacts={selectedContacts}
+        onClearSelection={handleClearSelection}
+        allContacts={contacts}
+      />
 
       {/* Contact Detail Sheet */}
       <ContactDetailSheet
