@@ -90,7 +90,7 @@ export function usePipelineStages() {
 
 // Extended type for global view with brand info
 export interface DealWithBrand extends DealWithContactAndTags {
-  brand?: { id: string; name: string } | null;
+  brand?: { id: string; name: string; slug: string } | null;
 }
 
 export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
@@ -111,7 +111,7 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
             contact:contacts(id, first_name, last_name, email),
             assigned_user:users!deals_assigned_user_id_fkey(id, full_name, email),
             marketing_campaign:marketing_campaigns!deals_marketing_campaign_id_fkey(id, name, channel_id),
-            brand:brands!deals_brand_id_fkey(id, name)
+            brand:brands!deals_brand_id_fkey(id, name, slug)
           `)
           .neq("brand_id", SYSTEM_BRAND_ID)
           .order("updated_at", { ascending: false })
@@ -153,7 +153,8 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
           *,
           contact:contacts(id, first_name, last_name, email),
           assigned_user:users!deals_assigned_user_id_fkey(id, full_name, email),
-          marketing_campaign:marketing_campaigns!deals_marketing_campaign_id_fkey(id, name, channel_id)
+          marketing_campaign:marketing_campaigns!deals_marketing_campaign_id_fkey(id, name, channel_id),
+          brand:brands!deals_brand_id_fkey(id, name, slug)
         `)
         .eq("brand_id", currentBrand.id)
         .order("updated_at", { ascending: false });
