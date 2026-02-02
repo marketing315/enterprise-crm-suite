@@ -33,12 +33,10 @@ export function useContacts(status?: ContactStatus) {
 }
 
 export function useContact(contactId: string | null) {
-  const { currentBrand } = useBrand();
-
   return useQuery({
     queryKey: ['contact', contactId],
     queryFn: async () => {
-      if (!contactId || !currentBrand?.id) return null;
+      if (!contactId) return null;
 
       const { data, error } = await supabase
         .from('contacts')
@@ -48,13 +46,12 @@ export function useContact(contactId: string | null) {
           lead_events (*)
         `)
         .eq('id', contactId)
-        .eq('brand_id', currentBrand.id)
         .single();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!contactId && !!currentBrand?.id,
+    enabled: !!contactId,
   });
 }
 
