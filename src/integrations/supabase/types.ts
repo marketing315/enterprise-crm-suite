@@ -2512,7 +2512,7 @@ export type Database = {
       }
       pipeline_stages: {
         Row: {
-          brand_id: string
+          brand_id: string | null
           color: string | null
           created_at: string
           description: string | null
@@ -2523,7 +2523,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          brand_id: string
+          brand_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -2534,7 +2534,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          brand_id?: string
+          brand_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -2544,15 +2544,7 @@ export type Database = {
           order_index?: number
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_stages_brand_id_fkey"
-            columns: ["brand_id"]
-            isOneToOne: false
-            referencedRelation: "brands"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       products: {
         Row: {
@@ -3795,15 +3787,20 @@ export type Database = {
           webhook_id: string
         }[]
       }
-      create_pipeline_stage: {
-        Args: {
-          p_brand_id: string
-          p_color?: string
-          p_description?: string
-          p_name: string
-        }
-        Returns: string
-      }
+      create_pipeline_stage:
+        | {
+            Args: {
+              p_brand_id: string
+              p_color?: string
+              p_description?: string
+              p_name: string
+            }
+            Returns: string
+          }
+        | {
+            Args: { p_brand_id?: string; p_color?: string; p_name: string }
+            Returns: string
+          }
       create_sales_order_from_deal: {
         Args: { p_deal_id: string }
         Returns: string

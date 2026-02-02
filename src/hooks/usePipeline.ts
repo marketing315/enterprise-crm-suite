@@ -72,47 +72,19 @@ interface SearchDealsResult {
 const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
 
 export function usePipelineStages() {
-  const { currentBrand } = useBrand();
-  const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
-
+  // Pipeline stages are now global (shared across all brands)
   return useQuery({
-    queryKey: ["pipeline-stages", currentBrand?.id],
+    queryKey: ["pipeline-stages"],
     queryFn: async (): Promise<PipelineStage[]> => {
-      if (!currentBrand) return [];
-
-      if (isSystemBrand) {
-        // For system brand, get stages from first available brand as reference
-        const { data: brands } = await supabase
-          .from("brands")
-          .select("id")
-          .neq("id", SYSTEM_BRAND_ID)
-          .eq("is_system", false)
-          .limit(1);
-
-        if (!brands?.length) return [];
-
-        const { data, error } = await supabase
-          .from("pipeline_stages")
-          .select("*")
-          .eq("brand_id", brands[0].id)
-          .eq("is_active", true)
-          .order("order_index", { ascending: true });
-
-        if (error) throw error;
-        return (data || []) as unknown as PipelineStage[];
-      }
-
       const { data, error } = await supabase
         .from("pipeline_stages")
         .select("*")
-        .eq("brand_id", currentBrand.id)
         .eq("is_active", true)
         .order("order_index", { ascending: true });
 
       if (error) throw error;
       return (data || []) as unknown as PipelineStage[];
     },
-    enabled: !!currentBrand,
   });
 }
 

@@ -167,7 +167,7 @@ export function PipelineStagesSettings() {
                 Fasi Pipeline
               </CardTitle>
               <CardDescription>
-                Configura le fasi della pipeline di vendita. Trascina per riordinare.
+                Fasi condivise tra tutti i brand. Le modifiche si applicano globalmente.
               </CardDescription>
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)} size="sm">
