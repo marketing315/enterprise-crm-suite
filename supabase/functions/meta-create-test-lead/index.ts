@@ -57,9 +57,31 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Exchange for Page Access Token (required for leadgen_forms and test_leads endpoints)
+    console.log(`[META-TEST] Getting Page Access Token for page ${page_id}`);
+    const pageTokenUrl = `https://graph.facebook.com/v20.0/${page_id}?fields=access_token&access_token=${access_token}`;
+    const pageTokenRes = await fetch(pageTokenUrl);
+    const pageTokenData = await pageTokenRes.json();
+
+    let pageAccessToken = access_token;
+
+    if (pageTokenData.access_token) {
+      pageAccessToken = pageTokenData.access_token;
+      console.log(`[META-TEST] Successfully obtained Page Access Token`);
+    } else if (pageTokenData.error) {
+      console.error(`[META-TEST] Could not get Page Access Token:`, pageTokenData.error);
+      return new Response(JSON.stringify({ 
+        error: "Could not obtain Page Access Token. Ensure your System User has the Page assigned with 'pages_manage_ads' permission.",
+        fb_error: pageTokenData.error 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Action: list_forms - Get all lead forms for this page
     if (action === "list_forms") {
-      const formsUrl = `https://graph.facebook.com/v19.0/${page_id}/leadgen_forms?access_token=${access_token}`;
+      const formsUrl = `https://graph.facebook.com/v20.0/${page_id}/leadgen_forms?access_token=${pageAccessToken}`;
       const formsRes = await fetch(formsUrl);
       const formsData = await formsRes.json();
 
@@ -91,7 +113,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const testLeadUrl = `https://graph.facebook.com/v19.0/${form_id}/test_leads?access_token=${access_token}`;
+      const testLeadUrl = `https://graph.facebook.com/v20.0/${form_id}/test_leads?access_token=${pageAccessToken}`;
 
       // Step 1: Try to get existing test leads
       console.log("[META-TEST] Checking for existing test leads...");
@@ -102,7 +124,7 @@ Deno.serve(async (req) => {
       if (existingData.data && existingData.data.length > 0) {
         console.log("[META-TEST] Found existing test leads, deleting...");
         for (const lead of existingData.data) {
-          const deleteUrl = `https://graph.facebook.com/v19.0/${lead.id}?access_token=${access_token}`;
+          const deleteUrl = `https://graph.facebook.com/v20.0/${lead.id}?access_token=${pageAccessToken}`;
           const deleteRes = await fetch(deleteUrl, { method: "DELETE" });
           const deleteData = await deleteRes.json();
           console.log(`[META-TEST] Deleted test lead ${lead.id}:`, deleteData);
