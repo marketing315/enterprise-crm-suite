@@ -1470,6 +1470,7 @@ export type Database = {
           created_at: string
           current_stage_id: string | null
           id: string
+          marketing_campaign_id: string | null
           notes: string | null
           stage_locked_by_user: boolean
           status: Database["public"]["Enums"]["deal_status"]
@@ -1484,6 +1485,7 @@ export type Database = {
           created_at?: string
           current_stage_id?: string | null
           id?: string
+          marketing_campaign_id?: string | null
           notes?: string | null
           stage_locked_by_user?: boolean
           status?: Database["public"]["Enums"]["deal_status"]
@@ -1498,6 +1500,7 @@ export type Database = {
           created_at?: string
           current_stage_id?: string | null
           id?: string
+          marketing_campaign_id?: string | null
           notes?: string | null
           stage_locked_by_user?: boolean
           status?: Database["public"]["Enums"]["deal_status"]
@@ -1531,6 +1534,13 @@ export type Database = {
             columns: ["current_stage_id"]
             isOneToOne: false
             referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_marketing_campaign_id_fkey"
+            columns: ["marketing_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -1876,6 +1886,166 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_campaigns: {
+        Row: {
+          brand_id: string
+          channel_id: string | null
+          created_at: string
+          created_by: string
+          end_date: string | null
+          external_id: string | null
+          id: string
+          name: string
+          planned_budget: number | null
+          start_date: string
+          status: Database["public"]["Enums"]["marketing_campaign_status"]
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          channel_id?: string | null
+          created_at?: string
+          created_by: string
+          end_date?: string | null
+          external_id?: string | null
+          id?: string
+          name: string
+          planned_budget?: number | null
+          start_date: string
+          status?: Database["public"]["Enums"]["marketing_campaign_status"]
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          external_id?: string | null
+          id?: string
+          name?: string
+          planned_budget?: number | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["marketing_campaign_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_campaigns_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_channels: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_channels_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_costs: {
+        Row: {
+          amount: number
+          brand_id: string
+          campaign_id: string | null
+          cost_date: string
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          source: string | null
+        }
+        Insert: {
+          amount: number
+          brand_id: string
+          campaign_id?: string | null
+          cost_date: string
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          source?: string | null
+        }
+        Update: {
+          amount?: number
+          brand_id?: string
+          campaign_id?: string | null
+          cost_date?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_costs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_costs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_costs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3806,6 +3976,55 @@ export type Database = {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
       }
+      get_marketing_campaign_kpis: {
+        Args: {
+          p_brand_id: string
+          p_campaign_id?: string
+          p_channel_id?: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          cac: number
+          campaign_id: string
+          campaign_name: string
+          channel_name: string
+          cpl: number
+          deals_count: number
+          deals_won: number
+          leads_count: number
+          marketing_cost: number
+          revenue: number
+          roi: number
+        }[]
+      }
+      get_marketing_channel_kpis: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          avg_roi: number
+          campaigns_count: number
+          channel_id: string
+          channel_name: string
+          channel_type: string
+          deals_won: number
+          leads_count: number
+          marketing_cost: number
+          revenue: number
+        }[]
+      }
+      get_marketing_summary_kpis: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          avg_cac: number
+          avg_cpl: number
+          overall_roi: number
+          total_deals: number
+          total_deals_won: number
+          total_leads: number
+          total_marketing_cost: number
+          total_revenue: number
+        }[]
+      }
       get_notification_preferences: {
         Args: { p_brand_id: string }
         Returns: {
@@ -3927,6 +4146,14 @@ export type Database = {
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       get_webhook_delivery: { Args: { p_delivery_id: string }; Returns: Json }
       has_finance_access: {
+        Args: { p_brand_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      has_marketing_access: {
+        Args: { p_brand_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      has_marketing_write_access: {
         Args: { p_brand_id: string; p_user_id: string }
         Returns: boolean
       }
@@ -4342,6 +4569,7 @@ export type Database = {
       lead_source_channel: "tv" | "online" | "other"
       lead_source_type: "webhook" | "manual" | "import" | "api"
       lead_type: "trial" | "info" | "support" | "generic"
+      marketing_campaign_status: "planned" | "active" | "paused" | "closed"
       meta_lead_status:
         | "received"
         | "fetched"
@@ -4602,6 +4830,7 @@ export const Constants = {
       lead_source_channel: ["tv", "online", "other"],
       lead_source_type: ["webhook", "manual", "import", "api"],
       lead_type: ["trial", "info", "support", "generic"],
+      marketing_campaign_status: ["planned", "active", "paused", "closed"],
       meta_lead_status: [
         "received",
         "fetched",

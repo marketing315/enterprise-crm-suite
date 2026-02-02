@@ -34,6 +34,10 @@ import CompanyOverview from "@/pages/company/CompanyOverview";
 import CompanyExpenses from "@/pages/company/CompanyExpenses";
 import CompanyBudget from "@/pages/company/CompanyBudget";
 import CompanyReports from "@/pages/company/CompanyReports";
+import MarketingDashboard from "@/pages/marketing/MarketingDashboard";
+import MarketingCampaigns from "@/pages/marketing/MarketingCampaigns";
+import MarketingCosts from "@/pages/marketing/MarketingCosts";
+import MarketingReports from "@/pages/marketing/MarketingReports";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +86,10 @@ const App = () => (
                 <Route path="/azienda/budget" element={<CompanyBudget />} />
                 <Route path="/azienda/report" element={<CompanyReports />} />
                 <Route path="/analytics" element={<AdminAnalytics />} />
+                <Route path="/marketing" element={<MarketingDashboard />} />
+                <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
+                <Route path="/marketing/costi" element={<MarketingCosts />} />
+                <Route path="/marketing/report" element={<MarketingReports />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/salespersons" element={<SalespersonKpi />} />
