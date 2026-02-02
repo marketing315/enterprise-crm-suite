@@ -26,11 +26,20 @@ interface AssignedUser {
   email: string;
 }
 
-// Extended deal type with tags and assigned user
+// Marketing campaign info
+interface DealCampaign {
+  id: string;
+  name: string;
+  channel_id: string | null;
+}
+
+// Extended deal type with tags, assigned user, and campaign
 export interface DealWithContactAndTags extends Omit<DealWithContact, 'assigned_user_id'> {
   tags?: DealTag[];
   assigned_user_id?: string | null;
   assigned_user?: AssignedUser | null;
+  marketing_campaign_id?: string | null;
+  marketing_campaign?: DealCampaign | null;
 }
 
 // Result from search_deals RPC
@@ -115,7 +124,8 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
         .select(`
           *,
           contact:contacts(id, first_name, last_name, email),
-          assigned_user:users!deals_assigned_user_id_fkey(id, full_name, email)
+          assigned_user:users!deals_assigned_user_id_fkey(id, full_name, email),
+          marketing_campaign:marketing_campaigns!deals_marketing_campaign_id_fkey(id, name, channel_id)
         `)
         .eq("brand_id", currentBrand.id)
         .order("updated_at", { ascending: false });
@@ -196,6 +206,27 @@ export function useAssignDealToUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["salesperson-kpis"] });
+    },
+  });
+}
+
+export function useUpdateDealCampaign() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async ({ dealId, campaignId }: { dealId: string; campaignId: string | null }) => {
+      const { error } = await untypedClient
+        .from("deals")
+        .update({ marketing_campaign_id: campaignId })
+        .eq("id", dealId)
+        .eq("brand_id", currentBrand?.id || "");
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing-kpis"] });
     },
   });
 }

@@ -12,11 +12,16 @@ interface CostFilters {
 
 export function useMarketingCosts(filters?: CostFilters) {
   const { currentBrand } = useBrand();
+  const brandId = currentBrand?.id;
+  const campaignFilter = filters?.campaignId ?? "all";
+  const fromFilter = filters?.fromDate ?? "all";
+  const toFilter = filters?.toDate ?? "all";
 
   return useQuery({
-    queryKey: ["marketing-costs", currentBrand?.id, filters],
+    // Use primitive values in queryKey for stable cache
+    queryKey: ["marketing-costs", brandId ?? "", campaignFilter, fromFilter, toFilter],
     queryFn: async (): Promise<MarketingCost[]> => {
-      if (!currentBrand) return [];
+      if (!brandId) return [];
 
       let query = supabase
         .from("marketing_costs")
@@ -24,7 +29,7 @@ export function useMarketingCosts(filters?: CostFilters) {
           *,
           marketing_campaigns(id, name, channel_id)
         `)
-        .eq("brand_id", currentBrand.id)
+        .eq("brand_id", brandId)
         .order("cost_date", { ascending: false });
 
       if (filters?.campaignId) {
@@ -42,7 +47,7 @@ export function useMarketingCosts(filters?: CostFilters) {
       if (error) throw error;
       return (data || []) as unknown as MarketingCost[];
     },
-    enabled: !!currentBrand,
+    enabled: !!brandId,
   });
 }
 

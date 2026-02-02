@@ -14,6 +14,7 @@ import {
   UserCheck,
   ShoppingCart,
   Lock,
+  Megaphone,
 } from "lucide-react";
 import {
   Sheet,
@@ -29,9 +30,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EntityTagList } from "@/components/tags/EntityTagList";
 import { EntityChatBox } from "@/components/chat/EntityChatBox";
 import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssignmentSelect";
-import { useUpdateDealStatus, useAssignDealToUser } from "@/hooks/usePipeline";
+import { CampaignSelect } from "./CampaignSelect";
+import { useUpdateDealStatus, useAssignDealToUser, useUpdateDealCampaign } from "@/hooks/usePipeline";
 import { useDealSalesOrder, useCreateSalesOrderFromDeal } from "@/hooks/useSalesOrders";
 import { useCanEditDeals } from "@/hooks/useCanEditDeals";
+import { useHasMarketingAccess, useCanEditCampaigns } from "@/hooks/useMarketingAccess";
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
@@ -50,9 +53,12 @@ export function DealDetailSheet({
   const navigate = useNavigate();
   const updateStatus = useUpdateDealStatus();
   const assignDeal = useAssignDealToUser();
+  const updateCampaign = useUpdateDealCampaign();
   const { data: existingSalesOrder } = useDealSalesOrder(deal?.id || null);
   const createSalesOrder = useCreateSalesOrderFromDeal();
   const canEdit = useCanEditDeals();
+  const hasMarketingAccess = useHasMarketingAccess();
+  const canEditCampaigns = useCanEditCampaigns();
 
   if (!deal) return null;
 
@@ -65,6 +71,20 @@ export function DealDetailSheet({
         },
         onError: () => {
           toast.error("Errore nell'assegnazione");
+        },
+      }
+    );
+  };
+
+  const handleCampaignChange = (campaignId: string | null) => {
+    updateCampaign.mutate(
+      { dealId: deal.id, campaignId },
+      {
+        onSuccess: () => {
+          toast.success(campaignId ? "Campagna assegnata" : "Campagna rimossa");
+        },
+        onError: () => {
+          toast.error("Errore nell'assegnazione campagna");
         },
       }
     );
@@ -257,6 +277,26 @@ export function DealDetailSheet({
                     <p className="text-2xl font-bold text-green-700 mt-1">
                       €{deal.value.toLocaleString("it-IT")}
                     </p>
+                  </div>
+                )}
+
+                {/* Marketing Campaign Attribution */}
+                {hasMarketingAccess && (
+                  <div className="rounded-lg border p-4">
+                    <h4 className="font-medium flex items-center gap-2 mb-3">
+                      <Megaphone className="h-4 w-4" />
+                      Campagna Marketing
+                    </h4>
+                    <CampaignSelect
+                      value={deal.marketing_campaign_id || null}
+                      onChange={handleCampaignChange}
+                      disabled={updateCampaign.isPending || !canEdit || !canEditCampaigns}
+                    />
+                    {deal.marketing_campaign && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Attribuzione per calcolo ROI e KPI marketing
+                      </p>
+                    )}
                   </div>
                 )}
 

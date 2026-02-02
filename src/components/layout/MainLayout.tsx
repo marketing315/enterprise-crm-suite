@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
+import { useHasMarketingAccess } from '@/hooks/useMarketingAccess';
 import { BrandSelector } from './BrandSelector';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -55,7 +56,8 @@ import {
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
-const menuItems = [
+// Base menu items (always visible if brand selected)
+const baseMenuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Users, label: 'Contatti', path: '/contacts' },
   { icon: Inbox, label: 'Eventi', path: '/events' },
@@ -65,9 +67,13 @@ const menuItems = [
   { icon: Ticket, label: 'Ticket', path: '/tickets' },
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: Briefcase, label: 'Azienda', path: '/azienda' },
-  { icon: Megaphone, label: 'Marketing', path: '/marketing' },
-  { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
 ];
+
+// Marketing menu item (requires marketing access)
+const marketingMenuItem = { icon: Megaphone, label: 'Marketing', path: '/marketing' };
+
+// Analytics (admin only)
+const analyticsMenuItem = { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' };
 
 // Admin menu items with optional role requirements
 const adminMenuItems: Array<{
@@ -91,12 +97,30 @@ const adminMenuItems: Array<{
 export function MainLayout() {
   const { user, signOut, isAdmin, isCeo, hasRole } = useAuth();
   const { currentBrand, hasBrandSelected } = useBrand();
+  const hasMarketingAccess = useHasMarketingAccess();
   const navigate = useNavigate();
   const location = useLocation();
   
   // Realtime ticket notifications
   const { newTicketsCount, myNewAssignmentsCount, slaBreachCount, resetCounts } = useTicketRealtime();
   const ticketActivityCount = newTicketsCount + myNewAssignmentsCount;
+
+  // Build menu items based on permissions
+  const menuItems = useMemo(() => {
+    const items = [...baseMenuItems];
+    
+    // Add Marketing only if user has access
+    if (hasMarketingAccess) {
+      items.push(marketingMenuItem);
+    }
+    
+    // Add Analytics only for admin/ceo
+    if (isAdmin || isCeo) {
+      items.push(analyticsMenuItem);
+    }
+    
+    return items;
+  }, [hasMarketingAccess, isAdmin, isCeo]);
 
   // Filter admin menu items based on role requirements
   const filteredAdminItems = adminMenuItems.filter(item => {

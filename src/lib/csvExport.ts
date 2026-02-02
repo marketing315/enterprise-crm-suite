@@ -14,7 +14,7 @@ function escapeCSV(value: unknown): string {
 /**
  * Convert an array of objects to CSV string with semicolon separator (EU format)
  */
-export function arrayToCSV<T extends Record<string, unknown>>(
+export function arrayToCSV<T extends object>(
   data: T[],
   columns: { key: keyof T; label: string }[]
 ): string {
