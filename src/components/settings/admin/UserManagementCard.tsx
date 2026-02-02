@@ -36,6 +36,7 @@ interface UserRoleEntry {
 const roleLabels: Record<AppRole, string> = {
   admin: "Admin",
   ceo: "CEO",
+  amministrazione: "Amministrazione",
   callcenter: "Call Center",
   sales: "Sales",
   responsabile_venditori: "Resp. Venditori",
@@ -47,6 +48,7 @@ const roleLabels: Record<AppRole, string> = {
 const roleColors: Record<AppRole, "default" | "secondary" | "destructive" | "outline"> = {
   admin: "destructive",
   ceo: "default",
+  amministrazione: "default",
   callcenter: "secondary",
   sales: "outline",
   responsabile_venditori: "default",

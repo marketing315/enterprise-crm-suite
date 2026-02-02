@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -14,6 +13,7 @@ import {
   Calendar,
   UserCheck,
   ShoppingCart,
+  Lock,
 } from "lucide-react";
 import {
   Sheet,
@@ -31,6 +31,7 @@ import { EntityChatBox } from "@/components/chat/EntityChatBox";
 import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssignmentSelect";
 import { useUpdateDealStatus, useAssignDealToUser } from "@/hooks/usePipeline";
 import { useDealSalesOrder, useCreateSalesOrderFromDeal } from "@/hooks/useSalesOrders";
+import { useCanEditDeals } from "@/hooks/useCanEditDeals";
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
@@ -51,6 +52,7 @@ export function DealDetailSheet({
   const assignDeal = useAssignDealToUser();
   const { data: existingSalesOrder } = useDealSalesOrder(deal?.id || null);
   const createSalesOrder = useCreateSalesOrderFromDeal();
+  const canEdit = useCanEditDeals();
 
   if (!deal) return null;
 
@@ -157,50 +159,60 @@ export function DealDetailSheet({
           <TabsContent value="details" className="flex-1 overflow-hidden mt-4">
             <ScrollArea className="h-full -mx-6 px-6">
               <div className="space-y-6 pb-4">
-                {/* Quick Actions */}
-                <div className="flex flex-wrap gap-2">
-                  {deal.status === "open" && (
-                    <>
+                {/* Read-only notice for amministrazione */}
+                {!canEdit && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
+                    <Lock className="h-4 w-4" />
+                    <span>Modalità sola lettura</span>
+                  </div>
+                )}
+
+                {/* Quick Actions - Hidden for read-only users */}
+                {canEdit && (
+                  <div className="flex flex-wrap gap-2">
+                    {deal.status === "open" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusChange("won")}
+                          className="text-green-700 border-green-300 hover:bg-green-50"
+                        >
+                          <Trophy className="h-4 w-4 mr-1" />
+                          Vinto
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusChange("lost")}
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Perso
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusChange("closed")}
+                        >
+                          <Archive className="h-4 w-4 mr-1" />
+                          Archivia
+                        </Button>
+                      </>
+                    )}
+                    {(deal.status === "won" ||
+                      deal.status === "lost" ||
+                      deal.status === "closed") && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleStatusChange("won")}
-                        className="text-green-700 border-green-300 hover:bg-green-50"
+                        onClick={() => handleStatusChange("open")}
                       >
-                        <Trophy className="h-4 w-4 mr-1" />
-                        Vinto
+                        Riapri Deal
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleStatusChange("lost")}
-                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Perso
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleStatusChange("closed")}
-                      >
-                        <Archive className="h-4 w-4 mr-1" />
-                        Archivia
-                      </Button>
-                    </>
-                  )}
-                  {(deal.status === "won" ||
-                    deal.status === "lost" ||
-                    deal.status === "closed") && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusChange("open")}
-                    >
-                      Riapri Deal
-                    </Button>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Contact Info */}
                 <div className="rounded-lg border p-4 space-y-2">
@@ -222,7 +234,7 @@ export function DealDetailSheet({
                   </div>
                 </div>
 
-                {/* Salesperson Assignment */}
+                {/* Salesperson Assignment - Disabled for read-only */}
                 <div className="rounded-lg border p-4">
                   <h4 className="font-medium flex items-center gap-2 mb-3">
                     <UserCheck className="h-4 w-4" />
@@ -231,7 +243,7 @@ export function DealDetailSheet({
                   <SalespersonAssignmentSelect
                     value={(deal as any).assigned_user_id || null}
                     onChange={handleAssignmentChange}
-                    disabled={assignDeal.isPending}
+                    disabled={assignDeal.isPending || !canEdit}
                   />
                 </div>
 

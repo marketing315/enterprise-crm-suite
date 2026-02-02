@@ -30,6 +30,10 @@ import SalespersonKpi from "@/pages/SalespersonKpi";
 import Sales from "@/pages/Sales";
 import Products from "@/pages/Products";
 import NotFound from "@/pages/NotFound";
+import CompanyOverview from "@/pages/company/CompanyOverview";
+import CompanyExpenses from "@/pages/company/CompanyExpenses";
+import CompanyBudget from "@/pages/company/CompanyBudget";
+import CompanyReports from "@/pages/company/CompanyReports";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +77,10 @@ const App = () => (
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/notifications" element={<Notifications />} />
+                <Route path="/azienda" element={<CompanyOverview />} />
+                <Route path="/azienda/costi" element={<CompanyExpenses />} />
+                <Route path="/azienda/budget" element={<CompanyBudget />} />
+                <Route path="/azienda/report" element={<CompanyReports />} />
                 <Route path="/analytics" element={<AdminAnalytics />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/team" element={<Team />} />

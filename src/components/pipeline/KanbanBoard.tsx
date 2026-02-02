@@ -14,10 +14,12 @@ import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCardPreview } from "./KanbanCardPreview";
 import { MobileKanbanView } from "./MobileKanbanView";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCanEditDeals } from "@/hooks/useCanEditDeals";
+
 interface KanbanBoardProps {
   onDealClick?: (dealId: string) => void;
   filterTagIds?: string[];
@@ -31,6 +33,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   );
   const updateStage = useUpdateDealStage();
   const isMobile = useIsMobile();
+  const canEditDeals = useCanEditDeals();
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -65,6 +68,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   }, [activeId, deals]);
 
   const handleDragStart = (event: DragStartEvent) => {
+    if (!canEditDeals) return; // Prevent drag for read-only users
     setActiveId(event.active.id as string);
   };
 
@@ -72,7 +76,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over) return;
+    if (!over || !canEditDeals) return; // Prevent drop for read-only users
 
     const dealId = active.id as string;
     const overId = over.id as string;
@@ -143,32 +147,42 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
         stages={stages}
         dealsByStage={dealsByStage}
         onDealClick={onDealClick}
+        readOnly={!canEditDeals}
       />
     );
   }
 
-  // Desktop: Full drag-and-drop Kanban
+  // Desktop: Full drag-and-drop Kanban (disabled for read-only users)
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
-        {stages.map((stage) => (
-          <KanbanColumn
-            key={stage.id}
-            stage={stage}
-            deals={dealsByStage[stage.id] || []}
-            onDealClick={onDealClick}
-          />
-        ))}
-      </div>
+    <div className="relative">
+      {!canEditDeals && (
+        <div className="absolute top-2 right-4 z-10 flex items-center gap-2 text-sm text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border">
+          <Lock className="h-3.5 w-3.5" />
+          <span>Modalità sola lettura</span>
+        </div>
+      )}
+      <DndContext
+        sensors={canEditDeals ? sensors : []} // Disable sensors for read-only
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
+          {stages.map((stage) => (
+            <KanbanColumn
+              key={stage.id}
+              stage={stage}
+              deals={dealsByStage[stage.id] || []}
+              onDealClick={onDealClick}
+              readOnly={!canEditDeals}
+            />
+          ))}
+        </div>
 
-      <DragOverlay>
-        {activeDeal && <KanbanCardPreview deal={activeDeal} />}
-      </DragOverlay>
-    </DndContext>
+        <DragOverlay>
+          {activeDeal && <KanbanCardPreview deal={activeDeal} />}
+        </DragOverlay>
+      </DndContext>
+    </div>
   );
 }

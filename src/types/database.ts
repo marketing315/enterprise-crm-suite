@@ -3,6 +3,7 @@
 export type AppRole = 
   | 'admin' 
   | 'ceo' 
+  | 'amministrazione'
   | 'responsabile_venditori' 
   | 'responsabile_callcenter' 
   | 'venditore' 
