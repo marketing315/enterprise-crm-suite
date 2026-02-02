@@ -4,16 +4,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { KanbanCard } from "./KanbanCard";
 import type { PipelineStage } from "@/types/database";
-import type { DealWithContactAndTags } from "@/hooks/usePipeline";
+import type { DealWithBrand } from "@/hooks/usePipeline";
 
 export interface KanbanColumnProps {
   stage: PipelineStage;
-  deals: DealWithContactAndTags[];
+  deals: DealWithBrand[];
   onDealClick?: (dealId: string) => void;
   readOnly?: boolean;
+  showBrand?: boolean;
 }
 
-export function KanbanColumn({ stage, deals, onDealClick, readOnly = false }: KanbanColumnProps) {
+export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, showBrand = false }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
   });
@@ -51,6 +52,7 @@ export function KanbanColumn({ stage, deals, onDealClick, readOnly = false }: Ka
                 deal={deal}
                 onClick={() => onDealClick?.(deal.id)}
                 readOnly={readOnly}
+                showBrand={showBrand}
               />
             ))}
             {deals.length === 0 && (

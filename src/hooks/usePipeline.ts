@@ -68,13 +68,39 @@ interface SearchDealsResult {
   }>;
 }
 
+// System brand ID for global view
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+
 export function usePipelineStages() {
   const { currentBrand } = useBrand();
+  const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
 
   return useQuery({
     queryKey: ["pipeline-stages", currentBrand?.id],
     queryFn: async (): Promise<PipelineStage[]> => {
       if (!currentBrand) return [];
+
+      if (isSystemBrand) {
+        // For system brand, get stages from first available brand as reference
+        const { data: brands } = await supabase
+          .from("brands")
+          .select("id")
+          .neq("id", SYSTEM_BRAND_ID)
+          .eq("is_system", false)
+          .limit(1);
+
+        if (!brands?.length) return [];
+
+        const { data, error } = await supabase
+          .from("pipeline_stages")
+          .select("*")
+          .eq("brand_id", brands[0].id)
+          .eq("is_active", true)
+          .order("order_index", { ascending: true });
+
+        if (error) throw error;
+        return (data || []) as unknown as PipelineStage[];
+      }
 
       const { data, error } = await supabase
         .from("pipeline_stages")
@@ -90,13 +116,43 @@ export function usePipelineStages() {
   });
 }
 
+// Extended type for global view with brand info
+export interface DealWithBrand extends DealWithContactAndTags {
+  brand?: { id: string; name: string } | null;
+}
+
 export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
   const { currentBrand } = useBrand();
+  const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
 
   return useQuery({
     queryKey: ["deals", currentBrand?.id, status, filterTagIds],
-    queryFn: async (): Promise<DealWithContactAndTags[]> => {
+    queryFn: async (): Promise<DealWithBrand[]> => {
       if (!currentBrand) return [];
+
+      // For system brand, fetch all deals across brands
+      if (isSystemBrand) {
+        let query = untypedClient
+          .from("deals")
+          .select(`
+            *,
+            contact:contacts(id, first_name, last_name, email),
+            assigned_user:users!deals_assigned_user_id_fkey(id, full_name, email),
+            marketing_campaign:marketing_campaigns!deals_marketing_campaign_id_fkey(id, name, channel_id),
+            brand:brands!deals_brand_id_fkey(id, name)
+          `)
+          .neq("brand_id", SYSTEM_BRAND_ID)
+          .order("updated_at", { ascending: false })
+          .limit(500);
+
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return (data || []) as DealWithBrand[];
+      }
 
       // If we have tag filters, use RPC for server-side filtering
       if (filterTagIds && filterTagIds.length > 0) {
@@ -115,7 +171,7 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
         return result.deals.map(d => ({
           ...d,
           assigned_user_id: null,
-        })) as DealWithContactAndTags[];
+        })) as DealWithBrand[];
       }
 
       // No tag filter - use direct query (faster)
@@ -137,7 +193,7 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return (data || []) as DealWithContactAndTags[];
+      return (data || []) as DealWithBrand[];
     },
     enabled: !!currentBrand,
   });

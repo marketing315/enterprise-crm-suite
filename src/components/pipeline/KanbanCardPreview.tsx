@@ -1,19 +1,20 @@
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Mail, Clock, DollarSign } from "lucide-react";
+import { User, Mail, Clock, DollarSign, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { DealWithContactAndTags } from "@/hooks/usePipeline";
+import type { DealWithBrand } from "@/hooks/usePipeline";
 
-interface KanbanCardPreviewProps {
-  deal: DealWithContactAndTags;
+export interface KanbanCardPreviewProps {
+  deal: DealWithBrand;
+  showBrand?: boolean;
 }
 
 /**
  * A simplified card preview used in DragOverlay.
  * Does not include sortable hooks or forwardRef to avoid React warnings.
  */
-export function KanbanCardPreview({ deal }: KanbanCardPreviewProps) {
+export function KanbanCardPreview({ deal, showBrand = false }: KanbanCardPreviewProps) {
   const getFullName = () => {
     const parts = [deal.contact?.first_name, deal.contact?.last_name].filter(Boolean);
     return parts.length > 0 ? parts.join(" ") : "Senza nome";
@@ -30,6 +31,14 @@ export function KanbanCardPreview({ deal }: KanbanCardPreviewProps) {
   return (
     <Card className="cursor-grabbing shadow-lg w-72 max-w-full">
       <CardContent className="p-3 space-y-2">
+        {/* Brand Badge for global view */}
+        {showBrand && deal.brand && (
+          <div className="flex items-center gap-1.5 text-xs bg-secondary/50 px-2 py-1 rounded-md w-fit -mt-1 mb-1">
+            <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="font-medium truncate max-w-[150px]">{deal.brand.name}</span>
+          </div>
+        )}
+        
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-medium truncate">
             <User className="h-4 w-4 text-muted-foreground shrink-0" />
