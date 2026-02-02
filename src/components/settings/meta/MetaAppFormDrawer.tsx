@@ -35,6 +35,11 @@ const formSchema = z.object({
   is_active: z.boolean(),
   ad_account_id: z.string().optional(),
   stats_enabled: z.boolean(),
+  // CAPI fields
+  pixel_id: z.string().optional(),
+  capi_token_key: z.string().optional(),
+  capi_enabled: z.boolean(),
+  capi_test_event_code: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -62,6 +67,10 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
       is_active: true,
       ad_account_id: "",
       stats_enabled: false,
+      pixel_id: "",
+      capi_token_key: "",
+      capi_enabled: false,
+      capi_test_event_code: "",
     },
   });
   useEffect(() => {
@@ -80,6 +89,10 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           is_active: editingApp.is_active,
           ad_account_id: (editingApp as any).ad_account_id || "",
           stats_enabled: (editingApp as any).stats_enabled || false,
+          pixel_id: (editingApp as any).pixel_id || "",
+          capi_token_key: (editingApp as any).capi_token_key || "",
+          capi_enabled: (editingApp as any).capi_enabled || false,
+          capi_test_event_code: (editingApp as any).capi_test_event_code || "",
         });
       } else if (isOpening) {
         // Only generate new token when opening fresh (not editing)
@@ -92,6 +105,10 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           is_active: true,
           ad_account_id: "",
           stats_enabled: false,
+          pixel_id: "",
+          capi_token_key: "",
+          capi_enabled: false,
+          capi_test_event_code: "",
         });
       }
       lastEditingIdRef.current = editingApp?.id ?? null;
@@ -114,6 +131,10 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           page_id: data.page_id || null,
           ad_account_id: data.ad_account_id || null,
           stats_enabled: data.stats_enabled,
+          pixel_id: data.pixel_id || null,
+          capi_token_key: data.capi_token_key || null,
+          capi_enabled: data.capi_enabled,
+          capi_test_event_code: data.capi_test_event_code || null,
         } as any);
       } else {
         await createMetaApp.mutateAsync({
@@ -126,6 +147,10 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           page_id: data.page_id || undefined,
           ad_account_id: data.ad_account_id || undefined,
           stats_enabled: data.stats_enabled,
+          pixel_id: data.pixel_id || undefined,
+          capi_token_key: data.capi_token_key || undefined,
+          capi_enabled: data.capi_enabled,
+          capi_test_event_code: data.capi_test_event_code || undefined,
         } as any);
       }
       onOpenChange(false);
@@ -320,6 +345,91 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* CAPI Section */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium mb-4">🔄 Conversions API (CAPI)</h4>
+              <p className="text-xs text-muted-foreground mb-4">
+                Invia eventi server-side a Meta per migliorare l'attribuzione delle conversioni.
+              </p>
+              
+              <FormField
+                control={form.control}
+                name="pixel_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pixel ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123456789" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      ID del Pixel Meta (Events Manager → Pixel)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="capi_token_key"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>Token Secret Key</FormLabel>
+                    <FormControl>
+                      <Input placeholder="META_CAPI_TOKEN_BRAND1" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Nome della variabile ambiente contenente il token CAPI
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="capi_test_event_code"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>Test Event Code (opzionale)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="TEST12345" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Codice per testare eventi in Events Manager (solo sviluppo)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="capi_enabled"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4 mt-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Abilita CAPI</FormLabel>
+                      <FormDescription>
+                        Invia automaticamente eventi Lead e Purchase
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={!form.watch("pixel_id") || !form.watch("capi_token_key")}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <p className="text-xs text-muted-foreground mt-3">
+                ⓘ Gli eventi vengono inviati solo per contatti con consenso marketing attivo.
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

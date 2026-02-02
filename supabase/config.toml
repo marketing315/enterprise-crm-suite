@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.ads-stats-meta]
 verify_jwt = false
+
+[functions.capi-event-sender]
+verify_jwt = false

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import {
   Sheet,
   SheetContent,
@@ -59,6 +60,7 @@ interface EditFormData {
   address: string;
   notes: string;
   status: ContactStatus;
+  marketing_consent: boolean;
 }
 
 export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDetailSheetProps) {
@@ -73,6 +75,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     address: '',
     notes: '',
     status: 'new',
+    marketing_consent: false,
   });
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
@@ -92,6 +95,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         address: contact.address || '',
         notes: contact.notes || '',
         status: contact.status || 'new',
+        marketing_consent: (contact as any).marketing_consent || false,
       });
     }
   }, [contact]);
@@ -113,9 +117,14 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     if (!contact?.id) return;
 
     try {
+      const updates: Record<string, any> = { ...formData };
+      // Set marketing_consent_at when consent changes
+      if (formData.marketing_consent !== (contact as any).marketing_consent) {
+        updates.marketing_consent_at = formData.marketing_consent ? new Date().toISOString() : null;
+      }
       await updateContact.mutateAsync({
         id: contact.id,
-        updates: formData,
+        updates,
       });
       toast.success('Contatto aggiornato');
       setIsEditing(false);
@@ -135,6 +144,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         address: contact.address || '',
         notes: contact.notes || '',
         status: contact.status || 'new',
+        marketing_consent: (contact as any).marketing_consent || false,
       });
     }
     setIsEditing(false);
@@ -310,6 +320,19 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <Label>Consenso Marketing</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Abilita l'invio di eventi CAPI a Meta
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.marketing_consent}
+                      onCheckedChange={(v) => setFormData((p) => ({ ...p, marketing_consent: v }))}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
