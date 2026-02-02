@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { useAIMetricsOverview, type MetricsPeriod } from "@/hooks/useAIMetrics";
-import { useAIConfig, useAIQualityMetrics } from "@/hooks/useAIConfig";
+import { useAIConfig, useUpdateAIConfig, useAIQualityMetrics, type AIMode } from "@/hooks/useAIConfig";
 import { MetricCard } from "@/components/admin/MetricCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Activity,
   CheckCircle2,
@@ -19,9 +28,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   RefreshCw,
-  Pause,
-  Play,
-  RotateCcw,
+  Power,
 } from "lucide-react";
 
 const PERIOD_OPTIONS: { value: MetricsPeriod; label: string }[] = [
@@ -30,12 +37,19 @@ const PERIOD_OPTIONS: { value: MetricsPeriod; label: string }[] = [
   { value: "30d", label: "30g" },
 ];
 
+const AI_MODES: { value: AIMode; label: string; description: string }[] = [
+  { value: "off", label: "Disattivata", description: "L'AI non processa i lead" },
+  { value: "suggest", label: "Solo suggerimenti", description: "L'AI suggerisce ma non applica" },
+  { value: "auto_apply", label: "Applicazione automatica", description: "L'AI applica automaticamente le decisioni" },
+];
+
 export function AIOverviewTab() {
   const [period, setPeriod] = useState<MetricsPeriod>("7d");
   
   const { data: overview, isLoading: loadingOverview } = useAIMetricsOverview(period);
   const { data: config, isLoading: loadingConfig } = useAIConfig();
   const { data: quality, isLoading: loadingQuality } = useAIQualityMetrics(period);
+  const updateConfig = useUpdateAIConfig();
 
   const successRate = overview?.job_counts.total
     ? Math.round((overview.job_counts.completed / overview.job_counts.total) * 100)
@@ -62,6 +76,25 @@ export function AIOverviewTab() {
       default: return "outline";
     }
   };
+
+  const handleModeChange = (newMode: AIMode) => {
+    if (!config?.id) return;
+    updateConfig.mutate({
+      id: config.id,
+      updates: { mode: newMode },
+    });
+  };
+
+  const handleToggle = (enabled: boolean) => {
+    if (!config?.id) return;
+    const newMode: AIMode = enabled ? "suggest" : "off";
+    updateConfig.mutate({
+      id: config.id,
+      updates: { mode: newMode },
+    });
+  };
+
+  const isEnabled = config?.mode !== "off";
 
   return (
     <div className="space-y-6">
@@ -91,42 +124,69 @@ export function AIOverviewTab() {
             Modalità operativa corrente per questo brand
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {loadingConfig ? (
             <Skeleton className="h-8 w-40" />
           ) : (
-            <div className="flex items-center gap-4">
-              <Badge variant={getModeVariant(config?.mode)} className="text-sm px-3 py-1">
-                {getModeLabel(config?.mode)}
-              </Badge>
-              {config?.active_prompt_version && (
-                <span className="text-sm text-muted-foreground">
-                  Prompt: v{config.active_prompt_version}
-                </span>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <>
+              {/* Enable/Disable Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="ai-enabled" className="text-base font-medium flex items-center gap-2">
+                    <Power className="h-4 w-4" />
+                    AI Attiva
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {isEnabled ? "L'AI sta processando i lead" : "L'AI è spenta per questo brand"}
+                  </p>
+                </div>
+                <Switch
+                  id="ai-enabled"
+                  checked={isEnabled}
+                  onCheckedChange={handleToggle}
+                  disabled={updateConfig.isPending || !config?.id}
+                />
+              </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Azioni rapide</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Pause className="h-4 w-4" />
-            Metti in Suggest-only
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Play className="h-4 w-4" />
-            Attiva Auto-apply
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <RotateCcw className="h-4 w-4" />
-            Replay ultime decisioni
-          </Button>
+              {/* Mode Selector (only when enabled) */}
+              {isEnabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="ai-mode">Modalità operativa</Label>
+                  <Select
+                    value={config?.mode || "suggest"}
+                    onValueChange={(value) => handleModeChange(value as AIMode)}
+                    disabled={updateConfig.isPending}
+                  >
+                    <SelectTrigger id="ai-mode">
+                      <SelectValue placeholder="Seleziona modalità" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AI_MODES.filter(m => m.value !== "off").map((mode) => (
+                        <SelectItem key={mode.value} value={mode.value}>
+                          <div className="flex flex-col">
+                            <span>{mode.label}</span>
+                            <span className="text-xs text-muted-foreground">{mode.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Current Status Badge */}
+              <div className="flex items-center gap-4 pt-2">
+                <Badge variant={getModeVariant(config?.mode)} className="text-sm px-3 py-1">
+                  {getModeLabel(config?.mode)}
+                </Badge>
+                {config?.active_prompt_version && (
+                  <span className="text-sm text-muted-foreground">
+                    Prompt: v{config.active_prompt_version}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
