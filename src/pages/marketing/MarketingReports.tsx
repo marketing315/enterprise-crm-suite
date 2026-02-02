@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,18 @@ import {
 import { AlertCircle, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
-import { useMarketingCampaignKpis, useMarketingSummaryKpis } from "@/hooks/useMarketingKpis";
+import { useMarketingCampaignKpis, useMarketingSummaryKpis, useMarketingMonthlyTrend } from "@/hooks/useMarketingKpis";
 import { arrayToCSV, downloadCSV } from "@/lib/csvExport";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 export default function MarketingReports() {
   const { currentBrand, hasBrandSelected } = useBrand();
@@ -28,6 +38,8 @@ export default function MarketingReports() {
     from: format(startOfMonth(selectedMonth), "yyyy-MM-dd"),
     to: format(endOfMonth(selectedMonth), "yyyy-MM-dd"),
   }), [selectedMonth]);
+
+  const { data: trendData, isLoading: trendLoading } = useMarketingMonthlyTrend(6);
 
   const { data: campaignKpis, isLoading } = useMarketingCampaignKpis({
     fromDate: dateRange.from,
@@ -162,20 +174,42 @@ export default function MarketingReports() {
         </Card>
       </div>
 
-      {/* Trend Chart - TODO: Replace with real RPC data when available */}
+      {/* Trend Chart */}
       <Card>
         <CardHeader>
           <CardTitle>Trend Ultimi 6 Mesi</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] flex items-center justify-center text-muted-foreground bg-muted/30 rounded-lg border-2 border-dashed">
-            <div className="text-center space-y-2">
-              <p className="font-medium">Dati trend in arrivo</p>
-              <p className="text-sm">
-                I grafici di tendenza saranno disponibili con i prossimi aggiornamenti.
-              </p>
+          {trendLoading ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              Caricamento...
             </div>
-          </div>
+          ) : !trendData?.length ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              Nessun dato storico disponibile.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={trendData.map(d => ({
+                ...d,
+                monthLabel: format(parseISO(d.month), "MMM yy", { locale: it }),
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="monthLabel" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [
+                    `€${value.toLocaleString("it-IT")}`,
+                    name === "revenue" ? "Ricavi" : "Costi"
+                  ]}
+                  labelFormatter={(label) => `Mese: ${label}`}
+                />
+                <Legend formatter={(value) => value === "revenue" ? "Ricavi" : "Costi"} />
+                <Bar dataKey="revenue" name="revenue" fill="hsl(var(--primary))" />
+                <Bar dataKey="cost" name="cost" fill="hsl(var(--destructive))" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 
