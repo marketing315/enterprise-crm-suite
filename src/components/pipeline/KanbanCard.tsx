@@ -26,10 +26,11 @@ import type { DealWithContactAndTags } from "@/hooks/usePipeline";
 interface KanbanCardProps {
   deal: DealWithContactAndTags;
   onClick?: () => void;
+  readOnly?: boolean;
 }
 
 export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
-  function KanbanCard({ deal, onClick }, ref) {
+  function KanbanCard({ deal, onClick, readOnly = false }, ref) {
     const [menuOpen, setMenuOpen] = useState(false);
     const { data: stages } = usePipelineStages();
     const updateStatus = useUpdateDealStatus();
@@ -116,63 +117,67 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
         ref={combinedRef}
         style={style}
         {...attributes}
-        {...(menuOpen ? {} : listeners)}
-        className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative group w-full max-w-full overflow-hidden"
+        {...(menuOpen || readOnly ? {} : listeners)}
+        className={`hover:shadow-md transition-shadow relative group w-full max-w-full overflow-hidden ${
+          readOnly ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+        }`}
         onClick={onClick}
       >
-        {/* Action Menu Button */}
-        <div 
-          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-popover">
-              <DropdownMenuItem onClick={() => handleStatusChange("won")}>
-                <Trophy className="h-4 w-4 mr-2 text-green-600" />
-                Segna come Vinto
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleStatusChange("lost")}>
-                <XCircle className="h-4 w-4 mr-2 text-destructive" />
-                Segna come Perso
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleStatusChange("closed")}>
-                <Archive className="h-4 w-4 mr-2" />
-                Archivia
-              </DropdownMenuItem>
-              
-              {otherStages.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <MoveRight className="h-4 w-4 mr-2" />
-                      Sposta in...
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="bg-popover">
-                      {otherStages.map((stage) => (
-                        <DropdownMenuItem 
-                          key={stage.id} 
-                          onClick={() => handleStageChange(stage.id)}
-                        >
-                          <div 
-                            className="w-2 h-2 rounded-full mr-2" 
-                            style={{ backgroundColor: stage.color || "hsl(var(--primary))" }} 
-                          />
-                          {stage.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {/* Action Menu Button - Hidden for read-only users */}
+        {!readOnly && (
+          <div 
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-popover">
+                <DropdownMenuItem onClick={() => handleStatusChange("won")}>
+                  <Trophy className="h-4 w-4 mr-2 text-green-600" />
+                  Segna come Vinto
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusChange("lost")}>
+                  <XCircle className="h-4 w-4 mr-2 text-destructive" />
+                  Segna come Perso
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusChange("closed")}>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archivia
+                </DropdownMenuItem>
+                
+                {otherStages.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <MoveRight className="h-4 w-4 mr-2" />
+                        Sposta in...
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="bg-popover">
+                        {otherStages.map((stage) => (
+                          <DropdownMenuItem 
+                            key={stage.id} 
+                            onClick={() => handleStageChange(stage.id)}
+                          >
+                            <div 
+                              className="w-2 h-2 rounded-full mr-2" 
+                              style={{ backgroundColor: stage.color || "hsl(var(--primary))" }} 
+                            />
+                            {stage.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
 
         <CardContent className="p-3 space-y-2">
           <div className="flex items-start justify-between gap-2 pr-6">

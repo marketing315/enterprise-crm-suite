@@ -7,16 +7,18 @@ import { KanbanCard } from "./KanbanCard";
 import type { PipelineStage } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
 
-interface MobileKanbanViewProps {
+export interface MobileKanbanViewProps {
   stages: PipelineStage[];
   dealsByStage: Record<string, DealWithContactAndTags[]>;
   onDealClick?: (dealId: string) => void;
+  readOnly?: boolean;
 }
 
 export function MobileKanbanView({ 
   stages, 
   dealsByStage, 
-  onDealClick 
+  onDealClick,
+  readOnly = false
 }: MobileKanbanViewProps) {
   const [activeStageIndex, setActiveStageIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -191,6 +193,7 @@ export function MobileKanbanView({
                   key={deal.id}
                   deal={deal}
                   onClick={() => onDealClick?.(deal.id)}
+                  readOnly={readOnly}
                 />
               ))
             )}

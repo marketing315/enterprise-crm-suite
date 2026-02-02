@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notes: {
+        Row: {
+          brand_id: string
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          ref_id: string | null
+          ref_table: string | null
+          type: string
+        }
+        Insert: {
+          brand_id: string
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          type: string
+        }
+        Update: {
+          brand_id?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notes_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_chat_logs: {
         Row: {
           brand_id: string
@@ -659,6 +707,7 @@ export type Database = {
           auto_assign_enabled: boolean
           created_at: string
           id: string
+          is_system: boolean | null
           name: string
           parent_brand_id: string | null
           sales_visibility_callcenter: string
@@ -670,6 +719,7 @@ export type Database = {
           auto_assign_enabled?: boolean
           created_at?: string
           id?: string
+          is_system?: boolean | null
           name: string
           parent_brand_id?: string | null
           sales_visibility_callcenter?: string
@@ -681,6 +731,7 @@ export type Database = {
           auto_assign_enabled?: boolean
           created_at?: string
           id?: string
+          is_system?: boolean | null
           name?: string
           parent_brand_id?: string | null
           sales_visibility_callcenter?: string
@@ -694,6 +745,64 @@ export type Database = {
             columns: ["parent_brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          brand_id: string
+          category_id: string | null
+          created_at: string | null
+          created_by: string
+          id: string
+          notes: string | null
+          period_month: string
+          planned_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          brand_id: string
+          category_id?: string | null
+          created_at?: string | null
+          created_by: string
+          id?: string
+          notes?: string | null
+          period_month: string
+          planned_amount: number
+          updated_at?: string | null
+        }
+        Update: {
+          brand_id?: string
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          notes?: string | null
+          period_month?: string
+          planned_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1422,6 +1531,105 @@ export type Database = {
             columns: ["current_stage_id"]
             isOneToOne: false
             referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_categories: {
+        Row: {
+          brand_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          brand_id: string
+          category_id: string | null
+          created_at: string | null
+          created_by: string
+          currency: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          notes: string | null
+          updated_at: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          brand_id: string
+          category_id?: string | null
+          created_at?: string | null
+          created_by: string
+          currency?: string | null
+          description?: string | null
+          expense_date: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          brand_id?: string
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          currency?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3522,6 +3730,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string[]
       }
+      get_admin_finance_kpis: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       get_ai_metrics_errors: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
@@ -3714,6 +3926,10 @@ export type Database = {
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       get_webhook_delivery: { Args: { p_delivery_id: string }; Returns: Json }
+      has_finance_access: {
+        Args: { p_brand_id: string; p_user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4078,6 +4294,7 @@ export type Database = {
         | "responsabile_callcenter"
         | "operatore_callcenter"
         | "venditore"
+        | "amministrazione"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -4338,6 +4555,7 @@ export const Constants = {
         "responsabile_callcenter",
         "operatore_callcenter",
         "venditore",
+        "amministrazione",
       ],
       appointment_status: [
         "scheduled",

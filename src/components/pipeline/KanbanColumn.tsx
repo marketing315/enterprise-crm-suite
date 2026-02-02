@@ -6,13 +6,14 @@ import { KanbanCard } from "./KanbanCard";
 import type { PipelineStage } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
 
-interface KanbanColumnProps {
+export interface KanbanColumnProps {
   stage: PipelineStage;
   deals: DealWithContactAndTags[];
   onDealClick?: (dealId: string) => void;
+  readOnly?: boolean;
 }
 
-export function KanbanColumn({ stage, deals, onDealClick }: KanbanColumnProps) {
+export function KanbanColumn({ stage, deals, onDealClick, readOnly = false }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
   });
@@ -49,6 +50,7 @@ export function KanbanColumn({ stage, deals, onDealClick }: KanbanColumnProps) {
                 key={deal.id}
                 deal={deal}
                 onClick={() => onDealClick?.(deal.id)}
+                readOnly={readOnly}
               />
             ))}
             {deals.length === 0 && (
