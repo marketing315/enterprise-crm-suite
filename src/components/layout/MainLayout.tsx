@@ -64,6 +64,7 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: UsersRound, label: 'Team', path: '/team' },
+  { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons' },
   { icon: Settings, label: 'Impostazioni', path: '/settings' },
   { icon: Brain, label: 'Gestione AI', path: '/admin/ai' },
   { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },

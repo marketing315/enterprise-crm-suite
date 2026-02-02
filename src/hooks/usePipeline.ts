@@ -19,9 +19,18 @@ interface DealTag {
   color: string;
 }
 
-// Extended deal type with tags
-export interface DealWithContactAndTags extends DealWithContact {
+// Assigned user info
+interface AssignedUser {
+  id: string;
+  full_name: string | null;
+  email: string;
+}
+
+// Extended deal type with tags and assigned user
+export interface DealWithContactAndTags extends Omit<DealWithContact, 'assigned_user_id'> {
   tags?: DealTag[];
+  assigned_user_id?: string | null;
+  assigned_user?: AssignedUser | null;
 }
 
 // Result from search_deals RPC
@@ -105,7 +114,8 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
         .from("deals")
         .select(`
           *,
-          contact:contacts(id, first_name, last_name, email)
+          contact:contacts(id, first_name, last_name, email),
+          assigned_user:users!deals_assigned_user_id_fkey(id, full_name, email)
         `)
         .eq("brand_id", currentBrand.id)
         .order("updated_at", { ascending: false });
@@ -165,6 +175,27 @@ export function useUpdateDealStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
+    },
+  });
+}
+
+export function useAssignDealToUser() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async ({ dealId, userId }: { dealId: string; userId: string | null }) => {
+      const { error } = await untypedClient
+        .from("deals")
+        .update({ assigned_user_id: userId })
+        .eq("id", dealId)
+        .eq("brand_id", currentBrand?.id || "");
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["salesperson-kpis"] });
     },
   });
 }
