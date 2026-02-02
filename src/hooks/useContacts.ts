@@ -82,6 +82,27 @@ export function useUpdateContact() {
   });
 }
 
+export function useDeleteContact() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async (contactId: string) => {
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', contactId)
+        .eq('brand_id', currentBrand?.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact'] });
+    },
+  });
+}
+
 export function useLeadEvents(contactId?: string) {
   const { currentBrand } = useBrand();
 
