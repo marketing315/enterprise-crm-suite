@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.ai-tag-deals]
 verify_jwt = false
+
+[functions.create-test-user]
+verify_jwt = false
