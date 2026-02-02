@@ -31,13 +31,26 @@ Validare che l'app funzioni correttamente per:
 | **MyMed** | `4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5` | Test call center + tickets | Brand principale callcenter |
 | **Sonimed** | `ab447ddd-3183-4bd2-982c-641746f0a7f7` | Test secondario | Opzionale |
 
+> ⚠️ **NOTA "Tutti i brand" / "Azienda Intera"**:
+> - Il brand con UUID `00000000-...` e `is_system=true` rappresenta l'aggregazione globale
+> - Le RPC (es. `get_admin_finance_kpis`, `get_marketing_campaign_kpis`) devono gestire questo caso lato DB
+> - Il QA deve verificare che le aggregazioni siano corrette e **non duplicate** (ogni record contato una sola volta)
+> - Se il progetto usa costanti come `COMPANY_BRAND_ID`, verificare che siano allineate
+
 ### 1.2 Ruoli Enum (Verificati nel DB)
 
+**Ruoli Canonici (usare per tutti i test RBAC):**
 ```text
 admin, ceo, amministrazione, responsabile_venditori, 
-responsabile_callcenter, venditore, operatore_callcenter, 
+responsabile_callcenter, venditore, operatore_callcenter
+```
+
+**Ruoli Legacy (non usare nei test, solo retro-compatibilità):**
+```text
 callcenter, sales
 ```
+
+> ⚠️ **NOTA**: I ruoli `callcenter` e `sales` sono legacy e non devono essere usati nei test RBAC principali. Usarli solo per eventuali test di retro-compatibilità (opzionale).
 
 ### 1.3 Prerequisiti Tecnici
 
@@ -54,16 +67,18 @@ callcenter, sales
 
 | # | Email | Ruolo | Brand | Password | Note |
 |---|-------|-------|-------|----------|------|
-| 1 | `admin.qa@test.local` | admin | Globale | Test!12345 | Accesso completo |
-| 2 | `ceo.qa@test.local` | ceo | Globale | Test!12345 | Come admin, no gestione admin |
-| 3 | `amm.excell@test.local` | amministrazione | Excell | Test!12345 | Finanze + costi marketing |
-| 4 | `amm.mymed@test.local` | amministrazione | MyMed | Test!12345 | Finanze + costi marketing |
-| 5 | `resp.vendite@test.local` | responsabile_venditori | Excell | Test!12345 | Gestisce venditori |
-| 6 | `resp.callcenter@test.local` | responsabile_callcenter | MyMed | Test!12345 | Gestisce operatori |
-| 7 | `venditore1@test.local` | venditore | Excell | Test!12345 | Vede propri deal |
-| 8 | `venditore2@test.local` | venditore | Excell | Test!12345 | Vede propri deal |
-| 9 | `operatore1@test.local` | operatore_callcenter | MyMed | Test!12345 | Gestisce ticket |
-| 10 | `operatore2@test.local` | operatore_callcenter | MyMed | Test!12345 | Gestisce ticket |
+| 1 | `admin.qa@example.com` | admin | Globale | Test!12345 | Accesso completo |
+| 2 | `ceo.qa@example.com` | ceo | Globale | Test!12345 | Come admin, no gestione admin |
+| 3 | `amm.excell@example.com` | amministrazione | Excell | Test!12345 | Finanze + costi marketing |
+| 4 | `amm.mymed@example.com` | amministrazione | MyMed | Test!12345 | Finanze + costi marketing |
+| 5 | `resp.vendite@example.com` | responsabile_venditori | Excell | Test!12345 | Gestisce venditori |
+| 6 | `resp.callcenter@example.com` | responsabile_callcenter | MyMed | Test!12345 | Gestisce operatori |
+| 7 | `venditore1@example.com` | venditore | Excell | Test!12345 | Vede propri deal |
+| 8 | `venditore2@example.com` | venditore | Excell | Test!12345 | Vede propri deal |
+| 9 | `operatore1@example.com` | operatore_callcenter | MyMed | Test!12345 | Gestisce ticket |
+| 10 | `operatore2@example.com` | operatore_callcenter | MyMed | Test!12345 | Gestisce ticket |
+
+> ⚠️ **SICUREZZA**: Non usare password di produzione. Non riutilizzare credenziali reali. Il dominio `@example.com` è riservato per test (RFC 2606).
 
 ### 2.2 Creazione Utenti
 
@@ -154,66 +169,122 @@ Per ogni utente verificare:
 
 ### 3.1 Pipeline - Brand Excell
 
+> ⚠️ **SCHEMA REALE VERIFICATO**:
+> - `deal_status` enum: `open` | `won` | `lost` | `closed` | `reopened_for_support`
+> - I deal `won`/`lost` devono avere `closed_at` valorizzato per KPI corretti
+> - Esiste un trigger `set_deal_closed_at` che lo valorizza automaticamente (verificare sia attivo)
+
 ```sql
 -- ============================================
--- SEED PIPELINE EXCELL
+-- SEED PIPELINE EXCELL (Deterministico)
 -- ============================================
 
--- Variabili
 -- BRAND_EXCELL = '2dc052de-26b5-48ef-8dee-917ea591a681'
--- UUID_VEND1 = (da sostituire con UUID reale venditore1)
--- UUID_VEND2 = (da sostituire con UUID reale venditore2)
 
--- 1. Verificare pipeline_stages esistenti
+-- 1. Recuperare UUID venditori (eseguire prima e salvare i valori)
+SELECT u.id, u.email, ur.role 
+FROM public.users u
+JOIN user_roles ur ON u.id = ur.user_id
+WHERE ur.brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681'
+AND ur.role = 'venditore';
+-- Salvare: UUID_VEND1 (venditore1@example.com), UUID_VEND2 (venditore2@example.com)
+
+-- 2. Verificare pipeline_stages esistenti
 SELECT id, name, position FROM pipeline_stages 
 WHERE brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681'
 ORDER BY position;
+-- Salvare: stage_id per ogni colonna (Nuovo Lead, In Lavorazione, ecc.)
 
--- 2. Creare 12 contatti per Excell
+-- 3. Creare 12 contatti per Excell
 INSERT INTO contacts (brand_id, first_name, last_name, email, city, status)
 VALUES 
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Mario', 'Rossi', 'mario.rossi@test.com', 'Milano', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Luigi', 'Verdi', 'luigi.verdi@test.com', 'Roma', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Anna', 'Bianchi', 'anna.bianchi@test.com', 'Napoli', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Paolo', 'Neri', 'paolo.neri@test.com', 'Torino', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Giulia', 'Ferrari', 'giulia.ferrari@test.com', 'Bologna', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Marco', 'Russo', 'marco.russo@test.com', 'Firenze', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Sara', 'Colombo', 'sara.colombo@test.com', 'Venezia', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Andrea', 'Ricci', 'andrea.ricci@test.com', 'Genova', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Elena', 'Galli', 'elena.galli@test.com', 'Palermo', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Francesco', 'Costa', 'francesco.costa@test.com', 'Bari', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Chiara', 'Fontana', 'chiara.fontana@test.com', 'Catania', 'active'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Roberto', 'Moretti', 'roberto.moretti@test.com', 'Verona', 'active')
-RETURNING id, first_name, last_name;
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Mario', 'Rossi', 'mario.rossi@example.com', 'Milano', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Luigi', 'Verdi', 'luigi.verdi@example.com', 'Roma', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Anna', 'Bianchi', 'anna.bianchi@example.com', 'Napoli', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Paolo', 'Neri', 'paolo.neri@example.com', 'Torino', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Giulia', 'Ferrari', 'giulia.ferrari@example.com', 'Bologna', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Marco', 'Russo', 'marco.russo@example.com', 'Firenze', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Sara', 'Colombo', 'sara.colombo@example.com', 'Venezia', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Andrea', 'Ricci', 'andrea.ricci@example.com', 'Genova', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Elena', 'Galli', 'elena.galli@example.com', 'Palermo', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Francesco', 'Costa', 'francesco.costa@example.com', 'Bari', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Chiara', 'Fontana', 'chiara.fontana@example.com', 'Catania', 'active'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Roberto', 'Moretti', 'roberto.moretti@example.com', 'Verona', 'active')
+RETURNING id, first_name, last_name, email;
+-- Salvare gli ID per lookup successivo
 
--- 3. Creare 12 deal (8 open, 2 won, 2 lost)
--- NOTA: Sostituire CONTACT_ID_X e STAGE_ID_X con valori reali
-
--- Deal Open (8) - distribuiti tra venditori
+-- 4. Pattern deterministico con CTE per creare deal
+-- Questo evita placeholder manuali
+WITH 
+  contacts_excell AS (
+    SELECT id, email, ROW_NUMBER() OVER (ORDER BY created_at) as rn
+    FROM contacts 
+    WHERE brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681'
+    AND email LIKE '%@example.com'
+  ),
+  stages AS (
+    SELECT id, name, position
+    FROM pipeline_stages
+    WHERE brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681'
+  ),
+  venditori AS (
+    SELECT u.id, u.email, ROW_NUMBER() OVER (ORDER BY u.email) as vn
+    FROM public.users u
+    JOIN user_roles ur ON u.id = ur.user_id
+    WHERE ur.brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681'
+    AND ur.role = 'venditore'
+  )
+-- Deal Open (8) - 4 per ogni venditore
 INSERT INTO deals (brand_id, contact_id, current_stage_id, status, value, assigned_user_id, notes)
-VALUES 
-  -- 4 deal per venditore1
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_1', 'STAGE_ID_NUOVO', 'open', 5000, 'UUID_VEND1', 'Deal test 1'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_2', 'STAGE_ID_LAVORAZIONE', 'open', 7500, 'UUID_VEND1', 'Deal test 2'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_3', 'STAGE_ID_PROPOSTA', 'open', 12000, 'UUID_VEND1', 'Deal test 3'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_4', 'STAGE_ID_NEGOZIAZIONE', 'open', 8500, 'UUID_VEND1', 'Deal test 4'),
-  -- 4 deal per venditore2
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_5', 'STAGE_ID_NUOVO', 'open', 6000, 'UUID_VEND2', 'Deal test 5'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_6', 'STAGE_ID_LAVORAZIONE', 'open', 9000, 'UUID_VEND2', 'Deal test 6'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_7', 'STAGE_ID_PROPOSTA', 'open', 15000, 'UUID_VEND2', 'Deal test 7'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_8', 'STAGE_ID_NEGOZIAZIONE', 'open', 11000, 'UUID_VEND2', 'Deal test 8');
+SELECT 
+  '2dc052de-26b5-48ef-8dee-917ea591a681',
+  c.id,
+  (SELECT id FROM stages WHERE position = (c.rn % 4) + 1 LIMIT 1),
+  'open',
+  5000 + (c.rn * 500),
+  (SELECT id FROM venditori WHERE vn = CASE WHEN c.rn <= 4 THEN 1 ELSE 2 END),
+  'Deal test ' || c.rn
+FROM contacts_excell c
+WHERE c.rn <= 8;
 
--- Deal Won (2) - con closed_at valorizzato
+-- Deal Won (2) - con closed_at
 INSERT INTO deals (brand_id, contact_id, current_stage_id, status, value, assigned_user_id, closed_at, notes)
-VALUES 
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_9', 'STAGE_ID_VINTO', 'won', 25000, 'UUID_VEND1', NOW() - INTERVAL '5 days', 'Deal vinto test'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_10', 'STAGE_ID_VINTO', 'won', 18000, 'UUID_VEND2', NOW() - INTERVAL '3 days', 'Deal vinto test 2');
+SELECT 
+  '2dc052de-26b5-48ef-8dee-917ea591a681',
+  c.id,
+  (SELECT id FROM stages ORDER BY position DESC LIMIT 1), -- ultimo stage
+  'won',
+  CASE WHEN c.rn = 9 THEN 25000 ELSE 18000 END,
+  (SELECT id FROM venditori WHERE vn = c.rn - 8),
+  NOW() - INTERVAL '5 days' * (c.rn - 8),
+  'Deal vinto test'
+FROM contacts_excell c
+WHERE c.rn IN (9, 10);
 
--- Deal Lost (2) - con closed_at valorizzato
+-- Deal Lost (2) - con closed_at
 INSERT INTO deals (brand_id, contact_id, current_stage_id, status, value, assigned_user_id, closed_at, notes)
-VALUES 
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_11', 'STAGE_ID_PERSO', 'lost', 10000, 'UUID_VEND1', NOW() - INTERVAL '7 days', 'Deal perso - prezzo'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CONTACT_ID_12', 'STAGE_ID_PERSO', 'lost', 8000, 'UUID_VEND2', NOW() - INTERVAL '10 days', 'Deal perso - competitor');
+SELECT 
+  '2dc052de-26b5-48ef-8dee-917ea591a681',
+  c.id,
+  (SELECT id FROM stages ORDER BY position DESC LIMIT 1),
+  'lost',
+  CASE WHEN c.rn = 11 THEN 10000 ELSE 8000 END,
+  (SELECT id FROM venditori WHERE vn = c.rn - 10),
+  NOW() - INTERVAL '7 days' * (c.rn - 10),
+  'Deal perso test'
+FROM contacts_excell c
+WHERE c.rn IN (11, 12);
+
+-- Verifica risultato
+SELECT 
+  d.id, d.status, d.value, d.closed_at,
+  c.first_name || ' ' || c.last_name as contact_name,
+  u.email as assigned_to
+FROM deals d
+JOIN contacts c ON d.contact_id = c.id
+LEFT JOIN public.users u ON d.assigned_user_id = u.id
+WHERE d.brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681'
+ORDER BY d.created_at;
 ```
 
 ### 3.2 Pipeline - Brand MyMed
@@ -251,56 +322,83 @@ VALUES
 
 ### 3.3 Marketing
 
+> ⚠️ **SCHEMA REALE VERIFICATO**:
+> - `marketing_channels.type`: TEXT (convenzione: `paid` | `organic` | `offline`)
+> - `marketing_campaigns`: richiede `start_date` (NOT NULL) e `created_by` (NOT NULL)
+> - `marketing_costs`: usa `notes` e `source` (non `description`), richiede `created_by`
+> - `marketing_campaign_status` enum: `planned` | `active` | `paused` | `closed`
+
 ```sql
 -- ============================================
--- SEED MARKETING
+-- SEED MARKETING (Schema-compliant)
 -- ============================================
 
--- Canali per Excell
+-- Prima: recuperare UUID admin per created_by
+-- SELECT id FROM public.users WHERE email = 'admin.qa@example.com';
+-- Placeholder: UUID_ADMIN
+
+-- 1. Canali per Excell (type: paid/organic/offline)
 INSERT INTO marketing_channels (brand_id, name, type, is_active)
 VALUES 
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Meta Ads', 'social', true),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Google Ads', 'search', true)
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Meta Ads', 'paid', true),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'Google Ads', 'paid', true)
 RETURNING id, name;
+-- Salvare: CHANNEL_META_EXCELL, CHANNEL_GOOGLE_EXCELL
 
--- Canali per MyMed
+-- 2. Canali per MyMed
 INSERT INTO marketing_channels (brand_id, name, type, is_active)
 VALUES 
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'Meta Ads MyMed', 'social', true),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'Google Ads MyMed', 'search', true)
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'Meta Ads MyMed', 'paid', true),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'Google Ads MyMed', 'paid', true)
 RETURNING id, name;
+-- Salvare: CHANNEL_META_MYMED, CHANNEL_GOOGLE_MYMED
 
--- Campagne Excell (mese corrente)
-INSERT INTO marketing_campaigns (brand_id, channel_id, name, status, external_id)
+-- 3. Campagne Excell (con start_date e created_by OBBLIGATORI)
+INSERT INTO marketing_campaigns (brand_id, channel_id, name, status, external_id, start_date, created_by)
 VALUES 
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CHANNEL_META_EXCELL', 'Black Friday Meta', 'active', 'meta_bf_2024'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CHANNEL_GOOGLE_EXCELL', 'Lead Gen Google', 'active', 'google_lg_2024')
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CHANNEL_META_EXCELL', 'Black Friday Meta', 'active', 'meta_bf_2024', CURRENT_DATE - 20, 'UUID_ADMIN'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CHANNEL_GOOGLE_EXCELL', 'Lead Gen Google', 'active', 'google_lg_2024', CURRENT_DATE - 15, 'UUID_ADMIN')
 RETURNING id, name;
+-- Salvare: CAMPAIGN_META_EXCELL, CAMPAIGN_GOOGLE_EXCELL
 
--- Campagne MyMed
-INSERT INTO marketing_campaigns (brand_id, channel_id, name, status, external_id)
+-- 4. Campagne MyMed
+INSERT INTO marketing_campaigns (brand_id, channel_id, name, status, external_id, start_date, created_by)
 VALUES 
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CHANNEL_META_MYMED', 'Campagna Salute', 'active', 'meta_salute_2024'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CHANNEL_GOOGLE_MYMED', 'Search Medico', 'active', 'google_med_2024')
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CHANNEL_META_MYMED', 'Campagna Salute', 'active', 'meta_salute_2024', CURRENT_DATE - 18, 'UUID_ADMIN'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CHANNEL_GOOGLE_MYMED', 'Search Medico', 'active', 'google_med_2024', CURRENT_DATE - 12, 'UUID_ADMIN')
 RETURNING id, name;
+-- Salvare: CAMPAIGN_META_MYMED, CAMPAIGN_GOOGLE_MYMED
 
--- Costi Marketing Excell (8 righe nel mese corrente)
-INSERT INTO marketing_costs (brand_id, campaign_id, cost_date, amount, description)
+-- 5. Costi Marketing (usa notes/source, NON description)
+-- created_by = UUID dell'utente amministrazione
+INSERT INTO marketing_costs (brand_id, campaign_id, cost_date, amount, source, notes, created_by)
 VALUES 
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_META_EXCELL', CURRENT_DATE - 14, 1500, 'Settimana 1 Meta'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_META_EXCELL', CURRENT_DATE - 7, 1800, 'Settimana 2 Meta'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_META_EXCELL', CURRENT_DATE - 1, 2000, 'Settimana 3 Meta'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_GOOGLE_EXCELL', CURRENT_DATE - 10, 1200, 'CPC Google'),
-  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_GOOGLE_EXCELL', CURRENT_DATE - 5, 1000, 'Display Google'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CAMPAIGN_META_MYMED', CURRENT_DATE - 8, 800, 'Meta Salute'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CAMPAIGN_META_MYMED', CURRENT_DATE - 2, 900, 'Meta Salute 2'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CAMPAIGN_GOOGLE_MYMED', CURRENT_DATE - 4, 600, 'Google Med');
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_META_EXCELL', CURRENT_DATE - 14, 1500, 'manual', 'Settimana 1 Meta', 'UUID_AMM_EXCELL'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_META_EXCELL', CURRENT_DATE - 7, 1800, 'manual', 'Settimana 2 Meta', 'UUID_AMM_EXCELL'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_META_EXCELL', CURRENT_DATE - 1, 2000, 'api_sync', 'Settimana 3 Meta', 'UUID_AMM_EXCELL'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_GOOGLE_EXCELL', CURRENT_DATE - 10, 1200, 'manual', 'CPC Google', 'UUID_AMM_EXCELL'),
+  ('2dc052de-26b5-48ef-8dee-917ea591a681', 'CAMPAIGN_GOOGLE_EXCELL', CURRENT_DATE - 5, 1000, 'manual', 'Display Google', 'UUID_AMM_EXCELL'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CAMPAIGN_META_MYMED', CURRENT_DATE - 8, 800, 'manual', 'Meta Salute', 'UUID_AMM_MYMED'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CAMPAIGN_META_MYMED', CURRENT_DATE - 2, 900, 'manual', 'Meta Salute 2', 'UUID_AMM_MYMED'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CAMPAIGN_GOOGLE_MYMED', CURRENT_DATE - 4, 600, 'manual', 'Google Med', 'UUID_AMM_MYMED');
 
--- Collegare alcuni deal alle campagne (per calcolo ROI)
+-- 6. Collegare alcuni deal alle campagne (per calcolo ROI)
+-- Usa lookup per evitare placeholder
+WITH campaign AS (
+  SELECT id FROM marketing_campaigns 
+  WHERE brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681' 
+  AND name = 'Black Friday Meta'
+  LIMIT 1
+)
 UPDATE deals 
-SET marketing_campaign_id = 'CAMPAIGN_META_EXCELL'
+SET marketing_campaign_id = (SELECT id FROM campaign)
 WHERE brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681' 
-AND id IN (SELECT id FROM deals WHERE brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681' LIMIT 4);
+AND id IN (
+  SELECT id FROM deals 
+  WHERE brand_id = '2dc052de-26b5-48ef-8dee-917ea591a681' 
+  ORDER BY created_at 
+  LIMIT 4
+);
 ```
 
 ### 3.4 Azienda / Amministrazione
@@ -344,16 +442,44 @@ VALUES
 
 ### 3.5 Tickets - Brand MyMed
 
+> ⚠️ **SCHEMA REALE VERIFICATO**:
+> - Colonna assegnazione: `assigned_to_user_id` (non `assigned_to`)
+> - Colonna titolo: `title` (non `subject`)
+> - `ticket_status` enum: `open` | `in_progress` | `resolved` | `closed` | `reopened`
+> - `priority`: INTEGER (1=urgente, 5=bassa)
+> - `created_by` enum: `user` | `ai` | `system`
+
 ```sql
 -- ============================================
--- SEED TICKETS MYMED
+-- SEED TICKETS MYMED (Schema-compliant)
 -- ============================================
+
+-- Prima: recuperare contact_id da MyMed
+-- SELECT id, email FROM contacts WHERE brand_id = '4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5';
+-- Salvare UUID per lookup
+
+-- Pattern deterministico con CTE per evitare placeholder
+WITH mymed_contacts AS (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY created_at) as rn
+  FROM contacts 
+  WHERE brand_id = '4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5'
+  LIMIT 8
+),
+operators AS (
+  SELECT u.id, ur.role
+  FROM public.users u
+  JOIN user_roles ur ON u.id = ur.user_id
+  WHERE ur.brand_id = '4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5'
+  AND ur.role = 'operatore_callcenter'
+  LIMIT 2
+)
+-- Poi usare nelle INSERT sotto
 
 -- 20 ticket con distribuzione:
 -- 10 assegnati, 5 SLA warning, 5 SLA breach
 
--- Ticket assegnati (status: open, assigned)
-INSERT INTO tickets (brand_id, contact_id, assigned_to, status, priority, subject, description, created_at)
+-- Ticket assegnati (status: open/in_progress)
+INSERT INTO tickets (brand_id, contact_id, assigned_to_user_id, status, priority, title, description, opened_at)
 VALUES 
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM1', 'UUID_OP1', 'open', 2, 'Richiesta informazioni', 'Info prodotto', NOW() - INTERVAL '1 hour'),
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM2', 'UUID_OP1', 'open', 3, 'Problema tecnico', 'Non riesco a...', NOW() - INTERVAL '2 hours'),
@@ -367,13 +493,13 @@ VALUES
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM2', 'UUID_OP2', 'open', 2, 'Ricontatto', 'Da ricontattare', NOW() - INTERVAL '2 hours');
 
 -- Ticket NON assegnati (per test round robin)
-INSERT INTO tickets (brand_id, contact_id, assigned_to, status, priority, subject, description, created_at)
+INSERT INTO tickets (brand_id, contact_id, assigned_to_user_id, status, priority, title, description, opened_at)
 VALUES 
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM3', NULL, 'open', 1, 'URGENTE', 'Ticket urgente non assegnato', NOW() - INTERVAL '10 minutes'),
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM4', NULL, 'open', 2, 'Da assegnare', 'Ticket da assegnare', NOW() - INTERVAL '5 minutes');
 
--- Ticket in SLA warning (creati da un po', priorità alta)
-INSERT INTO tickets (brand_id, contact_id, assigned_to, status, priority, subject, description, created_at)
+-- Ticket in SLA warning (priorità alta, vicini a breach)
+INSERT INTO tickets (brand_id, contact_id, assigned_to_user_id, status, priority, title, description, opened_at)
 VALUES 
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM5', 'UUID_OP1', 'open', 1, 'SLA Warning 1', 'Ticket vicino a breach', NOW() - INTERVAL '50 minutes'),
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM6', 'UUID_OP2', 'open', 1, 'SLA Warning 2', 'Ticket vicino a breach', NOW() - INTERVAL '55 minutes'),
@@ -382,13 +508,17 @@ VALUES
   ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM1', 'UUID_OP2', 'open', 2, 'SLA Warning 5', 'Priorità 2 vecchio', NOW() - INTERVAL '110 minutes');
 
 -- Ticket in SLA breach (priorità 1 oltre 60 min, priorità 2 oltre 120 min)
-INSERT INTO tickets (brand_id, contact_id, assigned_to, status, priority, subject, description, created_at)
+-- Questi avranno sla_breached_at popolato dal sistema o manualmente
+INSERT INTO tickets (brand_id, contact_id, assigned_to_user_id, status, priority, title, description, opened_at, sla_breached_at)
 VALUES 
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM2', 'UUID_OP1', 'open', 1, 'SLA BREACH 1', 'URGENTE - Oltre SLA', NOW() - INTERVAL '2 hours'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM3', 'UUID_OP2', 'open', 1, 'SLA BREACH 2', 'URGENTE - Oltre SLA', NOW() - INTERVAL '3 hours'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM4', NULL, 'open', 1, 'SLA BREACH 3', 'URGENTE NON ASSEGNATO', NOW() - INTERVAL '4 hours'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM5', 'UUID_OP1', 'open', 2, 'SLA BREACH 4', 'Priorità 2 scaduto', NOW() - INTERVAL '3 hours'),
-  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM6', 'UUID_OP2', 'open', 2, 'SLA BREACH 5', 'Priorità 2 scaduto', NOW() - INTERVAL '4 hours');
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM2', 'UUID_OP1', 'open', 1, 'SLA BREACH 1', 'URGENTE - Oltre SLA', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '1 hour'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM3', 'UUID_OP2', 'open', 1, 'SLA BREACH 2', 'URGENTE - Oltre SLA', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '2 hours'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM4', NULL, 'open', 1, 'SLA BREACH 3', 'URGENTE NON ASSEGNATO', NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3 hours'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM5', 'UUID_OP1', 'open', 2, 'SLA BREACH 4', 'Priorità 2 scaduto', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '1 hour'),
+  ('4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5', 'CONTACT_MM6', 'UUID_OP2', 'open', 2, 'SLA BREACH 5', 'Priorità 2 scaduto', NOW() - INTERVAL '4 hours', NOW() - INTERVAL '2 hours');
+
+-- NOTA: Sostituire CONTACT_MM1..MM8 e UUID_OP1/UUID_OP2 con UUID reali
+-- oppure usare il pattern CTE sopra per lookup dinamico
 ```
 
 ---
@@ -642,6 +772,9 @@ VALUES
 
 ### 6.3 RLS Attack Test
 
+> ⚠️ **NOTA**: Con le RLS policy di Supabase, l'expected primario è **0 record** (non 403). 
+> Il 403 si ottiene solo se c'è un endpoint/Edge Function che valida esplicitamente i permessi.
+
 **Procedura Cross-Brand**:
 ```text
 1. Login come venditore1 (brand: Excell)
@@ -650,17 +783,19 @@ VALUES
 4. Copiare la richiesta come cURL
 5. Modificare brand_id con UUID di MyMed (4a0b6cd1-f15a-4ea6-877d-33dcd0bc94d5)
 6. Eseguire la richiesta modificata
-7. Expected: 0 record restituiti OPPURE 403 Forbidden
+7. Expected: 0 record restituiti (le RLS bloccano silenziosamente)
 ```
 
 **Test da eseguire**:
 
 | Risorsa | Utente | Brand attacco | Expected | Esito |
 |---------|--------|---------------|----------|-------|
-| deals | venditore1 (Excell) | MyMed | 0 record / 403 | [ ] |
-| contacts | op_cc (MyMed) | Excell | 0 record / 403 | [ ] |
-| tickets | op_cc (MyMed) | Excell | 0 record / 403 | [ ] |
-| expenses | amm (Excell) | MyMed | 0 record / 403 | [ ] |
+| deals | venditore1 (Excell) | MyMed | **0 record** | [ ] |
+| contacts | op_cc (MyMed) | Excell | **0 record** | [ ] |
+| tickets | op_cc (MyMed) | Excell | **0 record** | [ ] |
+| expenses | amm (Excell) | MyMed | **0 record** | [ ] |
+
+> **Nota**: Se ricevi 403 su Edge Functions (es. `admin-manage-team`), è accettabile in quanto queste validano esplicitamente i permessi.
 
 ### 6.4 Performance Base
 
