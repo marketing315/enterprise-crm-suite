@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Eye } from 'lucide-react';
+import { Phone, Mail, MapPin, Eye, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -10,10 +10,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ContactStatusBadge } from './ContactStatusBadge';
 import { ContactDetailSheet } from './ContactDetailSheet';
+import { useDeleteContact } from '@/hooks/useContacts';
+import { toast } from 'sonner';
 import type { ContactWithPhones } from '@/types/database';
 
 interface ContactsTableProps {
@@ -23,6 +35,40 @@ interface ContactsTableProps {
 
 export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<ContactWithPhones | null>(null);
+  const deleteContact = useDeleteContact();
+
+  const handleDeleteClick = (contact: ContactWithPhones) => {
+    setContactToDelete(contact);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleFirstConfirm = () => {
+    setDeleteDialogOpen(false);
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleFinalDelete = async () => {
+    if (!contactToDelete) return;
+    
+    try {
+      await deleteContact.mutateAsync(contactToDelete.id);
+      toast.success('Contatto eliminato');
+    } catch (error: any) {
+      toast.error(error.message || 'Errore durante l\'eliminazione');
+    } finally {
+      setConfirmDeleteOpen(false);
+      setContactToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setConfirmDeleteOpen(false);
+    setContactToDelete(null);
+  };
 
   if (isLoading) {
     return (
@@ -108,13 +154,23 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
                   {format(new Date(contact.created_at), 'dd MMM yyyy', { locale: it })}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedContactId(contact.id)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedContactId(contact.id)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteClick(contact)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -127,6 +183,52 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
         open={!!selectedContactId}
         onOpenChange={(open) => !open && setSelectedContactId(null)}
       />
+
+      {/* First confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questo contatto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare <strong>{contactToDelete ? [contactToDelete.first_name, contactToDelete.last_name].filter(Boolean).join(' ') || 'questo contatto' : ''}</strong>.
+              Questa azione richiede una doppia conferma.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFirstConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Continua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Second confirmation dialog */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">⚠️ Conferma eliminazione definitiva</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei assolutamente sicuro? Il contatto <strong>{contactToDelete ? [contactToDelete.first_name, contactToDelete.last_name].filter(Boolean).join(' ') || 'selezionato' : ''}</strong> e tutti i dati associati verranno eliminati permanentemente. 
+              <br /><br />
+              <span className="font-semibold text-destructive">Questa azione è irreversibile.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFinalDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteContact.isPending}
+            >
+              {deleteContact.isPending ? 'Eliminazione...' : 'Elimina definitivamente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
