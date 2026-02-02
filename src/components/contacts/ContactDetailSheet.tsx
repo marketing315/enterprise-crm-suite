@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2 } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -23,12 +23,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { ContactStatusBadge } from './ContactStatusBadge';
 import { CustomFieldsSection } from './CustomFieldsSection';
 import { EntityTagList } from '@/components/tags/EntityTagList';
 import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
-import { useContact, useLeadEvents, useUpdateContact } from '@/hooks/useContacts';
+import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
 import { toast } from 'sonner';
 import type { ContactStatus } from '@/types/database';
 
@@ -66,6 +77,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
   const updateContact = useUpdateContact();
+  const deleteContact = useDeleteContact();
 
   // Initialize form data when contact loads
   useEffect(() => {
@@ -127,6 +139,18 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     setIsEditing(false);
   };
 
+  const handleDelete = async () => {
+    if (!contact?.id) return;
+
+    try {
+      await deleteContact.mutateAsync(contact.id);
+      toast.success('Contatto eliminato');
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Errore durante l\'eliminazione');
+    }
+  };
+
   const getFullName = () => {
     if (!contact) return '';
     const parts = [contact.first_name, contact.last_name].filter(Boolean);
@@ -147,10 +171,37 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         <SheetHeader className="flex flex-row items-center justify-between">
           <SheetTitle>Dettaglio Contatto</SheetTitle>
           {contact && !isEditing && (
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-              <Pencil className="h-4 w-4 mr-1" />
-              Modifica
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4 mr-1" />
+                Modifica
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eliminare questo contatto?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Questa azione è irreversibile. Il contatto e tutti i dati associati verranno eliminati permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deleteContact.isPending}
+                    >
+                      Elimina
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           )}
           {isEditing && (
             <div className="flex gap-2">
