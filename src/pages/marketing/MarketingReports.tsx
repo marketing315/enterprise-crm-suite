@@ -16,16 +16,7 @@ import { AlertCircle, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
 import { useMarketingCampaignKpis, useMarketingSummaryKpis } from "@/hooks/useMarketingKpis";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { arrayToCSV, downloadCSV } from "@/lib/csvExport";
 
 export default function MarketingReports() {
   const { currentBrand, hasBrandSelected } = useBrand();
@@ -45,19 +36,6 @@ export default function MarketingReports() {
 
   const { data: summaryKpis } = useMarketingSummaryKpis(dateRange.from, dateRange.to);
 
-  // Get last 6 months data for trend
-  const trendMonths = useMemo(() => {
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = subMonths(new Date(), i);
-      months.push({
-        month: format(d, "MMM yy", { locale: it }),
-        from: format(startOfMonth(d), "yyyy-MM-dd"),
-        to: format(endOfMonth(d), "yyyy-MM-dd"),
-      });
-    }
-    return months;
-  }, []);
 
   const handlePrevMonth = () => setSelectedMonth((d) => subMonths(d, 1));
   const handleNextMonth = () => setSelectedMonth((d) => {
@@ -69,28 +47,21 @@ export default function MarketingReports() {
   const exportCSV = () => {
     if (!campaignKpis?.length) return;
 
-    const headers = ["Campagna", "Canale", "Lead", "Deal", "Deal Vinti", "Ricavi", "Costi", "CPL", "CAC", "ROI"];
-    const rows = campaignKpis.map((kpi) => [
-      kpi.campaign_name,
-      kpi.channel_name,
-      kpi.leads_count,
-      kpi.deals_count,
-      kpi.deals_won,
-      kpi.revenue,
-      kpi.marketing_cost,
-      kpi.cpl,
-      kpi.cac,
-      `${kpi.roi}%`,
-    ]);
+    const columns = [
+      { key: "campaign_name" as const, label: "Campagna" },
+      { key: "channel_name" as const, label: "Canale" },
+      { key: "leads_count" as const, label: "Lead" },
+      { key: "deals_count" as const, label: "Deal" },
+      { key: "deals_won" as const, label: "Deal Vinti" },
+      { key: "revenue" as const, label: "Ricavi (€)" },
+      { key: "marketing_cost" as const, label: "Costi (€)" },
+      { key: "cpl" as const, label: "CPL (€)" },
+      { key: "cac" as const, label: "CAC (€)" },
+      { key: "roi" as const, label: "ROI (%)" },
+    ];
 
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `marketing-report-${format(selectedMonth, "yyyy-MM")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csv = arrayToCSV(campaignKpis, columns);
+    downloadCSV(csv, `marketing-report-${format(selectedMonth, "yyyy-MM")}.csv`);
   };
 
   if (!hasBrandSelected) {
@@ -191,30 +162,19 @@ export default function MarketingReports() {
         </Card>
       </div>
 
-      {/* Trend Chart Placeholder */}
+      {/* Trend Chart - TODO: Replace with real RPC data when available */}
       <Card>
         <CardHeader>
           <CardTitle>Trend Ultimi 6 Mesi</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={trendMonths.map((m) => ({
-                  name: m.month,
-                  ricavi: Math.random() * 50000,
-                  costi: Math.random() * 20000,
-                }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `€${value.toLocaleString("it-IT")}`} />
-                <Legend />
-                <Line type="monotone" dataKey="ricavi" name="Ricavi" stroke="hsl(var(--primary))" strokeWidth={2} />
-                <Line type="monotone" dataKey="costi" name="Costi" stroke="hsl(var(--destructive))" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground bg-muted/30 rounded-lg border-2 border-dashed">
+            <div className="text-center space-y-2">
+              <p className="font-medium">Dati trend in arrivo</p>
+              <p className="text-sm">
+                I grafici di tendenza saranno disponibili con i prossimi aggiornamenti.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

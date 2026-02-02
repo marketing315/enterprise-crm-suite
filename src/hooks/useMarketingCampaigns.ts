@@ -11,11 +11,15 @@ interface CampaignFilters {
 
 export function useMarketingCampaigns(filters?: CampaignFilters) {
   const { currentBrand } = useBrand();
+  const brandId = currentBrand?.id;
+  const statusFilter = filters?.status ?? "all";
+  const channelFilter = filters?.channelId ?? "all";
 
   return useQuery({
-    queryKey: ["marketing-campaigns", currentBrand?.id, filters],
+    // Use primitive values in queryKey for stable cache
+    queryKey: ["marketing-campaigns", brandId ?? "", statusFilter, channelFilter],
     queryFn: async (): Promise<MarketingCampaign[]> => {
-      if (!currentBrand) return [];
+      if (!brandId) return [];
 
       let query = supabase
         .from("marketing_campaigns")
@@ -23,7 +27,7 @@ export function useMarketingCampaigns(filters?: CampaignFilters) {
           *,
           marketing_channels(id, name, type)
         `)
-        .eq("brand_id", currentBrand.id)
+        .eq("brand_id", brandId)
         .order("start_date", { ascending: false });
 
       if (filters?.status) {
@@ -38,7 +42,7 @@ export function useMarketingCampaigns(filters?: CampaignFilters) {
       if (error) throw error;
       return (data || []) as unknown as MarketingCampaign[];
     },
-    enabled: !!currentBrand,
+    enabled: !!brandId,
   });
 }
 

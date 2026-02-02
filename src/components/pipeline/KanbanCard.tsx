@@ -3,7 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Mail, Clock, DollarSign, MoreVertical, Archive, Trophy, XCircle, MoveRight } from "lucide-react";
+import { User, Mail, Clock, DollarSign, MoreVertical, Archive, Trophy, XCircle, MoveRight, Megaphone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EntityTagList } from "@/components/tags/EntityTagList";
 import { useUpdateDealStatus, useUpdateDealStage, usePipelineStages } from "@/hooks/usePipeline";
 import { toast } from "sonner";
@@ -227,6 +232,21 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
             <Clock className="h-3 w-3 shrink-0" />
             <span>{format(new Date(deal.updated_at), "dd MMM HH:mm", { locale: it })}</span>
           </div>
+
+          {/* Marketing Campaign Badge */}
+          {deal.marketing_campaign && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 text-xs text-primary/80 bg-primary/5 px-2 py-0.5 rounded-full w-fit">
+                  <Megaphone className="h-3 w-3 shrink-0" />
+                  <span className="truncate max-w-[120px]">{deal.marketing_campaign.name}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Campagna: {deal.marketing_campaign.name}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Deal Tags */}
           <div className="pt-1 border-t" onClick={(e) => e.stopPropagation()}>

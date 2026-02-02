@@ -16,37 +16,48 @@ interface KpiFilters {
 
 export function useMarketingCampaignKpis(filters: KpiFilters) {
   const { currentBrand } = useBrand();
+  const brandId = currentBrand?.id;
+  const { fromDate, toDate, channelId, campaignId } = filters;
 
   return useQuery({
-    queryKey: ["marketing-kpis-campaigns", currentBrand?.id, filters],
+    // Use primitive values in queryKey for stable cache
+    queryKey: [
+      "marketing-kpis-campaigns",
+      brandId ?? "",
+      fromDate,
+      toDate,
+      channelId ?? "all",
+      campaignId ?? "all",
+    ],
     queryFn: async (): Promise<MarketingCampaignKpi[]> => {
-      if (!currentBrand) return [];
+      if (!brandId) return [];
 
       const { data, error } = await supabase.rpc("get_marketing_campaign_kpis", {
-        p_brand_id: currentBrand.id,
-        p_from: filters.fromDate,
-        p_to: filters.toDate,
-        p_channel_id: filters.channelId || null,
-        p_campaign_id: filters.campaignId || null,
+        p_brand_id: brandId,
+        p_from: fromDate,
+        p_to: toDate,
+        p_channel_id: channelId || null,
+        p_campaign_id: campaignId || null,
       });
 
       if (error) throw error;
       return (data || []) as MarketingCampaignKpi[];
     },
-    enabled: !!currentBrand && !!filters.fromDate && !!filters.toDate,
+    enabled: !!brandId && !!fromDate && !!toDate,
   });
 }
 
 export function useMarketingChannelKpis(fromDate: string, toDate: string) {
   const { currentBrand } = useBrand();
+  const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["marketing-kpis-channels", currentBrand?.id, fromDate, toDate],
+    queryKey: ["marketing-kpis-channels", brandId ?? "", fromDate, toDate],
     queryFn: async (): Promise<MarketingChannelKpi[]> => {
-      if (!currentBrand) return [];
+      if (!brandId) return [];
 
       const { data, error } = await supabase.rpc("get_marketing_channel_kpis", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandId,
         p_from: fromDate,
         p_to: toDate,
       });
@@ -54,20 +65,21 @@ export function useMarketingChannelKpis(fromDate: string, toDate: string) {
       if (error) throw error;
       return (data || []) as MarketingChannelKpi[];
     },
-    enabled: !!currentBrand && !!fromDate && !!toDate,
+    enabled: !!brandId && !!fromDate && !!toDate,
   });
 }
 
 export function useMarketingSummaryKpis(fromDate: string, toDate: string) {
   const { currentBrand } = useBrand();
+  const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["marketing-kpis-summary", currentBrand?.id, fromDate, toDate],
+    queryKey: ["marketing-kpis-summary", brandId ?? "", fromDate, toDate],
     queryFn: async (): Promise<MarketingSummaryKpi | null> => {
-      if (!currentBrand) return null;
+      if (!brandId) return null;
 
       const { data, error } = await supabase.rpc("get_marketing_summary_kpis", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandId,
         p_from: fromDate,
         p_to: toDate,
       });
@@ -75,6 +87,6 @@ export function useMarketingSummaryKpis(fromDate: string, toDate: string) {
       if (error) throw error;
       return data?.[0] as MarketingSummaryKpi || null;
     },
-    enabled: !!currentBrand && !!fromDate && !!toDate,
+    enabled: !!brandId && !!fromDate && !!toDate,
   });
 }
