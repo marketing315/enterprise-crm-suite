@@ -261,13 +261,17 @@ export function ContactsBulkActionsBar({
               Questa azione richiede una doppia conferma.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleFirstConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Continua
+          <AlertDialogFooter className="flex gap-2">
+            <AlertDialogCancel asChild>
+              <Button variant="outline">Annulla</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={handleFirstConfirm}
+              >
+                Continua
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -289,16 +293,20 @@ export function ContactsBulkActionsBar({
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmDeleteOpen(false)}>
-              Annulla
+          <AlertDialogFooter className="flex gap-2">
+            <AlertDialogCancel asChild>
+              <Button variant="outline" onClick={() => setConfirmDeleteOpen(false)}>
+                Annulla
+              </Button>
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleFinalDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Eliminazione..." : "Elimina definitivamente"}
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={handleFinalDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Eliminazione..." : "Elimina definitivamente"}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
