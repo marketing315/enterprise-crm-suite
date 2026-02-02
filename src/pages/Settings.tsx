@@ -52,7 +52,7 @@ export default function Settings() {
       <Tabs defaultValue="ticketing" className="space-y-4">
         {/* Mobile-optimized scrollable tabs */}
         <div className="w-full overflow-x-auto scrollbar-hide">
-          <TabsList className="inline-flex h-10 w-max gap-1 p-1">
+          <TabsList className="inline-flex h-8 w-max gap-0.5 p-0.5">
             <TabsTrigger value="ticketing" className="gap-1.5 px-3 text-xs md:text-sm">
               <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span>Ticketing</span>
