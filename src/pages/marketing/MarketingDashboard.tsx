@@ -9,6 +9,7 @@ import { useBrand } from "@/contexts/BrandContext";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
 import { useMarketingSummaryKpis, useMarketingChannelKpis } from "@/hooks/useMarketingKpis";
 import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
+import { formatPercent, getPercentColorClass } from "@/lib/formatKpi";
 import {
   BarChart,
   Bar,
@@ -231,8 +232,8 @@ export default function MarketingDashboard() {
                       <td className="py-2 text-right">{ch.deals_won}</td>
                       <td className="py-2 text-right">€{ch.revenue.toLocaleString("it-IT")}</td>
                       <td className="py-2 text-right">€{ch.marketing_cost.toLocaleString("it-IT")}</td>
-                      <td className={`py-2 text-right font-medium ${ch.avg_roi >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {ch.avg_roi.toFixed(1)}%
+                      <td className={`py-2 text-right font-medium ${getPercentColorClass(ch.avg_roi)}`}>
+                        {formatPercent(ch.avg_roi)}
                       </td>
                     </tr>
                   ))}
