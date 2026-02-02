@@ -67,7 +67,7 @@ export function DealDetailSheet({
 
   const handleAssignmentChange = (userId: string | null) => {
     assignDeal.mutate(
-      { dealId: deal.id, userId },
+      { dealId: deal.id, userId, dealBrandId: deal.brand_id },
       {
         onSuccess: () => {
           toast.success(userId ? "Venditore assegnato" : "Assegnazione rimossa");
@@ -81,7 +81,7 @@ export function DealDetailSheet({
 
   const handleCampaignChange = (campaignId: string | null) => {
     updateCampaign.mutate(
-      { dealId: deal.id, campaignId },
+      { dealId: deal.id, campaignId, dealBrandId: deal.brand_id },
       {
         onSuccess: () => {
           toast.success(campaignId ? "Campagna assegnata" : "Campagna rimossa");
@@ -115,7 +115,7 @@ export function DealDetailSheet({
 
   const handleStatusChange = (status: DealStatus) => {
     updateStatus.mutate(
-      { dealId: deal.id, status },
+      { dealId: deal.id, status, dealBrandId: deal.brand_id },
       {
         onSuccess: () => {
           const labels: Record<DealStatus, string> = {
