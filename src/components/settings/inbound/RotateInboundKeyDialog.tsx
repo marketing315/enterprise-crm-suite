@@ -84,10 +84,19 @@ export function RotateInboundKeyDialog({
     onOpenChange(false);
   };
 
+  const handleCopyValue = (value: string, label: string) => {
+    navigator.clipboard.writeText(value);
+    toast.success(`${label} copiata`);
+  };
+
+  const webhookUrl = source?.id 
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${source.id}`
+    : "";
+
   if (newApiKey) {
     return (
       <AlertDialog open={open} onOpenChange={handleClose}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Nuova API Key Generata</AlertDialogTitle>
             <AlertDialogDescription asChild>
@@ -95,10 +104,31 @@ export function RotateInboundKeyDialog({
                 <Alert>
                   <Key className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Salva questa API Key!</strong> Non sarà più visibile
+                    <strong>Salva queste credenziali!</strong> Non saranno più visibili
                     dopo la chiusura di questa finestra.
                   </AlertDescription>
                 </Alert>
+                
+                {/* Webhook URL */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Webhook URL</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={webhookUrl}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleCopyValue(webhookUrl, "Webhook URL")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* API Key */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Nuova API Key</label>
                   <div className="flex gap-2">
@@ -110,11 +140,29 @@ export function RotateInboundKeyDialog({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={handleCopyApiKey}
+                      onClick={() => handleCopyValue(newApiKey, "API Key")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    Header richiesto:{" "}
+                    <code 
+                      className="bg-muted px-1 py-0.5 rounded cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => handleCopyValue("X-API-Key", "Nome header")}
+                      title="Clicca per copiare"
+                    >
+                      X-API-Key
+                    </code>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5"
+                      onClick={() => handleCopyValue("X-API-Key", "Nome header")}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </p>
                 </div>
               </div>
             </AlertDialogDescription>
