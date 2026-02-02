@@ -19,8 +19,8 @@ const milestones: Milestone[] = [
   { id: "m8", label: "M8 – Outbound Webhooks", status: "completed" },
   { id: "m9", label: "M9 – Google Sheets Export", status: "completed" },
   { id: "m10", label: "M10 – Meta Lead Ads", status: "completed" },
-  { id: "m11", label: "M11 – Analytics Avanzati", status: "current" },
-  { id: "m12", label: "M12 – Mobile & PWA", status: "upcoming" },
+  { id: "m11", label: "M11 – Analytics Avanzati", status: "completed" },
+  { id: "m12", label: "M12 – Mobile & PWA", status: "current" },
 ];
 
 export function DashboardMilestones() {
