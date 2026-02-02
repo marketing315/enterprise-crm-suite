@@ -101,20 +101,27 @@ export function useDeleteContact() {
 }
 
 export function useLeadEvents(contactId?: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ['lead-events', currentBrand?.id, contactId],
+    queryKey: ['lead-events', isAllBrandsSelected ? 'all' : currentBrand?.id, contactId],
     queryFn: async () => {
-      if (!currentBrand?.id) return [];
+      const hasValidBrands = isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id;
+      if (!hasValidBrands) return [];
 
       let query = supabase
         .from('lead_events')
         .select('*')
-        .eq('brand_id', currentBrand.id)
         .eq('archived', false)
         .order('received_at', { ascending: false })
         .limit(100);
+
+      // Apply brand filter
+      if (isAllBrandsSelected) {
+        query = query.in('brand_id', allBrandIds);
+      } else if (currentBrand?.id) {
+        query = query.eq('brand_id', currentBrand.id);
+      }
 
       if (contactId) {
         query = query.eq('contact_id', contactId);
@@ -124,6 +131,6 @@ export function useLeadEvents(contactId?: string) {
       if (error) throw error;
       return data;
     },
-    enabled: !!currentBrand?.id,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id,
   });
 }

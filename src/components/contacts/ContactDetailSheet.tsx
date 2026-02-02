@@ -39,6 +39,7 @@ import { CustomFieldsSection } from './CustomFieldsSection';
 import { EntityTagList } from '@/components/tags/EntityTagList';
 import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
+import { BrandBadge } from '@/components/layout/BrandBadge';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
 import { toast } from 'sonner';
 import type { ContactStatus } from '@/types/database';
@@ -325,6 +326,9 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
               ) : (
                 <div>
                   <h2 className="text-2xl font-semibold">{getFullName()}</h2>
+                  <div className="mt-1.5">
+                    <BrandBadge brandId={contact.brand_id} />
+                  </div>
                   <div className="mt-2">
                     <ContactStatusBadge status={contact.status} />
                   </div>
