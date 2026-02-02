@@ -49,6 +49,7 @@ export interface Brand {
   parent_brand_id: string | null;
   auto_assign_enabled: boolean;
   sla_thresholds_minutes: Record<string, number>;
+  is_system?: boolean; // True for system brand "Azienda Intera"
   created_at: string;
   updated_at: string;
 }

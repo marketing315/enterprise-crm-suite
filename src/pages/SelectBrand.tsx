@@ -1,14 +1,14 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBrand, ALL_BRANDS } from '@/contexts/BrandContext';
+import { useBrand } from '@/contexts/BrandContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight, Loader2, Globe } from 'lucide-react';
 
 export default function SelectBrand() {
   const { user, isLoading: authLoading, signOut, isAdmin, isCeo, hasRole } = useAuth();
-  const { brands, currentBrand, setCurrentBrand, isLoading: brandLoading } = useBrand();
+  const { brands, currentBrand, systemBrand, setCurrentBrand, isLoading: brandLoading } = useBrand();
   const navigate = useNavigate();
 
   // Check if user has amministrazione role in any brand
@@ -27,9 +27,11 @@ export default function SelectBrand() {
     navigate('/dashboard');
   };
 
-  const handleSelectAllBrands = () => {
-    setCurrentBrand(ALL_BRANDS);
-    navigate('/dashboard');
+  const handleSelectSystemBrand = () => {
+    if (systemBrand) {
+      setCurrentBrand(systemBrand);
+      navigate('/dashboard');
+    }
   };
 
   const handleLogout = async () => {
@@ -76,17 +78,17 @@ export default function SelectBrand() {
             </div>
           ) : (
             <div className="space-y-2">
-              {/* All Brands option for admins/CEOs */}
-              {canSeeAllBrands && (
+              {/* System brand (Azienda Intera) option for admins/CEOs/amministrazione */}
+              {canSeeAllBrands && systemBrand && (
                 <Button
                   variant="default"
                   className="w-full justify-between h-auto py-4"
-                  onClick={handleSelectAllBrands}
+                  onClick={handleSelectSystemBrand}
                 >
                   <div className="flex items-center gap-3">
                     <Globe className="h-5 w-5" />
                     <div className="text-left">
-                      <div className="font-medium">Tutti i brand</div>
+                      <div className="font-medium">{systemBrand.name}</div>
                       <div className="text-xs opacity-80">Vista globale aggregata</div>
                     </div>
                   </div>
