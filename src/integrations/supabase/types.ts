@@ -4012,6 +4012,17 @@ export type Database = {
           revenue: number
         }[]
       }
+      get_marketing_monthly_trend: {
+        Args: { p_brand_id: string; p_months_back?: number }
+        Returns: {
+          cost: number
+          deals_won: number
+          leads_count: number
+          month: string
+          revenue: number
+          roi: number
+        }[]
+      }
       get_marketing_summary_kpis: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: {

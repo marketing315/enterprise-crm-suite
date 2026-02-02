@@ -90,3 +90,33 @@ export function useMarketingSummaryKpis(fromDate: string, toDate: string) {
     enabled: !!brandId && !!fromDate && !!toDate,
   });
 }
+
+export interface MarketingMonthlyTrend {
+  month: string;
+  revenue: number;
+  cost: number;
+  leads_count: number;
+  deals_won: number;
+  roi: number;
+}
+
+export function useMarketingMonthlyTrend(monthsBack: number = 6) {
+  const { currentBrand } = useBrand();
+  const brandId = currentBrand?.id;
+
+  return useQuery({
+    queryKey: ["marketing-monthly-trend", brandId ?? "", monthsBack],
+    queryFn: async (): Promise<MarketingMonthlyTrend[]> => {
+      if (!brandId) return [];
+
+      const { data, error } = await supabase.rpc("get_marketing_monthly_trend", {
+        p_brand_id: brandId,
+        p_months_back: monthsBack,
+      });
+
+      if (error) throw error;
+      return (data || []) as MarketingMonthlyTrend[];
+    },
+    enabled: !!brandId,
+  });
+}
