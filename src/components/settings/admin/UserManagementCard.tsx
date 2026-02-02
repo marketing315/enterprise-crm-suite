@@ -110,7 +110,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
 
   // Get unique users for the add role dropdown
   const uniqueUsers = usersWithRoles?.reduce((acc, entry) => {
-    if (!acc.find(u => u.id === entry.user.id)) {
+    if (entry.user && !acc.find(u => u.id === entry.user.id)) {
       acc.push(entry.user);
     }
     return acc;
