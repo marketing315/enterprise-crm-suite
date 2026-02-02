@@ -1,239 +1,339 @@
 
 
-# Piano: M11 - Analytics Avanzati
+# Piano M2 - KPI Venditori + Assegnazione Deal (Versione Finale)
 
-## Panoramica
+## Riepilogo Decisioni Business
 
-M11 introduce una suite di analytics avanzati orientati al business e alle decisioni strategiche, complementando le dashboard operative esistenti (AI Metrics, Callcenter KPI, Webhook Monitor).
-
----
-
-## Nuove Funzionalita
-
-### 1. Dashboard Analytics Unificata
-
-Una nuova pagina `/admin/analytics` che aggrega metriche strategiche in un'unica vista executive.
-
-**Sezioni:**
-
-| Sezione | Metriche |
-|---------|----------|
-| **Funnel Lead-to-Deal** | Conversion rate per stage, drop-off points, tempo medio per stage |
-| **Revenue Analytics** | Valore pipeline per stage, win rate, deal velocity, valore medio deal |
-| **Lead Source Analysis** | Performance per fonte (Meta, Web, Referral), costo per lead (se disponibile), quality score |
-| **Cohort Analysis** | Retention leads per settimana/mese, lifecycle value |
-| **Forecast** | Proiezione chiusure basata su velocity storica |
-
-### 2. Funnel Pipeline Analytics
-
-Visualizzazione del funnel di conversione con:
-
-- **Conversion Rate per Stage**: % di deal che avanzano da ogni stage
-- **Drop-off Analysis**: Dove si perdono i deal (stage con maggior abbandono)
-- **Stage Duration**: Tempo medio in ogni stage (identificare colli di bottiglia)
-- **Velocity Metrics**: Deal velocity (giorni medi da creazione a chiusura)
-
-### 3. Lead Source Performance
-
-Dashboard per analizzare le fonti lead:
-
-- **Volume per fonte**: Leads da Meta, Webhook, Manuale
-- **Quality Score**: Conversion rate per fonte
-- **Cost per Lead**: Se integrato con Meta Ads spend
-- **Best Performing Campaigns**: Top campagne/form
-
-### 4. Time-based Analytics
-
-- **Heatmap attivita**: Orari/giorni con piu lead
-- **Seasonality Analysis**: Pattern stagionali
-- **Trend YoY/MoM**: Confronti anno su anno, mese su mese
-
-### 5. Export e Scheduled Reports
-
-- **Export PDF/CSV**: Report esportabili
-- **Scheduled Email**: Report automatici (fase 2)
+| Regola | Scelta |
+|--------|--------|
+| Definizione vendita | WON + CLOSED (entrambi contano come "chiusura positiva") |
+| Visibilità deal | Restrittiva: venditore vede solo deal assegnati |
+| Deal archiviati | Contano nei KPI come "chiusi" |
 
 ---
 
-## Architettura Tecnica
+## Fase 1: Database Migration
 
-### Database: Nuove RPC per Analytics
+### 1.1 Aggiunta colonna assegnazione
+
+La tabella `deals` ha già `closed_at`. Serve solo aggiungere `assigned_user_id`:
 
 ```sql
--- Funnel conversion rates
-CREATE FUNCTION get_pipeline_funnel_analytics(
-  p_brand_id UUID,
-  p_from TIMESTAMPTZ,
-  p_to TIMESTAMPTZ
-) RETURNS JSON
+ALTER TABLE deals 
+ADD COLUMN assigned_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
 
--- Lead source performance
-CREATE FUNCTION get_lead_source_analytics(
-  p_brand_id UUID,
-  p_from TIMESTAMPTZ,
-  p_to TIMESTAMPTZ
-) RETURNS JSON
+-- Indice per query KPI ottimizzate
+CREATE INDEX idx_deals_assigned_kpi 
+ON deals(brand_id, assigned_user_id, status, closed_at DESC);
 
--- Deal velocity metrics
-CREATE FUNCTION get_deal_velocity_metrics(
-  p_brand_id UUID,
-  p_from TIMESTAMPTZ,
-  p_to TIMESTAMPTZ
-) RETURNS JSON
+-- Indice parziale per deal aperti
+CREATE INDEX idx_deals_assigned_open 
+ON deals(brand_id, assigned_user_id) 
+WHERE status IN ('open', 'reopened_for_support');
 ```
 
-### Struttura Dati Funnel
+### 1.2 RLS Policy per visibilità restrittiva
+
+Aggiungere policy che limita i venditori ai propri deal:
+
+```sql
+-- Drop existing SELECT policy
+DROP POLICY IF EXISTS "Users can view deals in their brands" ON deals;
+
+-- New policy with assignment restriction for venditori
+CREATE POLICY "Users can view deals based on role"
+ON deals FOR SELECT
+USING (
+  user_belongs_to_brand(get_user_id(auth.uid()), brand_id)
+  AND (
+    -- Admin, CEO, Responsabili vedono tutti i deal del brand
+    has_role_for_brand(get_user_id(auth.uid()), brand_id, 'admin')
+    OR has_role_for_brand(get_user_id(auth.uid()), brand_id, 'ceo')
+    OR has_role_for_brand(get_user_id(auth.uid()), brand_id, 'responsabile_venditori')
+    OR has_role_for_brand(get_user_id(auth.uid()), brand_id, 'responsabile_callcenter')
+    -- Venditori vedono solo deal assegnati a loro o non assegnati
+    OR (
+      has_role_for_brand(get_user_id(auth.uid()), brand_id, 'venditore')
+      AND (assigned_user_id = get_user_id(auth.uid()) OR assigned_user_id IS NULL)
+    )
+    -- Operatori callcenter: stesso pattern
+    OR (
+      has_role_for_brand(get_user_id(auth.uid()), brand_id, 'operatore_callcenter')
+      AND (assigned_user_id = get_user_id(auth.uid()) OR assigned_user_id IS NULL)
+    )
+  )
+);
+```
+
+### 1.3 RPC per KPI Venditori
+
+Funzione SQL che calcola metriche per venditore:
+
+```sql
+CREATE OR REPLACE FUNCTION get_salesperson_kpis(
+  p_brand_id UUID,
+  p_from TIMESTAMPTZ DEFAULT NULL,
+  p_to TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  -- Validate brand access
+  IF NOT user_belongs_to_brand(get_user_id(auth.uid()), p_brand_id) THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
+  
+  -- Default to last 30 days if no range
+  IF p_from IS NULL THEN p_from := now() - interval '30 days'; END IF;
+  IF p_to IS NULL THEN p_to := now(); END IF;
+
+  SELECT json_agg(row_to_json(kpi))
+  INTO v_result
+  FROM (
+    SELECT 
+      u.id as user_id,
+      u.full_name,
+      u.email,
+      ur.role,
+      -- Conteggi deal
+      COUNT(*) FILTER (WHERE d.status = 'open' OR d.status = 'reopened_for_support') as deals_open,
+      COUNT(*) FILTER (WHERE d.status = 'won' AND d.closed_at >= p_from AND d.closed_at < p_to) as deals_won,
+      COUNT(*) FILTER (WHERE d.status = 'lost' AND d.closed_at >= p_from AND d.closed_at < p_to) as deals_lost,
+      COUNT(*) FILTER (WHERE d.status = 'closed' AND d.closed_at >= p_from AND d.closed_at < p_to) as deals_closed,
+      -- Valore vinto (won + closed)
+      COALESCE(SUM(d.value) FILTER (
+        WHERE d.status IN ('won', 'closed') 
+        AND d.closed_at >= p_from AND d.closed_at < p_to
+      ), 0) as total_value_won,
+      -- Win rate: (won + closed) / totale chiusure con esito
+      CASE 
+        WHEN COUNT(*) FILTER (WHERE d.status IN ('won', 'lost', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to) = 0 
+        THEN 0
+        ELSE ROUND(
+          COUNT(*) FILTER (WHERE d.status IN ('won', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to)::numeric * 100 
+          / COUNT(*) FILTER (WHERE d.status IN ('won', 'lost', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to),
+          1
+        )
+      END as win_rate,
+      -- Tempo medio chiusura (giorni)
+      COALESCE(
+        ROUND(
+          AVG(EXTRACT(EPOCH FROM (d.closed_at - d.created_at)) / 86400) 
+          FILTER (WHERE d.status IN ('won', 'lost', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to),
+          1
+        ),
+        0
+      ) as avg_days_to_close,
+      -- Ultima attività
+      MAX(d.updated_at) as last_activity_at
+    FROM users u
+    INNER JOIN user_roles ur ON ur.user_id = u.id 
+      AND ur.brand_id = p_brand_id 
+      AND ur.role = 'venditore'
+      AND ur.is_active = true
+    LEFT JOIN deals d ON d.assigned_user_id = u.id 
+      AND d.brand_id = p_brand_id
+    GROUP BY u.id, u.full_name, u.email, ur.role
+    ORDER BY total_value_won DESC, deals_won DESC
+  ) kpi;
+
+  RETURN COALESCE(v_result, '[]'::json);
+END;
+$$;
+```
+
+---
+
+## Fase 2: Frontend - Hook e Tipi
+
+### 2.1 Nuovo hook `useSalespersonKpis.ts`
 
 ```typescript
-interface FunnelStage {
-  stage_id: string;
-  stage_name: string;
-  stage_color: string;
-  deals_entered: number;
-  deals_exited_to_next: number;
+// src/hooks/useSalespersonKpis.ts
+interface SalespersonKpi {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+  role: string;
+  deals_open: number;
   deals_won: number;
   deals_lost: number;
-  conversion_rate: number; // % che avanza
-  avg_days_in_stage: number;
-}
-
-interface FunnelAnalytics {
-  stages: FunnelStage[];
-  total_deals: number;
-  overall_win_rate: number;
-  avg_deal_velocity_days: number;
-  total_pipeline_value: number;
-}
-```
-
-### Struttura Lead Source
-
-```typescript
-interface LeadSourceMetrics {
-  source: string; // 'meta', 'webhook', 'manual'
-  source_name: string; // Nome specifico
-  leads_count: number;
-  deals_created: number;
-  deals_won: number;
+  deals_closed: number;
   total_value_won: number;
-  conversion_rate: number;
-  avg_deal_value: number;
+  win_rate: number;
+  avg_days_to_close: number;
+  last_activity_at: string | null;
 }
+
+// useQuery per fetch KPI con date range
 ```
+
+### 2.2 Aggiornamento tipi Deal
+
+Estendere `DealWithContact` con `assigned_user_id` e info venditore assegnato.
 
 ---
 
-## UI/UX Design
+## Fase 3: Frontend - Nuove Pagine e Componenti
 
-### Pagina AdminAnalytics
+### 3.1 Pagina `/team/salespersons` (o tab in Team)
+
+Componenti:
+
+| Componente | Funzione |
+|------------|----------|
+| `SalespersonKpiCards` | 4 card aggregate: Totale Venditori, Valore Totale, Win Rate Medio, Deal Aperti |
+| `SalespersonTable` | Tabella con colonne: Nome, Deal Open, Won, Lost, Valore Vinto, Win Rate, Ultimo Aggiornamento |
+| `SalespersonDetailSheet` | Drawer con dettaglio: lista deal assegnati, storico performance |
+
+### 3.2 Struttura UI
 
 ```text
-+------------------------------------------+
-|  📊 Analytics Avanzati     [Date Range]  |
-+------------------------------------------+
-|  KPI Cards (4 principali)                |
-|  [Pipeline Value] [Win Rate] [Velocity] [Leads] |
-+------------------------------------------+
-|  [Tabs: Funnel | Sources | Trends | Forecast]   |
-+------------------------------------------+
-|  Tab Content:                            |
-|  - Funnel: Sankey/Funnel chart           |
-|  - Sources: Bar chart + table            |
-|  - Trends: Line charts                   |
-|  - Forecast: Projection chart            |
-+------------------------------------------+
++-----------------------------------------------+
+| 📊 Performance Venditori    [Periodo: 30gg ▼] |
++-----------------------------------------------+
+| [Card] Venditori  [Card] Valore   [Card] Win  |
+|    5 attivi       €125.000        68%         |
++-----------------------------------------------+
+| Tabella Venditori                             |
+| Nome      | Open | Won | Lost | Valore | Win% |
+|-----------|------|-----|------|--------|------|
+| Mario R.  |  12  |  8  |  3   | €45.000| 73%  |
+| Giulia S. |   8  |  5  |  4   | €32.000| 56%  |
+| ...       |      |     |      |        |      |
++-----------------------------------------------+
 ```
 
-### Componenti Grafici
+### 3.3 Mobile UX
 
-- **Funnel Chart**: Visualizzazione stages con conversion rates
-- **Sankey Diagram**: Flusso deals tra stages (opzionale, fase 2)
-- **Bar Chart orizzontale**: Source comparison
-- **Area Chart stacked**: Trend temporali
-- **KPI Cards animati**: Metriche principali con delta vs periodo precedente
+- Tabella trasformata in card list verticale
+- Ogni card mostra: Nome + KPI principali (valore, win rate)
+- Tap → apre detail sheet
+- Filtri periodo in header sticky
 
 ---
 
-## File da Creare
+## Fase 4: Integrazione Pipeline
 
-| File | Descrizione |
-|------|-------------|
-| `src/pages/AdminAnalytics.tsx` | Pagina principale analytics |
-| `src/hooks/useAdvancedAnalytics.ts` | Hook per fetch dati analytics |
-| `src/components/admin/analytics/FunnelChart.tsx` | Visualizzazione funnel |
-| `src/components/admin/analytics/SourcePerformanceChart.tsx` | Performance fonti |
-| `src/components/admin/analytics/TrendComparisonChart.tsx` | Confronti temporali |
-| `src/components/admin/analytics/AnalyticsKpiCards.tsx` | KPI cards principali |
-| `src/components/admin/analytics/ForecastChart.tsx` | Proiezione revenue |
-| Migrazione SQL | RPC functions per analytics |
+### 4.1 Modifica `DealDetailSheet.tsx`
 
-## File da Modificare
+Aggiungere sezione assegnazione:
 
-| File | Modifiche |
-|------|-----------|
-| `src/App.tsx` | Aggiungere route `/admin/analytics` |
-| `src/components/layout/MainLayout.tsx` | Sostituire link Analytics generico con nuova pagina |
-| `src/components/dashboard/DashboardMilestones.tsx` | Aggiornare M11 a "current" |
+```text
++---------------------------+
+| Assegnato a               |
+| [Dropdown venditori    ▼] |
+| • Mario Rossi             |
+| • Giulia Sala             |
+| • Non assegnato           |
++---------------------------+
+```
+
+### 4.2 Modifica `KanbanCard.tsx`
+
+Badge visivo con iniziali venditore assegnato:
+
+```text
++-------------------+
+| Deal ABC Corp     |
+| €15.000           |
+| [MR] ← badge      |
++-------------------+
+```
+
+### 4.3 Mutation assegnazione
+
+Aggiungere `useAssignDealToUser` mutation in `usePipeline.ts`.
 
 ---
 
-## Metriche Calcolate
+## Fase 5: Navigazione e Permessi UI
 
-### Win Rate
-```sql
-win_rate = deals_won / (deals_won + deals_lost) * 100
-```
+### 5.1 Voce menu (MainLayout)
 
-### Deal Velocity
-```sql
-avg_velocity = AVG(closed_at - created_at) WHERE status IN ('won', 'lost')
-```
+Aggiungere sotto "Team":
+- "Performance Venditori" (visibile solo a: admin, ceo, responsabile_venditori)
 
-### Funnel Conversion
-```sql
-stage_conversion = deals_moved_to_next_stage / deals_entered_stage * 100
-```
+### 5.2 Condizioni visibilità
 
-### Lead Quality Score
-```sql
-quality_score = (deals_won_from_source / leads_from_source) * 100
+```typescript
+const canViewSalespersonKpis = userRole && 
+  ['admin', 'ceo', 'responsabile_venditori'].includes(userRole);
 ```
 
 ---
 
-## Navigazione
+## Fase 6: Test E2E
 
-Il menu Admin verra aggiornato:
-
-| Attuale | Nuovo |
-|---------|-------|
-| Analytics (link a Dashboard) | Analytics Avanzati (nuova pagina) |
-
----
-
-## Fasi di Implementazione
-
-### Fase 1 (Core)
-1. Migrazione SQL con RPC analytics
-2. Hook `useAdvancedAnalytics`
-3. Pagina `AdminAnalytics` con tabs
-4. Funnel Chart e Source Performance
-5. KPI Cards con delta
-
-### Fase 2 (Enhancement)
-1. Forecast/proiezioni
-2. Sankey diagram
-3. Export PDF
-4. Heatmap attivita
+| File | Scenario |
+|------|----------|
+| `salesperson-assignment.e2e.spec.ts` | Assegna deal a venditore → visibile in DB e UI |
+| | Venditore vede solo propri deal (policy restrittiva) |
+| | Manager vede tutti i deal |
+| `salesperson-kpis.e2e.spec.ts` | KPI aggiornati dopo chiusura deal |
+| | Win rate calcolato correttamente |
+| | Filtro periodo funziona |
 
 ---
 
-## Risultato Atteso
+## Riepilogo File
 
-1. Dashboard analytics unificata accessibile da Admin > Analytics
-2. Visualizzazione funnel pipeline con conversion rates
-3. Analisi performance fonti lead
-4. Trend temporali con confronti (WoW, MoM)
-5. KPI strategici: Win Rate, Deal Velocity, Pipeline Value
-6. Aggiornamento roadmap con M11 come milestone corrente
+### Nuovi file
+- `src/pages/SalespersonKpi.tsx`
+- `src/components/team/SalespersonTable.tsx`
+- `src/components/team/SalespersonKpiCards.tsx`
+- `src/components/team/SalespersonDetailSheet.tsx`
+- `src/components/team/SalespersonAssignmentSelect.tsx`
+- `src/hooks/useSalespersonKpis.ts`
+- `e2e/salesperson-kpis.e2e.spec.ts`
+
+### File da modificare
+- `supabase/migrations/[new].sql` - Schema + RPC + RLS
+- `src/App.tsx` - Route `/team/salespersons`
+- `src/components/layout/MainLayout.tsx` - Voce menu
+- `src/components/pipeline/DealDetailSheet.tsx` - Dropdown assegnazione
+- `src/components/pipeline/KanbanCard.tsx` - Badge venditore
+- `src/hooks/usePipeline.ts` - Mutation assegnazione + tipo esteso
+- `src/types/database.ts` - Tipo Deal aggiornato
+
+---
+
+## Note Implementative
+
+### Formula Win Rate
+```
+win_rate = (won + closed) / (won + lost + closed) × 100
+```
+
+### Calcolo Tempo Chiusura
+```
+avg_days = AVG(closed_at - created_at) in giorni
+```
+Solo per deal con `closed_at` valorizzato.
+
+### Policy Visibilità
+I venditori vedono:
+- Deal assegnati a loro
+- Deal non ancora assegnati (per permettere auto-assegnazione)
+
+Manager/Admin vedono tutti i deal del brand.
+
+---
+
+## Effort Stimato
+
+| Fase | Tempo |
+|------|-------|
+| Migration + RPC + RLS | ~45 min |
+| Hook + Tipi | ~20 min |
+| UI Dashboard | ~1.5 ore |
+| Integrazione Pipeline | ~45 min |
+| Mobile responsive | ~30 min |
+| Test E2E | ~30 min |
+| **Totale** | **~4 ore** |
 
