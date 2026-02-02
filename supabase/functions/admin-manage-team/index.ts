@@ -86,17 +86,38 @@ async function getCallerRoleInBrand(
     venditore: 10, sales: 10, operatore_callcenter: 10, callcenter: 10
   };
   
-  const { data: allRoles } = await adminClient
+  // First check for global admin/ceo roles (any brand)
+  const { data: globalRoles } = await adminClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", callerId)
+    .in("role", ["admin", "ceo"])
+    .eq("is_active", true);
+
+  // If user is admin or CEO anywhere, they have access to all brands
+  if (globalRoles && globalRoles.length > 0) {
+    let highestGlobalRole = globalRoles[0].role as AppRole;
+    for (const r of globalRoles) {
+      const rRole = r.role as string;
+      if ((roleOrder[rRole] || 0) > (roleOrder[highestGlobalRole] || 0)) {
+        highestGlobalRole = r.role as AppRole;
+      }
+    }
+    return highestGlobalRole;
+  }
+
+  // Then check for brand-specific roles
+  const { data: brandRoles } = await adminClient
     .from("user_roles")
     .select("role")
     .eq("user_id", callerId)
     .eq("brand_id", brandId)
     .eq("is_active", true);
 
-  if (!allRoles || allRoles.length === 0) return null;
+  if (!brandRoles || brandRoles.length === 0) return null;
 
-  let highestRole = allRoles[0].role as AppRole;
-  for (const r of allRoles) {
+  let highestRole = brandRoles[0].role as AppRole;
+  for (const r of brandRoles) {
     const rRole = r.role as string;
     if ((roleOrder[rRole] || 0) > (roleOrder[highestRole] || 0)) {
       highestRole = r.role as AppRole;
