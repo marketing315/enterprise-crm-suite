@@ -95,7 +95,9 @@ export function AdStatsTab() {
             <SelectContent>
               <SelectItem value="all">Tutte</SelectItem>
               <SelectItem value="meta">Meta Ads</SelectItem>
-              <SelectItem value="google">Google Ads</SelectItem>
+              <SelectItem value="google" disabled className="opacity-50">
+                Google Ads (coming soon)
+              </SelectItem>
             </SelectContent>
           </Select>
 

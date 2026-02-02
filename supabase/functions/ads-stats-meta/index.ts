@@ -30,30 +30,73 @@ interface MetaInsightsResponse {
   error?: { message: string; code: number };
 }
 
+interface CampaignMatch {
+  id: string;
+  external_id: string | null;
+  name: string;
+  allow_name_fallback: boolean;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify cron secret for automated calls
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    // Security: Check authorization
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedSecret = Deno.env.get("CRON_SECRET");
-    
-    // Allow manual calls with auth header OR cron calls with secret
     const authHeader = req.headers.get("Authorization");
-    const isCronCall = cronSecret && cronSecret === expectedSecret;
-    const isAuthCall = authHeader?.startsWith("Bearer ");
     
-    if (!isCronCall && !isAuthCall) {
+    const isCronCall = cronSecret && cronSecret === expectedSecret;
+    
+    // For manual calls, verify admin/CEO role
+    let isAdminCall = false;
+    if (!isCronCall && authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
+      if (claimsError || !claimsData?.user) {
+        return new Response(
+          JSON.stringify({ error: "Invalid token" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Check if user has admin or ceo role
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: userRoles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", claimsData.user.id);
+      
+      const hasAdminAccess = userRoles?.some(r => 
+        r.role === "admin" || r.role === "ceo"
+      );
+      
+      if (!hasAdminAccess) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: Admin or CEO role required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      isAdminCall = true;
+    }
+    
+    if (!isCronCall && !isAdminCall) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse optional date parameters
@@ -68,12 +111,10 @@ Deno.serve(async (req) => {
     let untilDate: string | null = null;
 
     if (dateParam) {
-      // Single specific date
       sinceDate = dateParam;
       untilDate = dateParam;
       datePreset = "";
     } else if (fromParam && toParam) {
-      // Custom range
       sinceDate = fromParam;
       untilDate = toParam;
       datePreset = "";
@@ -112,7 +153,11 @@ Deno.serve(async (req) => {
         : `act_${metaApp.ad_account_id}`;
 
       try {
-        // Build Meta Insights API URL
+        // Fetch all insights with pagination
+        let allInsights: MetaInsight[] = [];
+        let nextUrl: string | null = null;
+        
+        // Build initial Meta Insights API URL
         let insightsUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
         insightsUrl += `fields=campaign_id,campaign_name,spend,impressions,clicks,actions`;
         insightsUrl += `&level=campaign`;
@@ -128,22 +173,38 @@ Deno.serve(async (req) => {
 
         console.log(`Fetching insights for account ${accountId}...`);
 
-        const response = await fetch(insightsUrl);
-        const data: MetaInsightsResponse = await response.json();
+        // Paginate through all results
+        let currentUrl: string | null = insightsUrl;
+        let pageCount = 0;
+        const maxPages = 100; // Safety limit
+        
+        while (currentUrl && pageCount < maxPages) {
+          const response = await fetch(currentUrl);
+          const data: MetaInsightsResponse = await response.json();
 
-        if (data.error) {
-          console.error(`Meta API error for ${accountId}:`, data.error);
-          results.push({
-            brand_id: metaApp.brand_id,
-            account_id: accountId,
-            success: false,
-            campaigns: 0,
-            error: data.error.message,
-          });
-          continue;
+          if (data.error) {
+            console.error(`Meta API error for ${accountId}:`, data.error);
+            results.push({
+              brand_id: metaApp.brand_id,
+              account_id: accountId,
+              success: false,
+              campaigns: 0,
+              error: data.error.message,
+            });
+            currentUrl = null;
+            break;
+          }
+
+          if (data.data && data.data.length > 0) {
+            allInsights = allInsights.concat(data.data);
+          }
+          
+          // Check for next page
+          currentUrl = data.paging?.next || null;
+          pageCount++;
         }
 
-        if (!data.data || data.data.length === 0) {
+        if (allInsights.length === 0) {
           results.push({
             brand_id: metaApp.brand_id,
             account_id: accountId,
@@ -153,7 +214,32 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Process each insight row
+        // BATCH CAMPAIGN MATCHING: Fetch all campaigns for this brand at once
+        const externalIds = allInsights.map(i => `meta:${i.campaign_id}`);
+        const campaignNames = allInsights.map(i => i.campaign_name);
+        
+        const { data: matchingCampaigns } = await supabase
+          .from("marketing_campaigns")
+          .select("id, external_id, name, allow_name_fallback")
+          .eq("brand_id", metaApp.brand_id)
+          .or(`external_id.in.(${externalIds.map(e => `"${e}"`).join(',')}),and(allow_name_fallback.eq.true,name.in.(${campaignNames.map(n => `"${n.replace(/"/g, '\\"')}"`).join(',')}))`);
+        
+        // Build lookup maps
+        const campaignByExternalId = new Map<string, string>();
+        const campaignsByName = new Map<string, CampaignMatch[]>();
+        
+        for (const camp of (matchingCampaigns || []) as CampaignMatch[]) {
+          if (camp.external_id) {
+            campaignByExternalId.set(camp.external_id, camp.id);
+          }
+          if (camp.allow_name_fallback) {
+            const existing = campaignsByName.get(camp.name) || [];
+            existing.push(camp);
+            campaignsByName.set(camp.name, existing);
+          }
+        }
+
+        // Process each insight row using the pre-fetched maps
         const statsToUpsert: Array<{
           brand_id: string;
           campaign_id: string | null;
@@ -172,29 +258,17 @@ Deno.serve(async (req) => {
           imported_at: string;
         }> = [];
 
-        for (const insight of data.data) {
-          // Try to find matching campaign by external_id
+        for (const insight of allInsights) {
+          // Try to find matching campaign by external_id first
           const externalId = `meta:${insight.campaign_id}`;
-          const { data: matchingCampaign } = await supabase
-            .from("marketing_campaigns")
-            .select("id, name, allow_name_fallback")
-            .eq("brand_id", metaApp.brand_id)
-            .eq("external_id", externalId)
-            .maybeSingle();
-
-          let campaignId: string | null = matchingCampaign?.id ?? null;
+          let campaignId: string | null = campaignByExternalId.get(externalId) ?? null;
 
           // Fallback to name matching if allowed and no external_id match
           if (!campaignId) {
-            const { data: fallbackCampaigns } = await supabase
-              .from("marketing_campaigns")
-              .select("id")
-              .eq("brand_id", metaApp.brand_id)
-              .eq("name", insight.campaign_name)
-              .eq("allow_name_fallback", true);
-
-            if (fallbackCampaigns && fallbackCampaigns.length === 1) {
-              campaignId = fallbackCampaigns[0].id;
+            const nameMatches = campaignsByName.get(insight.campaign_name);
+            // Only use name fallback if exactly one match (univocal)
+            if (nameMatches && nameMatches.length === 1) {
+              campaignId = nameMatches[0].id;
             }
           }
 
@@ -218,7 +292,7 @@ Deno.serve(async (req) => {
             external_campaign_id: insight.campaign_id,
             external_campaign_name: insight.campaign_name,
             stat_date: insight.date_start,
-            currency: "EUR",
+            currency: "EUR", // TODO: Fetch from account settings
             spend: parseFloat(insight.spend) || 0,
             impressions: parseInt(insight.impressions) || 0,
             clicks: parseInt(insight.clicks) || 0,
