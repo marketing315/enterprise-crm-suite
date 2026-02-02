@@ -274,8 +274,23 @@ export function InboundSourceFormDrawer({
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Header richiesto: <code>X-API-Key</code>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  Header richiesto:{" "}
+                  <code 
+                    className="bg-muted px-1 py-0.5 rounded cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleCopy("X-API-Key", "Nome header")}
+                    title="Clicca per copiare"
+                  >
+                    X-API-Key
+                  </code>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-5 w-5"
+                    onClick={() => handleCopy("X-API-Key", "Nome header")}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
                 </p>
               </div>
             )}
