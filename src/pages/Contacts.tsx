@@ -153,7 +153,7 @@ export default function Contacts() {
   );
 
   return (
-    <div className="space-y-4 w-full max-w-full overflow-hidden">
+    <div className="flex flex-col h-full w-full max-w-full overflow-hidden gap-4">
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">

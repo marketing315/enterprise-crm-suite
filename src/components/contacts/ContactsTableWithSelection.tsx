@@ -130,7 +130,7 @@ export function ContactsTableWithSelection({ contacts, isLoading }: ContactsTabl
 
   return (
     <>
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-md border overflow-auto max-h-[calc(100vh-280px)]">
         <Table className="min-w-[750px]">
           <TableHeader>
             <TableRow>
