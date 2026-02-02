@@ -7,6 +7,7 @@ import { DashboardTrendChart } from '@/components/dashboard/DashboardTrendChart'
 import { DashboardMilestones } from '@/components/dashboard/DashboardMilestones';
 import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemStatus';
 import { TutorialSheet } from '@/components/dashboard/TutorialSheet';
+import { ActionGuide } from '@/components/dashboard/ActionGuide';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function Dashboard() {
@@ -16,6 +17,7 @@ export default function Dashboard() {
     leadsToday,
     leadsWeek,
     openDeals,
+    newDeals,
     openTickets,
     slaBreachedTickets,
     totalContacts,
@@ -160,6 +162,14 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* Action Guide - Neuromarketing oriented */}
+      <ActionGuide 
+        openDeals={openDeals}
+        newDeals={newDeals}
+        openTickets={openTickets}
+        slaBreaches={slaBreachedTickets}
+      />
 
       {/* Charts & Status */}
       <div className="grid gap-4 md:grid-cols-2">

@@ -7,7 +7,8 @@ import {
   Search,
   Filter,
   Euro,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SalesOrderDetailSheet } from "@/components/sales/SalesOrderDetailSheet";
+import { QuickSaleDialog } from "@/components/sales/QuickSaleDialog";
 import { ORDER_STATUS_CONFIG, type SalesOrderStatus } from "@/types/sales";
 import { subDays, startOfDay, endOfDay } from "date-fns";
 
@@ -42,6 +44,7 @@ export default function Sales() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [quickSaleOpen, setQuickSaleOpen] = useState(false);
 
   // Check permissions
   const canView = isAdmin || isCeo || 
@@ -55,7 +58,7 @@ export default function Sales() {
   const from = startOfDay(subDays(now, 30));
   const to = endOfDay(now);
 
-  const { data: orders = [], isLoading } = useSalesOrders({
+  const { data: orders = [], isLoading, refetch } = useSalesOrders({
     status: statusFilter !== "all" ? statusFilter as SalesOrderStatus : undefined,
   });
 
@@ -118,6 +121,11 @@ export default function Sales() {
             Gestisci ordini e pagamenti
           </p>
         </div>
+        <Button onClick={() => setQuickSaleOpen(true)} className="gap-2">
+          <Sparkles className="h-4 w-4" />
+          <span className="hidden sm:inline">Vendita rapida</span>
+          <Plus className="h-4 w-4 sm:hidden" />
+        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -253,6 +261,13 @@ export default function Sales() {
         orderId={selectedOrderId}
         open={!!selectedOrderId}
         onOpenChange={(open) => !open && setSelectedOrderId(null)}
+      />
+
+      {/* Quick Sale Dialog */}
+      <QuickSaleDialog
+        open={quickSaleOpen}
+        onOpenChange={setQuickSaleOpen}
+        onSuccess={() => refetch()}
       />
     </div>
   );
