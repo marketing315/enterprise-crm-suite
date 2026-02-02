@@ -174,7 +174,7 @@ export function MainLayout() {
           <SidebarHeader className="border-b border-sidebar-border">
             <div className="flex items-center gap-2 px-4 py-3">
               <Building2 className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg">CRM Enterprise</span>
+              <span className="font-bold text-lg">CRM Gruppo Benessere</span>
             </div>
             <div className="px-4 pb-3">
               <BrandSelector compact />
