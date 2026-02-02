@@ -9,6 +9,7 @@ const corsHeaders = {
 type AppRole = 
   | "admin" 
   | "ceo" 
+  | "amministrazione"
   | "responsabile_venditori" 
   | "responsabile_callcenter" 
   | "venditore" 
@@ -43,7 +44,13 @@ interface GetAssignableRolesRequest {
   brand_id: string;
 }
 
-type RequestBody = InviteUserRequest | UpdateMemberRequest | ListMembersRequest | GetAssignableRolesRequest;
+interface AssignToAllBrandsRequest {
+  action: "assign_to_all_brands";
+  user_id: string;
+  role: AppRole;
+}
+
+type RequestBody = InviteUserRequest | UpdateMemberRequest | ListMembersRequest | GetAssignableRolesRequest | AssignToAllBrandsRequest;
 
 async function getCallerContext(authHeader: string) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -81,7 +88,7 @@ async function getCallerRoleInBrand(
   brandId: string
 ): Promise<AppRole | null> {
   const roleOrder: Record<string, number> = {
-    admin: 100, ceo: 90, 
+    admin: 100, ceo: 90, amministrazione: 80,
     responsabile_venditori: 50, responsabile_callcenter: 50,
     venditore: 10, sales: 10, operatore_callcenter: 10, callcenter: 10
   };
@@ -136,6 +143,7 @@ async function getCallerRoleInBrand(
 function canManageRole(managerRole: AppRole, targetRole: AppRole): boolean {
   if (managerRole === "admin") return true;
   if (managerRole === "ceo" && targetRole !== "admin") return true;
+  // Amministrazione can be managed by admin/ceo only (handled above)
   if (managerRole === "responsabile_venditori" && 
       (targetRole === "venditore" || targetRole === "sales")) return true;
   if (managerRole === "responsabile_callcenter" && 
@@ -146,6 +154,7 @@ function canManageRole(managerRole: AppRole, targetRole: AppRole): boolean {
 function getAssignableRolesForRole(managerRole: AppRole): { value: AppRole; label: string }[] {
   const allRoles: { value: AppRole; label: string }[] = [
     { value: "ceo", label: "CEO" },
+    { value: "amministrazione", label: "Amministrazione" },
     { value: "responsabile_venditori", label: "Responsabile Venditori" },
     { value: "responsabile_callcenter", label: "Responsabile Call Center" },
     { value: "venditore", label: "Venditore" },
@@ -525,6 +534,73 @@ serve(async (req: Request) => {
         }
 
         return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "assign_to_all_brands": {
+        const { user_id, role } = body as AssignToAllBrandsRequest;
+
+        // Only admin/ceo can assign to all brands
+        const callerRole = await getCallerRoleInBrand(adminClient, callerId, "__ALL_BRANDS__");
+        if (!callerRole || (callerRole !== "admin" && callerRole !== "ceo")) {
+          return new Response(JSON.stringify({ error: "Solo Admin e CEO possono assegnare a tutti i brand" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Check caller can assign the target role
+        if (!canManageRole(callerRole, role)) {
+          return new Response(JSON.stringify({ error: "Non autorizzato ad assegnare questo ruolo" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Get all non-system brands
+        const { data: allBrands, error: brandsError } = await adminClient
+          .from("brands")
+          .select("id")
+          .or("is_system.is.null,is_system.eq.false");
+
+        if (brandsError) {
+          return new Response(JSON.stringify({ error: brandsError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Upsert user_roles for each brand
+        const upsertPromises = (allBrands || []).map(async (brand) => {
+          const { data: existing } = await adminClient
+            .from("user_roles")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("brand_id", brand.id)
+            .maybeSingle();
+
+          if (existing) {
+            // Update existing
+            return adminClient
+              .from("user_roles")
+              .update({ role, is_active: true })
+              .eq("id", existing.id);
+          } else {
+            // Insert new
+            return adminClient
+              .from("user_roles")
+              .insert({ user_id, brand_id: brand.id, role, is_active: true });
+          }
+        });
+
+        await Promise.all(upsertPromises);
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          brands_assigned: allBrands?.length || 0 
+        }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

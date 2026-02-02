@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight, Loader2, Globe } from 'lucide-react';
 
 export default function SelectBrand() {
-  const { user, isLoading: authLoading, signOut, isAdmin, isCeo } = useAuth();
+  const { user, isLoading: authLoading, signOut, isAdmin, isCeo, hasRole } = useAuth();
   const { brands, currentBrand, setCurrentBrand, isLoading: brandLoading } = useBrand();
   const navigate = useNavigate();
 
-  const canSeeAllBrands = isAdmin || isCeo;
+  // Check if user has amministrazione role in any brand
+  const hasAmministrazioneInAnyBrand = brands.some(b => hasRole('amministrazione', b.id));
+  const canSeeAllBrands = isAdmin || isCeo || hasAmministrazioneInAnyBrand;
 
   useEffect(() => {
     // If already has a brand selected, go to dashboard

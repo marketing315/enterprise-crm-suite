@@ -151,6 +151,34 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   sales: 'Venditore', // Legacy
 };
 
+// Hook to assign user to all brands
+export function useAssignToAllBrands() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { user_id: string; role: AppRole }) => {
+      const { data, error } = await supabase.functions.invoke('admin-manage-team', {
+        body: {
+          action: 'assign_to_all_brands',
+          ...params,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      toast.success(`Utente assegnato a ${data.brands_assigned} brand.`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Errore durante l\'assegnazione');
+    },
+  });
+}
+
 export const ROLE_COLORS: Record<AppRole, string> = {
   admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   ceo: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
