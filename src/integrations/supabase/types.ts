@@ -1424,6 +1424,90 @@ export type Database = {
           },
         ]
       }
+      contact_tracking: {
+        Row: {
+          brand_id: string
+          client_ip: string | null
+          client_user_agent: string | null
+          contact_id: string
+          created_at: string | null
+          fbc: string | null
+          fbp: string | null
+          first_touch_at: string | null
+          first_touch_source: string | null
+          gbraid: string | null
+          gclid: string | null
+          id: string
+          last_touch_at: string | null
+          updated_at: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          wbraid: string | null
+        }
+        Insert: {
+          brand_id: string
+          client_ip?: string | null
+          client_user_agent?: string | null
+          contact_id: string
+          created_at?: string | null
+          fbc?: string | null
+          fbp?: string | null
+          first_touch_at?: string | null
+          first_touch_source?: string | null
+          gbraid?: string | null
+          gclid?: string | null
+          id?: string
+          last_touch_at?: string | null
+          updated_at?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          wbraid?: string | null
+        }
+        Update: {
+          brand_id?: string
+          client_ip?: string | null
+          client_user_agent?: string | null
+          contact_id?: string
+          created_at?: string | null
+          fbc?: string | null
+          fbp?: string | null
+          first_touch_at?: string | null
+          first_touch_source?: string | null
+          gbraid?: string | null
+          gclid?: string | null
+          id?: string
+          last_touch_at?: string | null
+          updated_at?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          wbraid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tracking_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_tracking_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           address: string | null
@@ -1435,6 +1519,8 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          marketing_consent: boolean | null
+          marketing_consent_at: string | null
           notes: string | null
           status: Database["public"]["Enums"]["contact_status"]
           updated_at: string
@@ -1449,6 +1535,8 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          marketing_consent?: boolean | null
+          marketing_consent_at?: string | null
           notes?: string | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
@@ -1463,6 +1551,8 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          marketing_consent?: boolean | null
+          marketing_consent_at?: string | null
           notes?: string | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
@@ -2141,10 +2231,14 @@ export type Database = {
           app_secret: string
           brand_id: string
           brand_slug: string
+          capi_enabled: boolean | null
+          capi_test_event_code: string | null
+          capi_token_key: string | null
           created_at: string
           id: string
           is_active: boolean
           page_id: string | null
+          pixel_id: string | null
           stats_enabled: boolean
           updated_at: string
           verify_token: string
@@ -2155,10 +2249,14 @@ export type Database = {
           app_secret: string
           brand_id: string
           brand_slug: string
+          capi_enabled?: boolean | null
+          capi_test_event_code?: string | null
+          capi_token_key?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
           page_id?: string | null
+          pixel_id?: string | null
           stats_enabled?: boolean
           updated_at?: string
           verify_token: string
@@ -2169,10 +2267,14 @@ export type Database = {
           app_secret?: string
           brand_id?: string
           brand_slug?: string
+          capi_enabled?: boolean | null
+          capi_test_event_code?: string | null
+          capi_token_key?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
           page_id?: string | null
+          pixel_id?: string | null
           stats_enabled?: boolean
           updated_at?: string
           verify_token?: string
@@ -2183,6 +2285,114 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_capi_event_queue: {
+        Row: {
+          action_source: string
+          attempts: number | null
+          brand_id: string
+          consent_snapshot: boolean
+          contact_id: string | null
+          created_at: string | null
+          custom_data: Json | null
+          deal_id: string | null
+          event_id: string
+          event_name: string
+          event_time: string
+          id: string
+          last_error: string | null
+          lead_event_id: string | null
+          max_attempts: number | null
+          meta_app_id: string
+          processing_at: string | null
+          processing_by: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["meta_capi_status"]
+          user_data: Json | null
+        }
+        Insert: {
+          action_source?: string
+          attempts?: number | null
+          brand_id: string
+          consent_snapshot?: boolean
+          contact_id?: string | null
+          created_at?: string | null
+          custom_data?: Json | null
+          deal_id?: string | null
+          event_id: string
+          event_name: string
+          event_time: string
+          id?: string
+          last_error?: string | null
+          lead_event_id?: string | null
+          max_attempts?: number | null
+          meta_app_id: string
+          processing_at?: string | null
+          processing_by?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["meta_capi_status"]
+          user_data?: Json | null
+        }
+        Update: {
+          action_source?: string
+          attempts?: number | null
+          brand_id?: string
+          consent_snapshot?: boolean
+          contact_id?: string | null
+          created_at?: string | null
+          custom_data?: Json | null
+          deal_id?: string | null
+          event_id?: string
+          event_name?: string
+          event_time?: string
+          id?: string
+          last_error?: string | null
+          lead_event_id?: string | null
+          max_attempts?: number | null
+          meta_app_id?: string
+          processing_at?: string | null
+          processing_by?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["meta_capi_status"]
+          user_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_capi_event_queue_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_capi_event_queue_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_capi_event_queue_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_capi_event_queue_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_capi_event_queue_meta_app_id_fkey"
+            columns: ["meta_app_id"]
+            isOneToOne: false
+            referencedRelation: "meta_apps"
             referencedColumns: ["id"]
           },
         ]
@@ -3787,6 +3997,38 @@ export type Database = {
           last_name: string
         }[]
       }
+      claim_capi_events: {
+        Args: { p_limit?: number; p_processing_by?: string }
+        Returns: {
+          action_source: string
+          attempts: number | null
+          brand_id: string
+          consent_snapshot: boolean
+          contact_id: string | null
+          created_at: string | null
+          custom_data: Json | null
+          deal_id: string | null
+          event_id: string
+          event_name: string
+          event_time: string
+          id: string
+          last_error: string | null
+          lead_event_id: string | null
+          max_attempts: number | null
+          meta_app_id: string
+          processing_at: string | null
+          processing_by: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["meta_capi_status"]
+          user_data: Json | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_capi_event_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_webhook_deliveries: {
         Args: { p_batch_size?: number }
         Returns: {
@@ -4560,6 +4802,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_capi_event_status: {
+        Args: {
+          p_error?: string
+          p_event_id: string
+          p_status: Database["public"]["Enums"]["meta_capi_status"]
+        }
+        Returns: undefined
+      }
       update_contact_search_index: {
         Args: { p_contact_id: string }
         Returns: undefined
@@ -4725,6 +4975,7 @@ export type Database = {
       lead_source_type: "webhook" | "manual" | "import" | "api"
       lead_type: "trial" | "info" | "support" | "generic"
       marketing_campaign_status: "planned" | "active" | "paused" | "closed"
+      meta_capi_status: "pending" | "processing" | "sent" | "failed" | "skipped"
       meta_lead_status:
         | "received"
         | "fetched"
@@ -4988,6 +5239,7 @@ export const Constants = {
       lead_source_type: ["webhook", "manual", "import", "api"],
       lead_type: ["trial", "info", "support", "generic"],
       marketing_campaign_status: ["planned", "active", "paused", "closed"],
+      meta_capi_status: ["pending", "processing", "sent", "failed", "skipped"],
       meta_lead_status: [
         "received",
         "fetched",

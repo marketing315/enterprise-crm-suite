@@ -746,6 +746,40 @@ Deno.serve(async (req: Request) => {
         .is("notes", null); // Only update if notes are empty
     }
 
+    // Extract and save tracking parameters for CAPI attribution
+    const trackingParams = {
+      fbp: (mappedPayload._fbp || mappedPayload.fbp || null) as string | null,
+      fbc: (mappedPayload._fbc || mappedPayload.fbc || null) as string | null,
+      gclid: (mappedPayload.gclid || null) as string | null,
+      wbraid: (mappedPayload.wbraid || null) as string | null,
+      gbraid: (mappedPayload.gbraid || null) as string | null,
+      utm_source: (mappedPayload.utm_source || null) as string | null,
+      utm_medium: (mappedPayload.utm_medium || null) as string | null,
+      utm_campaign: (mappedPayload.utm_campaign || null) as string | null,
+      utm_content: (mappedPayload.utm_content || null) as string | null,
+      utm_term: (mappedPayload.utm_term || null) as string | null,
+    };
+
+    const hasAnyTracking = Object.values(trackingParams).some(v => v !== null);
+    if (hasAnyTracking) {
+      try {
+        await supabaseAdmin
+          .from("contact_tracking")
+          .upsert({
+            brand_id: brandId,
+            contact_id: contactId,
+            ...trackingParams,
+            client_ip: ipAddress !== "unknown" ? ipAddress : null,
+            client_user_agent: userAgent,
+            first_touch_source: "webhook-ingest",
+            first_touch_at: new Date().toISOString(),
+            last_touch_at: new Date().toISOString(),
+          }, { onConflict: "contact_id" });
+      } catch (trackingErr) {
+        console.error("Failed to save tracking params (non-blocking):", trackingErr);
+      }
+    }
+
     // Check contact status for opt-out handling
     const { data: contactData } = await supabaseAdmin
       .from("contacts")
