@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
-import { useHasMarketingAccess } from '@/hooks/useMarketingAccess';
+import { useHasMarketingAccess, useCanSeeMarketingSubmenu } from '@/hooks/useMarketingAccess';
 import { BrandSelector } from './BrandSelector';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -111,6 +111,7 @@ export function MainLayout() {
   const { user, signOut, isAdmin, isCeo, hasRole } = useAuth();
   const { currentBrand, hasBrandSelected } = useBrand();
   const hasMarketingAccess = useHasMarketingAccess();
+  const canSeeMarketingSubmenu = useCanSeeMarketingSubmenu();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -211,39 +212,54 @@ export function MainLayout() {
                     </SidebarMenuItem>
                   ))}
                   
-                  {/* Marketing expandable submenu */}
+                  {/* Marketing: full submenu for Admin/CEO/Amministrazione, single link for Responsabili */}
                   {hasMarketingAccess && (
-                    <Collapsible defaultOpen={isMarketingActive} className="group/collapsible">
+                    canSeeMarketingSubmenu ? (
+                      <Collapsible defaultOpen={isMarketingActive} className="group/collapsible">
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              className={isMarketingActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}
+                              disabled={!hasBrandSelected}
+                              tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
+                            >
+                              <Megaphone className="h-4 w-4" />
+                              <span className="flex-1">Marketing</span>
+                              <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenu className="ml-4 mt-1 border-l border-sidebar-border pl-2">
+                              {marketingSubItems.map((subItem) => (
+                                <SidebarMenuItem key={subItem.path}>
+                                  <SidebarMenuButton
+                                    isActive={location.pathname === subItem.path}
+                                    onClick={() => navigate(subItem.path)}
+                                    className="h-8"
+                                  >
+                                    <subItem.icon className="h-3.5 w-3.5" />
+                                    <span className="text-sm">{subItem.label}</span>
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
+                              ))}
+                            </SidebarMenu>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    ) : (
+                      /* Responsabili: solo link diretto alla dashboard */
                       <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton
-                            className={isMarketingActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}
-                            disabled={!hasBrandSelected}
-                            tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
-                          >
-                            <Megaphone className="h-4 w-4" />
-                            <span className="flex-1">Marketing</span>
-                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenu className="ml-4 mt-1 border-l border-sidebar-border pl-2">
-                            {marketingSubItems.map((subItem) => (
-                              <SidebarMenuItem key={subItem.path}>
-                                <SidebarMenuButton
-                                  isActive={location.pathname === subItem.path}
-                                  onClick={() => navigate(subItem.path)}
-                                  className="h-8"
-                                >
-                                  <subItem.icon className="h-3.5 w-3.5" />
-                                  <span className="text-sm">{subItem.label}</span>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            ))}
-                          </SidebarMenu>
-                        </CollapsibleContent>
+                        <SidebarMenuButton
+                          isActive={location.pathname === '/marketing'}
+                          onClick={() => navigate('/marketing')}
+                          disabled={!hasBrandSelected}
+                          tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
+                        >
+                          <Megaphone className="h-4 w-4" />
+                          <span>Marketing</span>
+                        </SidebarMenuButton>
                       </SidebarMenuItem>
-                    </Collapsible>
+                    )
                   )}
                 </SidebarMenu>
               </SidebarGroupContent>
