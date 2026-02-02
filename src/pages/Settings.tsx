@@ -12,7 +12,7 @@ import { NotificationPreferencesSettings } from "@/components/settings/Notificat
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
 
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
@@ -51,7 +51,7 @@ export default function Settings() {
       {/* Tabs */}
       <Tabs defaultValue="ticketing" className="space-y-4">
         {/* Mobile-optimized scrollable tabs */}
-        <ScrollArea className="w-full whitespace-nowrap">
+        <div className="w-full overflow-x-auto scrollbar-hide">
           <TabsList className="inline-flex h-10 w-max gap-1 p-1">
             <TabsTrigger value="ticketing" className="gap-1.5 px-3 text-xs md:text-sm">
               <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -102,8 +102,7 @@ export default function Settings() {
               </TabsTrigger>
             )}
           </TabsList>
-          <ScrollBar orientation="horizontal" className="invisible" />
-        </ScrollArea>
+        </div>
 
         <TabsContent value="ticketing" className="space-y-4">
           <TicketingSettings />
