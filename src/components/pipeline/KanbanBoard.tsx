@@ -165,7 +165,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
         dealsByStage={dealsByStage}
         onDealClick={onDealClick}
         readOnly={isReadOnly}
-        showBrand={true}
+        showBrand={isSystemBrand}
       />
     );
   }
@@ -197,19 +197,19 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
       >
         <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
           {stages.map((stage) => (
-          <KanbanColumn
-            key={stage.id}
-            stage={stage}
-            deals={dealsByStage[stage.id] || []}
-            onDealClick={onDealClick}
-            readOnly={isReadOnly}
-            showBrand={true}
-          />
+            <KanbanColumn
+              key={stage.id}
+              stage={stage}
+              deals={dealsByStage[stage.id] || []}
+              onDealClick={onDealClick}
+              readOnly={isReadOnly}
+              showBrand={isSystemBrand}
+            />
           ))}
         </div>
 
         <DragOverlay>
-          {activeDeal && <KanbanCardPreview deal={activeDeal} showBrand={true} />}
+          {activeDeal && <KanbanCardPreview deal={activeDeal} showBrand={isSystemBrand} />}
         </DragOverlay>
       </DndContext>
     </div>
