@@ -20,6 +20,21 @@ export function useHasMarketingAccess(): boolean {
 }
 
 /**
+ * Check if current user can see full marketing submenu (Dashboard + Campagne + Costi + Report)
+ * Roles: admin, ceo, amministrazione
+ * Responsabili see only Dashboard
+ */
+export function useCanSeeMarketingSubmenu(): boolean {
+  const { isAdmin, isCeo, hasRole } = useAuth();
+  const { currentBrand } = useBrand();
+
+  if (isAdmin || isCeo) return true;
+  if (!currentBrand) return false;
+
+  return hasRole("amministrazione", currentBrand.id);
+}
+
+/**
  * Check if current user can create/edit campaigns and channels
  * Roles: admin, ceo only
  */
