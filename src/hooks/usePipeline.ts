@@ -173,16 +173,20 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
 
 export function useUpdateDealStage() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
-    mutationFn: async ({ dealId, stageId }: { dealId: string; stageId: string }) => {
-      const { error } = await untypedClient
+    mutationFn: async ({ dealId, stageId, dealBrandId }: { dealId: string; stageId: string; dealBrandId?: string }) => {
+      // Use dealBrandId if provided (for global view), otherwise update without brand filter
+      let query = untypedClient
         .from("deals")
         .update({ current_stage_id: stageId })
-        .eq("id", dealId)
-        .eq("brand_id", currentBrand?.id || "");
+        .eq("id", dealId);
 
+      if (dealBrandId) {
+        query = query.eq("brand_id", dealBrandId);
+      }
+
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {

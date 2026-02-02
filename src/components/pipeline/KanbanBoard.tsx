@@ -39,8 +39,8 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   const isMobile = useIsMobile();
   const canEditDeals = useCanEditDeals();
   
-  // In global view, deals are read-only (can't drag across different brand stages)
-  const isReadOnly = !canEditDeals || isSystemBrand;
+  // Read-only only for users without edit permissions (e.g., 'amministrazione' role)
+  const isReadOnly = !canEditDeals;
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -115,9 +115,9 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     const deal = deals?.find((d) => d.id === dealId);
     if (!deal || deal.current_stage_id === newStageId) return;
 
-    // Optimistic update
+    // Optimistic update - pass the deal's brand_id for proper update
     updateStage.mutate(
-      { dealId, stageId: newStageId },
+      { dealId, stageId: newStageId, dealBrandId: deal.brand_id },
       {
         onSuccess: () => {
           const stageName = stages?.find((s) => s.id === newStageId)?.name;
