@@ -74,7 +74,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
 
     const handleStatusChange = (status: DealStatus) => {
       updateStatus.mutate(
-        { dealId: deal.id, status },
+        { dealId: deal.id, status, dealBrandId: deal.brand_id },
         {
           onSuccess: () => {
             const statusLabels: Record<DealStatus, string> = {
@@ -96,7 +96,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
     const handleStageChange = (stageId: string) => {
       const stageName = stages?.find((s) => s.id === stageId)?.name;
       updateStage.mutate(
-        { dealId: deal.id, stageId },
+        { dealId: deal.id, stageId, dealBrandId: deal.brand_id },
         {
           onSuccess: () => {
             toast.success(`Deal spostato in "${stageName}"`);

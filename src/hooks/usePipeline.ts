@@ -197,22 +197,26 @@ export function useUpdateDealStage() {
 
 export function useUpdateDealStatus() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
-    mutationFn: async ({ dealId, status }: { dealId: string; status: DealStatus }) => {
+    mutationFn: async ({ dealId, status, dealBrandId }: { dealId: string; status: DealStatus; dealBrandId?: string }) => {
       const updateData: Record<string, unknown> = { status };
       
       if (status === "won" || status === "lost" || status === "closed") {
         updateData.closed_at = new Date().toISOString();
       }
 
-      const { error } = await untypedClient
+      // Use dealBrandId if provided (for global view), otherwise update without brand filter
+      let query = untypedClient
         .from("deals")
         .update(updateData)
-        .eq("id", dealId)
-        .eq("brand_id", currentBrand?.id || "");
+        .eq("id", dealId);
 
+      if (dealBrandId) {
+        query = query.eq("brand_id", dealBrandId);
+      }
+
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -223,16 +227,19 @@ export function useUpdateDealStatus() {
 
 export function useAssignDealToUser() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
-    mutationFn: async ({ dealId, userId }: { dealId: string; userId: string | null }) => {
-      const { error } = await untypedClient
+    mutationFn: async ({ dealId, userId, dealBrandId }: { dealId: string; userId: string | null; dealBrandId?: string }) => {
+      let query = untypedClient
         .from("deals")
         .update({ assigned_user_id: userId })
-        .eq("id", dealId)
-        .eq("brand_id", currentBrand?.id || "");
+        .eq("id", dealId);
 
+      if (dealBrandId) {
+        query = query.eq("brand_id", dealBrandId);
+      }
+
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -244,16 +251,19 @@ export function useAssignDealToUser() {
 
 export function useUpdateDealCampaign() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
-    mutationFn: async ({ dealId, campaignId }: { dealId: string; campaignId: string | null }) => {
-      const { error } = await untypedClient
+    mutationFn: async ({ dealId, campaignId, dealBrandId }: { dealId: string; campaignId: string | null; dealBrandId?: string }) => {
+      let query = untypedClient
         .from("deals")
         .update({ marketing_campaign_id: campaignId })
-        .eq("id", dealId)
-        .eq("brand_id", currentBrand?.id || "");
+        .eq("id", dealId);
 
+      if (dealBrandId) {
+        query = query.eq("brand_id", dealBrandId);
+      }
+
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {
