@@ -1,10 +1,10 @@
-import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, Ticket, Users, Calendar, GitBranch, Tags, MessageSquare } from "lucide-react";
-import { useBrand } from "@/contexts/BrandContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Bell, Ticket, Users, Calendar, GitBranch, Tags, MessageSquare, Globe } from "lucide-react";
+import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import {
   useNotificationPreferences,
   useUpsertNotificationPreference,
@@ -71,8 +71,12 @@ const notificationTypes = [
 export function NotificationPreferencesSettings() {
   const { currentBrand } = useBrand();
   const brandId = currentBrand?.id;
+  const isSystemBrand = brandId === SYSTEM_BRAND_ID;
 
-  const { data: preferences, isLoading } = useNotificationPreferences(brandId || "");
+  // Skip fetching preferences for system brand
+  const { data: preferences, isLoading } = useNotificationPreferences(
+    isSystemBrand ? "" : (brandId || "")
+  );
   const upsertPreference = useUpsertNotificationPreference();
 
   const getPreferenceEnabled = (type: string): boolean => {
@@ -82,7 +86,7 @@ export function NotificationPreferencesSettings() {
   };
 
   const handleToggle = (type: string, enabled: boolean) => {
-    if (!brandId) return;
+    if (!brandId || isSystemBrand) return;
 
     upsertPreference.mutate(
       { brandId, notificationType: type, enabled },
@@ -96,6 +100,29 @@ export function NotificationPreferencesSettings() {
 
   if (!brandId) {
     return null;
+  }
+
+  // Show message for system brand
+  if (isSystemBrand) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Preferenze Notifiche
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <Globe className="h-4 w-4" />
+            <AlertDescription>
+              Le preferenze di notifica vanno configurate per ciascun brand singolarmente.
+              Seleziona un brand specifico dalla sidebar per gestire le notifiche.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
