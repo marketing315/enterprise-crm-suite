@@ -1,339 +1,509 @@
 
+# Piano Finale Marketing — Correzioni Applicate
 
-# Piano M2 - KPI Venditori + Assegnazione Deal (Versione Finale)
+## Verifica Codebase Completata
 
-## Riepilogo Decisioni Business
+### Dati Estratti dal Database
 
-| Regola | Scelta |
-|--------|--------|
-| Definizione vendita | WON + CLOSED (entrambi contano come "chiusura positiva") |
-| Visibilità deal | Restrittiva: venditore vede solo deal assegnati |
-| Deal archiviati | Contano nei KPI come "chiusi" |
+| Elemento | Valore Confermato |
+|----------|-------------------|
+| **Enum `app_role`** | admin, ceo, amministrazione, responsabile_venditori, responsabile_callcenter, venditore, operatore_callcenter, callcenter, sales |
+| **Nome canonico call center** | `responsabile_callcenter` (senza underscore tra "call" e "center") |
+| **Tabella `users`** | `public.users` con FK a `auth.users` via `supabase_auth_id` |
+| **user_roles.is_active** | Colonna presente (boolean, default true) |
+| **Funzione `has_finance_access`** | Presente, include `amministrazione` |
+| **Trigger `set_updated_at`** | Presente e riutilizzabile |
+| **Brand Sistema** | "Azienda Intera", ID `00000000-0000-0000-0000-000000000000`, `is_system = true` |
 
 ---
 
-## Fase 1: Database Migration
+## Fix Applicati al Piano
 
-### 1.1 Aggiunta colonna assegnazione
+### FIX 1: Nome Ruolo Call Center
+- Usare **sempre** `responsabile_callcenter` (confermato dall'enum)
 
-La tabella `deals` ha già `closed_at`. Serve solo aggiungere `assigned_user_id`:
-
+### FIX 2: Enum per Campaign Status
 ```sql
-ALTER TABLE deals 
-ADD COLUMN assigned_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
-
--- Indice per query KPI ottimizzate
-CREATE INDEX idx_deals_assigned_kpi 
-ON deals(brand_id, assigned_user_id, status, closed_at DESC);
-
--- Indice parziale per deal aperti
-CREATE INDEX idx_deals_assigned_open 
-ON deals(brand_id, assigned_user_id) 
-WHERE status IN ('open', 'reopened_for_support');
+CREATE TYPE marketing_campaign_status AS ENUM ('planned', 'active', 'paused', 'closed');
 ```
 
-### 1.2 RLS Policy per visibilità restrittiva
+### FIX 3: Trigger updated_at
+Riutilizzo della funzione esistente `set_updated_at()`
 
-Aggiungere policy che limita i venditori ai propri deal:
+### FIX 4: FK Utenti
+FK verso `public.users(id)` (non auth.users)
+
+### FIX 5: RLS Funzioni Corrette
+Logica corretta che separa controllo globale da controllo per brand, includendo `is_active = true`
+
+### FIX 6: has_finance_access già presente
+Verificato: include `amministrazione`, quindi può essere riusata per marketing_costs
+
+### FIX 7: RPC ritorna TABLE
+Implementazione con `RETURNS TABLE` invece di `jsonb`
+
+### FIX 8: Attribution
+Source of truth = `deals.marketing_campaign_id`
+
+### FIX 9: Brand Sistema
+Usare costante `COMPANY_BRAND_ID = '00000000-0000-0000-0000-000000000000'`
+
+---
+
+## Migrazione 1: Tabelle Marketing + Enum
 
 ```sql
--- Drop existing SELECT policy
-DROP POLICY IF EXISTS "Users can view deals in their brands" ON deals;
+-- MK-DB-1: Enum per status campagne
+CREATE TYPE marketing_campaign_status AS ENUM ('planned', 'active', 'paused', 'closed');
 
--- New policy with assignment restriction for venditori
-CREATE POLICY "Users can view deals based on role"
-ON deals FOR SELECT
-USING (
-  user_belongs_to_brand(get_user_id(auth.uid()), brand_id)
-  AND (
-    -- Admin, CEO, Responsabili vedono tutti i deal del brand
-    has_role_for_brand(get_user_id(auth.uid()), brand_id, 'admin')
-    OR has_role_for_brand(get_user_id(auth.uid()), brand_id, 'ceo')
-    OR has_role_for_brand(get_user_id(auth.uid()), brand_id, 'responsabile_venditori')
-    OR has_role_for_brand(get_user_id(auth.uid()), brand_id, 'responsabile_callcenter')
-    -- Venditori vedono solo deal assegnati a loro o non assegnati
-    OR (
-      has_role_for_brand(get_user_id(auth.uid()), brand_id, 'venditore')
-      AND (assigned_user_id = get_user_id(auth.uid()) OR assigned_user_id IS NULL)
-    )
-    -- Operatori callcenter: stesso pattern
-    OR (
-      has_role_for_brand(get_user_id(auth.uid()), brand_id, 'operatore_callcenter')
-      AND (assigned_user_id = get_user_id(auth.uid()) OR assigned_user_id IS NULL)
-    )
-  )
+-- MK-DB-2: Tabella marketing_channels
+CREATE TABLE public.marketing_channels (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  type text NOT NULL CHECK (type IN ('paid', 'organic', 'offline')),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX idx_marketing_channels_brand ON marketing_channels(brand_id, is_active);
+
+-- MK-DB-3: Tabella marketing_campaigns
+CREATE TABLE public.marketing_campaigns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  channel_id uuid REFERENCES marketing_channels(id) ON DELETE SET NULL,
+  name text NOT NULL,
+  external_id text,
+  start_date date NOT NULL,
+  end_date date,
+  planned_budget numeric(12,2),
+  status marketing_campaign_status NOT NULL DEFAULT 'planned',
+  created_by uuid NOT NULL REFERENCES public.users(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_marketing_campaigns_brand_channel ON marketing_campaigns(brand_id, channel_id, start_date DESC);
+CREATE INDEX idx_marketing_campaigns_status ON marketing_campaigns(brand_id, status) WHERE status IN ('active', 'planned');
+
+-- Trigger per updated_at (riuso funzione esistente)
+CREATE TRIGGER set_marketing_campaigns_updated_at
+  BEFORE UPDATE ON marketing_campaigns
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- MK-DB-4: Tabella marketing_costs
+CREATE TABLE public.marketing_costs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  campaign_id uuid REFERENCES marketing_campaigns(id) ON DELETE SET NULL,
+  amount numeric(12,2) NOT NULL CHECK (amount >= 0),
+  cost_date date NOT NULL,
+  source text,
+  notes text,
+  created_by uuid NOT NULL REFERENCES public.users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_marketing_costs_brand_campaign ON marketing_costs(brand_id, campaign_id, cost_date DESC);
+CREATE INDEX idx_marketing_costs_date ON marketing_costs(brand_id, cost_date DESC);
+
+-- MK-DB-5: Colonna marketing_campaign_id su deals
+ALTER TABLE deals
+ADD COLUMN marketing_campaign_id uuid REFERENCES marketing_campaigns(id) ON DELETE SET NULL;
+
+CREATE INDEX idx_deals_marketing_campaign ON deals(marketing_campaign_id) WHERE marketing_campaign_id IS NOT NULL;
+
+-- Enable RLS
+ALTER TABLE marketing_channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE marketing_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE marketing_costs ENABLE ROW LEVEL SECURITY;
 ```
 
-### 1.3 RPC per KPI Venditori
+---
 
-Funzione SQL che calcola metriche per venditore:
+## Migrazione 2: Helper Functions + RLS Policies
 
 ```sql
-CREATE OR REPLACE FUNCTION get_salesperson_kpis(
-  p_brand_id UUID,
-  p_from TIMESTAMPTZ DEFAULT NULL,
-  p_to TIMESTAMPTZ DEFAULT NULL
+-- MK-SEC-1: Funzione has_marketing_access (CORRETTA)
+-- Accesso: admin, ceo, amministrazione, responsabili (lettura)
+CREATE OR REPLACE FUNCTION has_marketing_access(p_user_id uuid, p_brand_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    -- Ruoli globali (admin/ceo vedono tutto)
+    EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_id = p_user_id
+        AND is_active = true
+        AND role::text IN ('admin', 'ceo')
+    )
+    OR
+    -- Ruoli per brand specifico
+    EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_id = p_user_id
+        AND brand_id = p_brand_id
+        AND is_active = true
+        AND role::text IN (
+          'admin', 'ceo', 'amministrazione',
+          'responsabile_venditori', 'responsabile_callcenter'
+        )
+    );
+$$;
+
+-- MK-SEC-2: Funzione has_marketing_write_access
+-- Scrittura campagne/canali: solo admin, ceo
+CREATE OR REPLACE FUNCTION has_marketing_write_access(p_user_id uuid, p_brand_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_id = p_user_id
+        AND is_active = true
+        AND role::text IN ('admin', 'ceo')
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_id = p_user_id
+        AND brand_id = p_brand_id
+        AND is_active = true
+        AND role::text IN ('admin', 'ceo')
+    );
+$$;
+
+-- RLS Policies: marketing_channels
+CREATE POLICY "Marketing roles can view channels"
+  ON marketing_channels FOR SELECT
+  USING (has_marketing_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Admin/CEO can insert channels"
+  ON marketing_channels FOR INSERT
+  WITH CHECK (has_marketing_write_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Admin/CEO can update channels"
+  ON marketing_channels FOR UPDATE
+  USING (has_marketing_write_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Admin/CEO can delete channels"
+  ON marketing_channels FOR DELETE
+  USING (has_marketing_write_access(get_user_id(auth.uid()), brand_id));
+
+-- RLS Policies: marketing_campaigns
+CREATE POLICY "Marketing roles can view campaigns"
+  ON marketing_campaigns FOR SELECT
+  USING (has_marketing_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Admin/CEO can insert campaigns"
+  ON marketing_campaigns FOR INSERT
+  WITH CHECK (has_marketing_write_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Admin/CEO can update campaigns"
+  ON marketing_campaigns FOR UPDATE
+  USING (has_marketing_write_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Admin/CEO can delete campaigns"
+  ON marketing_campaigns FOR DELETE
+  USING (has_marketing_write_access(get_user_id(auth.uid()), brand_id));
+
+-- RLS Policies: marketing_costs
+-- Riuso has_finance_access esistente (già include amministrazione)
+CREATE POLICY "Finance roles can view marketing costs"
+  ON marketing_costs FOR SELECT
+  USING (has_finance_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Finance roles can insert marketing costs"
+  ON marketing_costs FOR INSERT
+  WITH CHECK (has_finance_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Finance roles can update marketing costs"
+  ON marketing_costs FOR UPDATE
+  USING (has_finance_access(get_user_id(auth.uid()), brand_id));
+
+CREATE POLICY "Finance roles can delete marketing costs"
+  ON marketing_costs FOR DELETE
+  USING (has_finance_access(get_user_id(auth.uid()), brand_id));
+```
+
+---
+
+## Migrazione 3: RPC KPI Marketing
+
+```sql
+-- MK-DB-5: KPI per campagna (RETURNS TABLE)
+CREATE OR REPLACE FUNCTION get_marketing_campaign_kpis(
+  p_brand_id uuid,
+  p_from date,
+  p_to date,
+  p_channel_id uuid DEFAULT NULL,
+  p_campaign_id uuid DEFAULT NULL
 )
-RETURNS JSON
+RETURNS TABLE (
+  campaign_id uuid,
+  campaign_name text,
+  channel_name text,
+  leads_count bigint,
+  deals_count bigint,
+  deals_won bigint,
+  revenue numeric,
+  marketing_cost numeric,
+  cpl numeric,
+  cac numeric,
+  roi numeric
+)
 LANGUAGE plpgsql
+STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_result JSON;
+  v_is_company_brand boolean;
+  v_company_brand_id uuid := '00000000-0000-0000-0000-000000000000';
 BEGIN
-  -- Validate brand access
-  IF NOT user_belongs_to_brand(get_user_id(auth.uid()), p_brand_id) THEN
+  -- Verifica accesso
+  IF NOT has_marketing_access(get_user_id(auth.uid()), p_brand_id) THEN
     RAISE EXCEPTION 'Access denied';
   END IF;
-  
-  -- Default to last 30 days if no range
-  IF p_from IS NULL THEN p_from := now() - interval '30 days'; END IF;
-  IF p_to IS NULL THEN p_to := now(); END IF;
 
-  SELECT json_agg(row_to_json(kpi))
-  INTO v_result
-  FROM (
+  v_is_company_brand := (p_brand_id = v_company_brand_id);
+
+  RETURN QUERY
+  WITH campaign_costs AS (
     SELECT 
-      u.id as user_id,
-      u.full_name,
-      u.email,
-      ur.role,
-      -- Conteggi deal
-      COUNT(*) FILTER (WHERE d.status = 'open' OR d.status = 'reopened_for_support') as deals_open,
-      COUNT(*) FILTER (WHERE d.status = 'won' AND d.closed_at >= p_from AND d.closed_at < p_to) as deals_won,
-      COUNT(*) FILTER (WHERE d.status = 'lost' AND d.closed_at >= p_from AND d.closed_at < p_to) as deals_lost,
-      COUNT(*) FILTER (WHERE d.status = 'closed' AND d.closed_at >= p_from AND d.closed_at < p_to) as deals_closed,
-      -- Valore vinto (won + closed)
-      COALESCE(SUM(d.value) FILTER (
-        WHERE d.status IN ('won', 'closed') 
-        AND d.closed_at >= p_from AND d.closed_at < p_to
-      ), 0) as total_value_won,
-      -- Win rate: (won + closed) / totale chiusure con esito
-      CASE 
-        WHEN COUNT(*) FILTER (WHERE d.status IN ('won', 'lost', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to) = 0 
-        THEN 0
-        ELSE ROUND(
-          COUNT(*) FILTER (WHERE d.status IN ('won', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to)::numeric * 100 
-          / COUNT(*) FILTER (WHERE d.status IN ('won', 'lost', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to),
-          1
-        )
-      END as win_rate,
-      -- Tempo medio chiusura (giorni)
-      COALESCE(
-        ROUND(
-          AVG(EXTRACT(EPOCH FROM (d.closed_at - d.created_at)) / 86400) 
-          FILTER (WHERE d.status IN ('won', 'lost', 'closed') AND d.closed_at >= p_from AND d.closed_at < p_to),
-          1
-        ),
-        0
-      ) as avg_days_to_close,
-      -- Ultima attività
-      MAX(d.updated_at) as last_activity_at
-    FROM users u
-    INNER JOIN user_roles ur ON ur.user_id = u.id 
-      AND ur.brand_id = p_brand_id 
-      AND ur.role = 'venditore'
-      AND ur.is_active = true
-    LEFT JOIN deals d ON d.assigned_user_id = u.id 
-      AND d.brand_id = p_brand_id
-    GROUP BY u.id, u.full_name, u.email, ur.role
-    ORDER BY total_value_won DESC, deals_won DESC
-  ) kpi;
+      mc.campaign_id,
+      COALESCE(SUM(mc.amount), 0) as total_cost
+    FROM marketing_costs mc
+    WHERE mc.cost_date >= p_from AND mc.cost_date <= p_to
+      AND (v_is_company_brand OR mc.brand_id = p_brand_id)
+      AND (p_campaign_id IS NULL OR mc.campaign_id = p_campaign_id)
+    GROUP BY mc.campaign_id
+  ),
+  campaign_deals AS (
+    SELECT 
+      d.marketing_campaign_id,
+      COUNT(*) as deals_total,
+      COUNT(*) FILTER (WHERE d.status = 'won') as deals_won_count,
+      COALESCE(SUM(d.value) FILTER (WHERE d.status = 'won'), 0) as total_revenue
+    FROM deals d
+    WHERE d.created_at >= p_from::timestamptz AND d.created_at <= (p_to + 1)::timestamptz
+      AND d.marketing_campaign_id IS NOT NULL
+      AND (v_is_company_brand OR d.brand_id = p_brand_id)
+      AND (p_campaign_id IS NULL OR d.marketing_campaign_id = p_campaign_id)
+    GROUP BY d.marketing_campaign_id
+  ),
+  campaign_leads AS (
+    -- Conta lead via source_name matching con campaign external_id o name
+    SELECT 
+      mcp.id as campaign_id,
+      COUNT(DISTINCT le.id) as leads_total
+    FROM marketing_campaigns mcp
+    LEFT JOIN lead_events le ON (
+      le.source_name ILIKE '%' || mcp.external_id || '%'
+      OR le.source_name ILIKE '%' || mcp.name || '%'
+    )
+    WHERE le.received_at >= p_from::timestamptz AND le.received_at <= (p_to + 1)::timestamptz
+      AND (v_is_company_brand OR mcp.brand_id = p_brand_id)
+      AND (p_channel_id IS NULL OR mcp.channel_id = p_channel_id)
+      AND (p_campaign_id IS NULL OR mcp.id = p_campaign_id)
+    GROUP BY mcp.id
+  )
+  SELECT 
+    mcp.id as campaign_id,
+    mcp.name as campaign_name,
+    COALESCE(ch.name, 'Non specificato') as channel_name,
+    COALESCE(cl.leads_total, 0)::bigint as leads_count,
+    COALESCE(cd.deals_total, 0)::bigint as deals_count,
+    COALESCE(cd.deals_won_count, 0)::bigint as deals_won,
+    COALESCE(cd.total_revenue, 0)::numeric as revenue,
+    COALESCE(cc.total_cost, 0)::numeric as marketing_cost,
+    -- CPL = cost / leads (0 se no leads)
+    CASE WHEN COALESCE(cl.leads_total, 0) > 0 
+      THEN ROUND(COALESCE(cc.total_cost, 0) / cl.leads_total, 2)
+      ELSE 0 
+    END as cpl,
+    -- CAC = cost / deals_won (0 se no deals vinti)
+    CASE WHEN COALESCE(cd.deals_won_count, 0) > 0 
+      THEN ROUND(COALESCE(cc.total_cost, 0) / cd.deals_won_count, 2)
+      ELSE 0 
+    END as cac,
+    -- ROI = (revenue - cost) / cost (0 se no costi)
+    CASE WHEN COALESCE(cc.total_cost, 0) > 0 
+      THEN ROUND((COALESCE(cd.total_revenue, 0) - COALESCE(cc.total_cost, 0)) / cc.total_cost * 100, 2)
+      ELSE 0 
+    END as roi
+  FROM marketing_campaigns mcp
+  LEFT JOIN marketing_channels ch ON ch.id = mcp.channel_id
+  LEFT JOIN campaign_costs cc ON cc.campaign_id = mcp.id
+  LEFT JOIN campaign_deals cd ON cd.marketing_campaign_id = mcp.id
+  LEFT JOIN campaign_leads cl ON cl.campaign_id = mcp.id
+  WHERE (v_is_company_brand OR mcp.brand_id = p_brand_id)
+    AND (p_channel_id IS NULL OR mcp.channel_id = p_channel_id)
+    AND (p_campaign_id IS NULL OR mcp.id = p_campaign_id)
+  ORDER BY COALESCE(cd.total_revenue, 0) DESC;
+END;
+$$;
 
-  RETURN COALESCE(v_result, '[]'::json);
+-- MK-DB-6: KPI aggregati per canale
+CREATE OR REPLACE FUNCTION get_marketing_channel_kpis(
+  p_brand_id uuid,
+  p_from date,
+  p_to date
+)
+RETURNS TABLE (
+  channel_id uuid,
+  channel_name text,
+  channel_type text,
+  campaigns_count bigint,
+  leads_count bigint,
+  deals_won bigint,
+  revenue numeric,
+  marketing_cost numeric,
+  avg_roi numeric
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_company_brand boolean;
+  v_company_brand_id uuid := '00000000-0000-0000-0000-000000000000';
+BEGIN
+  IF NOT has_marketing_access(get_user_id(auth.uid()), p_brand_id) THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
+
+  v_is_company_brand := (p_brand_id = v_company_brand_id);
+
+  RETURN QUERY
+  SELECT 
+    ch.id as channel_id,
+    ch.name as channel_name,
+    ch.type as channel_type,
+    COUNT(DISTINCT mcp.id)::bigint as campaigns_count,
+    0::bigint as leads_count, -- Placeholder, requires join logic
+    COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'won')::bigint as deals_won,
+    COALESCE(SUM(d.value) FILTER (WHERE d.status = 'won'), 0)::numeric as revenue,
+    COALESCE(SUM(mc.amount), 0)::numeric as marketing_cost,
+    CASE WHEN COALESCE(SUM(mc.amount), 0) > 0 
+      THEN ROUND((COALESCE(SUM(d.value) FILTER (WHERE d.status = 'won'), 0) - COALESCE(SUM(mc.amount), 0)) / SUM(mc.amount) * 100, 2)
+      ELSE 0 
+    END as avg_roi
+  FROM marketing_channels ch
+  LEFT JOIN marketing_campaigns mcp ON mcp.channel_id = ch.id
+    AND (v_is_company_brand OR mcp.brand_id = p_brand_id)
+  LEFT JOIN deals d ON d.marketing_campaign_id = mcp.id
+    AND d.created_at >= p_from::timestamptz AND d.created_at <= (p_to + 1)::timestamptz
+  LEFT JOIN marketing_costs mc ON mc.campaign_id = mcp.id
+    AND mc.cost_date >= p_from AND mc.cost_date <= p_to
+  WHERE (v_is_company_brand OR ch.brand_id = p_brand_id)
+    AND ch.is_active = true
+  GROUP BY ch.id, ch.name, ch.type
+  ORDER BY revenue DESC;
 END;
 $$;
 ```
 
 ---
 
-## Fase 2: Frontend - Hook e Tipi
+## Frontend: Nuovi File
 
-### 2.1 Nuovo hook `useSalespersonKpis.ts`
+### src/types/marketing.ts
+Tipi TypeScript per Marketing
 
-```typescript
-// src/hooks/useSalespersonKpis.ts
-interface SalespersonKpi {
-  user_id: string;
-  full_name: string | null;
-  email: string;
-  role: string;
-  deals_open: number;
-  deals_won: number;
-  deals_lost: number;
-  deals_closed: number;
-  total_value_won: number;
-  win_rate: number;
-  avg_days_to_close: number;
-  last_activity_at: string | null;
-}
+### src/hooks/useMarketingAccess.ts
+Hook per controllo permessi marketing
 
-// useQuery per fetch KPI con date range
-```
+### src/hooks/useMarketingChannels.ts
+CRUD canali marketing
 
-### 2.2 Aggiornamento tipi Deal
+### src/hooks/useMarketingCampaigns.ts
+CRUD campagne con filtri
 
-Estendere `DealWithContact` con `assigned_user_id` e info venditore assegnato.
+### src/hooks/useMarketingCosts.ts
+CRUD costi marketing
 
----
+### src/hooks/useMarketingKpis.ts
+Chiamate RPC per KPI
 
-## Fase 3: Frontend - Nuove Pagine e Componenti
+### src/pages/marketing/MarketingDashboard.tsx
+Dashboard con KPI cards e grafici
 
-### 3.1 Pagina `/team/salespersons` (o tab in Team)
+### src/pages/marketing/MarketingCampaigns.tsx
+Gestione campagne con tabella e drawer
 
-Componenti:
+### src/pages/marketing/MarketingCosts.tsx
+Inserimento/modifica costi
 
-| Componente | Funzione |
-|------------|----------|
-| `SalespersonKpiCards` | 4 card aggregate: Totale Venditori, Valore Totale, Win Rate Medio, Deal Aperti |
-| `SalespersonTable` | Tabella con colonne: Nome, Deal Open, Won, Lost, Valore Vinto, Win Rate, Ultimo Aggiornamento |
-| `SalespersonDetailSheet` | Drawer con dettaglio: lista deal assegnati, storico performance |
+### src/pages/marketing/MarketingReports.tsx
+Report e export CSV
 
-### 3.2 Struttura UI
+### src/components/marketing/CampaignFormDrawer.tsx
+Form creazione/modifica campagna
 
-```text
-+-----------------------------------------------+
-| 📊 Performance Venditori    [Periodo: 30gg ▼] |
-+-----------------------------------------------+
-| [Card] Venditori  [Card] Valore   [Card] Win  |
-|    5 attivi       €125.000        68%         |
-+-----------------------------------------------+
-| Tabella Venditori                             |
-| Nome      | Open | Won | Lost | Valore | Win% |
-|-----------|------|-----|------|--------|------|
-| Mario R.  |  12  |  8  |  3   | €45.000| 73%  |
-| Giulia S. |   8  |  5  |  4   | €32.000| 56%  |
-| ...       |      |     |      |        |      |
-+-----------------------------------------------+
-```
+### src/components/marketing/CostFormDrawer.tsx
+Form inserimento costo
 
-### 3.3 Mobile UX
+### src/components/marketing/ChannelSelect.tsx
+Select per canali
 
-- Tabella trasformata in card list verticale
-- Ogni card mostra: Nome + KPI principali (valore, win rate)
-- Tap → apre detail sheet
-- Filtri periodo in header sticky
+### src/components/marketing/CampaignStatusBadge.tsx
+Badge status campagna
+
+### src/components/marketing/MarketingKpiCards.tsx
+Card KPI riutilizzabili
 
 ---
 
-## Fase 4: Integrazione Pipeline
+## File Esistenti da Modificare
 
-### 4.1 Modifica `DealDetailSheet.tsx`
-
-Aggiungere sezione assegnazione:
-
-```text
-+---------------------------+
-| Assegnato a               |
-| [Dropdown venditori    ▼] |
-| • Mario Rossi             |
-| • Giulia Sala             |
-| • Non assegnato           |
-+---------------------------+
-```
-
-### 4.2 Modifica `KanbanCard.tsx`
-
-Badge visivo con iniziali venditore assegnato:
-
-```text
-+-------------------+
-| Deal ABC Corp     |
-| €15.000           |
-| [MR] ← badge      |
-+-------------------+
-```
-
-### 4.3 Mutation assegnazione
-
-Aggiungere `useAssignDealToUser` mutation in `usePipeline.ts`.
-
----
-
-## Fase 5: Navigazione e Permessi UI
-
-### 5.1 Voce menu (MainLayout)
-
-Aggiungere sotto "Team":
-- "Performance Venditori" (visibile solo a: admin, ceo, responsabile_venditori)
-
-### 5.2 Condizioni visibilità
-
-```typescript
-const canViewSalespersonKpis = userRole && 
-  ['admin', 'ceo', 'responsabile_venditori'].includes(userRole);
-```
-
----
-
-## Fase 6: Test E2E
-
-| File | Scenario |
+| File | Modifica |
 |------|----------|
-| `salesperson-assignment.e2e.spec.ts` | Assegna deal a venditore → visibile in DB e UI |
-| | Venditore vede solo propri deal (policy restrittiva) |
-| | Manager vede tutti i deal |
-| `salesperson-kpis.e2e.spec.ts` | KPI aggiornati dopo chiusura deal |
-| | Win rate calcolato correttamente |
-| | Filtro periodo funziona |
+| `src/App.tsx` | Aggiungere routes `/marketing/*` |
+| `src/components/layout/MainLayout.tsx` | Voce menu "Marketing" con controllo permessi |
+| `src/components/pipeline/KanbanCard.tsx` | Badge campagna marketing se `deal.marketing_campaign_id` |
+| `src/hooks/usePipeline.ts` | Estendere query deals per includere `marketing_campaigns` join |
+| `src/types/database.ts` | Aggiungere `MarketingCampaignStatus` type |
 
 ---
 
-## Riepilogo File
+## Ordine di Esecuzione
 
-### Nuovi file
-- `src/pages/SalespersonKpi.tsx`
-- `src/components/team/SalespersonTable.tsx`
-- `src/components/team/SalespersonKpiCards.tsx`
-- `src/components/team/SalespersonDetailSheet.tsx`
-- `src/components/team/SalespersonAssignmentSelect.tsx`
-- `src/hooks/useSalespersonKpis.ts`
-- `e2e/salesperson-kpis.e2e.spec.ts`
-
-### File da modificare
-- `supabase/migrations/[new].sql` - Schema + RPC + RLS
-- `src/App.tsx` - Route `/team/salespersons`
-- `src/components/layout/MainLayout.tsx` - Voce menu
-- `src/components/pipeline/DealDetailSheet.tsx` - Dropdown assegnazione
-- `src/components/pipeline/KanbanCard.tsx` - Badge venditore
-- `src/hooks/usePipeline.ts` - Mutation assegnazione + tipo esteso
-- `src/types/database.ts` - Tipo Deal aggiornato
+| Step | Task | Tempo Stimato |
+|------|------|---------------|
+| 1 | Migrazione 1: Tabelle + Enum | 15 min |
+| 2 | Migrazione 2: Helper + RLS | 15 min |
+| 3 | Migrazione 3: RPC KPI | 30 min |
+| 4 | Types + Hooks base | 45 min |
+| 5 | MarketingDashboard | 1.5 ore |
+| 6 | MarketingCampaigns + CampaignFormDrawer | 1.5 ore |
+| 7 | MarketingCosts + CostFormDrawer | 1 ora |
+| 8 | MarketingReports | 45 min |
+| 9 | Badge Pipeline + Menu | 30 min |
+| 10 | Test E2E | 1 ora |
+| **Totale** | | **~8 ore** |
 
 ---
 
-## Note Implementative
+## Acceptance Criteria
 
-### Formula Win Rate
-```
-win_rate = (won + closed) / (won + lost + closed) × 100
-```
-
-### Calcolo Tempo Chiusura
-```
-avg_days = AVG(closed_at - created_at) in giorni
-```
-Solo per deal con `closed_at` valorizzato.
-
-### Policy Visibilità
-I venditori vedono:
-- Deal assegnati a loro
-- Deal non ancora assegnati (per permettere auto-assegnazione)
-
-Manager/Admin vedono tutti i deal del brand.
-
----
-
-## Effort Stimato
-
-| Fase | Tempo |
-|------|-------|
-| Migration + RPC + RLS | ~45 min |
-| Hook + Tipi | ~20 min |
-| UI Dashboard | ~1.5 ore |
-| Integrazione Pipeline | ~45 min |
-| Mobile responsive | ~30 min |
-| Test E2E | ~30 min |
-| **Totale** | **~4 ore** |
-
+- [ ] Enum `app_role` NON modificato (tutti i ruoli già presenti)
+- [ ] Tabelle marketing create con RLS attivo
+- [ ] `has_marketing_access` e `has_marketing_write_access` funzionano correttamente
+- [ ] Admin/CEO possono creare/modificare campagne e canali
+- [ ] Amministrazione può vedere tutto e inserire costi (ma NON campagne)
+- [ ] Responsabili possono vedere dashboard e report (read-only)
+- [ ] KPI calcolati: CPL, CAC, ROI corretti
+- [ ] Funziona per brand singolo e "Azienda Intera" (`00000000-0000-0000-0000-000000000000`)
+- [ ] Badge campagna visibile su KanbanCard
+- [ ] Attribution basata su `deals.marketing_campaign_id` (source of truth)
