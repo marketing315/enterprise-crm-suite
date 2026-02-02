@@ -282,6 +282,54 @@ export function ContactsTableWithViews({
           </span>
         );
 
+      case "updated_at":
+        return contact.updated_at ? (
+          <span className="text-sm text-muted-foreground">
+            {format(new Date(contact.updated_at), "dd MMM yyyy HH:mm", { locale: it })}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
+      case "first_name":
+        return contact.first_name ? (
+          <span className="text-sm">{contact.first_name}</span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
+      case "last_name":
+        return contact.last_name ? (
+          <span className="text-sm">{contact.last_name}</span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
+      case "cap":
+        return contact.cap ? (
+          <span className="text-sm">{contact.cap}</span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
+      case "address":
+        return contact.address ? (
+          <span className="text-sm max-w-[200px] truncate" title={contact.address}>
+            {contact.address}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
+      case "notes":
+        return contact.notes ? (
+          <span className="text-sm max-w-[200px] truncate" title={contact.notes}>
+            {contact.notes}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
       default:
         return null;
     }
