@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { useBrand, ALL_BRANDS, ALL_BRANDS_ID } from '@/contexts/BrandContext';
+import { useBrand, SYSTEM_BRAND_ID } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Select,
@@ -16,10 +16,10 @@ interface BrandSelectorProps {
 
 export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
   function BrandSelector({ compact = false }, ref) {
-    const { brands, currentBrand, setCurrentBrand, isLoading } = useBrand();
+    const { brands, currentBrand, systemBrand, setCurrentBrand, isLoading } = useBrand();
     const { isAdmin, isCeo, hasRole } = useAuth();
 
-    // Admin, CEO, and Amministrazione can see "All Brands" option
+    // Admin, CEO, and Amministrazione can see "Azienda Intera" option
     const isAmministrazione = currentBrand ? hasRole('amministrazione', currentBrand.id) : false;
     const canSeeAllBrands = isAdmin || isCeo || isAmministrazione;
 
@@ -32,7 +32,7 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
       );
     }
 
-    if (brands.length === 0) {
+    if (brands.length === 0 && !systemBrand) {
       return (
         <div ref={ref} className="flex items-center gap-2 text-muted-foreground">
           <Building2 className="h-4 w-4" />
@@ -47,8 +47,8 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
         <Select
           value={currentBrand?.id || ''}
           onValueChange={(value) => {
-            if (value === ALL_BRANDS_ID) {
-              setCurrentBrand(ALL_BRANDS);
+            if (value === SYSTEM_BRAND_ID && systemBrand) {
+              setCurrentBrand(systemBrand);
             } else {
               const brand = brands.find(b => b.id === value);
               setCurrentBrand(brand || null);
@@ -59,12 +59,12 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
             <SelectValue placeholder="Seleziona brand" />
           </SelectTrigger>
           <SelectContent>
-            {/* All Brands option for admins/CEOs */}
-            {canSeeAllBrands && (
-              <SelectItem value={ALL_BRANDS_ID} className="font-medium">
+            {/* System brand option for admins/CEOs/amministrazione */}
+            {canSeeAllBrands && systemBrand && (
+              <SelectItem value={systemBrand.id} className="font-medium">
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-primary" />
-                  <span>Tutti i brand</span>
+                  <span>{systemBrand.name}</span>
                 </div>
               </SelectItem>
             )}

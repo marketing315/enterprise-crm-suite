@@ -3,23 +3,16 @@ import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Brand } from '@/types/database';
 
-// Special constant for "All Brands" virtual brand
-export const ALL_BRANDS_ID = '__ALL_BRANDS__';
+// System brand ID for company-wide aggregation (matches DB record with is_system=true)
+export const SYSTEM_BRAND_ID = '00000000-0000-0000-0000-000000000000';
 
-export const ALL_BRANDS: Brand = {
-  id: ALL_BRANDS_ID,
-  name: 'Tutti i brand',
-  slug: 'all-brands',
-  parent_brand_id: null,
-  auto_assign_enabled: false,
-  sla_thresholds_minutes: { "1": 60, "2": 120, "3": 240, "4": 480, "5": 1440 },
-  created_at: '',
-  updated_at: '',
-};
+// Keep legacy constant for backward compatibility during transition
+export const ALL_BRANDS_ID = SYSTEM_BRAND_ID;
 
 interface BrandContextType {
   brands: Brand[];
   currentBrand: Brand | null;
+  systemBrand: Brand | null; // The actual system brand from DB
   setCurrentBrand: (brand: Brand | null) => void;
   isLoading: boolean;
   hasBrandSelected: boolean;
@@ -34,6 +27,7 @@ const BRAND_STORAGE_KEY = 'crm_selected_brand_id';
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const { user, userRoles, isLoading: authLoading, isAdmin, isCeo } = useAuth();
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [systemBrand, setSystemBrand] = useState<Brand | null>(null);
   const [currentBrandState, setCurrentBrandState] = useState<Brand | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,6 +37,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     const fetchBrands = async () => {
       if (!user || authLoading) {
         setBrands([]);
+        setSystemBrand(null);
         setIsLoading(false);
         return;
       }
@@ -56,18 +51,26 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error('Error fetching brands:', error);
           setBrands([]);
+          setSystemBrand(null);
         } else {
-          setBrands((data || []) as Brand[]);
+          const allBrands = (data || []) as Brand[];
+          
+          // Separate system brand from regular brands
+          const system = allBrands.find(b => b.id === SYSTEM_BRAND_ID || b.is_system === true);
+          const regularBrands = allBrands.filter(b => b.id !== SYSTEM_BRAND_ID && b.is_system !== true);
+          
+          setSystemBrand(system || null);
+          setBrands(regularBrands);
           
           // Try to restore previously selected brand
           const storedBrandId = localStorage.getItem(BRAND_STORAGE_KEY);
           if (storedBrandId && data) {
-            if (storedBrandId === ALL_BRANDS_ID && (isAdmin || isCeo)) {
-              setCurrentBrandState(ALL_BRANDS);
+            if (storedBrandId === SYSTEM_BRAND_ID && system && (isAdmin || isCeo)) {
+              setCurrentBrandState(system);
             } else {
-              const storedBrand = data.find(b => b.id === storedBrandId);
+              const storedBrand = regularBrands.find(b => b.id === storedBrandId);
               if (storedBrand) {
-                setCurrentBrandState(storedBrand as Brand);
+                setCurrentBrandState(storedBrand);
               }
             }
           }
@@ -75,6 +78,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error in fetchBrands:', error);
         setBrands([]);
+        setSystemBrand(null);
       } finally {
         setIsLoading(false);
       }
@@ -92,7 +96,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const isAllBrandsSelected = currentBrandState?.id === ALL_BRANDS_ID;
+  const isAllBrandsSelected = currentBrandState?.id === SYSTEM_BRAND_ID || currentBrandState?.is_system === true;
   const allBrandIds = brands.map(b => b.id);
 
   return (
@@ -100,6 +104,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       value={{
         brands,
         currentBrand: currentBrandState,
+        systemBrand,
         setCurrentBrand,
         isLoading: isLoading || authLoading,
         hasBrandSelected: currentBrandState !== null,
