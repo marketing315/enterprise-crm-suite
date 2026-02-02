@@ -86,6 +86,8 @@ async function getCallerRoleInBrand(
     venditore: 10, sales: 10, operatore_callcenter: 10, callcenter: 10
   };
   
+  const isAllBrands = brandId === "__ALL_BRANDS__";
+  
   // First check for global admin/ceo roles (any brand)
   const { data: globalRoles } = await adminClient
     .from("user_roles")
@@ -104,6 +106,11 @@ async function getCallerRoleInBrand(
       }
     }
     return highestGlobalRole;
+  }
+
+  // If requesting all brands but user is not admin/ceo, deny access
+  if (isAllBrands) {
+    return null;
   }
 
   // Then check for brand-specific roles
