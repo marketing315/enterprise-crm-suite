@@ -17,6 +17,7 @@ import { useBrand } from "@/contexts/BrandContext";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
 import { useMarketingCampaignKpis, useMarketingSummaryKpis, useMarketingMonthlyTrend } from "@/hooks/useMarketingKpis";
 import { arrayToCSV, downloadCSV } from "@/lib/csvExport";
+import { formatCurrency, formatPercent, getPercentColorClass } from "@/lib/formatKpi";
 import {
   BarChart,
   Bar,
@@ -252,12 +253,10 @@ export default function MarketingReports() {
                       <TableCell className="text-right">{kpi.deals_won}</TableCell>
                       <TableCell className="text-right">€{kpi.revenue.toLocaleString("it-IT")}</TableCell>
                       <TableCell className="text-right">€{kpi.marketing_cost.toLocaleString("it-IT")}</TableCell>
-                      <TableCell className="text-right">€{kpi.cpl.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">€{kpi.cac.toFixed(2)}</TableCell>
-                      <TableCell className={`text-right font-medium ${
-                        kpi.roi >= 0 ? "text-green-600" : "text-red-600"
-                      }`}>
-                        {kpi.roi.toFixed(1)}%
+                      <TableCell className="text-right">{formatCurrency(kpi.cpl)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(kpi.cac)}</TableCell>
+                      <TableCell className={`text-right font-medium ${getPercentColorClass(kpi.roi)}`}>
+                        {formatPercent(kpi.roi)}
                       </TableCell>
                     </TableRow>
                   ))}
