@@ -9,13 +9,14 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { usePipelineStages, useDeals, useUpdateDealStage, type DealWithContactAndTags } from "@/hooks/usePipeline";
+import { usePipelineStages, useDeals, useUpdateDealStage, type DealWithBrand } from "@/hooks/usePipeline";
+import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCardPreview } from "./KanbanCardPreview";
 import { MobileKanbanView } from "./MobileKanbanView";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Lock } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Lock, Globe } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCanEditDeals } from "@/hooks/useCanEditDeals";
@@ -26,6 +27,9 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps) {
+  const { currentBrand } = useBrand();
+  const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
+  
   const { data: stages, isLoading: stagesLoading } = usePipelineStages();
   const { data: deals, isLoading: dealsLoading } = useDeals(
     "open",
@@ -34,6 +38,9 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   const updateStage = useUpdateDealStage();
   const isMobile = useIsMobile();
   const canEditDeals = useCanEditDeals();
+  
+  // In global view, deals are read-only (can't drag across different brand stages)
+  const isReadOnly = !canEditDeals || isSystemBrand;
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -45,22 +52,31 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     })
   );
 
-  // Group deals by stage
+  // Group deals by stage (using stage name for global matching)
   const dealsByStage = useMemo(() => {
-    const grouped: Record<string, DealWithContactAndTags[]> = {};
+    const grouped: Record<string, DealWithBrand[]> = {};
     stages?.forEach((stage) => {
       grouped[stage.id] = [];
     });
+    
     deals?.forEach((deal) => {
       if (deal.current_stage_id && grouped[deal.current_stage_id]) {
+        // Direct stage ID match (same brand)
         grouped[deal.current_stage_id].push(deal);
+      } else if (isSystemBrand && stages) {
+        // For global view, match by stage order_index position
+        // Find the stage with matching order_index from the deal's original brand
+        // As a fallback, put in first stage
+        if (stages[0]) {
+          grouped[stages[0].id]?.push(deal);
+        }
       } else if (stages?.[0]) {
         // Fallback to first stage if no stage assigned
         grouped[stages[0].id]?.push(deal);
       }
     });
     return grouped;
-  }, [stages, deals]);
+  }, [stages, deals, isSystemBrand]);
 
   const activeDeal = useMemo(() => {
     if (!activeId || !deals) return null;
@@ -68,7 +84,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   }, [activeId, deals]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    if (!canEditDeals) return; // Prevent drag for read-only users
+    if (isReadOnly) return; // Prevent drag for read-only users
     setActiveId(event.active.id as string);
   };
 
@@ -76,7 +92,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over || !canEditDeals) return; // Prevent drop for read-only users
+    if (!over || isReadOnly) return; // Prevent drop for read-only users
 
     const dealId = active.id as string;
     const overId = over.id as string;
@@ -147,22 +163,33 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
         stages={stages}
         dealsByStage={dealsByStage}
         onDealClick={onDealClick}
-        readOnly={!canEditDeals}
+        readOnly={isReadOnly}
+        showBrand={isSystemBrand}
       />
     );
   }
 
-  // Desktop: Full drag-and-drop Kanban (disabled for read-only users)
+  // Desktop: Full drag-and-drop Kanban (disabled for read-only users or global view)
   return (
     <div className="relative">
-      {!canEditDeals && (
+      {/* Read-only indicator */}
+      {isReadOnly && (
         <div className="absolute top-2 right-4 z-10 flex items-center gap-2 text-sm text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border">
-          <Lock className="h-3.5 w-3.5" />
-          <span>Modalità sola lettura</span>
+          {isSystemBrand ? (
+            <>
+              <Globe className="h-3.5 w-3.5" />
+              <span>Vista globale (sola lettura)</span>
+            </>
+          ) : (
+            <>
+              <Lock className="h-3.5 w-3.5" />
+              <span>Modalità sola lettura</span>
+            </>
+          )}
         </div>
       )}
       <DndContext
-        sensors={canEditDeals ? sensors : []} // Disable sensors for read-only
+        sensors={isReadOnly ? [] : sensors} // Disable sensors for read-only
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -174,13 +201,14 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
               stage={stage}
               deals={dealsByStage[stage.id] || []}
               onDealClick={onDealClick}
-              readOnly={!canEditDeals}
+              readOnly={isReadOnly}
+              showBrand={isSystemBrand}
             />
           ))}
         </div>
 
         <DragOverlay>
-          {activeDeal && <KanbanCardPreview deal={activeDeal} />}
+          {activeDeal && <KanbanCardPreview deal={activeDeal} showBrand={isSystemBrand} />}
         </DragOverlay>
       </DndContext>
     </div>

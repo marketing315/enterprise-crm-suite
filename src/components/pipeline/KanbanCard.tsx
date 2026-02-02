@@ -3,7 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Mail, Clock, DollarSign, MoreVertical, Archive, Trophy, XCircle, MoveRight, Megaphone } from "lucide-react";
+import { User, Mail, Clock, DollarSign, MoreVertical, Archive, Trophy, XCircle, MoveRight, Megaphone, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,16 +26,17 @@ import { EntityTagList } from "@/components/tags/EntityTagList";
 import { useUpdateDealStatus, useUpdateDealStage, usePipelineStages } from "@/hooks/usePipeline";
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
-import type { DealWithContactAndTags } from "@/hooks/usePipeline";
+import type { DealWithBrand } from "@/hooks/usePipeline";
 
 interface KanbanCardProps {
-  deal: DealWithContactAndTags;
+  deal: DealWithBrand;
   onClick?: () => void;
   readOnly?: boolean;
+  showBrand?: boolean;
 }
 
 export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
-  function KanbanCard({ deal, onClick, readOnly = false }, ref) {
+  function KanbanCard({ deal, onClick, readOnly = false, showBrand = false }, ref) {
     const [menuOpen, setMenuOpen] = useState(false);
     const { data: stages } = usePipelineStages();
     const updateStatus = useUpdateDealStatus();
@@ -185,6 +186,14 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
         )}
 
         <CardContent className="p-3 space-y-2">
+          {/* Brand Badge for global view */}
+          {showBrand && deal.brand && (
+            <div className="flex items-center gap-1.5 text-xs bg-secondary/50 px-2 py-1 rounded-md w-fit -mt-1 mb-1">
+              <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="font-medium truncate max-w-[150px]">{deal.brand.name}</span>
+            </div>
+          )}
+          
           <div className="flex items-start justify-between gap-2 pr-6">
             <div className="flex items-center gap-2 text-sm font-medium truncate">
               <User className="h-4 w-4 text-muted-foreground shrink-0" />

@@ -4,7 +4,7 @@ import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { TagFilter } from "@/components/tags/TagFilter";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { useDeals } from "@/hooks/usePipeline";
-import { AlertCircle, Building2 } from "lucide-react";
+import { AlertCircle, Globe } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Pipeline() {
@@ -35,42 +35,35 @@ export default function Pipeline() {
     );
   }
 
-  // Show message for system brand - pipeline is brand-specific
-  if (isSystemBrand) {
-    return (
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestione deal e opportunità
-          </p>
-        </div>
-        <Alert>
-          <Building2 className="h-4 w-4" />
-          <AlertDescription>
-            La pipeline è specifica per ogni brand. Seleziona un brand dalla sidebar per visualizzare e gestire i deal.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
       <div className="p-3 md:p-4 border-b space-y-3 shrink-0 overflow-hidden">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
+            {isSystemBrand && (
+              <div className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                <Globe className="h-3 w-3" />
+                <span>Tutti i brand</span>
+              </div>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground truncate">
-            Gestisci i tuoi deal in {currentBrand?.name}
+            {isSystemBrand 
+              ? "Vista globale di tutti i deal aziendali"
+              : `Gestisci i tuoi deal in ${currentBrand?.name}`
+            }
           </p>
         </div>
         
-        {/* Tag Filter */}
-        <TagFilter
-          selectedTagIds={selectedTagIds}
-          onTagsChange={setSelectedTagIds}
-          scope="deal"
-        />
+        {/* Tag Filter - only show for single brand */}
+        {!isSystemBrand && (
+          <TagFilter
+            selectedTagIds={selectedTagIds}
+            onTagsChange={setSelectedTagIds}
+            scope="deal"
+          />
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden">
