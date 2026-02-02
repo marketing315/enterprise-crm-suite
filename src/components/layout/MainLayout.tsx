@@ -50,6 +50,7 @@ import {
   ShoppingCart,
   Package,
   Briefcase,
+  Megaphone,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -64,6 +65,7 @@ const menuItems = [
   { icon: Ticket, label: 'Ticket', path: '/tickets' },
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: Briefcase, label: 'Azienda', path: '/azienda' },
+  { icon: Megaphone, label: 'Marketing', path: '/marketing' },
   { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
 ];
 
