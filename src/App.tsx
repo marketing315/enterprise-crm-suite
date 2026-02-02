@@ -27,6 +27,8 @@ import Chat from "@/pages/Chat";
 import Notifications from "@/pages/Notifications";
 import Team from "@/pages/Team";
 import SalespersonKpi from "@/pages/SalespersonKpi";
+import Sales from "@/pages/Sales";
+import Products from "@/pages/Products";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +66,8 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/pipeline" element={<Pipeline />} />
+                <Route path="/sales" element={<Sales />} />
+                <Route path="/products" element={<Products />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/tickets" element={<Tickets />} />

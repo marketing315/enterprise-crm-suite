@@ -661,6 +661,7 @@ export type Database = {
           id: string
           name: string
           parent_brand_id: string | null
+          sales_visibility_callcenter: string
           sla_thresholds_minutes: Json
           slug: string
           updated_at: string
@@ -671,6 +672,7 @@ export type Database = {
           id?: string
           name: string
           parent_brand_id?: string | null
+          sales_visibility_callcenter?: string
           sla_thresholds_minutes?: Json
           slug: string
           updated_at?: string
@@ -681,6 +683,7 @@ export type Database = {
           id?: string
           name?: string
           parent_brand_id?: string | null
+          sales_visibility_callcenter?: string
           sla_thresholds_minutes?: Json
           slug?: string
           updated_at?: string
@@ -2065,6 +2068,70 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          brand_id: string
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          notes: string | null
+          order_id: string
+          paid_at: string | null
+          recorded_by_user_id: string | null
+          reference: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+        }
+        Insert: {
+          amount: number
+          brand_id: string
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          order_id: string
+          paid_at?: string | null
+          recorded_by_user_id?: string | null
+          reference?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Update: {
+          amount?: number
+          brand_id?: string
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          order_id?: string
+          paid_at?: string | null
+          recorded_by_user_id?: string | null
+          reference?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_recorded_by_user_id_fkey"
+            columns: ["recorded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_stages: {
         Row: {
           brand_id: string
@@ -2109,6 +2176,53 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          brand_id: string
+          created_at: string
+          default_price: number
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sku: string | null
+          updated_at: string
+          vat_rate: number | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          default_price?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sku?: string | null
+          updated_at?: string
+          vat_rate?: number | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          default_price?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sku?: string | null
+          updated_at?: string
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limit_buckets: {
         Row: {
           id: string
@@ -2140,6 +2254,340 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: true
             referencedRelation: "webhook_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_commissions: {
+        Row: {
+          approved_at: string | null
+          approved_by_user_id: string | null
+          brand_id: string
+          commission_amount: number
+          commission_fixed: number | null
+          commission_percent: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          order_id: string | null
+          paid_at: string | null
+          status: Database["public"]["Enums"]["commission_status"]
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by_user_id?: string | null
+          brand_id: string
+          commission_amount: number
+          commission_fixed?: number | null
+          commission_percent?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["commission_status"]
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by_user_id?: string | null
+          brand_id?: string
+          commission_amount?: number
+          commission_fixed?: number | null
+          commission_percent?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["commission_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_commissions_approved_by_user_id_fkey"
+            columns: ["approved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_commissions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_commissions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_commissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_order_history: {
+        Row: {
+          action: string
+          changed_by_user_id: string | null
+          changes: Json | null
+          created_at: string
+          id: string
+          new_status: Database["public"]["Enums"]["sales_order_status"] | null
+          old_status: Database["public"]["Enums"]["sales_order_status"] | null
+          order_id: string
+        }
+        Insert: {
+          action: string
+          changed_by_user_id?: string | null
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["sales_order_status"] | null
+          old_status?: Database["public"]["Enums"]["sales_order_status"] | null
+          order_id: string
+        }
+        Update: {
+          action?: string
+          changed_by_user_id?: string | null
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["sales_order_status"] | null
+          old_status?: Database["public"]["Enums"]["sales_order_status"] | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_history_changed_by_user_id_fkey"
+            columns: ["changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_order_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_percent: number | null
+          id: string
+          line_total: number
+          name: string
+          order_id: string
+          product_id: string | null
+          quantity: number
+          sort_order: number
+          unit_price: number
+          vat_rate: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount_percent?: number | null
+          id?: string
+          line_total?: number
+          name: string
+          order_id: string
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+          vat_rate?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_percent?: number | null
+          id?: string
+          line_total?: number
+          name?: string
+          order_id?: string
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_orders: {
+        Row: {
+          assigned_user_id: string | null
+          brand_id: string
+          cancelled_at: string | null
+          confirmed_at: string | null
+          contact_id: string
+          created_at: string
+          deal_id: string | null
+          discount_amount: number
+          discount_percent: number | null
+          id: string
+          notes: string | null
+          order_number: string
+          paid_amount: number
+          paid_at: string | null
+          status: Database["public"]["Enums"]["sales_order_status"]
+          subtotal: number
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          brand_id: string
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          contact_id: string
+          created_at?: string
+          deal_id?: string | null
+          discount_amount?: number
+          discount_percent?: number | null
+          id?: string
+          notes?: string | null
+          order_number: string
+          paid_amount?: number
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["sales_order_status"]
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_user_id?: string | null
+          brand_id?: string
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          contact_id?: string
+          created_at?: string
+          deal_id?: string | null
+          discount_amount?: number
+          discount_percent?: number | null
+          id?: string
+          notes?: string | null
+          order_number?: string
+          paid_amount?: number
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["sales_order_status"]
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_targets: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          target_amount: number
+          target_count: number | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          target_amount: number
+          target_count?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          target_amount?: number
+          target_count?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_targets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_targets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2978,6 +3426,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_sales_order_from_deal: {
+        Args: { p_deal_id: string }
+        Returns: string
+      }
       current_brand_role: {
         Args: { p_brand_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -3065,6 +3517,7 @@ export type Database = {
           ticket_id: string
         }[]
       }
+      generate_order_number: { Args: { p_brand_id: string }; Returns: string }
       get_accessible_brand_ids: {
         Args: { p_user_id: string }
         Returns: string[]
@@ -3201,6 +3654,15 @@ export type Database = {
       get_role_level: {
         Args: { p_role: Database["public"]["Enums"]["app_role"] }
         Returns: number
+      }
+      get_sales_kpis: {
+        Args: {
+          p_brand_id: string
+          p_from: string
+          p_to: string
+          p_user_id?: string
+        }
+        Returns: Json
       }
       get_salesperson_kpis: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
@@ -3627,6 +4089,7 @@ export type Database = {
       assigned_by: "ai" | "user" | "rule"
       chat_sender_type: "user" | "ai" | "system"
       chat_thread_type: "direct" | "group" | "entity"
+      commission_status: "pending" | "approved" | "paid"
       contact_channel: "chat" | "call"
       contact_status:
         | "new"
@@ -3682,6 +4145,16 @@ export type Database = {
         | "chat_message"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       pacemaker_status: "assente" | "presente" | "non_chiaro"
+      payment_method: "cash" | "card" | "bank_transfer" | "stripe" | "other"
+      payment_status: "pending" | "completed" | "failed" | "refunded"
+      sales_order_status:
+        | "draft"
+        | "confirmed"
+        | "invoiced"
+        | "partially_paid"
+        | "paid"
+        | "cancelled"
+        | "refunded"
       table_view_scope: "single_brand" | "all_accessible"
       tag_scope:
         | "contact"
@@ -3878,6 +4351,7 @@ export const Constants = {
       assigned_by: ["ai", "user", "rule"],
       chat_sender_type: ["user", "ai", "system"],
       chat_thread_type: ["direct", "group", "entity"],
+      commission_status: ["pending", "approved", "paid"],
       contact_channel: ["chat", "call"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],
       custom_field_scope: ["global", "brand"],
@@ -3932,6 +4406,17 @@ export const Constants = {
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       pacemaker_status: ["assente", "presente", "non_chiaro"],
+      payment_method: ["cash", "card", "bank_transfer", "stripe", "other"],
+      payment_status: ["pending", "completed", "failed", "refunded"],
+      sales_order_status: [
+        "draft",
+        "confirmed",
+        "invoiced",
+        "partially_paid",
+        "paid",
+        "cancelled",
+        "refunded",
+      ],
       table_view_scope: ["single_brand", "all_accessible"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
       ticket_audit_action: [
