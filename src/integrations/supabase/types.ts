@@ -1351,6 +1351,7 @@ export type Database = {
       }
       deals: {
         Row: {
+          assigned_user_id: string | null
           brand_id: string
           closed_at: string | null
           contact_id: string
@@ -1364,6 +1365,7 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          assigned_user_id?: string | null
           brand_id: string
           closed_at?: string | null
           contact_id: string
@@ -1377,6 +1379,7 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          assigned_user_id?: string | null
           brand_id?: string
           closed_at?: string | null
           contact_id?: string
@@ -1390,6 +1393,13 @@ export type Database = {
           value?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "deals_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deals_brand_id_fkey"
             columns: ["brand_id"]
@@ -3191,6 +3201,10 @@ export type Database = {
       get_role_level: {
         Args: { p_role: Database["public"]["Enums"]["app_role"] }
         Returns: number
+      }
+      get_salesperson_kpis: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
       }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }

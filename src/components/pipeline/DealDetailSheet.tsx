@@ -11,6 +11,7 @@ import {
   Archive,
   Tag,
   Calendar,
+  UserCheck,
 } from "lucide-react";
 import {
   Sheet,
@@ -25,7 +26,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EntityTagList } from "@/components/tags/EntityTagList";
 import { EntityChatBox } from "@/components/chat/EntityChatBox";
-import { useUpdateDealStatus } from "@/hooks/usePipeline";
+import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssignmentSelect";
+import { useUpdateDealStatus, useAssignDealToUser } from "@/hooks/usePipeline";
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
@@ -42,8 +44,23 @@ export function DealDetailSheet({
   onOpenChange,
 }: DealDetailSheetProps) {
   const updateStatus = useUpdateDealStatus();
+  const assignDeal = useAssignDealToUser();
 
   if (!deal) return null;
+
+  const handleAssignmentChange = (userId: string | null) => {
+    assignDeal.mutate(
+      { dealId: deal.id, userId },
+      {
+        onSuccess: () => {
+          toast.success(userId ? "Venditore assegnato" : "Assegnazione rimossa");
+        },
+        onError: () => {
+          toast.error("Errore nell'assegnazione");
+        },
+      }
+    );
+  };
 
   const getContactName = () => {
     if (!deal.contact) return "—";
@@ -186,6 +203,19 @@ export function DealDetailSheet({
                       <p className="text-muted-foreground">{deal.contact.email}</p>
                     )}
                   </div>
+                </div>
+
+                {/* Salesperson Assignment */}
+                <div className="rounded-lg border p-4">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <UserCheck className="h-4 w-4" />
+                    Assegnato a
+                  </h4>
+                  <SalespersonAssignmentSelect
+                    value={(deal as any).assigned_user_id || null}
+                    onChange={handleAssignmentChange}
+                    disabled={assignDeal.isPending}
+                  />
                 </div>
 
                 {/* Value */}

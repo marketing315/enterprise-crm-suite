@@ -180,12 +180,28 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
               <User className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="truncate">{getFullName()}</span>
             </div>
-            <Badge variant="outline" className={statusColors[deal.status] || ""}>
-              {deal.status === "open" ? "Aperto" : 
-               deal.status === "won" ? "Vinto" :
-               deal.status === "lost" ? "Perso" :
-               deal.status === "closed" ? "Chiuso" : "Riaperto"}
-            </Badge>
+            <div className="flex items-center gap-1">
+              {/* Assigned User Badge */}
+              {(deal as any).assigned_user && (
+                <div 
+                  className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary"
+                  title={`Assegnato a: ${(deal as any).assigned_user.full_name || (deal as any).assigned_user.email}`}
+                >
+                  {((deal as any).assigned_user.full_name || (deal as any).assigned_user.email)
+                    ?.split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </div>
+              )}
+              <Badge variant="outline" className={statusColors[deal.status] || ""}>
+                {deal.status === "open" ? "Aperto" : 
+                 deal.status === "won" ? "Vinto" :
+                 deal.status === "lost" ? "Perso" :
+                 deal.status === "closed" ? "Chiuso" : "Riaperto"}
+              </Badge>
+            </div>
           </div>
 
           {deal.contact?.email && (

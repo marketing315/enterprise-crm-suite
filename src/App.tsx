@@ -26,6 +26,7 @@ import AdminAnalytics from "@/pages/AdminAnalytics";
 import Chat from "@/pages/Chat";
 import Notifications from "@/pages/Notifications";
 import Team from "@/pages/Team";
+import SalespersonKpi from "@/pages/SalespersonKpi";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="/analytics" element={<AdminAnalytics />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/team" element={<Team />} />
+                <Route path="/team/salespersons" element={<SalespersonKpi />} />
                 <Route path="/admin/ai" element={<AdminAI />} />
                 <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
                 <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
