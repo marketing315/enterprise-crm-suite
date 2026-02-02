@@ -33,6 +33,8 @@ const formSchema = z.object({
   page_id: z.string().optional(),
   access_token: z.string().min(1, "Access Token richiesto"),
   is_active: z.boolean(),
+  ad_account_id: z.string().optional(),
+  stats_enabled: z.boolean(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -58,6 +60,8 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
       page_id: "",
       access_token: "",
       is_active: true,
+      ad_account_id: "",
+      stats_enabled: false,
     },
   });
   useEffect(() => {
@@ -74,6 +78,8 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           page_id: editingApp.page_id || "",
           access_token: editingApp.access_token,
           is_active: editingApp.is_active,
+          ad_account_id: (editingApp as any).ad_account_id || "",
+          stats_enabled: (editingApp as any).stats_enabled || false,
         });
       } else if (isOpening) {
         // Only generate new token when opening fresh (not editing)
@@ -84,6 +90,8 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           page_id: "",
           access_token: "",
           is_active: true,
+          ad_account_id: "",
+          stats_enabled: false,
         });
       }
       lastEditingIdRef.current = editingApp?.id ?? null;
@@ -104,7 +112,9 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           access_token: data.access_token,
           is_active: data.is_active,
           page_id: data.page_id || null,
-        });
+          ad_account_id: data.ad_account_id || null,
+          stats_enabled: data.stats_enabled,
+        } as any);
       } else {
         await createMetaApp.mutateAsync({
           brand_id: currentBrand.id,
@@ -114,7 +124,9 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           access_token: data.access_token,
           is_active: data.is_active,
           page_id: data.page_id || undefined,
-        });
+          ad_account_id: data.ad_account_id || undefined,
+          stats_enabled: data.stats_enabled,
+        } as any);
       }
       onOpenChange(false);
     } catch (error) {
@@ -265,6 +277,50 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
                 </FormItem>
               )}
             />
+
+            {/* ADV Stats Section */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium mb-4">Statistiche ADV (Import automatico)</h4>
+              
+              <FormField
+                control={form.control}
+                name="ad_account_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ad Account ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="act_123456789" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      ID dell'Ad Account Meta per importare le statistiche
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="stats_enabled"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4 mt-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Import Statistiche ADV</FormLabel>
+                      <FormDescription>
+                        Importa automaticamente spend, impression e click
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={!form.watch("ad_account_id")}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
