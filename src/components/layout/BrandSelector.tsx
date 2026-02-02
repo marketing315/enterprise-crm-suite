@@ -17,9 +17,11 @@ interface BrandSelectorProps {
 export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
   function BrandSelector({ compact = false }, ref) {
     const { brands, currentBrand, setCurrentBrand, isLoading } = useBrand();
-    const { isAdmin, isCeo } = useAuth();
+    const { isAdmin, isCeo, hasRole } = useAuth();
 
-    const canSeeAllBrands = isAdmin || isCeo;
+    // Admin, CEO, and Amministrazione can see "All Brands" option
+    const isAmministrazione = currentBrand ? hasRole('amministrazione', currentBrand.id) : false;
+    const canSeeAllBrands = isAdmin || isCeo || isAmministrazione;
 
     if (isLoading) {
       return (
