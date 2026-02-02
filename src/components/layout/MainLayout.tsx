@@ -16,6 +16,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -52,6 +57,9 @@ import {
   Package,
   Briefcase,
   Megaphone,
+  ChevronRight,
+  DollarSign,
+  FileText,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -69,8 +77,13 @@ const baseMenuItems = [
   { icon: Briefcase, label: 'Azienda', path: '/azienda' },
 ];
 
-// Marketing menu item (requires marketing access)
-const marketingMenuItem = { icon: Megaphone, label: 'Marketing', path: '/marketing' };
+// Marketing submenu items
+const marketingSubItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/marketing' },
+  { icon: Megaphone, label: 'Campagne', path: '/marketing/campagne' },
+  { icon: DollarSign, label: 'Costi', path: '/marketing/costi' },
+  { icon: FileText, label: 'Report', path: '/marketing/report' },
+];
 
 // Analytics (admin only)
 const analyticsMenuItem = { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' };
@@ -109,18 +122,16 @@ export function MainLayout() {
   const menuItems = useMemo(() => {
     const items = [...baseMenuItems];
     
-    // Add Marketing only if user has access
-    if (hasMarketingAccess) {
-      items.push(marketingMenuItem);
-    }
-    
     // Add Analytics only for admin/ceo
     if (isAdmin || isCeo) {
       items.push(analyticsMenuItem);
     }
     
     return items;
-  }, [hasMarketingAccess, isAdmin, isCeo]);
+  }, [isAdmin, isCeo]);
+
+  // Check if any marketing path is active
+  const isMarketingActive = location.pathname.startsWith('/marketing');
 
   // Filter admin menu items based on role requirements
   const filteredAdminItems = adminMenuItems.filter(item => {
@@ -199,6 +210,41 @@ export function MainLayout() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                  
+                  {/* Marketing expandable submenu */}
+                  {hasMarketingAccess && (
+                    <Collapsible defaultOpen={isMarketingActive} className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            className={isMarketingActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}
+                            disabled={!hasBrandSelected}
+                            tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
+                          >
+                            <Megaphone className="h-4 w-4" />
+                            <span className="flex-1">Marketing</span>
+                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenu className="ml-4 mt-1 border-l border-sidebar-border pl-2">
+                            {marketingSubItems.map((subItem) => (
+                              <SidebarMenuItem key={subItem.path}>
+                                <SidebarMenuButton
+                                  isActive={location.pathname === subItem.path}
+                                  onClick={() => navigate(subItem.path)}
+                                  className="h-8"
+                                >
+                                  <subItem.icon className="h-3.5 w-3.5" />
+                                  <span className="text-sm">{subItem.label}</span>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            ))}
+                          </SidebarMenu>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
