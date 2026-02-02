@@ -28,14 +28,29 @@ export function KanbanCardPreview({ deal, showBrand = false }: KanbanCardPreview
     reopened_for_support: "bg-amber-500/10 text-amber-700",
   };
 
+  // Brand colors mapping
+  const getBrandColor = (slug: string): string => {
+    const colors: Record<string, string> = {
+      sonimed: "#89b928",
+      mymed: "#1990ca",
+      excell: "#e5176c",
+    };
+    return colors[slug?.toLowerCase()] || "hsl(var(--primary))";
+  };
+
   return (
     <Card className="cursor-grabbing shadow-lg w-72 max-w-full">
       <CardContent className="p-3 space-y-2">
-        {/* Brand Badge for global view */}
+        {/* Brand Badge with official brand colors */}
         {showBrand && deal.brand && (
-          <div className="flex items-center gap-1.5 text-xs bg-secondary/50 px-2 py-1 rounded-md w-fit -mt-1 mb-1">
-            <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="font-medium truncate max-w-[150px]">{deal.brand.name}</span>
+          <div 
+            className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-md w-fit -mt-1 mb-1 text-white font-medium"
+            style={{ 
+              backgroundColor: getBrandColor(deal.brand.slug) 
+            }}
+          >
+            <Building2 className="h-3 w-3 shrink-0" />
+            <span className="truncate max-w-[150px]">{deal.brand.name}</span>
           </div>
         )}
         
