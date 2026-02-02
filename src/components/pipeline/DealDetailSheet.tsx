@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Lock,
   Megaphone,
+  Package,
 } from "lucide-react";
 import {
   Sheet,
@@ -33,6 +34,7 @@ import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssign
 import { CampaignSelect } from "./CampaignSelect";
 import { useUpdateDealStatus, useAssignDealToUser, useUpdateDealCampaign } from "@/hooks/usePipeline";
 import { useDealSalesOrder, useCreateSalesOrderFromDeal } from "@/hooks/useSalesOrders";
+import { useSalesOrderItems } from "@/hooks/useSalesOrderItems";
 import { useCanEditDeals } from "@/hooks/useCanEditDeals";
 import { useHasMarketingAccess, useCanEditCampaigns } from "@/hooks/useMarketingAccess";
 import { toast } from "sonner";
@@ -55,6 +57,7 @@ export function DealDetailSheet({
   const assignDeal = useAssignDealToUser();
   const updateCampaign = useUpdateDealCampaign();
   const { data: existingSalesOrder } = useDealSalesOrder(deal?.id || null);
+  const { data: orderItems = [] } = useSalesOrderItems(existingSalesOrder?.id || null);
   const createSalesOrder = useCreateSalesOrderFromDeal();
   const canEdit = useCanEditDeals();
   const hasMarketingAccess = useHasMarketingAccess();
@@ -307,21 +310,58 @@ export function DealDetailSheet({
                     Vendita
                   </h4>
                   {existingSalesOrder ? (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{existingSalesOrder.order_number}</p>
-                        <p className="text-sm text-muted-foreground">
-                          €{existingSalesOrder.total_amount.toLocaleString("it-IT")}
-                        </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{existingSalesOrder.order_number}</p>
+                          <p className="text-sm text-muted-foreground">
+                            €{existingSalesOrder.total_amount.toLocaleString("it-IT")}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate("/sales")}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                          Apri
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate("/sales")}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                        Apri
-                      </Button>
+
+                      {/* Products Sold Detail */}
+                      {orderItems.length > 0 && (
+                        <div className="border-t pt-3 mt-3">
+                          <h5 className="text-sm font-medium flex items-center gap-2 mb-2 text-muted-foreground">
+                            <Package className="h-3.5 w-3.5" />
+                            Prodotti venduti
+                          </h5>
+                          <div className="space-y-2">
+                            {orderItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex items-start justify-between text-sm bg-muted/50 rounded-md px-3 py-2"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">
+                                    {item.product?.name || item.name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {item.quantity} × €{item.unit_price.toLocaleString("it-IT")}
+                                    {item.discount_percent && item.discount_percent > 0 && (
+                                      <span className="ml-1 text-primary">
+                                        (-{item.discount_percent}%)
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                <p className="font-medium text-right ml-2">
+                                  €{item.line_total.toLocaleString("it-IT")}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : deal.status === "won" ? (
                     <Button
