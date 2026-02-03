@@ -33,6 +33,7 @@ import {
   Users,
   Filter,
   KeyRound,
+  Eye,
 } from 'lucide-react';
 import { 
   useTeamMembers, 
@@ -46,6 +47,8 @@ import type { AppRole } from '@/types/database';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ResetPasswordDialog } from './ResetPasswordDialog';
+import { UserVisibilityDialog } from './UserVisibilityDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TeamMembersTableProps {
   roleFilter?: AppRole;
@@ -63,10 +66,12 @@ export function TeamMembersTable({
   const { data: members = [], isLoading, error } = useTeamMembers(roleFilter, !showInactive);
   const { data: assignableRoles = [] } = useAssignableRoles();
   const updateMutation = useUpdateTeamMember();
+  const { isAdmin } = useAuth();
   
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<AppRole | ''>('');
   const [passwordResetMember, setPasswordResetMember] = useState<TeamMember | null>(null);
+  const [visibilityMember, setVisibilityMember] = useState<TeamMember | null>(null);
 
   const handleToggleActive = async (member: TeamMember) => {
     await updateMutation.mutateAsync({
@@ -268,6 +273,14 @@ export function TeamMembersTable({
                             <KeyRound className="mr-2 h-4 w-4" />
                             Reimposta password
                           </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem
+                              onClick={() => setVisibilityMember(member)}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Gestione visibilità
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleToggleActive(member)}
@@ -302,6 +315,13 @@ export function TeamMembersTable({
         onOpenChange={(open) => !open && setPasswordResetMember(null)}
         userId={passwordResetMember?.user_id || ''}
         userName={passwordResetMember?.full_name || passwordResetMember?.email || ''}
+      />
+
+      {/* User Visibility Dialog */}
+      <UserVisibilityDialog
+        open={!!visibilityMember}
+        onOpenChange={(open) => !open && setVisibilityMember(null)}
+        member={visibilityMember}
       />
     </div>
   );
