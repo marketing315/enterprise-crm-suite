@@ -39,6 +39,7 @@ import MarketingDashboard from "@/pages/marketing/MarketingDashboard";
 import MarketingCampaigns from "@/pages/marketing/MarketingCampaigns";
 import MarketingCosts from "@/pages/marketing/MarketingCosts";
 import MarketingReports from "@/pages/marketing/MarketingReports";
+import CeoDashboard from "@/pages/CeoDashboard";
 import Install from "@/pages/Install";
 
 const queryClient = new QueryClient();
@@ -103,9 +104,9 @@ const App = () => (
                 <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
                 <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
                 <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
-                <Route path="/admin/dlq" element={<AdminDlqDashboard />}
-                />
+                <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/ceo-dashboard" element={<CeoDashboard />} />
               </Route>
               
               {/* Redirects */}
