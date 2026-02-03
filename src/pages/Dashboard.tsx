@@ -8,6 +8,7 @@ import { DashboardMilestones } from '@/components/dashboard/DashboardMilestones'
 import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemStatus';
 import { TutorialSheet } from '@/components/dashboard/TutorialSheet';
 import { ActionGuide } from '@/components/dashboard/ActionGuide';
+import { AdminTodoList } from '@/components/dashboard/AdminTodoList';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function Dashboard() {
@@ -177,8 +178,11 @@ export default function Dashboard() {
         <DashboardSystemStatus />
       </div>
 
-      {/* Milestones */}
-      <DashboardMilestones />
+      {/* Todo List & Milestones */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <AdminTodoList />
+        <DashboardMilestones />
+      </div>
     </div>
   );
 }
