@@ -49,13 +49,23 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
   const deactivateStage = useDeactivatePipelineStage();
   const reactivateStage = useReactivatePipelineStage();
   const deleteStage = useDeletePipelineStagePermanently();
+  const addStage = useAddPipelineStage();
 
   const [stageToDeactivate, setStageToDeactivate] = useState<PipelineStage | null>(null);
   const [fallbackStageId, setFallbackStageId] = useState<string>("");
   const [stageToDeletePermanently, setStageToDeletePermanently] = useState<PipelineStage | null>(null);
+  const [newStageName, setNewStageName] = useState("");
+  const [newStageColor, setNewStageColor] = useState("#6366f1");
 
   const activeStages = stages?.filter(s => s.is_active) || [];
   const inactiveStages = stages?.filter(s => !s.is_active) || [];
+
+  const handleAddStage = async () => {
+    if (!newStageName.trim()) return;
+    await addStage.mutateAsync({ name: newStageName.trim(), color: newStageColor });
+    setNewStageName("");
+    setNewStageColor("#6366f1");
+  };
 
   const openDeactivateDialog = (stage: PipelineStage) => {
     setStageToDeactivate(stage);
