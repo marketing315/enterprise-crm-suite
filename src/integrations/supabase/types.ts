@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_suggestions: {
+        Row: {
+          acted_on_at: string | null
+          acted_on_by: string | null
+          brand_id: string
+          confidence: number
+          created_at: string
+          description: string | null
+          dismissed_at: string | null
+          dismissed_by: string | null
+          entity_id: string
+          entity_type: string
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          priority: number
+          suggestion_type: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          acted_on_at?: string | null
+          acted_on_by?: string | null
+          brand_id: string
+          confidence: number
+          created_at?: string
+          description?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          entity_id: string
+          entity_type: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: number
+          suggestion_type: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          acted_on_at?: string | null
+          acted_on_by?: string | null
+          brand_id?: string
+          confidence?: number
+          created_at?: string
+          description?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          entity_id?: string
+          entity_type?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: number
+          suggestion_type?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_suggestions_acted_on_by_fkey"
+            columns: ["acted_on_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_suggestions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_suggestions_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_suggestions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_platform_stats: {
         Row: {
           account_id: string
@@ -795,6 +884,142 @@ export type Database = {
           },
         ]
       }
+      automation_logs: {
+        Row: {
+          action_details: Json | null
+          action_taken: string
+          brand_id: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          error_message: string | null
+          id: string
+          rule_id: string | null
+          status: string
+        }
+        Insert: {
+          action_details?: Json | null
+          action_taken: string
+          brand_id: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          rule_id?: string | null
+          status?: string
+        }
+        Update: {
+          action_details?: Json | null
+          action_taken?: string
+          brand_id?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          rule_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          execution_count: number
+          id: string
+          is_active: boolean
+          last_executed_at: string | null
+          name: string
+          requires_confirmation: boolean
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number
+          id?: string
+          is_active?: boolean
+          last_executed_at?: string | null
+          name: string
+          requires_confirmation?: boolean
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number
+          id?: string
+          is_active?: boolean
+          last_executed_at?: string | null
+          name?: string
+          requires_confirmation?: boolean
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_assignment_state: {
         Row: {
           brand_id: string
@@ -881,6 +1106,7 @@ export type Database = {
       }
       brands: {
         Row: {
+          alert_thresholds: Json | null
           auto_assign_enabled: boolean
           created_at: string
           id: string
@@ -893,6 +1119,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          alert_thresholds?: Json | null
           auto_assign_enabled?: boolean
           created_at?: string
           id?: string
@@ -905,6 +1132,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          alert_thresholds?: Json | null
           auto_assign_enabled?: boolean
           created_at?: string
           id?: string
@@ -1796,6 +2024,54 @@ export type Database = {
           },
         ]
       }
+      deal_scores: {
+        Row: {
+          brand_id: string
+          calculated_at: string
+          deal_id: string
+          factors: Json
+          id: string
+          risk_level: string
+          score: number
+          score_date: string
+        }
+        Insert: {
+          brand_id: string
+          calculated_at?: string
+          deal_id: string
+          factors?: Json
+          id?: string
+          risk_level: string
+          score: number
+          score_date?: string
+        }
+        Update: {
+          brand_id?: string
+          calculated_at?: string
+          deal_id?: string
+          factors?: Json
+          id?: string
+          risk_level?: string
+          score?: number
+          score_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_scores_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_scores_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_stage_history: {
         Row: {
           changed_at: string
@@ -1863,9 +2139,12 @@ export type Database = {
           contact_id: string
           created_at: string
           current_stage_id: string | null
+          deal_risk_level: string | null
+          deal_score: number | null
           id: string
           marketing_campaign_id: string | null
           notes: string | null
+          score_updated_at: string | null
           stage_locked_by_user: boolean
           status: Database["public"]["Enums"]["deal_status"]
           updated_at: string
@@ -1878,9 +2157,12 @@ export type Database = {
           contact_id: string
           created_at?: string
           current_stage_id?: string | null
+          deal_risk_level?: string | null
+          deal_score?: number | null
           id?: string
           marketing_campaign_id?: string | null
           notes?: string | null
+          score_updated_at?: string | null
           stage_locked_by_user?: boolean
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
@@ -1893,9 +2175,12 @@ export type Database = {
           contact_id?: string
           created_at?: string
           current_stage_id?: string | null
+          deal_risk_level?: string | null
+          deal_score?: number | null
           id?: string
           marketing_campaign_id?: string | null
           notes?: string | null
+          score_updated_at?: string | null
           stage_locked_by_user?: boolean
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
@@ -1935,6 +2220,62 @@ export type Database = {
             columns: ["marketing_campaign_id"]
             isOneToOne: false
             referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      executive_reports: {
+        Row: {
+          brand_id: string
+          confidence: number
+          content_markdown: string
+          content_plain: string | null
+          created_at: string
+          generated_by: string
+          id: string
+          metrics_snapshot: Json
+          period_end: string
+          period_start: string
+          report_type: string
+          sent_at: string | null
+          sent_to: Json | null
+        }
+        Insert: {
+          brand_id: string
+          confidence: number
+          content_markdown: string
+          content_plain?: string | null
+          created_at?: string
+          generated_by?: string
+          id?: string
+          metrics_snapshot?: Json
+          period_end: string
+          period_start: string
+          report_type?: string
+          sent_at?: string | null
+          sent_to?: Json | null
+        }
+        Update: {
+          brand_id?: string
+          confidence?: number
+          content_markdown?: string
+          content_plain?: string | null
+          created_at?: string
+          generated_by?: string
+          id?: string
+          metrics_snapshot?: Json
+          period_end?: string
+          period_start?: string
+          report_type?: string
+          sent_at?: string | null
+          sent_to?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "executive_reports_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
             referencedColumns: ["id"]
           },
         ]
@@ -2075,6 +2416,59 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forecasts: {
+        Row: {
+          brand_id: string
+          confidence_level: number
+          created_at: string
+          factors: Json
+          forecast_type: string
+          id: string
+          model_version: string
+          period_end: string
+          period_start: string
+          predicted_max: number | null
+          predicted_min: number | null
+          predicted_value: number
+        }
+        Insert: {
+          brand_id: string
+          confidence_level: number
+          created_at?: string
+          factors?: Json
+          forecast_type: string
+          id?: string
+          model_version?: string
+          period_end: string
+          period_start: string
+          predicted_max?: number | null
+          predicted_min?: number | null
+          predicted_value: number
+        }
+        Update: {
+          brand_id?: string
+          confidence_level?: number
+          created_at?: string
+          factors?: Json
+          forecast_type?: string
+          id?: string
+          model_version?: string
+          period_end?: string
+          period_start?: string
+          predicted_max?: number | null
+          predicted_min?: number | null
+          predicted_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecasts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
             referencedColumns: ["id"]
           },
         ]
@@ -4377,6 +4771,7 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_deal_scores: { Args: { p_brand_id?: string }; Returns: number }
       can_manage_role: {
         Args: {
           manager_role: Database["public"]["Enums"]["app_role"]
@@ -4900,6 +5295,10 @@ export type Database = {
       }
       get_pipeline_funnel_analytics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      get_revenue_forecast: {
+        Args: { p_brand_id: string; p_period?: string }
         Returns: Json
       }
       get_role_level: {
