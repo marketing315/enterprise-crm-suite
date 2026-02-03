@@ -42,6 +42,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { AIMappingGenerator } from "./AIMappingGenerator";
+import { FieldMappingEditor } from "./FieldMappingEditor";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome obbligatorio").max(100),
@@ -383,25 +384,36 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
               {/* Payload Mapping (only for form_urlencoded) */}
               {payloadFormat === "form_urlencoded" && (
                 <div className="space-y-4">
-                  {/* AI Mapping Generator */}
+                  {/* Structured Field Mapping Editor */}
+                  <FieldMappingEditor
+                    value={parseJsonSafe(watch("payload_mapping_json")) || {}}
+                    onChange={(mapping) => {
+                      setValue("payload_mapping_json", JSON.stringify(mapping, null, 2));
+                    }}
+                  />
+
+                  {/* AI Mapping Generator (optional) */}
                   <AIMappingGenerator
                     onMappingGenerated={(mapping) => {
                       setValue("payload_mapping_json", JSON.stringify(mapping, null, 2));
                     }}
                   />
 
-                  {/* Manual JSON editor */}
-                  <div className="space-y-2">
-                    <Label>Mapping Campi (JSON)</Label>
-                    <Textarea
-                      placeholder='{"nome": "contact_snapshot.first_name", "cognome": "contact_snapshot.last_name", "telefono": "contact_snapshot.phone"}'
-                      className="font-mono text-xs min-h-[120px]"
-                      {...register("payload_mapping_json")}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Mappa i campi dell'evento ai campi del destinatario. Formato: {"{"}"campo_destinazione": "percorso.origine"{"}"}
-                    </p>
-                  </div>
+                  {/* Collapsible JSON editor for advanced users */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" type="button" size="sm" className="text-xs text-muted-foreground">
+                        Mostra JSON grezzo
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                      <Textarea
+                        placeholder='{"nome": "contact_snapshot.first_name"}'
+                        className="font-mono text-xs min-h-[100px]"
+                        {...register("payload_mapping_json")}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               )}
             </CollapsibleContent>
