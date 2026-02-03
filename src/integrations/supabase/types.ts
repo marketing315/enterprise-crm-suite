@@ -4642,6 +4642,7 @@ export type Database = {
           sales_total: number
         }[]
       }
+      get_cron_secret: { Args: never; Returns: string }
       get_deal_velocity_metrics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json

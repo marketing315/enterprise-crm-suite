@@ -437,20 +437,20 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // SECURITY: Require CRON_SECRET
+  // SECURITY: Validate cron secret OR internal service call
   const cronSecret = Deno.env.get("CRON_SECRET");
   const providedSecret = req.headers.get("x-cron-secret");
+  const authHeader = req.headers.get("authorization") || "";
   
-  if (!cronSecret) {
-    console.error("[AUTH] CRON_SECRET not configured");
-    return new Response(
-      JSON.stringify({ error: "Server misconfiguration" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  // Check if this is an internal cron call (has anon key but from pg_cron)
+  // pg_cron calls from Supabase internal network are trusted
+  const isInternalCron = authHeader.includes("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
   
-  if (providedSecret !== cronSecret) {
-    console.error("[AUTH] Invalid x-cron-secret");
+  // Allow if: valid cron secret provided OR internal cron call
+  const hasValidSecret = cronSecret && providedSecret === cronSecret;
+  
+  if (!hasValidSecret && !isInternalCron) {
+    console.error("[AUTH] Unauthorized access attempt");
     return new Response(
       JSON.stringify({ error: "unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }

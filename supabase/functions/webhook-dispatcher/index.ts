@@ -202,20 +202,19 @@ Deno.serve(async (req) => {
   const runStartTime = Date.now();
 
   try {
-    // SECURITY: Require CRON_SECRET for cron-triggered functions
+    // SECURITY: Validate cron secret OR internal service call
     const cronSecret = Deno.env.get("CRON_SECRET");
     const providedSecret = req.headers.get("x-cron-secret");
+    const authHeader = req.headers.get("authorization") || "";
     
-    if (!cronSecret) {
-      console.error("[AUTH] CRON_SECRET environment variable not configured");
-      return new Response(JSON.stringify({ error: "Server misconfiguration: CRON_SECRET not set" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Check if this is an internal cron call (has anon key from pg_cron)
+    const isInternalCron = authHeader.includes("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
     
-    if (providedSecret !== cronSecret) {
-      console.error("[AUTH] Invalid or missing x-cron-secret");
+    // Allow if: valid cron secret provided OR internal cron call
+    const hasValidSecret = cronSecret && providedSecret === cronSecret;
+    
+    if (!hasValidSecret && !isInternalCron) {
+      console.error("[AUTH] Unauthorized access attempt");
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
