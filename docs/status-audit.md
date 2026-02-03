@@ -70,7 +70,7 @@
 | Meta Apps | `src/components/settings/meta/MetaAppsSettings.tsx` | ✅ Completo |
 | CAPI Events | `src/hooks/useCapiEvents.ts` | ✅ Completo |
 | CAPI Sender | `supabase/functions/capi-event-sender/index.ts` | ✅ Completo |
-| OAuth Google/Meta | Connettori | ❌ Mancante |
+| OAuth Google/Meta | Connettori | ⏳ Documentato (docs/oauth-channels.md) |
 
 ### 1.7 Azienda/Finanza
 | Componente | File | Stato |
@@ -132,7 +132,8 @@
 | FIN-01 | RBAC Finance | ✅ Fatto | `has_finance_access()` SQL function |
 | FIN-02 | Dashboard costi | ✅ Fatto | `CompanyOverview.tsx` |
 | FIN-03 | Calcolo utile | ⚠️ Parziale | Ricavi - Costi, no tasse |
-| MKTG-01 | OAuth canali | ❌ Mancante | Nessun flow Google/Meta OAuth |
+| MKTG-01 | OAuth canali | ⏳ Documentato | Architettura in docs/oauth-channels.md |
+| NEURO-01 | Dashboard neuromarketing | ✅ Fatto | ActionGuide con loss aversion, urgency copy |
 
 ---
 
