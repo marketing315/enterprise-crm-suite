@@ -39,6 +39,7 @@ import MarketingDashboard from "@/pages/marketing/MarketingDashboard";
 import MarketingCampaigns from "@/pages/marketing/MarketingCampaigns";
 import MarketingCosts from "@/pages/marketing/MarketingCosts";
 import MarketingReports from "@/pages/marketing/MarketingReports";
+import CeoDashboard from "@/pages/CeoDashboard";
 import Install from "@/pages/Install";
 
 const queryClient = new QueryClient();
