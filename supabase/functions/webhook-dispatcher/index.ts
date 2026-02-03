@@ -141,7 +141,7 @@ async function processDelivery(
     }
 
     if (webhook.payload_format === "form_urlencoded") {
-      // Transform payload using mapping if provided, otherwise flatten the payload
+      // Transform payload using explicit mapping (required for legacy endpoints like SiLeads)
       const formData = new URLSearchParams();
       const mapping = webhook.payload_mapping;
       
@@ -154,18 +154,19 @@ async function processDelivery(
           }
         }
       } else {
-        // Flatten payload for form encoding (simple key=value)
+        // Fallback: flatten payload for form encoding (not recommended for legacy endpoints)
         flattenObject(delivery.payload, formData, "");
       }
       
       requestBody = formData.toString();
-      contentType = "application/x-www-form-urlencoded";
+      contentType = "application/x-www-form-urlencoded; charset=UTF-8";
     } else {
       // Standard JSON format
       requestBody = JSON.stringify(delivery.payload);
       contentType = "application/json";
     }
 
+    // Compute signature on the final requestBody (signature and body must match exactly)
     const signature = await computeSignature(webhook.secret, timestamp, requestBody);
 
     // HTTP POST with timeout
@@ -184,7 +185,6 @@ async function processDelivery(
           "X-Webhook-Delivery-Id": delivery.id,
           "X-Webhook-Timestamp": timestamp.toString(),
           "X-Webhook-Signature": `sha256=${signature}`,
-          "X-Webhook-Signature-V1": `sha256=${signature}`,
         },
         body: requestBody,
         signal: controller.signal,
