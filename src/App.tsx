@@ -104,9 +104,9 @@ const App = () => (
                 <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
                 <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
                 <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
-                <Route path="/admin/dlq" element={<AdminDlqDashboard />}
-                />
+                <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/ceo-dashboard" element={<CeoDashboard />} />
               </Route>
               
               {/* Redirects */}

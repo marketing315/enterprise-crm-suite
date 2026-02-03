@@ -98,6 +98,7 @@ const adminMenuItems: Array<{
   path: string;
   requiresRole?: ('admin' | 'ceo' | 'responsabile_venditori')[];
 }> = [
+  { icon: LineChart, label: 'Dashboard CEO', path: '/ceo-dashboard', requiresRole: ['admin', 'ceo'] },
   { icon: UsersRound, label: 'Team', path: '/team' },
   { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
   { icon: Package, label: 'Prodotti', path: '/products', requiresRole: ['admin', 'ceo'] },
