@@ -4940,6 +4940,23 @@ export type Database = {
             Args: {
               p_brand_id: string
               p_custom_url_params?: Json
+              p_event_types: string[]
+              p_is_active?: boolean
+              p_name: string
+              p_payload_format?: string
+              p_payload_mapping?: Json
+              p_secret: string
+              p_url: string
+            }
+            Returns: {
+              secret: string
+              webhook_id: string
+            }[]
+          }
+        | {
+            Args: {
+              p_brand_id: string
+              p_custom_url_params?: Json
               p_event_types: Database["public"]["Enums"]["webhook_event_type"][]
               p_is_active?: boolean
               p_name: string
@@ -5447,7 +5464,7 @@ export type Database = {
         Returns: {
           created_at: string
           custom_url_params: Json
-          event_types: Database["public"]["Enums"]["webhook_event_type"][]
+          event_types: string[]
           id: string
           is_active: boolean
           name: string
@@ -5701,6 +5718,19 @@ export type Database = {
               p_id: string
               p_is_active?: boolean
               p_name?: string
+              p_url?: string
+            }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_custom_url_params?: Json
+              p_event_types?: string[]
+              p_id: string
+              p_is_active?: boolean
+              p_name?: string
+              p_payload_format?: string
+              p_payload_mapping?: Json
               p_url?: string
             }
             Returns: boolean
