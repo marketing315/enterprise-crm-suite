@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useHasMarketingAccess, useCanSeeMarketingSubmenu } from '@/hooks/useMarketingAccess';
 import { BrandSelector } from './BrandSelector';
+import { PageHelpButton } from './PageHelpButton';
 import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -323,6 +324,7 @@ export function MainLayout() {
           <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0">
             <SidebarTrigger />
             <div className="flex-1" />
+            <PageHelpButton />
             <NotificationBell />
             {currentBrand && (
               <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
