@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Phone, Mail, Eye, Building2, Settings2, Save, Trash2 } from "lucide-react";
+import { Mail, Eye, Building2, Settings2, Save, Trash2, ShoppingCart } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -25,10 +25,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteContact } from "@/hooks/useContacts";
+import { useContactsSalesTotals } from "@/hooks/useContactsSales";
 import { toast } from "sonner";
 import { ContactStatusBadge } from "./ContactStatusBadge";
 import { ContactDetailSheet } from "./ContactDetailSheet";
 import { ContactsBulkActionsBar } from "./ContactsBulkActionsBar";
+import { ClickToCallButton } from "./ClickToCallButton";
 import { TableViewSelector } from "./views/TableViewSelector";
 import { SaveViewDialog } from "./views/SaveViewDialog";
 import { EditViewDialog } from "./views/EditViewDialog";
@@ -75,6 +77,9 @@ export function ContactsTableWithViews({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<ContactWithBrand | null>(null);
   const deleteContact = useDeleteContact();
+  
+  // Sales totals for contacts
+  const { data: salesTotals } = useContactsSalesTotals();
 
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
@@ -266,8 +271,14 @@ export function ContactsTableWithViews({
       case "primary_phone":
         return (
           <div className="flex items-center gap-1.5 text-sm">
-            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            {getPrimaryPhone(contact)}
+            <ClickToCallButton
+              contactId={contact.id}
+              phoneNumber={getPrimaryPhone(contact)}
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+            />
+            <span>{getPrimaryPhone(contact)}</span>
           </div>
         );
 
@@ -358,6 +369,20 @@ export function ContactsTableWithViews({
         ) : (
           <span className="text-muted-foreground">-</span>
         );
+
+      case "sales_total": {
+        const salesData = salesTotals?.get(contact.id);
+        if (!salesData || salesData.count === 0) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        return (
+          <div className="flex items-center gap-1.5 text-sm">
+            <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-medium">€{salesData.total.toLocaleString("it-IT")}</span>
+            <span className="text-muted-foreground">({salesData.count})</span>
+          </div>
+        );
+      }
 
       default:
         return null;

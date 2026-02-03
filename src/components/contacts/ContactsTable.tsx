@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, Eye, Trash2 } from 'lucide-react';
+import { Mail, Eye, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ContactStatusBadge } from './ContactStatusBadge';
 import { ContactDetailSheet } from './ContactDetailSheet';
+import { ClickToCallButton } from './ClickToCallButton';
 import { useDeleteContact } from '@/hooks/useContacts';
 import { toast } from 'sonner';
 import type { ContactWithPhones } from '@/types/database';
@@ -122,8 +123,14 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5 text-sm">
-                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                    {getPrimaryPhone(contact)}
+                    <ClickToCallButton
+                      contactId={contact.id}
+                      phoneNumber={getPrimaryPhone(contact)}
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                    />
+                    <span>{getPrimaryPhone(contact)}</span>
                   </div>
                 </TableCell>
                 <TableCell>

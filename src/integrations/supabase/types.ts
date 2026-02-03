@@ -882,6 +882,86 @@ export type Database = {
           },
         ]
       }
+      call_logs: {
+        Row: {
+          brand_id: string
+          call_type: string
+          contact_id: string
+          created_at: string
+          deal_id: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          notes: string | null
+          phone_number: string
+          recording_url: string | null
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          call_type?: string
+          contact_id: string
+          created_at?: string
+          deal_id?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          phone_number: string
+          recording_url?: string | null
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          call_type?: string
+          contact_id?: string
+          created_at?: string
+          deal_id?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          phone_number?: string
+          recording_url?: string | null
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_message_reads: {
         Row: {
           message_id: string
@@ -4350,6 +4430,14 @@ export type Database = {
           label: string
           options: Json
           scope: Database["public"]["Enums"]["custom_field_scope"]
+        }[]
+      }
+      get_contacts_with_sales_totals: {
+        Args: { p_brand_id: string }
+        Returns: {
+          contact_id: string
+          sales_count: number
+          sales_total: number
         }[]
       }
       get_deal_velocity_metrics: {
