@@ -80,7 +80,7 @@ export function ForecastCard({
             Previsione {forecast.period}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <ConfidenceBadge level={forecast.confidence} />
+            <ConfidenceBadge value={forecast.confidence} />
             {onRefresh && (
               <Button 
                 variant="ghost" 
