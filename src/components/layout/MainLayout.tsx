@@ -62,6 +62,7 @@ import {
   ChevronRight,
   DollarSign,
   FileText,
+  LineChart,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
