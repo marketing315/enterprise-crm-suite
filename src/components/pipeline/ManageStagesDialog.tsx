@@ -33,7 +33,7 @@ import {
   useDeactivatePipelineStage,
   useReactivatePipelineStage,
   useDeletePipelineStagePermanently,
-  useAddPipelineStage,
+  useCreatePipelineStage,
 } from "@/hooks/usePipelineStagesAdmin";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
