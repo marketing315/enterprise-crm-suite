@@ -39,6 +39,7 @@ import MarketingDashboard from "@/pages/marketing/MarketingDashboard";
 import MarketingCampaigns from "@/pages/marketing/MarketingCampaigns";
 import MarketingCosts from "@/pages/marketing/MarketingCosts";
 import MarketingReports from "@/pages/marketing/MarketingReports";
+import Install from "@/pages/Install";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/install" element={<Install />} />
               
               {/* Brand selection (requires auth) */}
               <Route
