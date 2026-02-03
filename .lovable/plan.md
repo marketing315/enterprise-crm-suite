@@ -1,528 +1,384 @@
 
+# M13 - Controllo di Gestione & Intelligenza Decisionale (Versione Potenziata)
 
-# Piano Corretto: Meta Conversions API (CAPI) - Server-Side Events
+## Panoramica
 
-## Correzioni Applicate (8/8)
-
-| # | Issue | Correzione |
-|---|-------|------------|
-| 1 | Token in chiaro in DB | Token in secrets/env, DB salva solo `capi_token_key` (riferimento) |
-| 2 | contact_tracking incompleto | Aggiunti `first_touch_source`, `last_touch_at` |
-| 3 | GDPR mancante | `contacts.marketing_consent` + `consent_snapshot` in queue |
-| 4 | event_id collisioni | UNIQUE (brand_id, event_id) + event da `lead_events` |
-| 5 | Race condition | FOR UPDATE SKIP LOCKED + status `processing` |
-| 6 | No batching | Raggruppamento per pixel_id, max 50 eventi/batch |
-| 7 | test_event_code in prod | Solo se ENV !== 'production' |
-| 8 | action_source fisso | Dinamico da `lead_events.source` |
+Implementazione del modulo strategico M13 con le tre migliorie richieste:
+1. **Confidence Level** per KPI stimati
+2. **Alert Spiegabili** con root causes e azioni suggerite
+3. **Budget come baseline** separato concettualmente dai costi storici
 
 ---
 
-## Decisione: Lead Event Trigger
+## Architettura Esistente
 
-**Scelto: `lead_events`** (come da piano originale)
-
-Motivazione:
-- È il point of truth per ogni interazione lead
-- Ha già `source` per determinare `action_source`
-- Evita falsi positivi (contatti senza lead event reale)
-- Supporta future estensioni (eventi multipli per contatto)
+- RPC `get_admin_finance_kpis` calcola: total_expenses, sales_total, margin
+- Tabelle: `expenses`, `expense_categories`, `budgets`
+- Accesso via `has_finance_access()` per admin/ceo/amministrazione
+- System Brand `00000000-...` per aggregazione cross-brand
 
 ---
 
-## Fase 1: Migrazioni Database
+## 1. Schema Database - Nuove Tabelle
 
-### 1.1 Estensione `contacts` - Consenso GDPR
+### 1.1 Tabella `cost_centers`
 
-```sql
-ALTER TABLE contacts ADD COLUMN marketing_consent BOOLEAN DEFAULT false;
-ALTER TABLE contacts ADD COLUMN marketing_consent_at TIMESTAMPTZ;
-```
+| Campo | Tipo | Note |
+|-------|------|------|
+| id | uuid | PK |
+| brand_id | uuid | FK brands |
+| name | text | es. "Sede Milano" |
+| code | text | codice breve opzionale |
+| is_active | boolean | default true |
+| created_at | timestamptz | |
 
-### 1.2 Tabella `contact_tracking`
+### 1.2 Tabella `brand_tax_settings`
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    contact_tracking                         │
-├─────────────────────────────────────────────────────────────┤
-│ id                    UUID PK                               │
-│ brand_id              UUID FK                               │
-│ contact_id            UUID FK UNIQUE (1:1 con contacts)     │
-│ fbp                   TEXT                                  │
-│ fbc                   TEXT                                  │
-│ gclid                 TEXT                                  │
-│ wbraid                TEXT                                  │
-│ gbraid                TEXT                                  │
-│ utm_source            TEXT                                  │
-│ utm_medium            TEXT                                  │
-│ utm_campaign          TEXT                                  │
-│ utm_content           TEXT                                  │
-│ utm_term              TEXT                                  │
-│ client_ip             TEXT                                  │
-│ client_user_agent     TEXT                                  │
-│ first_touch_source    TEXT (webhook-ingest|meta-leads|ui)   │  ← NUOVO
-│ first_touch_at        TIMESTAMPTZ                           │
-│ last_touch_at         TIMESTAMPTZ                           │  ← NUOVO
-│ created_at            TIMESTAMPTZ                           │
-│ updated_at            TIMESTAMPTZ                           │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**RLS**: Stesse policy di contacts (`user_belongs_to_brand`)
-
-### 1.3 Estensione `meta_apps` - CAPI Config
-
-```sql
--- NO token in chiaro, solo riferimento a secret
-ALTER TABLE meta_apps ADD COLUMN pixel_id TEXT;
-ALTER TABLE meta_apps ADD COLUMN capi_token_key TEXT;        -- Nome secret (es. META_CAPI_TOKEN_BRAND1)
-ALTER TABLE meta_apps ADD COLUMN capi_enabled BOOLEAN DEFAULT false;
-ALTER TABLE meta_apps ADD COLUMN capi_test_event_code TEXT;  -- Solo per test
-```
-
-Il token CAPI viene letto da:
-- `Deno.env.get(meta_apps.capi_token_key)` nell'edge function
-
-### 1.4 Tabella `meta_capi_event_queue`
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                  meta_capi_event_queue                      │
-├─────────────────────────────────────────────────────────────┤
-│ id                    UUID PK                               │
-│ brand_id              UUID FK                               │
-│ meta_app_id           UUID FK                               │
-│ event_name            TEXT (Lead, Purchase, etc)            │
-│ event_id              TEXT                                  │
-│ event_time            TIMESTAMPTZ                           │
-│ action_source         TEXT (website|system_generated)       │  ← Dinamico
-│ user_data             JSONB                                 │
-│ custom_data           JSONB                                 │
-│ contact_id            UUID FK                               │
-│ deal_id               UUID FK (nullable)                    │
-│ lead_event_id         UUID FK (nullable)                    │
-│ consent_snapshot      BOOLEAN                               │  ← GDPR audit
-│ status                meta_capi_status ENUM                 │
-│ processing_at         TIMESTAMPTZ                           │  ← Lock
-│ processing_by         TEXT                                  │  ← Request ID
-│ attempts              INTEGER DEFAULT 0                     │
-│ max_attempts          INTEGER DEFAULT 3                     │
-│ last_error            TEXT                                  │
-│ sent_at               TIMESTAMPTZ                           │
-│ created_at            TIMESTAMPTZ                           │
-├─────────────────────────────────────────────────────────────┤
-│ UNIQUE (brand_id, event_id)                                 │  ← FIX #4
-│ INDEX (status, created_at) WHERE status IN (pending, retry) │
-│ INDEX (brand_id, event_name, created_at)                    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**ENUM meta_capi_status:**
-```sql
-CREATE TYPE meta_capi_status AS ENUM (
-  'pending',
-  'processing',  -- Lock attivo
-  'sent',
-  'failed',
-  'skipped'      -- No consent o altri skip
-);
-```
-
-### 1.5 Trigger: Queue Lead Event
-
-```sql
-CREATE FUNCTION queue_capi_lead_event() RETURNS TRIGGER AS $$
-DECLARE
-  v_meta_app RECORD;
-  v_consent BOOLEAN;
-  v_action_source TEXT;
-BEGIN
-  -- Solo se contact_id presente
-  IF NEW.contact_id IS NULL THEN
-    RETURN NEW;
-  END IF;
-
-  -- Trova meta_app con CAPI abilitato per questo brand
-  SELECT id, pixel_id INTO v_meta_app
-  FROM meta_apps
-  WHERE brand_id = NEW.brand_id
-    AND capi_enabled = true
-    AND pixel_id IS NOT NULL
-  LIMIT 1;
-
-  IF v_meta_app.id IS NULL THEN
-    RETURN NEW;
-  END IF;
-
-  -- Verifica consenso
-  SELECT marketing_consent INTO v_consent
-  FROM contacts WHERE id = NEW.contact_id;
-
-  -- Determina action_source da lead_events.source
-  v_action_source := CASE
-    WHEN NEW.source = 'manual' THEN 'system_generated'
-    ELSE 'website'
-  END;
-
-  INSERT INTO meta_capi_event_queue (
-    brand_id, meta_app_id, event_name, event_id,
-    event_time, action_source, contact_id, deal_id, lead_event_id,
-    consent_snapshot, status
-  ) VALUES (
-    NEW.brand_id, v_meta_app.id, 'Lead',
-    'lead_' || NEW.id,  -- event_id = lead_{lead_event_id}
-    NEW.occurred_at, v_action_source, NEW.contact_id, NEW.deal_id, NEW.id,
-    COALESCE(v_consent, false),
-    CASE WHEN v_consent = true THEN 'pending' ELSE 'skipped' END
-  )
-  ON CONFLICT (brand_id, event_id) DO NOTHING;  -- Dedup
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_queue_capi_lead
-AFTER INSERT ON lead_events
-FOR EACH ROW EXECUTE FUNCTION queue_capi_lead_event();
-```
-
-### 1.6 Trigger: Queue Purchase Event (Deal Won)
-
-```sql
-CREATE FUNCTION queue_capi_purchase_event() RETURNS TRIGGER AS $$
-DECLARE
-  v_meta_app RECORD;
-  v_consent BOOLEAN;
-BEGIN
-  -- Solo quando status cambia a 'won'
-  IF NEW.status != 'won' OR (OLD.status IS NOT NULL AND OLD.status = 'won') THEN
-    RETURN NEW;
-  END IF;
-
-  -- Trova meta_app con CAPI abilitato
-  SELECT id, pixel_id INTO v_meta_app
-  FROM meta_apps
-  WHERE brand_id = NEW.brand_id
-    AND capi_enabled = true
-    AND pixel_id IS NOT NULL
-  LIMIT 1;
-
-  IF v_meta_app.id IS NULL THEN
-    RETURN NEW;
-  END IF;
-
-  -- Verifica consenso
-  SELECT marketing_consent INTO v_consent
-  FROM contacts WHERE id = NEW.contact_id;
-
-  INSERT INTO meta_capi_event_queue (
-    brand_id, meta_app_id, event_name, event_id,
-    event_time, action_source, contact_id, deal_id,
-    consent_snapshot, status
-  ) VALUES (
-    NEW.brand_id, v_meta_app.id, 'Purchase',
-    'purchase_' || NEW.id,
-    COALESCE(NEW.closed_at, NOW()),
-    'system_generated',  -- Deal won = sempre system_generated
-    NEW.contact_id, NEW.id,
-    COALESCE(v_consent, false),
-    CASE WHEN v_consent = true THEN 'pending' ELSE 'skipped' END
-  )
-  ON CONFLICT (brand_id, event_id) DO NOTHING;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_queue_capi_purchase
-AFTER UPDATE ON deals
-FOR EACH ROW EXECUTE FUNCTION queue_capi_purchase_event();
-```
+| Campo | Tipo | Note |
+|-------|------|------|
+| id | uuid | PK |
+| brand_id | uuid | UNIQUE |
+| corporate_tax_rate | numeric | IRES (es. 24) |
+| regional_tax_rate | numeric | IRAP (es. 3.9) |
+| vat_rate_default | numeric | IVA standard (22) |
+| fiscal_year_start | integer | 1-12 |
+| notes | text | disclaimer custom |
 
 ---
 
-## Fase 2: Edge Function `capi-event-sender`
+## 2. Schema Database - Estensioni Tabelle Esistenti
 
-### Architettura
+### 2.1 Estensione `expense_categories`
+
+Nuovi campi:
+| Campo | Tipo | Note |
+|-------|------|------|
+| parent_id | uuid | gerarchia nullable |
+| category_type | text | 'direct'/'indirect'/'personnel'/'marketing'/'overhead' |
+| is_deductible | boolean | default true |
+
+### 2.2 Estensione `expenses`
+
+Nuovi campi:
+| Campo | Tipo | Note |
+|-------|------|------|
+| cost_center_id | uuid | FK cost_centers |
+| periodicity | text | 'one_off'/'monthly'/'quarterly'/'yearly' |
+| recurring_until | date | per costi ricorrenti |
+| is_deductible | boolean | override categoria |
+| tax_rate | numeric | aliquota IVA (22, 10, 4, 0) |
+| gross_amount | numeric | importo lordo |
+
+---
+
+## 3. RPC `get_ceo_dashboard_kpis` - Output Completo
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                   capi-event-sender                         │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Verifica CRON_SECRET                                     │
-│ 2. Claim atomico con FOR UPDATE SKIP LOCKED                 │
-│ 3. Raggruppa eventi per pixel_id                            │
-│ 4. Per ogni pixel:                                          │
-│    a. Leggi token da env (capi_token_key)                   │
-│    b. Arricchisci user_data da contacts + tracking          │
-│    c. Hash SHA-256 (em, ph, fn, ln, ct, zp)                 │
-│    d. POST batch a Meta CAPI                                │
-│    e. Update status bulk                                    │
-│ 5. Gestione retry con backoff                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Claim Atomico (Fix #5)
-
-```sql
--- RPC: claim_capi_events
-CREATE FUNCTION claim_capi_events(
-  p_limit INTEGER DEFAULT 50,
-  p_processing_by TEXT DEFAULT NULL
-) RETURNS SETOF meta_capi_event_queue AS $$
-BEGIN
-  RETURN QUERY
-  UPDATE meta_capi_event_queue
-  SET 
-    status = 'processing',
-    processing_at = NOW(),
-    processing_by = COALESCE(p_processing_by, gen_random_uuid()::text)
-  WHERE id IN (
-    SELECT id FROM meta_capi_event_queue
-    WHERE status = 'pending'
-      AND attempts < max_attempts
-      AND consent_snapshot = true  -- Solo con consenso
-    ORDER BY created_at
-    LIMIT p_limit
-    FOR UPDATE SKIP LOCKED
-  )
-  RETURNING *;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### Batching per Pixel (Fix #6)
-
-```typescript
-// Raggruppa eventi per pixel_id
-const eventsByPixel = new Map<string, CapiEvent[]>();
-for (const event of claimedEvents) {
-  const key = event.meta_app_id;
-  if (!eventsByPixel.has(key)) {
-    eventsByPixel.set(key, []);
+{
+  // === FATTURATO ===
+  revenue_total: number,
+  revenue_from_won_deals: number,
+  
+  // === COSTI STRUTTURATI ===
+  costs_direct: number,
+  costs_indirect: number,
+  costs_personnel: number,
+  costs_marketing: number,
+  costs_by_center: [{center_name, amount}],
+  costs_by_category: [{category_name, type, amount}],
+  
+  // === MARGINALITA ===
+  gross_margin: number,
+  operating_margin: number,
+  gross_margin_percent: number,
+  
+  // === TASSE STIMATE ===
+  estimated_vat_payable: number,
+  estimated_corporate_tax: number,
+  estimated_net_profit: number,
+  
+  // === COMPARATIVI ===
+  prev_period_revenue: number,
+  prev_period_costs: number,
+  revenue_change_percent: number,
+  costs_change_percent: number,
+  
+  // === MARKETING ROI ===
+  marketing_spend: number,
+  marketing_roi: number,
+  
+  // === [NUOVO] CONFIDENCE LEVELS ===
+  confidence: {
+    estimated_net_profit: number,  // 0.0 - 1.0
+    marketing_roi: number,
+    factors: [{
+      factor: string,
+      contribution: number,
+      detail: string
+    }]
+  },
+  
+  // === [NUOVO] ALERT SPIEGABILI ===
+  alerts: [{
+    type: string,
+    severity: 'info' | 'warning' | 'error' | 'success',
+    message: string,
+    root_causes: string[],
+    suggested_action: string,
+    metric_value: number,
+    threshold_value: number
+  }],
+  
+  // === [NUOVO] BUDGET BASELINE ===
+  budget_baseline: {
+    total_planned: number,
+    total_spent: number,
+    variance: number,
+    variance_percent: number,
+    categories_over_budget: [{
+      category_name: string,
+      planned: number,
+      actual: number,
+      overage: number
+    }],
+    remaining_allocable: number
   }
-  eventsByPixel.get(key)!.push(event);
-}
-
-// Invia batch per ogni pixel
-for (const [metaAppId, events] of eventsByPixel) {
-  const metaApp = metaApps.find(a => a.id === metaAppId);
-  const token = Deno.env.get(metaApp.capi_token_key);
-  
-  if (!token) {
-    console.error(`Missing token for ${metaApp.capi_token_key}`);
-    // Mark as failed
-    continue;
-  }
-  
-  const payload = {
-    data: events.map(e => buildCapiPayload(e, contacts, tracking)),
-    // Solo in non-production
-    ...(Deno.env.get("ENVIRONMENT") !== "production" && metaApp.capi_test_event_code 
-        ? { test_event_code: metaApp.capi_test_event_code } 
-        : {})
-  };
-  
-  await fetch(`https://graph.facebook.com/v20.0/${metaApp.pixel_id}/events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, access_token: token })
-  });
-}
-```
-
-### Hashing SHA-256
-
-```typescript
-async function sha256(value: string): Promise<string> {
-  const normalized = value.toLowerCase().trim();
-  const encoder = new TextEncoder();
-  const data = encoder.encode(normalized);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function buildUserData(contact, tracking) {
-  return {
-    em: contact.email ? [await sha256(contact.email)] : undefined,
-    ph: contact.phone ? [await sha256(contact.phone)] : undefined,
-    fn: contact.first_name ? [await sha256(contact.first_name)] : undefined,
-    ln: contact.last_name ? [await sha256(contact.last_name)] : undefined,
-    ct: contact.city ? [await sha256(contact.city)] : undefined,
-    zp: contact.cap ? [await sha256(contact.cap)] : undefined,
-    country: ["it"],
-    // Non hashati
-    fbp: tracking?.fbp,
-    fbc: tracking?.fbc,
-    client_ip_address: tracking?.client_ip,
-    client_user_agent: tracking?.client_user_agent,
-  };
 }
 ```
 
 ---
 
-## Fase 3: Modifiche Ingest
+## 4. Confidence Level - Formula di Calcolo
 
-### 3.1 webhook-ingest
-
-Estrarre e salvare tracking params nel payload:
-
-```typescript
-// Estrai tracking params
-const trackingParams = {
-  fbp: rawBody._fbp || rawBody.fbp,
-  fbc: rawBody._fbc || rawBody.fbc,
-  gclid: rawBody.gclid,
-  wbraid: rawBody.wbraid,
-  gbraid: rawBody.gbraid,
-  utm_source: rawBody.utm_source,
-  utm_medium: rawBody.utm_medium,
-  utm_campaign: rawBody.utm_campaign,
-  utm_content: rawBody.utm_content,
-  utm_term: rawBody.utm_term,
-};
-
-// Dopo contact creation, upsert tracking
-if (contactId && hasAnyTracking(trackingParams)) {
-  await supabase.from("contact_tracking").upsert({
-    brand_id: brandId,
-    contact_id: contactId,
-    ...trackingParams,
-    client_ip: ipAddress,
-    client_user_agent: userAgent,
-    first_touch_source: "webhook-ingest",
-    first_touch_at: new Date().toISOString(),
-  }, { onConflict: "contact_id" });
-}
-```
-
-### 3.2 meta-leads-webhook
-
-```typescript
-// Meta non passa direttamente fbp/fbc, ma salviamo campaign_id per attribution
-const trackingParams = {
-  utm_source: "meta",
-  utm_medium: "paid",
-  utm_campaign: leadData?.campaign_name,
-};
-
-// Upsert tracking
-await supabase.from("contact_tracking").upsert({
-  brand_id: metaApp.brand_id,
-  contact_id: contactId,
-  ...trackingParams,
-  first_touch_source: "meta-leads-webhook",
-  first_touch_at: new Date().toISOString(),
-}, { onConflict: "contact_id" });
-```
-
----
-
-## Fase 4: UI Settings
-
-### 4.1 Estensione MetaAppFormDrawer
-
-Nuova sezione "Conversions API":
+Il confidence level indica quanto possiamo fidarci delle stime. Viene calcolato come media ponderata di fattori:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  🔄 Conversions API (CAPI)                                  │
-├─────────────────────────────────────────────────────────────┤
-│  Pixel ID            [_________________]                    │
-│  Token Secret Key    [_________________] (nome variabile)   │
-│                      ⓘ Es: META_CAPI_TOKEN_BRAND1           │
-│  ☑ Abilita invio eventi CAPI                                │
-│                                                             │
-│  Test Event Code     [_________________] (solo sviluppo)    │
-│                                                             │
-│  ⓘ Gli eventi vengono inviati solo per contatti con        │
-│    consenso marketing attivo.                               │
-└─────────────────────────────────────────────────────────────┘
+confidence = (
+  recurring_costs_known * 0.30 +    -- % costi ricorrenti su totale
+  confirmed_sales_ratio * 0.30 +    -- % vendite confermate
+  period_coverage * 0.20 +          -- giorni con dati / giorni totali
+  historical_accuracy * 0.20        -- accuratezza stime passate (fase 2)
+)
 ```
 
-### 4.2 Consenso Marketing in ContactDetailSheet
+### Fattori di Confidence
 
-Aggiungere toggle "Consenso Marketing" nella scheda contatto.
+| Fattore | Peso | Calcolo |
+|---------|------|---------|
+| `recurring_costs_known` | 30% | costi con periodicity != 'one_off' / totale costi |
+| `confirmed_sales_ratio` | 30% | deal won con payment confirmed / totale won |
+| `period_coverage` | 20% | giorni con almeno 1 transazione / giorni periodo |
+| `historical_accuracy` | 20% | (M14) confronto stime vs consuntivi passati |
+
+### Output UI
+
+- Confidence > 0.8: Badge verde "Alta affidabilita"
+- Confidence 0.5-0.8: Badge giallo "Media affidabilita"
+- Confidence < 0.5: Badge rosso "Bassa affidabilita - dati incompleti"
 
 ---
 
-## Fase 5: Secrets da Configurare
+## 5. Alert Spiegabili - Tipi e Root Cause Analysis
 
-Per ogni brand che usa CAPI:
+### 5.1 Tipi di Alert
 
+| Tipo | Trigger | Severity |
+|------|---------|----------|
+| `MARGIN_DECLINING` | margine < media 3m - 10% | warning |
+| `COST_ANOMALY` | singolo costo > 2x media categoria | warning |
+| `BUDGET_EXCEEDED` | actual > budget categoria | error |
+| `REVENUE_DROP` | revenue < prev_month - 20% | error |
+| `POSITIVE_TREND` | margine > prev_month + 15% | success |
+| `MISSING_COSTS` | categoria senza costi registrati | info |
+| `MARKETING_ROI_LOW` | ROI marketing < 100% | warning |
+
+### 5.2 Struttura Alert Completa
+
+```text
+{
+  type: "MARGIN_DECLINING",
+  severity: "warning",
+  message: "Margine in calo del 12% rispetto alla media trimestrale",
+  root_causes: [
+    "Marketing: +18% rispetto al mese precedente",
+    "Revenue: -8% rispetto al mese precedente",
+    "Costi personale: +5% (nuova assunzione)"
+  ],
+  suggested_action: "Analizzare ROI campagne Brand X. Valutare ottimizzazione budget marketing.",
+  metric_value: -12.3,
+  threshold_value: -10.0
+}
 ```
-META_CAPI_TOKEN_<BRAND_SLUG> = "EAA..."
-```
 
-Esempio:
-- Brand "clinica-milano" → `META_CAPI_TOKEN_CLINICA_MILANO`
-- In `meta_apps.capi_token_key` = `"META_CAPI_TOKEN_CLINICA_MILANO"`
+### 5.3 Logica Root Cause Analysis
+
+Per ogni alert, la RPC identifica i contributori principali analizzando:
+
+1. **MARGIN_DECLINING**: Confronta ogni categoria costo MoM, ordina per delta assoluto
+2. **COST_ANOMALY**: Identifica vendor/descrizione del costo anomalo
+3. **BUDGET_EXCEEDED**: Lista categorie con scostamento > 0
+4. **MARKETING_ROI_LOW**: Identifica campagne con ROAS < 1
 
 ---
 
-## File da Creare
+## 6. Budget come Baseline Decisionale
+
+### 6.1 Filosofia
+
+- **Budget**: piano decisionale, modificabile, forward-looking
+- **Costi**: realta storica, immutabile, backward-looking
+
+### 6.2 Struttura `budget_baseline`
+
+```text
+budget_baseline: {
+  total_planned: 50000,           // totale budget mese
+  total_spent: 42000,             // costi effettivi
+  variance: 8000,                 // planned - spent (positivo = sotto budget)
+  variance_percent: 16.0,         // % risparmiato
+  
+  categories_over_budget: [
+    { category_name: "Marketing", planned: 10000, actual: 12500, overage: 2500 }
+  ],
+  
+  remaining_allocable: 8000       // budget riallocabile a fine mese
+}
+```
+
+### 6.3 UI Budget Baseline
+
+Nella dashboard CEO:
+- Card "Budget Disponibile" con remaining_allocable
+- Alert automatico quando categoria sfora
+- Suggerimento: "Riallocare X da Categoria A a Categoria B"
+
+---
+
+## 7. Componenti React
+
+### Nuovi file
 
 | File | Descrizione |
 |------|-------------|
-| `supabase/functions/capi-event-sender/index.ts` | Edge function dispatcher |
-| `src/hooks/useCapiEvents.ts` | Hook analytics CAPI |
-| `src/types/capi.ts` | Tipi TypeScript |
+| `src/pages/CeoDashboard.tsx` | Dashboard CEO principale |
+| `src/hooks/useCeoDashboard.ts` | Hook per RPC |
+| `src/components/ceo/CeoKpiCards.tsx` | KPI con confidence badge |
+| `src/components/ceo/CeoRevenueChart.tsx` | Grafico vendite vs costi |
+| `src/components/ceo/CeoCostBreakdown.tsx` | Breakdown per categoria/centro |
+| `src/components/ceo/CeoAlertsPanel.tsx` | Pannello alert spiegabili |
+| `src/components/ceo/ConfidenceBadge.tsx` | Badge livello confidenza |
+| `src/components/ceo/TaxDisclaimer.tsx` | Banner disclaimer fiscale |
+| `src/components/ceo/BudgetBaselineCard.tsx` | Card budget disponibile |
 
-## File da Modificare
+### Modifiche esistenti
 
 | File | Modifica |
 |------|----------|
-| `supabase/functions/webhook-ingest/index.ts` | Estrarre tracking params |
-| `supabase/functions/meta-leads-webhook/index.ts` | Salvare UTM/campaign_id |
-| `src/components/settings/meta/MetaAppFormDrawer.tsx` | Campi CAPI |
-| `src/components/contacts/ContactDetailSheet.tsx` | Toggle consenso |
-| `src/hooks/useMetaApps.ts` | Tipi CAPI |
-| `supabase/config.toml` | Function capi-event-sender |
+| `src/App.tsx` | Route /ceo-dashboard |
+| `src/components/layout/MainLayout.tsx` | Menu item CEO |
+| `src/types/company.ts` | Tipi CeoKpi, Alert, Confidence |
+| `src/hooks/useCompanyFinance.ts` | Nuovi campi expense |
 
 ---
 
-## Ordine di Implementazione
+## 8. UI Alert Panel
 
-1. **Migrazione DB**
-   - `contacts.marketing_consent` + `marketing_consent_at`
-   - `contact_tracking` con tutti i campi
-   - `meta_apps` campi CAPI (pixel_id, capi_token_key, capi_enabled)
-   - `meta_capi_event_queue` con UNIQUE (brand_id, event_id)
-   - RPC `claim_capi_events` con FOR UPDATE SKIP LOCKED
-   - Trigger su `lead_events` e `deals`
-
-2. **Edge Function `capi-event-sender`**
-   - Claim atomico
-   - Batch per pixel
-   - Hash SHA-256
-   - Retry con backoff
-   - Protezione CRON_SECRET
-
-3. **Modifiche ingest**
-   - webhook-ingest: estrazione tracking
-   - meta-leads-webhook: UTM/campaign
-
-4. **UI Settings**
-   - Form CAPI in MetaAppFormDrawer
-   - Toggle consenso in ContactDetailSheet
-
-5. **Test QA**
-   - 3 eventi Lead + 1 Purchase
-   - Dedup stesso event_id
-   - Skip senza consenso
-   - Batch multi-pixel
+```text
++-----------------------------------------------+
+|  Alert & Anomalie                      [3]    |
++-----------------------------------------------+
+|  [!] MARGIN_DECLINING                warning  |
+|  Margine -12% rispetto alla media 3 mesi      |
+|                                               |
+|  Cause principali:                            |
+|  - Marketing: +18%                            |
+|  - Revenue: -8%                               |
+|                                               |
+|  Azione suggerita:                            |
+|  Analizzare campagne Brand X                  |
+|                                               |
+|  [Vai al dettaglio] [Ignora]                  |
++-----------------------------------------------+
+|  [!] BUDGET_EXCEEDED                  error   |
+|  Categoria "Marketing" ha sforato del 25%     |
+|  ...                                          |
++-----------------------------------------------+
+```
 
 ---
 
-## Note Tecniche Finali
+## 9. Sequenza Implementazione
 
-- **Token sicuri**: Mai in DB, sempre in env/secrets
-- **Claim atomico**: FOR UPDATE SKIP LOCKED previene doppi invii
-- **Batch**: Max 50 eventi per run, raggruppati per pixel
-- **GDPR**: consent_snapshot per audit, skip se false
-- **test_event_code**: Solo in ENV !== 'production'
-- **action_source**: Dinamico da source (website vs system_generated)
-- **Retry**: Max 3 tentativi con backoff esponenziale
+### Fase 1: Database
+1. Creare tabella `cost_centers`
+2. Creare tabella `brand_tax_settings`
+3. ALTER `expense_categories` (parent_id, category_type, is_deductible)
+4. ALTER `expenses` (cost_center_id, periodicity, tax_rate, gross_amount, is_deductible, recurring_until)
+5. RLS policies
 
+### Fase 2: RPC Backend
+1. Creare `get_ceo_dashboard_kpis` con:
+   - Calcolo costi strutturati
+   - Calcolo tasse stimate
+   - Calcolo confidence levels
+   - Generazione alert con root causes
+   - Budget baseline comparison
+
+### Fase 3: Frontend Settings
+1. UI gestione centri di costo
+2. UI configurazione tasse brand
+3. Estensione form costi
+
+### Fase 4: Frontend Dashboard
+1. Pagina CeoDashboard
+2. KPI Cards con ConfidenceBadge
+3. AlertsPanel espandibile
+4. BudgetBaselineCard
+5. Grafici e breakdown
+
+---
+
+## 10. Sicurezza
+
+### Accesso
+
+```typescript
+// Solo admin/ceo possono accedere alla dashboard CEO
+if (!isAdmin && !isCeo) {
+  return <AccessDenied />;
+}
+```
+
+### RLS Policies
+
+- `brand_tax_settings`: SELECT/UPDATE solo admin/ceo
+- `cost_centers`: SELECT per finance, CRUD per admin/ceo
+- RPC `get_ceo_dashboard_kpis`: validazione interna con `has_finance_access()`
+
+---
+
+## 11. Disclaimer Fiscale
+
+Ogni visualizzazione include il banner:
+
+```text
++-----------------------------------------------+
+|  i  Stima gestionale                          |
+|     Questi dati sono calcolati per supporto   |
+|     decisionale interno. Non costituiscono    |
+|     documentazione fiscale ufficiale.         |
++-----------------------------------------------+
+```
+
+---
+
+## Risultato Atteso
+
+Al completamento di M13, CEO e Admin avranno:
+
+1. Dashboard strategica con KPI finanziari e **livello di confidenza**
+2. Costi strutturati per categoria, centro, tipo (diretto/indiretto)
+3. **Alert intelligenti** con cause radice e azioni suggerite
+4. **Budget baseline** come riferimento decisionale riallocabile
+5. Stima tasse (IVA, IRES, IRAP) con disclaimer appropriato
+6. Confronti temporali (MoM, YoY) per decisioni informate
