@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { FileSpreadsheet, ExternalLink, RefreshCw, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { 
+  FileSpreadsheet, 
+  ExternalLink, 
+  RefreshCw, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle,
+  Download,
+  Calendar,
+  Filter,
+  Loader2
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +19,29 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useBrand } from "@/contexts/BrandContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { it } from "date-fns/locale";
+import { toast } from "sonner";
+
+type ExportType = "full" | "sales" | "deals" | "kpi";
 
 export function GoogleSheetsSettings() {
   const { currentBrand } = useBrand();
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const queryClient = useQueryClient();
+  
+  const [exportType, setExportType] = useState<ExportType>("full");
+  const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch recent export logs
   const { data: exportLogs, isLoading: logsLoading } = useQuery({
@@ -28,7 +53,7 @@ export function GoogleSheetsSettings() {
         .select("*")
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(15);
       if (error) throw error;
       return data;
     },
@@ -41,13 +66,61 @@ export function GoogleSheetsSettings() {
     success: exportLogs?.filter((l) => l.status === "success").length || 0,
     failed: exportLogs?.filter((l) => l.status === "failed").length || 0,
     processing: exportLogs?.filter((l) => l.status === "processing").length || 0,
+    totalRows: exportLogs?.reduce((acc, l) => acc + (l.rows_exported || 0), 0) || 0,
   };
 
-  const handleTestConnection = async () => {
-    setIsTestingConnection(true);
-    // Simulate test - in production this would call an edge function
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsTestingConnection(false);
+  // Export mutation
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      // Calculate date range
+      let dateFrom: string | undefined;
+      const dateTo = format(new Date(), "yyyy-MM-dd");
+      
+      switch (dateRange) {
+        case "7d":
+          dateFrom = format(subDays(new Date(), 7), "yyyy-MM-dd");
+          break;
+        case "30d":
+          dateFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
+          break;
+        case "90d":
+          dateFrom = format(subDays(new Date(), 90), "yyyy-MM-dd");
+          break;
+        case "all":
+          dateFrom = undefined;
+          break;
+      }
+
+      const { data, error } = await supabase.functions.invoke("sheets-advanced-export", {
+        body: {
+          export_type: exportType,
+          brand_id: currentBrand?.id,
+          date_from: dateFrom,
+          date_to: dateTo,
+        },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || "Export failed");
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Export completato: ${data.rows_exported} righe esportate`);
+      queryClient.invalidateQueries({ queryKey: ["sheets-export-logs"] });
+    },
+    onError: (error) => {
+      toast.error(`Errore export: ${error.message}`);
+    },
+  });
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await exportMutation.mutateAsync();
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -63,7 +136,7 @@ export function GoogleSheetsSettings() {
               <div>
                 <CardTitle>Google Sheets Integration</CardTitle>
                 <CardDescription>
-                  Sincronizzazione automatica dei lead verso Google Sheets
+                  Export avanzato verso Google Sheets con SALES, DEALS e KPI
                 </CardDescription>
               </div>
             </div>
@@ -77,8 +150,7 @@ export function GoogleSheetsSettings() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              L'integrazione Google Sheets è configurata a livello di ambiente. 
-              Contatta l'amministratore di sistema per modificare le credenziali.
+              L'integrazione utilizza un Service Account globale. I dati vengono esportati in fogli separati (SALES, DEALS, KPI).
             </AlertDescription>
           </Alert>
 
@@ -117,9 +189,9 @@ export function GoogleSheetsSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Export automatico</Label>
+              <Label>Export automatico (lead events)</Label>
               <p className="text-sm text-muted-foreground">
-                I nuovi lead vengono esportati automaticamente
+                I nuovi lead vengono esportati automaticamente nel tab ALL_RAW
               </p>
             </div>
             <Switch checked disabled />
@@ -127,13 +199,116 @@ export function GoogleSheetsSettings() {
         </CardContent>
       </Card>
 
+      {/* Manual Export Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Export Manuale Avanzato
+          </CardTitle>
+          <CardDescription>
+            Esporta dati specifici con filtri personalizzati
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Export Type */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Filter className="h-3 w-3" />
+                Tipo Export
+              </Label>
+              <Select value={exportType} onValueChange={(v) => setExportType(v as ExportType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">
+                    <span className="flex items-center gap-2">
+                      📦 Completo (SALES + DEALS + KPI)
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="sales">
+                    <span className="flex items-center gap-2">
+                      💰 Solo Vendite
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="deals">
+                    <span className="flex items-center gap-2">
+                      🎯 Solo Trattative
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="kpi">
+                    <span className="flex items-center gap-2">
+                      📊 Solo KPI (formule)
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date Range */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Periodo
+              </Label>
+              <Select value={dateRange} onValueChange={(v) => setDateRange(v as typeof dateRange)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Ultimi 7 giorni</SelectItem>
+                  <SelectItem value="30d">Ultimi 30 giorni</SelectItem>
+                  <SelectItem value="90d">Ultimi 90 giorni</SelectItem>
+                  <SelectItem value="all">Tutti i dati</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Export Button */}
+            <div className="space-y-2">
+              <Label>&nbsp;</Label>
+              <Button 
+                onClick={handleExport} 
+                disabled={isExporting}
+                className="w-full"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Esportazione...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Esporta Ora
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+            <p>
+              <strong>Fogli generati:</strong>
+            </p>
+            <ul className="mt-1 space-y-0.5 list-disc list-inside">
+              <li><strong>SALES</strong> — Vendite con data, cliente, venditore, importo</li>
+              <li><strong>DEALS</strong> — Trattative con stage, valore, stato</li>
+              <li><strong>KPI</strong> — Formule per Win Rate, totali, medie (non sovrascrive)</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Statistiche Export (ultime 10)</CardTitle>
+          <CardTitle className="text-base">Statistiche Export</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold">{stats.total}</div>
               <div className="text-xs text-muted-foreground">Totali</div>
@@ -150,6 +325,10 @@ export function GoogleSheetsSettings() {
               <div className="text-2xl font-bold text-amber-500">{stats.processing}</div>
               <div className="text-xs text-muted-foreground">In corso</div>
             </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">{stats.totalRows.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">Righe Tot.</div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -161,18 +340,17 @@ export function GoogleSheetsSettings() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={handleTestConnection}
-            disabled={isTestingConnection}
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["sheets-export-logs"] })}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isTestingConnection ? "animate-spin" : ""}`} />
-            Test Connessione
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Aggiorna
           </Button>
         </CardHeader>
         <CardContent>
           {logsLoading ? (
             <div className="text-sm text-muted-foreground">Caricamento...</div>
           ) : exportLogs && exportLogs.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
               {exportLogs.map((log) => (
                 <div 
                   key={log.id} 
@@ -180,24 +358,29 @@ export function GoogleSheetsSettings() {
                 >
                   <div className="flex items-center gap-3">
                     {log.status === "success" ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                     ) : log.status === "failed" ? (
-                      <XCircle className="h-4 w-4 text-destructive" />
+                      <XCircle className="h-4 w-4 text-destructive shrink-0" />
                     ) : (
-                      <RefreshCw className="h-4 w-4 text-amber-500 animate-spin" />
+                      <RefreshCw className="h-4 w-4 text-amber-500 animate-spin shrink-0" />
                     )}
                     <div>
-                      <div className="text-sm font-medium">
-                        {log.tab_name || "ALL_RAW"}
+                      <div className="text-sm font-medium flex items-center gap-2">
+                        {log.tab_name || "FULL"}
+                        {log.rows_exported > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {log.rows_exported} righe
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {format(new Date(log.created_at), "dd MMM yyyy HH:mm", { locale: it })}
+                        {format(new Date(log.created_at), "dd MMM yyyy HH:mm:ss", { locale: it })}
                       </div>
                     </div>
                   </div>
                   {log.error && (
-                    <Badge variant="destructive" className="text-xs">
-                      {log.error.slice(0, 30)}...
+                    <Badge variant="destructive" className="text-xs max-w-[150px] truncate">
+                      {log.error}
                     </Badge>
                   )}
                 </div>

@@ -3493,6 +3493,7 @@ export type Database = {
           error: string | null
           id: string
           lead_event_id: string
+          rows_exported: number | null
           status: string
           tab_name: string | null
         }
@@ -3502,6 +3503,7 @@ export type Database = {
           error?: string | null
           id?: string
           lead_event_id: string
+          rows_exported?: number | null
           status: string
           tab_name?: string | null
         }
@@ -3511,6 +3513,7 @@ export type Database = {
           error?: string | null
           id?: string
           lead_event_id?: string
+          rows_exported?: number | null
           status?: string
           tab_name?: string | null
         }
