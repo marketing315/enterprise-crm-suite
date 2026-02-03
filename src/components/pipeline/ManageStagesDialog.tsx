@@ -105,6 +105,35 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
           </DialogHeader>
           
           <div className="space-y-4 py-2">
+            {/* Add new stage */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                Aggiungi Fase
+              </Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={newStageColor}
+                  onChange={(e) => setNewStageColor(e.target.value)}
+                  className="w-8 h-8 rounded border cursor-pointer shrink-0"
+                />
+                <Input
+                  placeholder="Nome nuova fase..."
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddStage()}
+                  className="flex-1"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleAddStage}
+                  disabled={!newStageName.trim() || addStage.isPending}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
