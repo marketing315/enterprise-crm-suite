@@ -95,6 +95,33 @@ const pageHelpContent: Record<string, PageHelp> = {
       "Esporta report per la contabilità",
     ],
   },
+  "/azienda/budget": {
+    title: "Budget Aziendale",
+    description: "Pianifica e monitora il budget per categoria e periodo.",
+    tips: [
+      "Crea budget mensili o annuali",
+      "Confronta pianificato vs effettivo",
+      "Imposta alert per sforamenti",
+    ],
+  },
+  "/azienda/spese": {
+    title: "Spese Aziendali",
+    description: "Registra e categorizza le spese operative.",
+    tips: [
+      "Allega ricevute e fatture",
+      "Categorizza per tipo di spesa",
+      "Esporta per la contabilità",
+    ],
+  },
+  "/azienda/report": {
+    title: "Report Aziendali",
+    description: "Analisi finanziarie: margini, cash flow e trend.",
+    tips: [
+      "Genera report su misura",
+      "Confronta periodi diversi",
+      "Esporta in PDF o Excel",
+    ],
+  },
   "/marketing": {
     title: "Marketing",
     description: "Dashboard marketing: performance campagne, costi acquisizione e ROI.",
@@ -102,6 +129,33 @@ const pageHelpContent: Record<string, PageHelp> = {
       "Collega campagne ai lead in ingresso",
       "Traccia costo per lead (CPL)",
       "Analizza performance per canale",
+    ],
+  },
+  "/marketing/campagne": {
+    title: "Campagne Marketing",
+    description: "Gestisci le campagne pubblicitarie: budget, target e creatività.",
+    tips: [
+      "Crea campagne per canale (Meta, Google, ecc.)",
+      "Traccia i lead generati per campagna",
+      "Monitora il ROI di ogni campagna",
+    ],
+  },
+  "/marketing/costi": {
+    title: "Costi Marketing",
+    description: "Traccia tutte le spese marketing: ads, creatività, tool.",
+    tips: [
+      "Registra spese giornaliere o mensili",
+      "Collega costi a campagne specifiche",
+      "Analizza CPL e CAC",
+    ],
+  },
+  "/marketing/report": {
+    title: "Report Marketing",
+    description: "Analisi dettagliate: funnel, conversioni e attribuzione.",
+    tips: [
+      "Analizza il funnel completo",
+      "Confronta performance tra campagne",
+      "Esporta per presentazioni",
     ],
   },
   "/settings": {
@@ -120,6 +174,15 @@ const pageHelpContent: Record<string, PageHelp> = {
       "Assegna ruoli per brand",
       "Monitora le performance individuali",
       "Invita nuovi membri via email",
+    ],
+  },
+  "/team/salespersons": {
+    title: "KPI Venditori",
+    description: "Performance dettagliate dei venditori: deal chiusi, revenue e conversion rate.",
+    tips: [
+      "Confronta venditori per periodo",
+      "Analizza conversion rate individuale",
+      "Identifica top performer",
     ],
   },
   "/products": {
@@ -147,6 +210,33 @@ const pageHelpContent: Record<string, PageHelp> = {
       "Analizza i casi di override",
       "Monitora la latenza media",
       "Identifica pattern di errore",
+    ],
+  },
+  "/admin/analytics": {
+    title: "Analytics Avanzati",
+    description: "Metriche strategiche: funnel, sorgenti, trend e velocità di conversione.",
+    tips: [
+      "Analizza il funnel di vendita",
+      "Confronta performance sorgenti",
+      "Monitora trend temporali",
+    ],
+  },
+  "/admin/callcenter-kpi": {
+    title: "KPI Call Center",
+    description: "Metriche del call center: chiamate, durata, esiti e performance operatori.",
+    tips: [
+      "Monitora volume chiamate per ora",
+      "Analizza durata media conversazioni",
+      "Confronta performance operatori",
+    ],
+  },
+  "/admin/ticket-trend": {
+    title: "Trend Ticket",
+    description: "Analisi storica ticket: volumi, tempi di risoluzione e SLA compliance.",
+    tips: [
+      "Visualizza trend per periodo",
+      "Analizza distribuzione priorità",
+      "Monitora SLA compliance nel tempo",
     ],
   },
   "/admin/webhooks": {
@@ -183,6 +273,15 @@ const pageHelpContent: Record<string, PageHelp> = {
       "Su Chrome/Edge: pulsante Installa",
       "Su iOS: Condividi → Aggiungi a Home",
       "L'app funziona anche offline",
+    ],
+  },
+  "/select-brand": {
+    title: "Selezione Brand",
+    description: "Scegli il brand con cui lavorare. Ogni brand ha dati e configurazioni separate.",
+    tips: [
+      "Puoi cambiare brand in qualsiasi momento",
+      "I dati sono isolati per brand",
+      "Admin e CEO vedono tutti i brand",
     ],
   },
 };
