@@ -55,22 +55,32 @@ export default function Pipeline() {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
       <div className="p-3 md:p-4 border-b space-y-3 shrink-0 overflow-hidden">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
-            {isSystemBrand && (
-              <div className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                <Globe className="h-3 w-3" />
-                <span>Tutti i brand</span>
-              </div>
-            )}
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl md:text-2xl font-bold">Pipeline</h1>
+              {isSystemBrand && (
+                <div className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  <Globe className="h-3 w-3" />
+                  <span>Tutti i brand</span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground truncate">
+              {isSystemBrand 
+                ? "Vista globale di tutti i deal aziendali"
+                : `Gestisci i tuoi deal in ${currentBrand?.name}`
+              }
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground truncate">
-            {isSystemBrand 
-              ? "Vista globale di tutti i deal aziendali"
-              : `Gestisci i tuoi deal in ${currentBrand?.name}`
+          <AddStageDialog
+            trigger={
+              <Button size="sm" variant="outline">
+                <Plus className="h-4 w-4 mr-1" />
+                Nuova fase
+              </Button>
             }
-          </p>
+          />
         </div>
       </div>
 
