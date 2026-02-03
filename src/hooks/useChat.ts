@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
+
+// Untyped client for new RPC functions
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const untypedClient = createClient(supabaseUrl, supabaseKey);
 
 // Types
 export interface ChatThread {
@@ -200,6 +206,41 @@ export function useChatThreads() {
       return (data || []) as ChatThread[];
     },
     enabled: !!currentBrand || isAllBrandsSelected,
+  });
+}
+
+// Create group chat thread
+export function useCreateGroupChat() {
+  const { currentBrand } = useBrand();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      title,
+      memberIds,
+    }: {
+      title: string;
+      memberIds: string[];
+    }) => {
+      if (!currentBrand) throw new Error("No brand selected");
+
+      const { data, error } = await untypedClient.rpc("create_group_chat", {
+        p_brand_id: currentBrand.id,
+        p_title: title,
+        p_member_ids: memberIds,
+      });
+
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      toast.success("Gruppo creato con successo");
+    },
+    onError: (error: Error) => {
+      console.error("Error creating group chat:", error);
+      toast.error("Errore nella creazione del gruppo");
+    },
   });
 }
 

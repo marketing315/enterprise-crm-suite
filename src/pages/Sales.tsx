@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { format } from "date-fns";
+import { useState, useMemo } from "react";
+import { format, subDays, startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { it } from "date-fns/locale";
 import { 
   ShoppingCart, 
@@ -8,11 +8,14 @@ import {
   Filter,
   Euro,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Calendar,
+  User
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSalesOrders, useSalesKpis } from "@/hooks/useSalesOrders";
+import { useTeamMembers } from "@/hooks/useTeam";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,10 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { SalesOrderDetailSheet } from "@/components/sales/SalesOrderDetailSheet";
 import { QuickSaleDialog } from "@/components/sales/QuickSaleDialog";
 import { ORDER_STATUS_CONFIG, type SalesOrderStatus } from "@/types/sales";
-import { subDays, startOfDay, endOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
+
+type DatePreset = "all" | "today" | "week" | "month" | "custom";
 
 export default function Sales() {
   const { currentBrand, hasBrandSelected } = useBrand();
@@ -45,6 +52,12 @@ export default function Sales() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [quickSaleOpen, setQuickSaleOpen] = useState(false);
+  const [sellerFilter, setSellerFilter] = useState<string>("all");
+  const [datePreset, setDatePreset] = useState<DatePreset>("month");
+  const [customDateRange, setCustomDateRange] = useState<{from?: Date, to?: Date}>({});
+
+  // Fetch team members (venditori) for filter
+  const { data: teamMembers = [] } = useTeamMembers("venditore", true);
 
   // Check permissions
   const canView = isAdmin || isCeo || 
@@ -53,16 +66,39 @@ export default function Sales() {
       hasRole('venditore', currentBrand.id)
     ));
 
+  // Calculate date range based on preset
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    switch (datePreset) {
+      case "today":
+        return { from: startOfDay(now), to: endOfDay(now) };
+      case "week":
+        return { from: startOfDay(subDays(now, 7)), to: endOfDay(now) };
+      case "month":
+        return { from: startOfMonth(now), to: endOfMonth(now) };
+      case "custom":
+        return { 
+          from: customDateRange.from ? startOfDay(customDateRange.from) : undefined, 
+          to: customDateRange.to ? endOfDay(customDateRange.to) : undefined 
+        };
+      default: // "all"
+        return { from: undefined, to: undefined };
+    }
+  }, [datePreset, customDateRange]);
+
   // Date range for KPIs (last 30 days)
   const now = new Date();
-  const from = startOfDay(subDays(now, 30));
-  const to = endOfDay(now);
+  const kpiFrom = startOfDay(subDays(now, 30));
+  const kpiTo = endOfDay(now);
 
   const { data: orders = [], isLoading, refetch } = useSalesOrders({
     status: statusFilter !== "all" ? statusFilter as SalesOrderStatus : undefined,
+    assignedUserId: sellerFilter !== "all" ? sellerFilter : undefined,
+    from: dateRange.from,
+    to: dateRange.to,
   });
 
-  const { data: kpis } = useSalesKpis(from, to);
+  const { data: kpis } = useSalesKpis(kpiFrom, kpiTo);
 
   if (!hasBrandSelected) {
     return (
@@ -172,8 +208,8 @@ export default function Sales() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Cerca per numero ordine o cliente..."
@@ -182,6 +218,24 @@ export default function Sales() {
             className="pl-9"
           />
         </div>
+
+        {/* Seller Filter */}
+        <Select value={sellerFilter} onValueChange={setSellerFilter}>
+          <SelectTrigger className="w-[180px]">
+            <User className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Venditore" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tutti i venditori</SelectItem>
+            {teamMembers.map((member) => (
+              <SelectItem key={member.user_id} value={member.user_id}>
+                {member.full_name || member.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Status Filter */}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
             <Filter className="h-4 w-4 mr-2" />
@@ -194,6 +248,53 @@ export default function Sales() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Date Preset Filter */}
+        <Select value={datePreset} onValueChange={(v) => setDatePreset(v as DatePreset)}>
+          <SelectTrigger className="w-[160px]">
+            <Calendar className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Periodo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tutte le date</SelectItem>
+            <SelectItem value="today">Oggi</SelectItem>
+            <SelectItem value="week">Ultimi 7 giorni</SelectItem>
+            <SelectItem value="month">Questo mese</SelectItem>
+            <SelectItem value="custom">Personalizzato</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Custom Date Range Picker */}
+        {datePreset === "custom" && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !customDateRange.from && "text-muted-foreground")}>
+                <Calendar className="mr-2 h-4 w-4" />
+                {customDateRange.from ? (
+                  customDateRange.to ? (
+                    <>
+                      {format(customDateRange.from, "dd/MM/yy", { locale: it })} - {format(customDateRange.to, "dd/MM/yy", { locale: it })}
+                    </>
+                  ) : (
+                    format(customDateRange.from, "dd/MM/yyyy", { locale: it })
+                  )
+                ) : (
+                  <span>Seleziona date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                initialFocus
+                mode="range"
+                defaultMonth={customDateRange.from}
+                selected={{ from: customDateRange.from, to: customDateRange.to }}
+                onSelect={(range) => setCustomDateRange({ from: range?.from, to: range?.to })}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       {/* Orders Table */}
