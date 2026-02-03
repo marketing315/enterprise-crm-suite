@@ -1,6 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import type { Json } from "@/integrations/supabase/types";
+
+export type PayloadFormat = "json" | "form_urlencoded";
+
+export interface PayloadMapping {
+  [targetField: string]: string; // e.g. { "nome": "contact.first_name" }
+}
+
+export interface CustomUrlParams {
+  [key: string]: string; // e.g. { "idprogetto": "487" }
+}
 
 export interface OutboundWebhook {
   id: string;
@@ -8,6 +19,9 @@ export interface OutboundWebhook {
   url: string;
   is_active: boolean;
   event_types: string[];
+  payload_format: PayloadFormat;
+  payload_mapping: PayloadMapping | null;
+  custom_url_params: CustomUrlParams | null;
   created_at: string;
   updated_at: string;
 }
@@ -153,6 +167,9 @@ export function useCreateWebhook() {
       secret: string;
       event_types: string[];
       is_active: boolean;
+      payload_format?: PayloadFormat;
+      payload_mapping?: PayloadMapping | null;
+      custom_url_params?: CustomUrlParams | null;
     }): Promise<{ webhook_id: string; secret: string }> => {
       if (!currentBrand?.id) throw new Error("No brand selected");
 
@@ -163,6 +180,9 @@ export function useCreateWebhook() {
         p_secret: params.secret,
         p_event_types: params.event_types,
         p_is_active: params.is_active,
+        p_payload_format: params.payload_format || "json",
+        p_payload_mapping: (params.payload_mapping || null) as Json,
+        p_custom_url_params: (params.custom_url_params || null) as Json,
       });
 
       if (error) throw error;
@@ -189,6 +209,9 @@ export function useUpdateWebhook() {
       url?: string;
       event_types?: string[];
       is_active?: boolean;
+      payload_format?: PayloadFormat;
+      payload_mapping?: PayloadMapping | null;
+      custom_url_params?: CustomUrlParams | null;
     }): Promise<boolean> => {
       const { data, error } = await supabase.rpc("update_outbound_webhook", {
         p_id: params.id,
@@ -196,6 +219,9 @@ export function useUpdateWebhook() {
         p_url: params.url ?? null,
         p_event_types: params.event_types ?? null,
         p_is_active: params.is_active ?? null,
+        p_payload_format: params.payload_format ?? null,
+        p_payload_mapping: (params.payload_mapping ?? null) as Json,
+        p_custom_url_params: (params.custom_url_params ?? null) as Json,
       });
 
       if (error) throw error;

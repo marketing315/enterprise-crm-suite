@@ -22,12 +22,23 @@ interface WebhookDelivery {
   max_attempts: number;
 }
 
+interface PayloadMapping {
+  [targetField: string]: string;
+}
+
+interface CustomUrlParams {
+  [key: string]: string;
+}
+
 interface WebhookConfig {
   id: string;
   url: string;
   secret: string;
   is_active: boolean;
   event_types: string[];
+  payload_format: "json" | "form_urlencoded";
+  payload_mapping: PayloadMapping | null;
+  custom_url_params: CustomUrlParams | null;
 }
 
 // HMAC-SHA256 signature
@@ -50,7 +61,37 @@ async function computeSignature(secret: string, timestamp: number, body: string)
     .join("");
 }
 
-// Process a single delivery
+// Helper: Get nested value from object by dot-notation path
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined;
+    if (typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+// Helper: Flatten nested object for form encoding
+function flattenObject(
+  obj: Record<string, unknown>,
+  formData: URLSearchParams,
+  prefix: string
+): void {
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (value === null || value === undefined) {
+      continue;
+    } else if (typeof value === "object" && !Array.isArray(value)) {
+      flattenObject(value as Record<string, unknown>, formData, fullKey);
+    } else if (Array.isArray(value)) {
+      formData.set(fullKey, value.join(","));
+    } else {
+      formData.set(fullKey, String(value));
+    }
+  }
+}
 async function processDelivery(
   supabase: SupabaseClientAny,
   delivery: WebhookDelivery,
@@ -64,7 +105,7 @@ async function processDelivery(
     if (webhook === undefined) {
       const { data, error } = await supabase
         .from("outbound_webhooks")
-        .select("id, url, secret, is_active, event_types")
+        .select("id, url, secret, is_active, event_types, payload_format, payload_mapping, custom_url_params")
         .eq("id", delivery.webhook_id)
         .single();
 
@@ -84,10 +125,48 @@ async function processDelivery(
       return { success: false, error: "webhook_inactive", durationMs: Date.now() - startTime };
     }
 
-    // Prepare request
+    // Prepare request body based on payload_format
     const timestamp = Math.floor(Date.now() / 1000);
-    const rawBody = JSON.stringify(delivery.payload);
-    const signature = await computeSignature(webhook.secret, timestamp, rawBody);
+    let requestBody: string;
+    let contentType: string;
+    let targetUrl = webhook.url;
+
+    // Append custom URL params if present
+    if (webhook.custom_url_params && Object.keys(webhook.custom_url_params).length > 0) {
+      const urlObj = new URL(targetUrl);
+      for (const [key, value] of Object.entries(webhook.custom_url_params)) {
+        urlObj.searchParams.set(key, value);
+      }
+      targetUrl = urlObj.toString();
+    }
+
+    if (webhook.payload_format === "form_urlencoded") {
+      // Transform payload using mapping if provided, otherwise flatten the payload
+      const formData = new URLSearchParams();
+      const mapping = webhook.payload_mapping;
+      
+      if (mapping && Object.keys(mapping).length > 0) {
+        // Use explicit mapping: { targetField: "source.path" }
+        for (const [targetField, sourcePath] of Object.entries(mapping)) {
+          const value = getNestedValue(delivery.payload, sourcePath);
+          if (value !== undefined && value !== null) {
+            formData.set(targetField, String(value));
+          }
+        }
+      } else {
+        // Flatten payload for form encoding (simple key=value)
+        flattenObject(delivery.payload, formData, "");
+      }
+      
+      requestBody = formData.toString();
+      contentType = "application/x-www-form-urlencoded";
+    } else {
+      // Standard JSON format
+      requestBody = JSON.stringify(delivery.payload);
+      contentType = "application/json";
+    }
+
+    const signature = await computeSignature(webhook.secret, timestamp, requestBody);
 
     // HTTP POST with timeout
     const controller = new AbortController();
@@ -95,10 +174,10 @@ async function processDelivery(
 
     let response: Response;
     try {
-      response = await fetch(webhook.url, {
+      response = await fetch(targetUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": contentType,
           "User-Agent": USER_AGENT,
           "X-Webhook-Event": delivery.event_type,
           "X-Webhook-Id": delivery.webhook_id,
@@ -107,7 +186,7 @@ async function processDelivery(
           "X-Webhook-Signature": `sha256=${signature}`,
           "X-Webhook-Signature-V1": `sha256=${signature}`,
         },
-        body: rawBody,
+        body: requestBody,
         signal: controller.signal,
       });
     } finally {
