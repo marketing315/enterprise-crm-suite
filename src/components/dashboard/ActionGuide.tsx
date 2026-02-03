@@ -10,7 +10,8 @@ import {
   Clock,
   TrendingUp,
   Lightbulb,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
@@ -51,7 +52,6 @@ export function ActionGuide({
   const { currentBrand, hasBrandSelected, isAllBrandsSelected } = useBrand();
   
   const [completedItems, setCompletedItems] = useState<Set<string>>(() => {
-    // Load from localStorage
     const saved = localStorage.getItem("crm_action_guide_completed");
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
@@ -64,44 +64,71 @@ export function ActionGuide({
   const isVenditore = currentBrand && hasRole('venditore', currentBrand.id);
   const isOperatore = currentBrand && hasRole('operatore_callcenter', currentBrand.id);
 
-  // Dynamic primary CTA based on role and data
+  // Loss aversion messaging based on stale data
+  const lossMessage = useMemo(() => {
+    if (newDeals > 5) {
+      return {
+        text: `⚠️ ${newDeals} lead stanno raffreddandosi — ogni ora di attesa riduce del 10% la probabilità di chiusura`,
+        severity: "high" as const,
+      };
+    }
+    if (newDeals > 2) {
+      return {
+        text: `${newDeals} lead in attesa — i contatti tempestivi convertono 7x di più`,
+        severity: "medium" as const,
+      };
+    }
+    if (slaBreaches > 0) {
+      return {
+        text: `${slaBreaches} ticket hanno superato l'SLA — rischio perdita cliente`,
+        severity: "high" as const,
+      };
+    }
+    return null;
+  }, [newDeals, slaBreaches]);
+
+  // Dynamic primary CTA based on role and data with urgency copy
   const primaryCta = useMemo(() => {
     if (slaBreaches > 0) {
       return {
-        label: `Gestisci ${slaBreaches} ticket scaduti`,
+        label: `🔴 ${slaBreaches} ticket scaduti — intervieni ora`,
         path: "/tickets?queue=breached",
         icon: Clock,
         variant: "destructive" as const,
+        urgency: "Ogni minuto conta per la soddisfazione cliente",
       };
     }
     
     if (isAdmin || isCeo || isResponsabile) {
       if (newDeals > 3) {
         return {
-          label: `Riassegna ${Math.min(newDeals, 5)} deal nuovi`,
+          label: `Riassegna ${Math.min(newDeals, 5)} deal prima che si raffreddino`,
           path: "/pipeline",
           icon: Target,
           variant: "default" as const,
+          urgency: "Lead non gestiti = opportunità perse",
         };
       }
     }
     
     if (isVenditore) {
       return {
-        label: "Aggiorna i tuoi deal più caldi",
+        label: "🔥 Lavora i tuoi deal più caldi",
         path: "/pipeline",
         icon: TrendingUp,
         variant: "default" as const,
+        urgency: "Chi aggiorna oggi, chiude domani",
       };
     }
     
     if (isOperatore) {
       if (openTickets > 0) {
         return {
-          label: `Smaltisci ${Math.min(openTickets, 5)} ticket`,
+          label: `📞 ${Math.min(openTickets, 5)} clienti aspettano te`,
           path: "/tickets",
           icon: Zap,
           variant: "default" as const,
+          urgency: "Risposta veloce = cliente fedele",
         };
       }
     }
@@ -111,44 +138,49 @@ export function ActionGuide({
       path: "/pipeline",
       icon: Target,
       variant: "default" as const,
+      urgency: "Inizia con un'azione veloce",
     };
   }, [slaBreaches, newDeals, openTickets, isAdmin, isCeo, isResponsabile, isVenditore, isOperatore]);
 
-  // Checklist items
+  // Checklist items with Zeigarnik effect (incomplete tasks create tension)
   const checklistItems: ChecklistItem[] = useMemo(() => [
     {
       id: "brand",
-      label: "Seleziona il brand giusto",
+      label: "✓ Seleziona il brand di lavoro",
       completed: hasBrandSelected && !isAllBrandsSelected,
-      description: "Un brand specifico ti dà focus sulle tue attività",
+      description: "Focus = risultati. Un brand alla volta.",
     },
     {
       id: "new_deals",
-      label: "Controlla i deal in 'Nuovo'",
+      label: newDeals > 0 
+        ? `⏳ ${newDeals} lead nuovi da gestire` 
+        : "✓ Nessun lead in attesa",
       completed: completedItems.has("new_deals") || newDeals === 0,
       path: "/pipeline",
-      description: "I deal nuovi si raffreddano: agisci oggi!",
+      description: newDeals > 0 
+        ? "Ogni ora che passa, la probabilità di conversione cala del 10%"
+        : "Ottimo! Pipeline pulita",
     },
     {
       id: "move_deal",
-      label: "Sposta 1 deal in lavorazione",
+      label: "🎯 Sposta almeno 1 deal oggi",
       completed: completedItems.has("move_deal"),
       path: "/pipeline",
-      description: "Aggiungi una nota per non dimenticare il prossimo passo",
+      description: "Chi muove 1 deal al giorno, chiude 5x di più al mese",
     },
     {
       id: "won_deal",
-      label: "Segna un deal come 'Vinto'",
+      label: "🏆 Registra una vittoria",
       completed: completedItems.has("won_deal"),
       path: "/pipeline",
-      description: "Celebra ogni vittoria, anche piccola!",
+      description: "Ogni deal chiuso rafforza la tua pipeline futura",
     },
     {
       id: "quick_sale",
-      label: "Registra una vendita",
+      label: "💰 Registra una vendita",
       completed: completedItems.has("quick_sale"),
       path: "/sales",
-      description: "Se hai chiuso oggi, registralo subito",
+      description: "Traccia subito = report accurati = bonus giusto",
     },
   ], [hasBrandSelected, isAllBrandsSelected, completedItems, newDeals]);
 
@@ -184,10 +216,10 @@ export function ActionGuide({
           <div className="space-y-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <Zap className="h-5 w-5 text-primary" />
-              Oggi puoi chiudere più velocemente
+              La tua prossima mossa vincente
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Inizia da una sola cosa. 2 minuti qui = pipeline più pulita.
+              2 minuti ora = ore risparmiate domani. Inizia con una sola azione.
             </p>
           </div>
           <TooltipProvider>
@@ -198,10 +230,14 @@ export function ActionGuide({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left" className="max-w-xs">
+                <p className="font-medium mb-1">Perché questa guida?</p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  I venditori top completano queste azioni ogni giorno. 
+                  Non è fortuna: è metodo.
+                </p>
                 <p className="font-medium mb-1">Cos'è un deal?</p>
                 <p className="text-sm text-muted-foreground">
-                  Un deal è una trattativa: valore, fase e prossimo passo. 
-                  Se la pipeline è ordinata, prevedi e chiudi prima.
+                  Una trattativa con valore e fase. Pipeline ordinata = più chiusure.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -210,19 +246,36 @@ export function ActionGuide({
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Primary CTA */}
-        <Button 
-          className="w-full justify-between group"
-          variant={primaryCta.variant}
-          size="lg"
-          onClick={() => navigate(primaryCta.path)}
-        >
-          <span className="flex items-center gap-2">
-            <primaryCta.icon className="h-5 w-5" />
-            {primaryCta.label}
-          </span>
-          <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-        </Button>
+        {/* Loss aversion alert */}
+        {lossMessage && (
+          <div className={`text-sm p-3 rounded-lg flex items-start gap-2 ${
+            lossMessage.severity === "high" 
+              ? "bg-destructive/10 text-destructive border border-destructive/20" 
+              : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+          }`}>
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{lossMessage.text}</span>
+          </div>
+        )}
+
+        {/* Primary CTA with urgency subtitle */}
+        <div className="space-y-1">
+          <Button 
+            className="w-full justify-between group"
+            variant={primaryCta.variant}
+            size="lg"
+            onClick={() => navigate(primaryCta.path)}
+          >
+            <span className="flex items-center gap-2">
+              <primaryCta.icon className="h-5 w-5" />
+              {primaryCta.label}
+            </span>
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
+          <p className="text-xs text-muted-foreground text-center italic">
+            {primaryCta.urgency}
+          </p>
+        </div>
 
         {/* Progress */}
         <div className="space-y-2">
@@ -268,12 +321,16 @@ export function ActionGuide({
           ))}
         </div>
 
-        {/* Soft tips */}
+        {/* Motivational tips - rotating */}
         <div className="pt-2 border-t">
           <div className="flex items-start gap-2 text-xs text-muted-foreground">
-            <Lightbulb className="h-3 w-3 mt-0.5 text-primary" />
-            <p>
-              I deal fermi in "Nuovo" si raffreddano: aggiornarli oggi ti evita di rincorrerli domani.
+            <Lightbulb className="h-3 w-3 mt-0.5 text-primary shrink-0" />
+            <p className="italic">
+              {progress === 100 
+                ? "🎉 Giornata completata! Sei nel top 10% dei performer."
+                : progress >= 60
+                ? "Ottimo ritmo! Ancora qualche spunta e la giornata è tua."
+                : "Piccoli passi ogni giorno = grandi risultati ogni mese."}
             </p>
           </div>
         </div>
