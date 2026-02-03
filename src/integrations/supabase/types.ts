@@ -5419,10 +5419,13 @@ export type Database = {
         Args: { p_brand_id: string }
         Returns: {
           created_at: string
-          event_types: Database["public"]["Enums"]["webhook_event_type"][]
+          custom_url_params: Json
+          event_types: string[]
           id: string
           is_active: boolean
           name: string
+          payload_format: string
+          payload_mapping: Json
           updated_at: string
           url: string
         }[]

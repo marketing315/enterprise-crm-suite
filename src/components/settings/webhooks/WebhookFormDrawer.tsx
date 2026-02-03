@@ -16,7 +16,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Copy, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Copy, Check, AlertCircle, RefreshCw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   useWebhooks,
@@ -24,16 +32,24 @@ import {
   useUpdateWebhook,
   generateWebhookSecret,
   WEBHOOK_EVENT_TYPE_CATEGORIES,
+  type PayloadFormat,
+  type PayloadMapping,
+  type CustomUrlParams,
 } from "@/hooks/useWebhooks";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome obbligatorio").max(100),
-  url: z.string().url("URL non valido").refine(
-    (url) => url.startsWith("https://"),
-    { message: "L'URL deve usare HTTPS" }
-  ),
+  url: z.string().url("URL non valido"),
   event_types: z.array(z.string()).min(1, "Seleziona almeno un evento"),
   is_active: z.boolean(),
+  payload_format: z.enum(["json", "form_urlencoded"]),
+  payload_mapping_json: z.string().optional(),
+  custom_url_params_json: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -51,6 +67,7 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
 
   const [generatedSecret, setGeneratedSecret] = useState<string | null>(null);
   const [secretCopied, setSecretCopied] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const isEdit = !!webhookId;
   const existingWebhook = webhooks?.find((w) => w.id === webhookId);
@@ -69,11 +86,15 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
       url: "",
       event_types: [],
       is_active: true,
+      payload_format: "json",
+      payload_mapping_json: "",
+      custom_url_params_json: "",
     },
   });
 
   const eventTypes = watch("event_types");
   const isActive = watch("is_active");
+  const payloadFormat = watch("payload_format");
 
   useEffect(() => {
     if (existingWebhook) {
@@ -82,14 +103,31 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
         url: existingWebhook.url,
         event_types: existingWebhook.event_types,
         is_active: existingWebhook.is_active,
+        payload_format: existingWebhook.payload_format || "json",
+        payload_mapping_json: existingWebhook.payload_mapping
+          ? JSON.stringify(existingWebhook.payload_mapping, null, 2)
+          : "",
+        custom_url_params_json: existingWebhook.custom_url_params
+          ? JSON.stringify(existingWebhook.custom_url_params, null, 2)
+          : "",
       });
+      // Show advanced if there are custom settings
+      setShowAdvanced(
+        existingWebhook.payload_format === "form_urlencoded" ||
+        !!existingWebhook.payload_mapping ||
+        !!existingWebhook.custom_url_params
+      );
     } else {
       reset({
         name: "",
         url: "",
         event_types: [],
         is_active: true,
+        payload_format: "json",
+        payload_mapping_json: "",
+        custom_url_params_json: "",
       });
+      setShowAdvanced(false);
     }
     setGeneratedSecret(null);
     setSecretCopied(false);
@@ -121,8 +159,20 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
     }
   };
 
+  const parseJsonSafe = (str: string | undefined): Record<string, string> | null => {
+    if (!str || str.trim() === "") return null;
+    try {
+      return JSON.parse(str);
+    } catch {
+      return null;
+    }
+  };
+
   const onSubmit = async (data: FormData) => {
     try {
+      const payloadMapping = parseJsonSafe(data.payload_mapping_json) as PayloadMapping | null;
+      const customUrlParams = parseJsonSafe(data.custom_url_params_json) as CustomUrlParams | null;
+
       if (isEdit) {
         await updateWebhook.mutateAsync({
           id: webhookId,
@@ -130,6 +180,9 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
           url: data.url,
           event_types: data.event_types,
           is_active: data.is_active,
+          payload_format: data.payload_format as PayloadFormat,
+          payload_mapping: payloadMapping,
+          custom_url_params: customUrlParams,
         });
         toast.success("Webhook aggiornato");
         onOpenChange(false);
@@ -144,6 +197,9 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
           secret: generatedSecret,
           event_types: data.event_types,
           is_active: data.is_active,
+          payload_format: data.payload_format as PayloadFormat,
+          payload_mapping: payloadMapping,
+          custom_url_params: customUrlParams,
         });
         toast.success("Webhook creato");
         // Keep drawer open to show secret one more time
@@ -280,6 +336,65 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
               <p className="text-sm text-destructive">{errors.event_types.message}</p>
             )}
           </div>
+
+          {/* Advanced Settings */}
+          <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" type="button" className="w-full justify-start gap-2 text-muted-foreground">
+                <Settings2 className="h-4 w-4" />
+                Impostazioni avanzate
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+              {/* Payload Format */}
+              <div className="space-y-2">
+                <Label>Formato Payload</Label>
+                <Select
+                  value={payloadFormat}
+                  onValueChange={(v) => setValue("payload_format", v as PayloadFormat)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="json">JSON (standard)</SelectItem>
+                    <SelectItem value="form_urlencoded">Form URL-Encoded (Siseco, legacy)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Usa Form URL-Encoded per integrazioni legacy come Siseco/SiLeads
+                </p>
+              </div>
+
+              {/* Custom URL Params */}
+              <div className="space-y-2">
+                <Label>Parametri URL aggiuntivi (JSON)</Label>
+                <Textarea
+                  placeholder='{"idprogetto": "487"}'
+                  className="font-mono text-xs min-h-[60px]"
+                  {...register("custom_url_params_json")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Parametri query string aggiunti all'URL, es. ?idprogetto=487
+                </p>
+              </div>
+
+              {/* Payload Mapping (only for form_urlencoded) */}
+              {payloadFormat === "form_urlencoded" && (
+                <div className="space-y-2">
+                  <Label>Mapping Campi (JSON)</Label>
+                  <Textarea
+                    placeholder='{"nome": "contact.first_name", "cognome": "contact.last_name", "telefono": "contact.phone"}'
+                    className="font-mono text-xs min-h-[100px]"
+                    {...register("payload_mapping_json")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Mappa i campi dell'evento ai campi del destinatario. Formato: {"{"}"campo_destinazione": "percorso.origine"{"}"}
+                  </p>
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Active Toggle */}
           <div className="flex items-center justify-between">
