@@ -6,33 +6,57 @@ import type { Database } from "@/integrations/supabase/types";
 type AdminTodo = Database["public"]["Tables"]["admin_todos"]["Row"];
 
 export function useAdminTodos() {
-  const { currentBrand, hasBrandSelected, isAllBrandsSelected } = useBrand();
-  const brandId = hasBrandSelected && !isAllBrandsSelected ? currentBrand?.id : null;
+  const { currentBrand, hasBrandSelected, isAllBrandsSelected, allBrandIds } = useBrand();
   const queryClient = useQueryClient();
 
+  // For single brand: use that brand's ID
+  // For "all brands": fetch todos from all accessible brands
+  const brandId = hasBrandSelected && !isAllBrandsSelected ? currentBrand?.id : null;
+
   const { data: todos = [], isLoading } = useQuery({
-    queryKey: ["admin-todos", brandId],
+    queryKey: ["admin-todos", brandId, isAllBrandsSelected, allBrandIds],
     queryFn: async () => {
-      if (!brandId) return [];
+      if (!hasBrandSelected) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from("admin_todos")
         .select("*")
-        .eq("brand_id", brandId)
         .order("completed", { ascending: true })
         .order("display_order", { ascending: true })
         .order("created_at", { ascending: false });
+      
+      if (isAllBrandsSelected) {
+        // Fetch from all accessible brands
+        if (allBrandIds.length > 0) {
+          query = query.in("brand_id", allBrandIds);
+        } else {
+          return [];
+        }
+      } else if (brandId) {
+        query = query.eq("brand_id", brandId);
+      } else {
+        return [];
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data || []) as AdminTodo[];
     },
-    enabled: !!brandId,
+    enabled: hasBrandSelected,
   });
 
   const addTodo = useMutation({
     mutationFn: async (title: string) => {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user || !brandId) throw new Error("Not authenticated");
+      if (!userData.user) throw new Error("Not authenticated");
+
+      // For "all brands" mode, use the first brand. For single brand, use that brand.
+      const targetBrandId = isAllBrandsSelected 
+        ? (allBrandIds.length > 0 ? allBrandIds[0] : null)
+        : brandId;
+      
+      if (!targetBrandId) throw new Error("No brand available");
 
       // Get user_id from users table using RPC
       const { data: userId, error: rpcError } = await supabase.rpc("get_user_id", { 
@@ -42,7 +66,7 @@ export function useAdminTodos() {
       if (rpcError || !userId) throw new Error("User not found");
 
       const { error } = await supabase.from("admin_todos").insert({
-        brand_id: brandId,
+        brand_id: targetBrandId,
         created_by: userId,
         title,
         display_order: todos.length,
