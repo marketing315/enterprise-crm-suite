@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -26,12 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings2, Trash2, RotateCcw } from "lucide-react";
+import { Settings2, Trash2, RotateCcw, Plus } from "lucide-react";
 import { 
   usePipelineStagesAdmin,
   useDeactivatePipelineStage,
   useReactivatePipelineStage,
   useDeletePipelineStagePermanently,
+  useAddPipelineStage,
 } from "@/hooks/usePipelineStagesAdmin";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
