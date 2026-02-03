@@ -1,18 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import type { Database } from "@/integrations/supabase/types";
 
-interface AdminTodo {
-  id: string;
-  brand_id: string;
-  created_by: string;
-  title: string;
-  completed: boolean;
-  completed_at: string | null;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-}
+type AdminTodo = Database["public"]["Tables"]["admin_todos"]["Row"];
 
 export function useAdminTodos() {
   const { currentBrand, hasBrandSelected, isAllBrandsSelected } = useBrand();
@@ -24,13 +15,13 @@ export function useAdminTodos() {
     queryFn: async () => {
       if (!brandId) return [];
       
-      const { data, error } = await (supabase
-        .from("admin_todos" as any)
+      const { data, error } = await supabase
+        .from("admin_todos")
         .select("*")
         .eq("brand_id", brandId)
         .order("completed", { ascending: true })
         .order("display_order", { ascending: true })
-        .order("created_at", { ascending: false }) as any);
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       return (data || []) as AdminTodo[];
@@ -44,15 +35,15 @@ export function useAdminTodos() {
       if (!userData.user || !brandId) throw new Error("Not authenticated");
 
       // Get user_id from users table using RPC
-      const userId = await supabase.rpc("get_user_id", { 
+      const { data: userId, error: rpcError } = await supabase.rpc("get_user_id", { 
         _auth_uid: userData.user.id 
       });
 
-      if (userId.error || !userId.data) throw new Error("User not found");
+      if (rpcError || !userId) throw new Error("User not found");
 
-      const { error } = await (supabase.from("admin_todos" as any) as any).insert({
+      const { error } = await supabase.from("admin_todos").insert({
         brand_id: brandId,
-        created_by: userId.data,
+        created_by: userId,
         title,
         display_order: todos.length,
       });
@@ -66,8 +57,8 @@ export function useAdminTodos() {
 
   const toggleTodo = useMutation({
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
-      const { error } = await (supabase
-        .from("admin_todos" as any) as any)
+      const { error } = await supabase
+        .from("admin_todos")
         .update({
           completed,
           completed_at: completed ? new Date().toISOString() : null,
@@ -83,8 +74,8 @@ export function useAdminTodos() {
 
   const deleteTodo = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase
-        .from("admin_todos" as any) as any)
+      const { error } = await supabase
+        .from("admin_todos")
         .delete()
         .eq("id", id);
 
