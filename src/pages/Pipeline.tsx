@@ -74,15 +74,23 @@ export default function Pipeline() {
               }
             </p>
           </div>
-          <AddStageDialog
-            trigger={
-              <Button size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-1" />
-                Nuova fase
-              </Button>
-            }
-          />
-        </div>
+          <div className="flex items-center gap-2">
+            <ManageStagesDialog
+              trigger={
+                <Button size="sm" variant="ghost">
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+              }
+            />
+            <AddStageDialog
+              trigger={
+                <Button size="sm" variant="outline">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Nuova fase
+                </Button>
+              }
+            />
+          </div>
       </div>
 
       {/* Tabs for Pipeline / Won / Lost / Archived */}
