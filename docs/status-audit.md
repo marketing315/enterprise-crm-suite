@@ -15,7 +15,7 @@
 | Kanban Board | `src/components/pipeline/KanbanBoard.tsx` | ✅ Completo |
 | Deal Detail | `src/components/pipeline/DealDetailSheet.tsx` | ✅ Completo |
 | Stage Management | `src/components/settings/pipeline/PipelineStagesSettings.tsx` | ✅ Completo |
-| Vinto/Perso columns | Pipeline | ⚠️ Parziale (status deal, no colonne dedicate UI) |
+| Vinto/Perso tabs | `Pipeline.tsx` + `ClosedDealsTable.tsx` | ✅ Implementato |
 
 ### 1.2 Contatti
 | Componente | File | Stato |
