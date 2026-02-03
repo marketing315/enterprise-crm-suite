@@ -26,6 +26,9 @@ import {
   Lightbulb,
   Zap,
   Shield,
+  ShoppingCart,
+  Megaphone,
+  Smartphone,
 } from 'lucide-react';
 
 interface TutorialSection {
@@ -53,6 +56,7 @@ const tutorialSections: TutorialSection[] = [
     tips: [
       'I contatti vengono creati automaticamente dai lead in ingresso',
       'Puoi esportare i contatti in CSV dalla tabella',
+      'I campi personalizzati si configurano in Impostazioni',
     ],
   },
   {
@@ -70,6 +74,7 @@ const tutorialSections: TutorialSection[] = [
     tips: [
       'Gli eventi vengono processati dall\'AI per classificazione automatica',
       'I lead qualificati generano automaticamente ticket se necessario',
+      'I topic clinici vengono estratti automaticamente',
     ],
   },
   {
@@ -87,6 +92,7 @@ const tutorialSections: TutorialSection[] = [
     tips: [
       'Ogni contatto può avere massimo un deal aperto per brand',
       'I nuovi lead creano automaticamente deal se non esistono',
+      'Usa i filtri per venditore, campagna o tag',
     ],
   },
   {
@@ -103,6 +109,8 @@ const tutorialSections: TutorialSection[] = [
     ],
     tips: [
       'Gli appuntamenti oggi sono visibili anche nella Dashboard',
+      'Puoi specificare indirizzo e CAP per visite a domicilio',
+      'I topic clinici aiutano a preparare la visita',
     ],
   },
   {
@@ -121,6 +129,43 @@ const tutorialSections: TutorialSection[] = [
       'I ticket vengono creati automaticamente dall\'AI quando necessario',
       'Le SLA sono configurabili per priorità nelle Impostazioni',
       'Badge rosso in sidebar segnala breach SLA in tempo reale',
+      'Usa la ricerca avanzata per filtri complessi',
+    ],
+  },
+  {
+    id: 'sales',
+    icon: ShoppingCart,
+    title: 'Vendite & Ordini',
+    description: 'Registra vendite, crea ordini e monitora il fatturato.',
+    steps: [
+      'Vai su "Vendite" per vedere tutti gli ordini',
+      'Usa "Vendita Rapida" per registrare senza deal',
+      'Collega vendite a deal esistenti per tracking completo',
+      'Aggiungi prodotti dal catalogo con quantità e sconti',
+      'Allega documenti e ricevute agli ordini',
+    ],
+    tips: [
+      'I totali si aggiornano automaticamente',
+      'Puoi generare report per periodo',
+      'Le vendite aggiornano i KPI venditori in tempo reale',
+    ],
+  },
+  {
+    id: 'marketing',
+    icon: Megaphone,
+    title: 'Marketing & Campagne',
+    description: 'Gestisci campagne, monitora costi e analizza ROI.',
+    steps: [
+      'Dashboard: panoramica performance e KPI',
+      'Campagne: crea e gestisci campagne marketing',
+      'Costi: registra spese per canale e campagna',
+      'Report: analisi CPL, conversion rate e ROI',
+      'Collega i lead alle campagne per attribuzione',
+    ],
+    tips: [
+      'Integra Meta Ads per import automatico statistiche',
+      'Il CPL si calcola automaticamente',
+      'Usa i tag per segmentare le campagne',
     ],
   },
   {
@@ -129,14 +174,34 @@ const tutorialSections: TutorialSection[] = [
     title: 'Analytics & Admin',
     description: 'Monitora le performance con dashboard dedicate (solo Admin/CEO).',
     steps: [
+      'Analytics: panoramica generale con funnel e trend',
       'AI Metrics: monitora qualità classificazione AI',
       'KPI Call Center: performance operatori e tempi risposta',
       'Trend Ticket: volume ticket nel tempo per analisi',
       'Webhook Monitor: stato consegne webhook outbound',
-      'Tutti i report sono esportabili in CSV',
     ],
     tips: [
+      'Tutti i report sono esportabili in CSV',
       'I filtri per brand e periodo sono persistenti',
+      'DLQ: controlla i lead non processabili',
+    ],
+  },
+  {
+    id: 'pwa',
+    icon: Smartphone,
+    title: 'App Mobile (PWA)',
+    description: 'Installa il CRM come app per accesso rapido e funzionalità offline.',
+    steps: [
+      'Vai su /install per le istruzioni',
+      'Chrome/Edge: clicca "Installa" nella barra indirizzi',
+      'iOS Safari: Condividi → Aggiungi a schermata Home',
+      'L\'app si aggiorna automaticamente',
+      'Funziona anche senza connessione per i dati cached',
+    ],
+    tips: [
+      'La vista mobile usa swipe per la pipeline',
+      'Le notifiche push arrivano anche con app chiusa',
+      'I dati recenti sono disponibili offline',
     ],
   },
   {
@@ -149,11 +214,13 @@ const tutorialSections: TutorialSection[] = [
       'Webhook Outbound: configura endpoint per eventi',
       'SLA: imposta soglie per priorità P1-P5',
       'Google Sheets: abilita export automatico lead',
+      'VOIspeed: configura click-to-call VoIP',
       'Admin: gestisci brand e utenti (solo Admin)',
     ],
     tips: [
       'Le chiavi API vengono mostrate solo una volta alla creazione',
       'Ruota le chiavi periodicamente per sicurezza',
+      'I campi personalizzati sono configurabili per brand',
     ],
   },
 ];
@@ -293,7 +360,7 @@ export function TutorialSheet() {
             {/* Footer */}
             <div className="pt-4 pb-2 text-center">
               <Badge variant="secondary" className="text-xs">
-                Versione 1.0 – M10 in corso
+                Versione 1.2 – M12 PWA
               </Badge>
             </div>
           </div>
