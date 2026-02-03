@@ -294,3 +294,48 @@ export function useAssignTicket() {
     },
   });
 }
+
+export interface CreateTicketInput {
+  contactId: string;
+  dealId?: string | null;
+  title: string;
+  description?: string;
+  priority?: number;
+}
+
+export function useCreateTicket() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async (input: CreateTicketInput) => {
+      if (!currentBrand?.id) throw new Error("No brand selected");
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("tickets")
+        .insert({
+          brand_id: currentBrand.id,
+          contact_id: input.contactId,
+          deal_id: input.dealId || null,
+          title: input.title,
+          description: input.description || null,
+          priority: input.priority || 3,
+          status: "open",
+          created_by: "user",
+          opened_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      return data.id as string;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
+    },
+  });
+}
