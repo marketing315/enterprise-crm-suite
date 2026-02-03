@@ -4168,6 +4168,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_group_chat: {
+        Args: { p_brand_id: string; p_member_ids: string[]; p_title: string }
+        Returns: string
+      }
       create_manual_lead_event: {
         Args: {
           p_ai_conversation_summary?: string

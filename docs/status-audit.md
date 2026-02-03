@@ -36,8 +36,8 @@
 | Pagamenti | `src/hooks/usePayments.ts` | ✅ Completo |
 | Detail Sheet | `src/components/sales/SalesOrderDetailSheet.tsx` | ✅ Completo |
 | Quick Sale Dialog | `src/components/sales/QuickSaleDialog.tsx` | ✅ Completo |
-| Metodi "Rate/Noleggio" | `src/types/sales.ts` | ❌ Mancante |
-| Filtri avanzati (venditore, data) | Sales page | ⚠️ Parziale (status filter presente) |
+| Metodi "Rate/Noleggio" | `src/types/sales.ts` | ✅ Implementato |
+| Filtri avanzati (venditore, data) | Sales page | ✅ Implementato |
 
 ### 1.4 Ticket
 | Componente | File | Stato |
@@ -47,7 +47,7 @@
 | Bulk Actions | `src/hooks/useTicketBulkActions.ts` | ✅ Completo |
 | SLA System | `src/hooks/useTicketQueue.ts` + cron | ✅ Completo |
 | Round Robin | `ticket-assign-recovery` edge function | ✅ Completo |
-| Apertura da Contatto/Deal | UI CTA | ❌ Mancante |
+| Apertura da Contatto/Deal | `CreateTicketDialog.tsx` | ✅ Implementato |
 | Realtime | `src/hooks/useTicketRealtime.ts` | ✅ Completo |
 
 ### 1.5 Chat
@@ -57,7 +57,7 @@
 | Hook principale | `src/hooks/useChat.ts` | ✅ Completo |
 | Realtime subscription | `useChatRealtime` | ✅ Implementato |
 | Entity Chat Box | `src/components/chat/EntityChatBox.tsx` | ✅ Completo |
-| Chat Gruppi | UI per creazione gruppo | ❌ Mancante |
+| Chat Gruppi | `CreateGroupChatDialog.tsx` | ✅ Implementato |
 | AI Chat | `supabase/functions/ai-chat/index.ts` | ✅ Funzionante (usa Lovable AI Gateway) |
 
 ### 1.6 Marketing/ADV

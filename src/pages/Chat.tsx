@@ -27,6 +27,7 @@ import {
   useSendChatMessage,
   useSendAIMessage,
   useChatRealtime,
+  useCreateGroupChat,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
@@ -35,6 +36,7 @@ import { useBrand } from "@/contexts/BrandContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AgentChatPanel } from "@/components/chat/AgentChatPanel";
+import { CreateGroupChatDialog } from "@/components/chat/CreateGroupChatDialog";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -43,6 +45,7 @@ export default function Chat() {
   const [messageInput, setMessageInput] = useState("");
   const [askAI, setAskAI] = useState(false);
   const [activeTab, setActiveTab] = useState<"threads" | "agent">("agent");
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: threads = [], isLoading: threadsLoading } = useChatThreads();
@@ -51,9 +54,16 @@ export default function Chat() {
   );
   const sendMessage = useSendChatMessage();
   const sendAIMessage = useSendAIMessage();
+  const createGroupChat = useCreateGroupChat();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
+
+  const handleCreateGroup = async (title: string, memberIds: string[]) => {
+    const threadId = await createGroupChat.mutateAsync({ title, memberIds });
+    setCreateGroupOpen(false);
+    setSelectedThreadId(threadId);
+  };
 
   // Subscribe to realtime messages
   useEffect(() => {
@@ -135,11 +145,25 @@ export default function Chat() {
                     <MessageSquare className="h-5 w-5" />
                     Chat
                   </CardTitle>
-                  <Button size="icon" variant="ghost">
+                  <Button size="icon" variant="ghost" onClick={() => setCreateGroupOpen(true)} title="Nuovo gruppo">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </CardHeader>
+
+              {/* Create Group Button for empty state */}
+              {!threadsLoading && threads.length === 0 && (
+                <div className="px-3 pb-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2" 
+                    onClick={() => setCreateGroupOpen(true)}
+                  >
+                    <Users className="h-4 w-4" />
+                    Crea gruppo
+                  </Button>
+                </div>
+              )}
               <CardContent className="flex-1 p-0 overflow-hidden">
                 <ScrollArea className="h-full">
                   {threadsLoading ? (
@@ -280,6 +304,14 @@ export default function Chat() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Create Group Dialog */}
+      <CreateGroupChatDialog
+        open={createGroupOpen}
+        onOpenChange={setCreateGroupOpen}
+        onCreateGroup={handleCreateGroup}
+        isPending={createGroupChat.isPending}
+      />
     </div>
   );
 }
