@@ -3682,6 +3682,85 @@ export type Database = {
           },
         ]
       }
+      role_hidden_columns: {
+        Row: {
+          brand_id: string
+          column_key: string
+          created_at: string
+          id: string
+          is_hidden: boolean
+          role: string
+          table_name: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          column_key: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          role: string
+          table_name: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          column_key?: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          role?: string
+          table_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_hidden_columns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_page_permissions: {
+        Row: {
+          brand_id: string
+          can_access: boolean
+          created_at: string
+          id: string
+          page: Database["public"]["Enums"]["app_page"]
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          can_access?: boolean
+          created_at?: string
+          id?: string
+          page: Database["public"]["Enums"]["app_page"]
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          can_access?: boolean
+          created_at?: string
+          id?: string
+          page?: Database["public"]["Enums"]["app_page"]
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_page_permissions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_commissions: {
         Row: {
           approved_at: string | null
@@ -4474,6 +4553,99 @@ export type Database = {
             columns: ["source_event_id"]
             isOneToOne: false
             referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_hidden_columns: {
+        Row: {
+          brand_id: string
+          column_key: string
+          created_at: string
+          id: string
+          is_hidden: boolean
+          table_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          column_key: string
+          created_at?: string
+          id?: string
+          is_hidden: boolean
+          table_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          column_key?: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          table_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_hidden_columns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_hidden_columns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_page_permissions: {
+        Row: {
+          brand_id: string
+          can_access: boolean
+          created_at: string
+          id: string
+          page: Database["public"]["Enums"]["app_page"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          can_access: boolean
+          created_at?: string
+          id?: string
+          page: Database["public"]["Enums"]["app_page"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          can_access?: boolean
+          created_at?: string
+          id?: string
+          page?: Database["public"]["Enums"]["app_page"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_page_permissions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_page_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -5284,6 +5456,7 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_my_permissions: { Args: { p_brand_id: string }; Returns: Json }
       get_notification_preferences: {
         Args: { p_brand_id: string }
         Returns: {
@@ -5450,6 +5623,15 @@ export type Database = {
           event_id: string
           is_duplicate: boolean
         }[]
+      }
+      is_column_hidden_for_user: {
+        Args: {
+          p_brand_id: string
+          p_column_key: string
+          p_table_name: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       is_thread_member: {
         Args: { p_thread_id: string; p_user_id: string }
@@ -5793,6 +5975,14 @@ export type Database = {
         Args: { p_brand_id: string; p_user_id: string }
         Returns: boolean
       }
+      user_can_access_page: {
+        Args: {
+          p_brand_id: string
+          p_page: Database["public"]["Enums"]["app_page"]
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
       webhook_timeseries_24h: {
         Args: { p_brand_id: string; p_bucket_minutes?: number }
@@ -5815,6 +6005,36 @@ export type Database = {
       ad_platform: "meta" | "google"
       ad_platform_type: "meta" | "google" | "tiktok" | "linkedin" | "other"
       ai_mode: "off" | "suggest" | "auto_apply"
+      app_page:
+        | "dashboard"
+        | "contacts"
+        | "pipeline"
+        | "appointments"
+        | "tickets"
+        | "sales"
+        | "events"
+        | "chat"
+        | "notifications"
+        | "marketing_dashboard"
+        | "marketing_campaigns"
+        | "marketing_costs"
+        | "marketing_reports"
+        | "company_overview"
+        | "company_expenses"
+        | "company_budget"
+        | "company_reports"
+        | "team"
+        | "products"
+        | "salesperson_kpi"
+        | "ceo_dashboard"
+        | "admin_analytics"
+        | "admin_ai"
+        | "admin_ai_metrics"
+        | "admin_callcenter_kpi"
+        | "admin_ticket_trend"
+        | "admin_webhooks"
+        | "admin_dlq"
+        | "settings"
       app_role:
         | "admin"
         | "ceo"
@@ -6080,6 +6300,37 @@ export const Constants = {
       ad_platform: ["meta", "google"],
       ad_platform_type: ["meta", "google", "tiktok", "linkedin", "other"],
       ai_mode: ["off", "suggest", "auto_apply"],
+      app_page: [
+        "dashboard",
+        "contacts",
+        "pipeline",
+        "appointments",
+        "tickets",
+        "sales",
+        "events",
+        "chat",
+        "notifications",
+        "marketing_dashboard",
+        "marketing_campaigns",
+        "marketing_costs",
+        "marketing_reports",
+        "company_overview",
+        "company_expenses",
+        "company_budget",
+        "company_reports",
+        "team",
+        "products",
+        "salesperson_kpi",
+        "ceo_dashboard",
+        "admin_analytics",
+        "admin_ai",
+        "admin_ai_metrics",
+        "admin_callcenter_kpi",
+        "admin_ticket_trend",
+        "admin_webhooks",
+        "admin_dlq",
+        "settings",
+      ],
       app_role: [
         "admin",
         "ceo",
