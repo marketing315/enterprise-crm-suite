@@ -892,8 +892,12 @@ export type Database = {
           duration_seconds: number | null
           ended_at: string | null
           id: string
+          last_error: string | null
           notes: string | null
           phone_number: string
+          provider: string | null
+          provider_call_id: string | null
+          provider_ext_id: string | null
           recording_url: string | null
           started_at: string
           status: string
@@ -908,8 +912,12 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          last_error?: string | null
           notes?: string | null
           phone_number: string
+          provider?: string | null
+          provider_call_id?: string | null
+          provider_ext_id?: string | null
           recording_url?: string | null
           started_at?: string
           status?: string
@@ -924,8 +932,12 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          last_error?: string | null
           notes?: string | null
           phone_number?: string
+          provider?: string | null
+          provider_call_id?: string | null
+          provider_ext_id?: string | null
           recording_url?: string | null
           started_at?: string
           status?: string
@@ -1883,6 +1895,87 @@ export type Database = {
           {
             foreignKeyName: "expenses_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incoming_calls: {
+        Row: {
+          brand_id: string
+          call_log_id: string | null
+          contact_id: string | null
+          created_at: string
+          deal_id: string | null
+          dismissed_at: string | null
+          id: string
+          phone_number: string
+          provider_call_id: string | null
+          status: string
+          user_id: string | null
+          voispeed_ext: string | null
+        }
+        Insert: {
+          brand_id: string
+          call_log_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          dismissed_at?: string | null
+          id?: string
+          phone_number: string
+          provider_call_id?: string | null
+          status?: string
+          user_id?: string | null
+          voispeed_ext?: string | null
+        }
+        Update: {
+          brand_id?: string
+          call_log_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          dismissed_at?: string | null
+          id?: string
+          phone_number?: string
+          provider_call_id?: string | null
+          status?: string
+          user_id?: string | null
+          voispeed_ext?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incoming_calls_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_calls_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_calls_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_calls_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_calls_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3855,6 +3948,7 @@ export type Database = {
           id: string
           supabase_auth_id: string
           updated_at: string
+          voispeed_ext: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -3864,6 +3958,7 @@ export type Database = {
           id?: string
           supabase_auth_id: string
           updated_at?: string
+          voispeed_ext?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -3873,8 +3968,60 @@ export type Database = {
           id?: string
           supabase_auth_id?: string
           updated_at?: string
+          voispeed_ext?: string | null
         }
         Relationships: []
+      }
+      voispeed_configs: {
+        Row: {
+          base_url: string
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          domain: string | null
+          enabled: boolean
+          id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          base_url: string
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          domain?: string | null
+          enabled?: boolean
+          id?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          domain?: string | null
+          enabled?: boolean
+          id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voispeed_configs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voispeed_configs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_sources: {
         Row: {

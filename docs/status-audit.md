@@ -107,21 +107,23 @@
 
 | ID | Feature | Stato | Note |
 |----|---------|-------|------|
-| VOIP-01 | Click-to-Call `tel:` | ✅ Fatto | `ClickToCallButton.tsx`, call_logs table |
-| VOIP-02 | VoIP Provider Integration | ❌ Mancante | Solo `tel:` protocol, no Twilio/Aircall API |
-| VOIP-03 | Call Status Webhook | ❌ Mancante | Nessun webhook per status update |
+| VOIP-01 | Click-to-Call `tel:` | ✅ Fatto | `ClickToCallButton.tsx`, fallback quando VOIspeed non configurato |
+| VOIP-02 | VoIP Provider Integration | ✅ Fatto | VOIspeed v4 SERI API integrato |
+| VOIP-03 | Call Status Webhook | ✅ Fatto | `voispeed-events-webhook` edge function |
+| VOIP-04 | Screen-pop chiamate | ✅ Fatto | `IncomingCallPopup.tsx` con realtime subscription |
+| VOIP-05 | VOIspeed Settings | ✅ Fatto | `VOIspeedSettings.tsx` per configurazione brand |
 | SALES-01 | Lista vendite | ✅ Fatto | `Sales.tsx` + `useSalesOrders.ts` |
-| SALES-02 | RBAC venditori | ⚠️ Parziale | RLS presente, no filter by created_by |
-| SALES-03 | Metodi Rate/Noleggio | ❌ Mancante | Solo cash/card/bank_transfer/stripe/other |
+| SALES-02 | RBAC venditori | ✅ Fatto | RLS + filtri per venditore |
+| SALES-03 | Metodi Rate/Noleggio | ✅ Fatto | Aggiunto `installment` e `rental` in types |
 | SALES-04 | Bug salvataggio | ❓ Da verificare | Network analysis richiesta |
-| SALES-05 | Filtri per venditore/data | ⚠️ Parziale | Solo status filter, manca venditore |
+| SALES-05 | Filtri per venditore/data | ✅ Fatto | Filtri data, venditore in Sales.tsx |
 | SALES-06 | Colonna vendite contatti | ✅ Fatto | RPC `get_contacts_with_sales_totals` |
 | TICK-01 | Lista ticket | ✅ Fatto | Cursor pagination, SLA, queues |
-| TICK-02 | Apertura ticket da contatto | ❌ Mancante | No CTA in ContactDetailSheet |
-| TICK-03 | Apertura ticket da deal | ❌ Mancante | No CTA in DealDetailSheet |
+| TICK-02 | Apertura ticket da contatto | ✅ Fatto | CTA in ContactDetailSheet |
+| TICK-03 | Apertura ticket da deal | ✅ Fatto | CTA in DealDetailSheet |
 | TICK-04 | Round Robin assegnazione | ✅ Fatto | `ticket-assign-recovery` function |
 | CHAT-01 | Chat singole | ✅ Fatto | Realtime subscription working |
-| CHAT-02 | Chat gruppi | ❌ Mancante | No UI per creare gruppi |
+| CHAT-02 | Chat gruppi | ✅ Fatto | `CreateGroupChatDialog.tsx` + RPC |
 | CHAT-03 | Notifiche chat | ⚠️ Parziale | Solo invalidate query, no push/badge |
 | EVNT-01 | Performance eventi | ✅ Fatto | RPC paginata server-side |
 | EVNT-02 | Indici DB | ✅ Fatto | Indici su brand_id, received_at |
@@ -141,6 +143,8 @@
 | Tabella | RLS | Policy | Note |
 |---------|-----|--------|------|
 | `call_logs` | ✅ ON | INSERT: brand check, UPDATE: own only, SELECT: brand | ✅ Corretto |
+| `voispeed_configs` | ✅ ON | Admin/CEO only per CRUD | ✅ Nuovo - Configurazione VOIspeed |
+| `incoming_calls` | ✅ ON | User can see own, Admin can see all | ✅ Nuovo - Screen-pop realtime |
 | `sales_orders` | ✅ ON | CRUD via brand, RLS bypass tramite untyped client | ⚠️ Verificare |
 | `sales_order_items` | ✅ ON | Cascade da order | ✅ Corretto |
 | `payments` | ✅ ON | Brand + order access | ✅ Corretto |

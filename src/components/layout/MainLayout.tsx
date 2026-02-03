@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useHasMarketingAccess, useCanSeeMarketingSubmenu } from '@/hooks/useMarketingAccess';
 import { BrandSelector } from './BrandSelector';
+import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -169,6 +170,8 @@ export function MainLayout() {
 
   return (
     <SidebarProvider>
+      {/* Screen-pop per chiamate in arrivo VOIspeed */}
+      <IncomingCallPopup />
       <div className="flex min-h-screen w-full">
         <Sidebar>
           <SidebarHeader className="border-b border-sidebar-border">
