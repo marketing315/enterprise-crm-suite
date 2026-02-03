@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Eye, Trash2 } from 'lucide-react';
+import { Phone, Mail, Eye, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -138,11 +138,10 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
                 </TableCell>
                 <TableCell>
                   {contact.city ? (
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm">
                       {contact.city}
                       {contact.cap && ` (${contact.cap})`}
-                    </div>
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}

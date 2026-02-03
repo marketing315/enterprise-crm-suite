@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Phone, Mail, MapPin, Eye, Building2, Settings2, Save, Trash2 } from "lucide-react";
+import { Phone, Mail, Eye, Building2, Settings2, Save, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -283,11 +283,10 @@ export function ContactsTableWithViews({
 
       case "city":
         return contact.city ? (
-          <div className="flex items-center gap-1.5 text-sm">
-            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-sm">
             {contact.city}
             {contact.cap && ` (${contact.cap})`}
-          </div>
+          </span>
         ) : (
           <span className="text-muted-foreground">-</span>
         );
