@@ -134,3 +134,26 @@ export function useLeadEvents(contactId?: string) {
     enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id,
   });
 }
+
+// Get primary phone for a contact
+export function useContactPhone(contactId: string | null) {
+  return useQuery({
+    queryKey: ['contact-phone', contactId],
+    queryFn: async () => {
+      if (!contactId) return null;
+
+      const { data, error } = await supabase
+        .from('contact_phones')
+        .select('phone_normalized')
+        .eq('contact_id', contactId)
+        .eq('is_active', true)
+        .order('is_primary', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data?.phone_normalized || null;
+    },
+    enabled: !!contactId,
+  });
+}

@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { ClickToCallButton } from './ClickToCallButton';
 import {
   Sheet,
   SheetContent,
@@ -374,6 +375,13 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     {phone.assumed_country && (
                       <Badge variant="outline" className="text-xs">{phone.country_code} (assunto)</Badge>
                     )}
+                    <ClickToCallButton
+                      contactId={contact.id}
+                      phoneNumber={phone.phone_normalized}
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
                     <CorrectPhoneDialog
                       contactId={contact.id}
                       currentPhone={phone.phone_normalized}

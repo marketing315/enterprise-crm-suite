@@ -16,6 +16,7 @@ import {
   Lock,
   Megaphone,
   Package,
+  Phone,
 } from "lucide-react";
 import {
   Sheet,
@@ -32,11 +33,13 @@ import { EntityTagList } from "@/components/tags/EntityTagList";
 import { EntityChatBox } from "@/components/chat/EntityChatBox";
 import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssignmentSelect";
 import { CampaignSelect } from "./CampaignSelect";
+import { ClickToCallButton } from "@/components/contacts/ClickToCallButton";
 import { useUpdateDealStatus, useAssignDealToUser, useUpdateDealCampaign } from "@/hooks/usePipeline";
 import { useDealSalesOrder, useCreateSalesOrderFromDeal } from "@/hooks/useSalesOrders";
 import { useSalesOrderItems } from "@/hooks/useSalesOrderItems";
 import { useCanEditDeals } from "@/hooks/useCanEditDeals";
 import { useHasMarketingAccess, useCanEditCampaigns } from "@/hooks/useMarketingAccess";
+import { useContactPhone } from "@/hooks/useContacts";
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
@@ -58,6 +61,7 @@ export function DealDetailSheet({
   const updateCampaign = useUpdateDealCampaign();
   const { data: existingSalesOrder } = useDealSalesOrder(deal?.id || null);
   const { data: orderItems = [] } = useSalesOrderItems(existingSalesOrder?.id || null);
+  const { data: contactPhone } = useContactPhone(deal?.contact_id || null);
   const createSalesOrder = useCreateSalesOrderFromDeal();
   const canEdit = useCanEditDeals();
   const hasMarketingAccess = useHasMarketingAccess();
@@ -244,19 +248,37 @@ export function DealDetailSheet({
                       <User className="h-4 w-4" />
                       Contatto
                     </h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/contacts?open=${deal.contact_id}`)}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                      Apri
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {contactPhone && (
+                        <ClickToCallButton
+                          contactId={deal.contact_id}
+                          phoneNumber={contactPhone}
+                          dealId={deal.id}
+                          size="sm"
+                          variant="outline"
+                          showLabel
+                        />
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/contacts?open=${deal.contact_id}`)}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                        Apri
+                      </Button>
+                    </div>
                   </div>
                   <div className="text-sm space-y-1">
                     <p className="font-medium">{getContactName()}</p>
                     {deal.contact?.email && (
                       <p className="text-muted-foreground">{deal.contact.email}</p>
+                    )}
+                    {contactPhone && (
+                      <p className="text-muted-foreground flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {contactPhone}
+                      </p>
                     )}
                   </div>
                 </div>

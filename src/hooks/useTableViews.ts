@@ -44,6 +44,7 @@ export const DEFAULT_COLUMNS: TableColumn[] = [
   { key: "cap", label: "CAP", visible: false },
   { key: "address", label: "Indirizzo", visible: false },
   { key: "status", label: "Stato", visible: true },
+  { key: "sales_total", label: "Vendite", visible: true },
   { key: "notes", label: "Note", visible: false },
   { key: "brand_name", label: "Brand", visible: false }, // Hidden by default, shown in all-brands view
   { key: "created_at", label: "Data creazione", visible: true },
