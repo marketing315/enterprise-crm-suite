@@ -828,6 +828,57 @@ export type Database = {
           },
         ]
       }
+      brand_tax_settings: {
+        Row: {
+          brand_id: string
+          corporate_tax_rate: number
+          fiscal_year_start: number
+          id: string
+          notes: string | null
+          regional_tax_rate: number
+          updated_at: string
+          updated_by: string | null
+          vat_rate_default: number
+        }
+        Insert: {
+          brand_id: string
+          corporate_tax_rate?: number
+          fiscal_year_start?: number
+          id?: string
+          notes?: string | null
+          regional_tax_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+          vat_rate_default?: number
+        }
+        Update: {
+          brand_id?: string
+          corporate_tax_rate?: number
+          fiscal_year_start?: number
+          id?: string
+          notes?: string | null
+          regional_tax_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+          vat_rate_default?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_tax_settings_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_tax_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           auto_assign_enabled: boolean
@@ -1710,6 +1761,41 @@ export type Database = {
           },
         ]
       }
+      cost_centers: {
+        Row: {
+          brand_id: string
+          code: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          brand_id: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          brand_id?: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_centers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_stage_history: {
         Row: {
           changed_at: string
@@ -1856,24 +1942,33 @@ export type Database = {
       expense_categories: {
         Row: {
           brand_id: string
+          category_type: string | null
           created_at: string | null
           id: string
           is_active: boolean | null
+          is_deductible: boolean
           name: string
+          parent_id: string | null
         }
         Insert: {
           brand_id: string
+          category_type?: string | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_deductible?: boolean
           name: string
+          parent_id?: string | null
         }
         Update: {
           brand_id?: string
+          category_type?: string | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_deductible?: boolean
           name?: string
+          parent_id?: string | null
         }
         Relationships: [
           {
@@ -1883,6 +1978,13 @@ export type Database = {
             referencedRelation: "brands"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "expense_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
         ]
       }
       expenses: {
@@ -1890,13 +1992,19 @@ export type Database = {
           amount: number
           brand_id: string
           category_id: string | null
+          cost_center_id: string | null
           created_at: string | null
           created_by: string
           currency: string | null
           description: string | null
           expense_date: string
+          gross_amount: number | null
           id: string
+          is_deductible: boolean | null
           notes: string | null
+          periodicity: string | null
+          recurring_until: string | null
+          tax_rate: number | null
           updated_at: string | null
           vendor_name: string | null
         }
@@ -1904,13 +2012,19 @@ export type Database = {
           amount: number
           brand_id: string
           category_id?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           created_by: string
           currency?: string | null
           description?: string | null
           expense_date: string
+          gross_amount?: number | null
           id?: string
+          is_deductible?: boolean | null
           notes?: string | null
+          periodicity?: string | null
+          recurring_until?: string | null
+          tax_rate?: number | null
           updated_at?: string | null
           vendor_name?: string | null
         }
@@ -1918,13 +2032,19 @@ export type Database = {
           amount?: number
           brand_id?: string
           category_id?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           created_by?: string
           currency?: string | null
           description?: string | null
           expense_date?: string
+          gross_amount?: number | null
           id?: string
+          is_deductible?: boolean | null
           notes?: string | null
+          periodicity?: string | null
+          recurring_until?: string | null
+          tax_rate?: number | null
           updated_at?: string | null
           vendor_name?: string | null
         }
@@ -1941,6 +2061,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {
@@ -4619,6 +4746,10 @@ export type Database = {
         Returns: Json
       }
       get_callcenter_kpis_overview: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_ceo_dashboard_kpis: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
