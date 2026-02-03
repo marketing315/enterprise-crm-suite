@@ -1936,48 +1936,138 @@ export type Database = {
           brand_id: string
           cap: string | null
           city: string | null
+          company_address: string | null
+          company_city: string | null
+          company_name: string | null
+          company_province: string | null
+          company_zip: string | null
+          country: string | null
           created_at: string
           email: string | null
+          fax: string | null
           first_name: string | null
+          fiscal_code: string | null
           id: string
           last_name: string | null
+          lead_cost: number | null
+          lead_extra: string | null
+          lead_message: string | null
+          lead_note: string | null
+          lead_reason: string | null
+          lead_reason_id: string | null
+          lead_state_id: string | null
+          lead_type: string | null
+          lead_valid: boolean | null
+          lead_validation_ts: string | null
           marketing_consent: boolean | null
           marketing_consent_at: string | null
+          note1: string | null
+          note10: string | null
+          note2: string | null
+          note3: string | null
+          note4: string | null
+          note5: string | null
+          note6: string | null
+          note7: string | null
+          note8: string | null
+          note9: string | null
           notes: string | null
+          province: string | null
           status: Database["public"]["Enums"]["contact_status"]
           updated_at: string
+          vat_number: string | null
         }
         Insert: {
           address?: string | null
           brand_id: string
           cap?: string | null
           city?: string | null
+          company_address?: string | null
+          company_city?: string | null
+          company_name?: string | null
+          company_province?: string | null
+          company_zip?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
+          fax?: string | null
           first_name?: string | null
+          fiscal_code?: string | null
           id?: string
           last_name?: string | null
+          lead_cost?: number | null
+          lead_extra?: string | null
+          lead_message?: string | null
+          lead_note?: string | null
+          lead_reason?: string | null
+          lead_reason_id?: string | null
+          lead_state_id?: string | null
+          lead_type?: string | null
+          lead_valid?: boolean | null
+          lead_validation_ts?: string | null
           marketing_consent?: boolean | null
           marketing_consent_at?: string | null
+          note1?: string | null
+          note10?: string | null
+          note2?: string | null
+          note3?: string | null
+          note4?: string | null
+          note5?: string | null
+          note6?: string | null
+          note7?: string | null
+          note8?: string | null
+          note9?: string | null
           notes?: string | null
+          province?: string | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
+          vat_number?: string | null
         }
         Update: {
           address?: string | null
           brand_id?: string
           cap?: string | null
           city?: string | null
+          company_address?: string | null
+          company_city?: string | null
+          company_name?: string | null
+          company_province?: string | null
+          company_zip?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
+          fax?: string | null
           first_name?: string | null
+          fiscal_code?: string | null
           id?: string
           last_name?: string | null
+          lead_cost?: number | null
+          lead_extra?: string | null
+          lead_message?: string | null
+          lead_note?: string | null
+          lead_reason?: string | null
+          lead_reason_id?: string | null
+          lead_state_id?: string | null
+          lead_type?: string | null
+          lead_valid?: boolean | null
+          lead_validation_ts?: string | null
           marketing_consent?: boolean | null
           marketing_consent_at?: string | null
+          note1?: string | null
+          note10?: string | null
+          note2?: string | null
+          note3?: string | null
+          note4?: string | null
+          note5?: string | null
+          note6?: string | null
+          note7?: string | null
+          note8?: string | null
+          note9?: string | null
           notes?: string | null
+          province?: string | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
+          vat_number?: string | null
         }
         Relationships: [
           {
