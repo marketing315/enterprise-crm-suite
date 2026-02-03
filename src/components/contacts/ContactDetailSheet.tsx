@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2 } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2, Ticket } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { ClickToCallButton } from './ClickToCallButton';
+import { CreateTicketDialog } from '@/components/tickets/CreateTicketDialog';
 import {
   Sheet,
   SheetContent,
@@ -67,6 +68,7 @@ interface EditFormData {
 export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDetailSheetProps) {
   const [conflictContactId, setConflictContactId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
   const [formData, setFormData] = useState<EditFormData>({
     first_name: '',
     last_name: '',
@@ -429,6 +431,21 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 />
               </div>
 
+              {/* Quick Actions */}
+              <Separator />
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Azioni Rapide</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTicketDialogOpen(true)}
+                  className="w-full justify-start"
+                >
+                  <Ticket className="h-4 w-4 mr-2" />
+                  Apri Ticket Supporto
+                </Button>
+              </div>
+
               {/* Custom Fields */}
               <Separator />
               <CustomFieldsSection contactId={contact.id} />
@@ -510,6 +527,16 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
           </ScrollArea>
         ) : (
           <p className="mt-6 text-muted-foreground">Contatto non trovato</p>
+        )}
+
+        {/* Create Ticket Dialog */}
+        {contact && (
+          <CreateTicketDialog
+            open={ticketDialogOpen}
+            onOpenChange={setTicketDialogOpen}
+            contactId={contact.id}
+            contactName={getFullName()}
+          />
         )}
       </SheetContent>
     </Sheet>

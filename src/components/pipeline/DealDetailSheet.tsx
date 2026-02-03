@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -17,6 +18,7 @@ import {
   Megaphone,
   Package,
   Phone,
+  Ticket,
 } from "lucide-react";
 import {
   Sheet,
@@ -40,6 +42,7 @@ import { useSalesOrderItems } from "@/hooks/useSalesOrderItems";
 import { useCanEditDeals } from "@/hooks/useCanEditDeals";
 import { useHasMarketingAccess, useCanEditCampaigns } from "@/hooks/useMarketingAccess";
 import { useContactPhone } from "@/hooks/useContacts";
+import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog";
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
 import type { DealWithContactAndTags } from "@/hooks/usePipeline";
@@ -55,6 +58,7 @@ export function DealDetailSheet({
   open,
   onOpenChange,
 }: DealDetailSheetProps) {
+  const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
   const navigate = useNavigate();
   const updateStatus = useUpdateDealStatus();
   const assignDeal = useAssignDealToUser();
@@ -240,6 +244,17 @@ export function DealDetailSheet({
                     )}
                   </div>
                 )}
+
+                {/* Open Ticket Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTicketDialogOpen(true)}
+                  className="w-full"
+                >
+                  <Ticket className="h-4 w-4 mr-2" />
+                  Apri Ticket Supporto
+                </Button>
 
                 {/* Contact Info */}
                 <div className="rounded-lg border p-4 space-y-2">
@@ -466,6 +481,15 @@ export function DealDetailSheet({
             />
           </TabsContent>
         </Tabs>
+
+        {/* Create Ticket Dialog */}
+        <CreateTicketDialog
+          open={ticketDialogOpen}
+          onOpenChange={setTicketDialogOpen}
+          contactId={deal.contact_id}
+          contactName={getContactName()}
+          dealId={deal.id}
+        />
       </SheetContent>
     </Sheet>
   );

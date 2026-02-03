@@ -14,6 +14,8 @@ export type PaymentMethod =
   | 'card' 
   | 'bank_transfer' 
   | 'stripe' 
+  | 'installment'
+  | 'rental'
   | 'other';
 
 export type PaymentStatus = 
@@ -225,6 +227,8 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   card: 'Carta',
   bank_transfer: 'Bonifico',
   stripe: 'Stripe',
+  installment: 'Rate',
+  rental: 'Noleggio',
   other: 'Altro',
 };
 
