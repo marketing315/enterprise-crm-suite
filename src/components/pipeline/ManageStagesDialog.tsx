@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -26,12 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings2, Trash2, RotateCcw } from "lucide-react";
+import { Settings2, Trash2, RotateCcw, Plus } from "lucide-react";
 import { 
   usePipelineStagesAdmin,
   useDeactivatePipelineStage,
   useReactivatePipelineStage,
   useDeletePipelineStagePermanently,
+  useCreatePipelineStage,
 } from "@/hooks/usePipelineStagesAdmin";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
@@ -47,13 +49,23 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
   const deactivateStage = useDeactivatePipelineStage();
   const reactivateStage = useReactivatePipelineStage();
   const deleteStage = useDeletePipelineStagePermanently();
+  const addStage = useCreatePipelineStage();
 
   const [stageToDeactivate, setStageToDeactivate] = useState<PipelineStage | null>(null);
   const [fallbackStageId, setFallbackStageId] = useState<string>("");
   const [stageToDeletePermanently, setStageToDeletePermanently] = useState<PipelineStage | null>(null);
+  const [newStageName, setNewStageName] = useState("");
+  const [newStageColor, setNewStageColor] = useState("#6366f1");
 
   const activeStages = stages?.filter(s => s.is_active) || [];
   const inactiveStages = stages?.filter(s => !s.is_active) || [];
+
+  const handleAddStage = async () => {
+    if (!newStageName.trim()) return;
+    await addStage.mutateAsync({ name: newStageName.trim(), color: newStageColor });
+    setNewStageName("");
+    setNewStageColor("#6366f1");
+  };
 
   const openDeactivateDialog = (stage: PipelineStage) => {
     setStageToDeactivate(stage);
@@ -93,6 +105,35 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
           </DialogHeader>
           
           <div className="space-y-4 py-2">
+            {/* Add new stage */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                Aggiungi Fase
+              </Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={newStageColor}
+                  onChange={(e) => setNewStageColor(e.target.value)}
+                  className="w-8 h-8 rounded border cursor-pointer shrink-0"
+                />
+                <Input
+                  placeholder="Nome nuova fase..."
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddStage()}
+                  className="flex-1"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleAddStage}
+                  disabled={!newStageName.trim() || addStage.isPending}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (

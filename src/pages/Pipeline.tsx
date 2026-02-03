@@ -2,11 +2,10 @@ import { useState } from "react";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { TagFilter } from "@/components/tags/TagFilter";
-import { AddStageDialog } from "@/components/pipeline/AddStageDialog";
 import { ManageStagesDialog } from "@/components/pipeline/ManageStagesDialog";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { useDeals } from "@/hooks/usePipeline";
-import { AlertCircle, Globe, Trophy, XCircle, Archive, Plus, Settings2 } from "lucide-react";
+import { AlertCircle, Globe, Trophy, XCircle, Archive, Settings2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClosedDealsTable } from "@/components/pipeline/ClosedDealsTable";
@@ -74,23 +73,14 @@ export default function Pipeline() {
               }
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <ManageStagesDialog
-              trigger={
-                <Button size="sm" variant="ghost">
-                  <Settings2 className="h-4 w-4" />
-                </Button>
-              }
-            />
-            <AddStageDialog
-              trigger={
-                <Button size="sm" variant="outline">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Nuova fase
-                </Button>
-              }
-            />
-          </div>
+          <ManageStagesDialog
+            trigger={
+              <Button size="sm" variant="outline">
+                <Settings2 className="h-4 w-4 mr-1" />
+                Gestisci fasi
+              </Button>
+            }
+          />
         </div>
       </div>
 
