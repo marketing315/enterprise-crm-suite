@@ -26,6 +26,7 @@ import {
   useChatMessages,
   useSendChatMessage,
   useSendAIMessage,
+  useChatRealtime,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
@@ -50,8 +51,15 @@ export default function Chat() {
   );
   const sendMessage = useSendChatMessage();
   const sendAIMessage = useSendAIMessage();
+  const { subscribeToMessages } = useChatRealtime(selectedThreadId);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
+
+  // Subscribe to realtime messages
+  useEffect(() => {
+    const unsubscribe = subscribeToMessages();
+    return () => unsubscribe();
+  }, [selectedThreadId, subscribeToMessages]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
