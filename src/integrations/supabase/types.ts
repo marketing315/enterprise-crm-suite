@@ -5464,7 +5464,7 @@ export type Database = {
         Returns: {
           created_at: string
           custom_url_params: Json
-          event_types: string[]
+          event_types: Database["public"]["Enums"]["webhook_event_type"][]
           id: string
           is_active: boolean
           name: string
