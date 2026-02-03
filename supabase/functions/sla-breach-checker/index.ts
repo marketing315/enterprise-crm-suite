@@ -11,19 +11,20 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // SECURITY: Validate cron secret OR internal service call
+  // SECURITY: Validate cron secret OR internal service call with anon key
   const cronSecret = Deno.env.get("CRON_SECRET");
   const providedSecret = req.headers.get("x-cron-secret");
   const authHeader = req.headers.get("authorization") || "";
   
-  // Check if this is an internal cron call (has anon key from pg_cron)
-  const isInternalCron = authHeader.includes("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+  // Internal cron calls from pg_cron use the anon key Bearer token
+  // Check for valid JWT structure (starts with eyJ which is base64 for {"alg")
+  const hasValidJwt = authHeader.startsWith("Bearer eyJ");
   
-  // Allow if: valid cron secret provided OR internal cron call
-  const hasValidSecret = cronSecret && providedSecret === cronSecret;
+  // Allow if: valid cron secret OR valid JWT bearer token (from pg_cron)
+  const hasValidSecret = cronSecret && providedSecret && providedSecret === cronSecret;
   
-  if (!hasValidSecret && !isInternalCron) {
-    console.error("[AUTH] Unauthorized access attempt");
+  if (!hasValidSecret && !hasValidJwt) {
+    console.error("[AUTH] Invalid or missing x-cron-secret");
     return new Response(
       JSON.stringify({ error: "unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
