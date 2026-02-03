@@ -56,7 +56,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/install" element={<Install />} />
-              <Route path="/installa" element={<Install />} />
+              <Route path="/installa" element={<Navigate to="/install" replace />} />
               
               {/* Brand selection (requires auth) */}
               <Route
