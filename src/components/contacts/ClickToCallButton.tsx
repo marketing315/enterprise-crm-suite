@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, PhoneCall, PhoneOff } from "lucide-react";
+import { Phone, PhoneCall, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCreateCallLog, useUpdateCallLog } from "@/hooks/useCallLogs";
+import { useVOIspeedConfig, useUserVOIspeedExt, useVOIspeedCall } from "@/hooks/useVOIspeed";
+import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 
 interface ClickToCallButtonProps {
@@ -35,10 +37,48 @@ export function ClickToCallButton({
   const [callStatus, setCallStatus] = useState<"idle" | "calling" | "connected">("idle");
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
 
+  const { currentBrand } = useBrand();
   const createCallLog = useCreateCallLog();
   const updateCallLog = useUpdateCallLog();
+  
+  // VOIspeed integration
+  const { data: voipConfig, isLoading: voipConfigLoading } = useVOIspeedConfig();
+  const { data: userExt, isLoading: userExtLoading } = useUserVOIspeedExt();
+  const voispeedCall = useVOIspeedCall();
+
+  const isVOIspeedEnabled = !!voipConfig && !!userExt;
+  const isLoading = voipConfigLoading || userExtLoading;
 
   const handleStartCall = async () => {
+    if (!currentBrand?.id) {
+      toast.error("Nessun brand selezionato");
+      return;
+    }
+
+    // VOIspeed path: use edge function
+    if (isVOIspeedEnabled) {
+      try {
+        setCallStatus("calling");
+        setIsDialerOpen(true);
+        setCallStartTime(new Date());
+
+        const result = await voispeedCall.mutateAsync({
+          phoneNumber,
+          contactId,
+          dealId,
+          brandId: currentBrand.id,
+        });
+
+        setActiveCallId(result.call_log_id);
+        // VOIspeed will update status via webhook
+      } catch (error) {
+        setCallStatus("idle");
+        setIsDialerOpen(false);
+      }
+      return;
+    }
+
+    // Fallback: tel: protocol with manual tracking
     try {
       // Create call log
       const callLog = await createCallLog.mutateAsync({
@@ -126,6 +166,8 @@ export function ClickToCallButton({
     toast.info(labels[status]);
   };
 
+  const isPending = isLoading || createCallLog.isPending || voispeedCall.isPending;
+
   return (
     <>
       <Button
@@ -133,9 +175,13 @@ export function ClickToCallButton({
         size={size}
         className={className}
         onClick={handleStartCall}
-        disabled={createCallLog.isPending}
+        disabled={isPending}
       >
-        <Phone className="h-4 w-4" />
+        {isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Phone className="h-4 w-4" />
+        )}
         {showLabel && <span className="ml-1.5">Chiama</span>}
       </Button>
 
@@ -171,7 +217,7 @@ export function ClickToCallButton({
 
             {callStatus === "connected" && (
               <div className="text-center space-y-4">
-                <div className="text-lg font-medium text-green-600">Connesso</div>
+                <div className="text-lg font-medium text-primary">Connesso</div>
                 <p className="text-sm text-muted-foreground">
                   La chiamata è in corso. Clicca "Termina" quando hai finito.
                 </p>

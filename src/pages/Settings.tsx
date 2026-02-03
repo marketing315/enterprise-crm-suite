@@ -10,6 +10,7 @@ import { PipelineStagesSettings } from "@/components/settings/pipeline/PipelineS
 import { CustomFieldsSettings } from "@/components/settings/CustomFieldsSettings";
 import { NotificationPreferencesSettings } from "@/components/settings/NotificationPreferencesSettings";
 import { VoIPSettings } from "@/components/settings/VoIPSettings";
+import { VOIspeedSettings } from "@/components/settings/VOIspeedSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -138,6 +139,7 @@ export default function Settings() {
         {isBrandAdmin && (
           <TabsContent value="voip" className="space-y-4">
             <VoIPSettings />
+            <VOIspeedSettings />
           </TabsContent>
         )}
 

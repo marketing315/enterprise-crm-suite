@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.capi-event-sender]
 verify_jwt = false
+
+[functions.voispeed-call-request]
+verify_jwt = false
+
+[functions.voispeed-events-webhook]
+verify_jwt = false
