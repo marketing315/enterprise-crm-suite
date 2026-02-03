@@ -49,7 +49,7 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
   const deactivateStage = useDeactivatePipelineStage();
   const reactivateStage = useReactivatePipelineStage();
   const deleteStage = useDeletePipelineStagePermanently();
-  const addStage = useAddPipelineStage();
+  const addStage = useCreatePipelineStage();
 
   const [stageToDeactivate, setStageToDeactivate] = useState<PipelineStage | null>(null);
   const [fallbackStageId, setFallbackStageId] = useState<string>("");
