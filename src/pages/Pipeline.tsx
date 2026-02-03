@@ -91,7 +91,7 @@ export default function Pipeline() {
               }
             />
           </div>
-      </div>
+        </div>
 
       {/* Tabs for Pipeline / Won / Lost / Archived */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 flex flex-col overflow-hidden">
