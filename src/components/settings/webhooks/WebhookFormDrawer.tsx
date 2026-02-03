@@ -41,6 +41,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { AIMappingGenerator } from "./AIMappingGenerator";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome obbligatorio").max(100),
@@ -381,16 +382,26 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
 
               {/* Payload Mapping (only for form_urlencoded) */}
               {payloadFormat === "form_urlencoded" && (
-                <div className="space-y-2">
-                  <Label>Mapping Campi (JSON)</Label>
-                  <Textarea
-                    placeholder='{"nome": "contact.first_name", "cognome": "contact.last_name", "telefono": "contact.phone"}'
-                    className="font-mono text-xs min-h-[100px]"
-                    {...register("payload_mapping_json")}
+                <div className="space-y-4">
+                  {/* AI Mapping Generator */}
+                  <AIMappingGenerator
+                    onMappingGenerated={(mapping) => {
+                      setValue("payload_mapping_json", JSON.stringify(mapping, null, 2));
+                    }}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Mappa i campi dell'evento ai campi del destinatario. Formato: {"{"}"campo_destinazione": "percorso.origine"{"}"}
-                  </p>
+
+                  {/* Manual JSON editor */}
+                  <div className="space-y-2">
+                    <Label>Mapping Campi (JSON)</Label>
+                    <Textarea
+                      placeholder='{"nome": "contact_snapshot.first_name", "cognome": "contact_snapshot.last_name", "telefono": "contact_snapshot.phone"}'
+                      className="font-mono text-xs min-h-[120px]"
+                      {...register("payload_mapping_json")}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Mappa i campi dell'evento ai campi del destinatario. Formato: {"{"}"campo_destinazione": "percorso.origine"{"}"}
+                    </p>
+                  </div>
                 </div>
               )}
             </CollapsibleContent>
