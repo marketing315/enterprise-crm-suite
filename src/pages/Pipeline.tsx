@@ -2,12 +2,14 @@ import { useState } from "react";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { TagFilter } from "@/components/tags/TagFilter";
+import { AddStageDialog } from "@/components/pipeline/AddStageDialog";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { useDeals } from "@/hooks/usePipeline";
-import { AlertCircle, Globe, Trophy, XCircle, Archive } from "lucide-react";
+import { AlertCircle, Globe, Trophy, XCircle, Archive, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClosedDealsTable } from "@/components/pipeline/ClosedDealsTable";
+import { Button } from "@/components/ui/button";
 
 export default function Pipeline() {
   const { currentBrand, hasBrandSelected } = useBrand();
