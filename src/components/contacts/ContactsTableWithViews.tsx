@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { useState, useEffect, useMemo } from "react";
+import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import { Mail, Eye, Building2, Settings2, Save, Trash2, ShoppingCart } from "lucide-react";
 import {
@@ -35,6 +35,7 @@ import { TableViewSelector } from "./views/TableViewSelector";
 import { SaveViewDialog } from "./views/SaveViewDialog";
 import { EditViewDialog } from "./views/EditViewDialog";
 import { ColumnManager } from "./views/ColumnManager";
+import { SortableFilterableHeader, type SortConfig, type DateFilter } from "./SortableFilterableHeader";
 import { useBrand } from "@/contexts/BrandContext";
 import { useActiveTableView } from "@/hooks/useActiveTableView";
 import {
@@ -72,6 +73,10 @@ export function ContactsTableWithViews({
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [editingView, setEditingView] = useState<ContactTableView | null>(null);
   
+  // Sorting and date filtering state
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [dateFilters, setDateFilters] = useState<Record<string, DateFilter>>({});
+  
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -81,10 +86,88 @@ export function ContactsTableWithViews({
   // Sales totals for contacts
   const { data: salesTotals } = useContactsSalesTotals();
 
+  // Date columns for special handling
+  const dateColumns = ['created_at', 'updated_at'];
+
+  // Sort and filter contacts
+  const processedContacts = useMemo(() => {
+    let result = [...contacts];
+
+    // Apply date filters
+    Object.entries(dateFilters).forEach(([key, filter]) => {
+      if (filter.from || filter.to) {
+        result = result.filter((contact) => {
+          const dateValue = contact[key as keyof ContactWithBrand];
+          if (!dateValue || typeof dateValue !== 'string') return true;
+          
+          const contactDate = new Date(dateValue);
+          
+          if (filter.from && isBefore(contactDate, startOfDay(filter.from))) {
+            return false;
+          }
+          if (filter.to && isAfter(contactDate, endOfDay(filter.to))) {
+            return false;
+          }
+          return true;
+        });
+      }
+    });
+
+    // Apply sorting
+    if (sortConfig?.key && sortConfig?.direction) {
+      result.sort((a, b) => {
+        const aValue = a[sortConfig.key as keyof ContactWithBrand];
+        const bValue = b[sortConfig.key as keyof ContactWithBrand];
+
+        // Handle null/undefined
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (bValue == null) return sortConfig.direction === 'asc' ? -1 : 1;
+
+        // Compare dates
+        if (dateColumns.includes(sortConfig.key)) {
+          const aDate = new Date(aValue as string).getTime();
+          const bDate = new Date(bValue as string).getTime();
+          return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
+        }
+
+        // Compare strings
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          const comparison = aValue.localeCompare(bValue);
+          return sortConfig.direction === 'asc' ? comparison : -comparison;
+        }
+
+        return 0;
+      });
+    }
+
+    return result;
+  }, [contacts, sortConfig, dateFilters]);
+
+  // Sort handler
+  const handleSort = (key: string, direction: SortConfig['direction']) => {
+    if (direction === null) {
+      setSortConfig(null);
+    } else {
+      setSortConfig({ key, direction });
+    }
+  };
+
+  // Date filter handler
+  const handleDateFilterChange = (key: string, filter: DateFilter | null) => {
+    setDateFilters((prev) => {
+      if (!filter) {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [key]: filter };
+    });
+  };
+
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(contacts.map(c => c.id)));
+      setSelectedIds(new Set(processedContacts.map(c => c.id)));
     } else {
       setSelectedIds(new Set());
     }
@@ -104,9 +187,9 @@ export function ContactsTableWithViews({
     setSelectedIds(new Set());
   };
 
-  const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
-  const allSelected = contacts.length > 0 && selectedIds.size === contacts.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < contacts.length;
+  const selectedContacts = processedContacts.filter(c => selectedIds.has(c.id));
+  const allSelected = processedContacts.length > 0 && selectedIds.size === processedContacts.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < processedContacts.length;
   
   const { isAllBrandsSelected } = useBrand();
   const {
@@ -442,14 +525,26 @@ export function ContactsTableWithViews({
               </TableHead>
               {visibleColumns.map((col) => (
                 <TableHead key={col.key} className="min-w-[100px]">
-                  {col.label}
+                  {dateColumns.includes(col.key) ? (
+                    <SortableFilterableHeader
+                      label={col.label}
+                      columnKey={col.key}
+                      isDateColumn
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      dateFilter={dateFilters[col.key]}
+                      onDateFilterChange={handleDateFilterChange}
+                    />
+                  ) : (
+                    col.label
+                  )}
                 </TableHead>
               ))}
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {contacts.map((contact) => (
+            {processedContacts.map((contact) => (
               <TableRow 
                 key={contact.id}
                 className={selectedIds.has(contact.id) ? "bg-muted/50" : undefined}
@@ -493,7 +588,7 @@ export function ContactsTableWithViews({
       <ContactsBulkActionsBar
         selectedContacts={selectedContacts}
         onClearSelection={handleClearSelection}
-        allContacts={contacts}
+        allContacts={processedContacts}
       />
 
       {/* Contact Detail Sheet */}
