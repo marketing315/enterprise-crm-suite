@@ -90,7 +90,17 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isBrandAdmin && (
+              <TabsTrigger value="automation" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Zap className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Automazioni</span>
+              </TabsTrigger>
+            )}
+            {isBrandAdmin && (
               <TabsTrigger value="webhooks" className="gap-1.5 px-3 text-xs md:text-sm" data-testid="webhooks-settings-tab">
+                <Webhook className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Webhook</span>
+              </TabsTrigger>
+            )}
                 <Webhook className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Webhook</span>
               </TabsTrigger>
