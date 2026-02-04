@@ -525,19 +525,15 @@ export function ContactsTableWithViews({
               </TableHead>
               {visibleColumns.map((col) => (
                 <TableHead key={col.key} className="min-w-[100px]">
-                  {dateColumns.includes(col.key) ? (
-                    <SortableFilterableHeader
-                      label={col.label}
-                      columnKey={col.key}
-                      isDateColumn
-                      sortConfig={sortConfig}
-                      onSort={handleSort}
-                      dateFilter={dateFilters[col.key]}
-                      onDateFilterChange={handleDateFilterChange}
-                    />
-                  ) : (
-                    col.label
-                  )}
+                  <SortableFilterableHeader
+                    label={col.label}
+                    columnKey={col.key}
+                    isDateColumn={dateColumns.includes(col.key)}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                    dateFilter={dateColumns.includes(col.key) ? dateFilters[col.key] : undefined}
+                    onDateFilterChange={dateColumns.includes(col.key) ? handleDateFilterChange : undefined}
+                  />
                 </TableHead>
               ))}
               <TableHead className="w-[50px]"></TableHead>
