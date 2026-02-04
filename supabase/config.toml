@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.keplero-webhook]
 verify_jwt = false
+
+[functions.automation-runner]
+verify_jwt = false
