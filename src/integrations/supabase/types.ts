@@ -892,12 +892,18 @@ export type Database = {
           confirmed_at: string | null
           confirmed_by: string | null
           created_at: string
+          created_entities: Json | null
+          duration_ms: number | null
           entity_id: string
           entity_type: string
           error_message: string | null
+          event_id: string | null
+          finished_at: string | null
           id: string
           rule_id: string | null
+          started_at: string | null
           status: string
+          steps_log: Json | null
         }
         Insert: {
           action_details?: Json | null
@@ -906,12 +912,18 @@ export type Database = {
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
+          created_entities?: Json | null
+          duration_ms?: number | null
           entity_id: string
           entity_type: string
           error_message?: string | null
+          event_id?: string | null
+          finished_at?: string | null
           id?: string
           rule_id?: string | null
+          started_at?: string | null
           status?: string
+          steps_log?: Json | null
         }
         Update: {
           action_details?: Json | null
@@ -920,12 +932,18 @@ export type Database = {
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
+          created_entities?: Json | null
+          duration_ms?: number | null
           entity_id?: string
           entity_type?: string
           error_message?: string | null
+          event_id?: string | null
+          finished_at?: string | null
           id?: string
           rule_id?: string | null
+          started_at?: string | null
           status?: string
+          steps_log?: Json | null
         }
         Relationships: [
           {
@@ -943,6 +961,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "automation_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_inbound_events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "automation_logs_rule_id_fkey"
             columns: ["rule_id"]
             isOneToOne: false
@@ -955,7 +980,9 @@ export type Database = {
         Row: {
           action_config: Json
           action_type: string
+          actions: Json
           brand_id: string
+          conditions: Json
           created_at: string
           created_by: string | null
           description: string | null
@@ -964,15 +991,21 @@ export type Database = {
           is_active: boolean
           last_executed_at: string | null
           name: string
+          priority: number
           requires_confirmation: boolean
+          stop_on_failure: boolean
           trigger_config: Json
+          trigger_event_type: string | null
+          trigger_source: string | null
           trigger_type: string
           updated_at: string
         }
         Insert: {
           action_config?: Json
           action_type: string
+          actions?: Json
           brand_id: string
+          conditions?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -981,15 +1014,21 @@ export type Database = {
           is_active?: boolean
           last_executed_at?: string | null
           name: string
+          priority?: number
           requires_confirmation?: boolean
+          stop_on_failure?: boolean
           trigger_config?: Json
+          trigger_event_type?: string | null
+          trigger_source?: string | null
           trigger_type: string
           updated_at?: string
         }
         Update: {
           action_config?: Json
           action_type?: string
+          actions?: Json
           brand_id?: string
+          conditions?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -998,8 +1037,12 @@ export type Database = {
           is_active?: boolean
           last_executed_at?: string | null
           name?: string
+          priority?: number
           requires_confirmation?: boolean
+          stop_on_failure?: boolean
           trigger_config?: Json
+          trigger_event_type?: string | null
+          trigger_source?: string | null
           trigger_type?: string
           updated_at?: string
         }
@@ -4872,6 +4915,66 @@ export type Database = {
           },
         ]
       }
+      webhook_inbound_events: {
+        Row: {
+          attempts: number
+          brand_id: string
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          processed_at: string | null
+          received_at: string
+          source: string
+          status: string
+          webhook_source_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          brand_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+          source: string
+          status?: string
+          webhook_source_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          brand_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+          source?: string
+          status?: string
+          webhook_source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_inbound_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_inbound_events_webhook_source_id_fkey"
+            columns: ["webhook_source_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_sources: {
         Row: {
           api_key_hash: string
@@ -5102,6 +5205,29 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "meta_capi_event_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_inbound_events: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          brand_id: string
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          processed_at: string | null
+          received_at: string
+          source: string
+          status: string
+          webhook_source_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "webhook_inbound_events"
           isOneToOne: false
           isSetofReturn: true
         }

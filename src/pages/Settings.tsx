@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -11,10 +11,10 @@ import { CustomFieldsSettings } from "@/components/settings/CustomFieldsSettings
 import { NotificationPreferencesSettings } from "@/components/settings/NotificationPreferencesSettings";
 import { VoIPSettings } from "@/components/settings/VoIPSettings";
 import { VOIspeedSettings } from "@/components/settings/VOIspeedSettings";
+import { AutomationSettings } from "@/components/settings/automation/AutomationSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
 
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
@@ -86,6 +86,12 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isBrandAdmin && (
+              <TabsTrigger value="automation" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Zap className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Automazioni</span>
+              </TabsTrigger>
+            )}
+            {isBrandAdmin && (
               <TabsTrigger value="webhooks" className="gap-1.5 px-3 text-xs md:text-sm" data-testid="webhooks-settings-tab">
                 <Webhook className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Webhook</span>
@@ -140,6 +146,12 @@ export default function Settings() {
           <TabsContent value="voip" className="space-y-4">
             <VoIPSettings />
             <VOIspeedSettings />
+          </TabsContent>
+        )}
+
+        {isBrandAdmin && (
+          <TabsContent value="automation" className="space-y-4">
+            <AutomationSettings />
           </TabsContent>
         )}
 
