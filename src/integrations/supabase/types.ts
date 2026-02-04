@@ -1934,6 +1934,7 @@ export type Database = {
         Row: {
           address: string | null
           brand_id: string
+          callback_requested: boolean
           cap: string | null
           city: string | null
           company_address: string | null
@@ -1980,6 +1981,7 @@ export type Database = {
         Insert: {
           address?: string | null
           brand_id: string
+          callback_requested?: boolean
           cap?: string | null
           city?: string | null
           company_address?: string | null
@@ -2026,6 +2028,7 @@ export type Database = {
         Update: {
           address?: string | null
           brand_id?: string
+          callback_requested?: boolean
           cap?: string | null
           city?: string | null
           company_address?: string | null
