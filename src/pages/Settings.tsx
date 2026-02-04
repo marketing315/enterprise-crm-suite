@@ -15,10 +15,6 @@ import { AutomationSettings } from "@/components/settings/automation/AutomationS
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useBrand } from "@/contexts/BrandContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-
 
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
@@ -101,10 +97,6 @@ export default function Settings() {
                 <span>Webhook</span>
               </TabsTrigger>
             )}
-                <Webhook className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Webhook</span>
-              </TabsTrigger>
-            )}
             {isBrandAdmin && (
               <TabsTrigger value="sheets" className="gap-1.5 px-3 text-xs md:text-sm">
                 <FileSpreadsheet className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -154,6 +146,12 @@ export default function Settings() {
           <TabsContent value="voip" className="space-y-4">
             <VoIPSettings />
             <VOIspeedSettings />
+          </TabsContent>
+        )}
+
+        {isBrandAdmin && (
+          <TabsContent value="automation" className="space-y-4">
+            <AutomationSettings />
           </TabsContent>
         )}
 
