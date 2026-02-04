@@ -196,6 +196,36 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Determine event type based on esito_chiamata
+  const esito = args.esito_chiamata?.toLowerCase() || "";
+  let eventType = "keplero.lead"; // default
+  if (esito === "da_ricontattare" || esito.includes("ricontatt")) {
+    eventType = "keplero.ricontatto";
+  } else if (esito === "appuntamento_fissato") {
+    eventType = "keplero.appuntamento";
+  } else if (esito === "rifiuto") {
+    eventType = "keplero.rifiuto";
+  }
+
+  // Emit inbound event for automation processing
+  const { data: inboundEvent, error: inboundError } = await supabaseAdmin
+    .from("webhook_inbound_events")
+    .insert({
+      brand_id: brandId,
+      source: "keplero",
+      event_type: eventType,
+      payload: payload,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (inboundError) {
+    console.warn("Failed to create inbound event:", inboundError);
+  } else {
+    console.log("Inbound event created:", inboundEvent.id, "type:", eventType);
+  }
+
   // Extract phone (required)
   const phoneRaw = args.telefono_principale || "";
   if (!phoneRaw) {
