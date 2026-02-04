@@ -5311,6 +5311,7 @@ export type Database = {
           p_email?: string
           p_first_name?: string
           p_last_name?: string
+          p_lead_message?: string
           p_phone_normalized: string
           p_phone_raw: string
         }
@@ -6180,7 +6181,7 @@ export type Database = {
         | "unknown_error"
       ingest_status: "pending" | "success" | "rejected" | "failed"
       lead_source_channel: "tv" | "online" | "other"
-      lead_source_type: "webhook" | "manual" | "import" | "api"
+      lead_source_type: "webhook" | "manual" | "import" | "api" | "meta"
       lead_type: "trial" | "info" | "support" | "generic"
       marketing_campaign_status: "planned" | "active" | "paused" | "closed"
       meta_capi_status: "pending" | "processing" | "sent" | "failed" | "skipped"
@@ -6475,7 +6476,7 @@ export const Constants = {
       ],
       ingest_status: ["pending", "success", "rejected", "failed"],
       lead_source_channel: ["tv", "online", "other"],
-      lead_source_type: ["webhook", "manual", "import", "api"],
+      lead_source_type: ["webhook", "manual", "import", "api", "meta"],
       lead_type: ["trial", "info", "support", "generic"],
       marketing_campaign_status: ["planned", "active", "paused", "closed"],
       meta_capi_status: ["pending", "processing", "sent", "failed", "skipped"],
