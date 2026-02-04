@@ -21,6 +21,7 @@ import { NewContactDialog } from '@/components/contacts/NewContactDialog';
 import { ContactSearch } from '@/components/contacts/ContactSearch';
 import { ContactDetailSheet } from '@/components/contacts/ContactDetailSheet';
 import { TagFilter } from '@/components/tags/TagFilter';
+import { DateRangeFilter } from '@/components/contacts/DateRangeFilter';
 import { useContactSearch } from '@/hooks/useContactSearch';
 import { useBrand } from '@/contexts/BrandContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -46,6 +47,8 @@ export default function Contacts() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [brandFilter, setBrandFilter] = useState<string>('all');
+  const [createdFromDate, setCreatedFromDate] = useState<Date | undefined>();
+  const [createdToDate, setCreatedToDate] = useState<Date | undefined>();
 
   // Handle URL param to open contact detail
   useEffect(() => {
@@ -62,9 +65,12 @@ export default function Contacts() {
   
   const { data: contacts = [], isLoading } = useContactSearch(
     searchQuery,
-    statusFilter === 'all' ? undefined : statusFilter
+    {
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      createdFrom: createdFromDate,
+      createdTo: createdToDate,
+    }
   );
-
   const handleContactCreated = (contactId: string) => {
     setSelectedContactId(contactId);
     setSheetOpen(true);
@@ -99,7 +105,7 @@ export default function Contacts() {
       };
     });
 
-  const activeFiltersCount = (statusFilter !== 'all' ? 1 : 0) + (selectedTagIds.length > 0 ? 1 : 0);
+  const activeFiltersCount = (statusFilter !== 'all' ? 1 : 0) + (selectedTagIds.length > 0 ? 1 : 0) + (createdFromDate || createdToDate ? 1 : 0);
 
   const FiltersContent = () => (
     <div className="space-y-4">
@@ -148,6 +154,19 @@ export default function Contacts() {
           onTagsChange={setSelectedTagIds}
           scope="contact"
         />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Data creazione</label>
+        <div className="flex flex-col gap-2">
+          <DateRangeFilter
+            fromDate={createdFromDate}
+            toDate={createdToDate}
+            onFromDateChange={setCreatedFromDate}
+            onToDateChange={setCreatedToDate}
+            label=""
+          />
+        </div>
       </div>
     </div>
   );
@@ -226,6 +245,12 @@ export default function Contacts() {
                 selectedTagIds={selectedTagIds}
                 onTagsChange={setSelectedTagIds}
                 scope="contact"
+              />
+              <DateRangeFilter
+                fromDate={createdFromDate}
+                toDate={createdToDate}
+                onFromDateChange={setCreatedFromDate}
+                onToDateChange={setCreatedToDate}
               />
             </div>
           )}
