@@ -5209,6 +5209,29 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_inbound_events: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          brand_id: string
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          processed_at: string | null
+          received_at: string
+          source: string
+          status: string
+          webhook_source_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "webhook_inbound_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_webhook_deliveries: {
         Args: { p_batch_size?: number }
         Returns: {
