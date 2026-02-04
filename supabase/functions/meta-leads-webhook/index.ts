@@ -330,6 +330,15 @@ Deno.serve(async (req) => {
             }
           );
 
+          // Auto-enable marketing consent for Meta leads (user opted in via Meta form)
+          if (contactResult) {
+            await supabase
+              .from("contacts")
+              .update({ marketing_consent: true })
+              .eq("id", contactResult);
+            console.log(`[META-EVENT] Marketing consent enabled for contact ${contactResult}`);
+          }
+
           if (contactError || !contactResult) {
             console.error(`[META-EVENT] Failed to create contact for ${leadgenId}:`, contactError);
           } else {
