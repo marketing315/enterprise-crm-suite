@@ -269,6 +269,29 @@ Deno.serve(async (req) => {
         let phone = getField("phone_number") || getField("phone");
         const city = getField("city");
         let cap = getField("zip") || getField("postal_code") || getField("codice_postale");
+        
+        // Extract additional fields - messages, notes, and any other text fields
+        // Common Meta Lead Ads field names for additional info
+        const leadMessage = getField("message") || getField("messaggio") || getField("note") || getField("notes") || 
+                           getField("additional_info") || getField("informazioni_aggiuntive") || getField("richiesta") ||
+                           getField("motivo") || getField("descrizione") || getField("problema") || getField("sintomi");
+        
+        // Collect ALL non-standard fields into a combined message
+        const standardFields = ['full_name', 'first_name', 'last_name', 'nome', 'cognome', 'email', 'e-mail', 
+                                'phone_number', 'phone', 'city', 'zip', 'postal_code', 'codice_postale'];
+        const additionalMessages: string[] = [];
+        for (const field of fieldData) {
+          const fieldName = field.name?.toLowerCase();
+          if (fieldName && !standardFields.includes(fieldName) && field.values?.[0]) {
+            const value = field.values[0];
+            if (!isTestPlaceholder(value) && value.length > 2) {
+              additionalMessages.push(`${field.name}: ${value}`);
+            }
+          }
+        }
+        const combinedMessage = [leadMessage, ...additionalMessages].filter(Boolean).join('\n');
+        
+        console.log(`[META-EVENT] Additional message for ${leadgenId}: ${combinedMessage || '(none)'}`);
 
         // For Meta test leads, replace placeholder data with usable test values
         if (isTestPlaceholder(firstName)) firstName = "Test";
@@ -289,7 +312,7 @@ Deno.serve(async (req) => {
           const normalizedPhone = normalizePhone(phone);
           console.log(`[META-EVENT] Normalized phone for ${leadgenId}: ${normalizedPhone.normalized} (country: ${normalizedPhone.countryCode})`);
 
-          // Find or create contact
+          // Find or create contact with additional message data
           const { data: contactResult, error: contactError } = await supabase.rpc(
             "find_or_create_contact",
             {
@@ -303,6 +326,7 @@ Deno.serve(async (req) => {
               p_email: email,
               p_city: city,
               p_cap: cap,
+              p_lead_message: combinedMessage || null,
             }
           );
 
@@ -347,15 +371,15 @@ Deno.serve(async (req) => {
         console.warn(`[META-EVENT] No phone found for ${leadgenId}, skipping contact creation`);
       }
 
-        // Create lead_event with contact_id and deal_id
+        // Create lead_event with contact_id and deal_id - clearly marked as Meta source
         const { data: leadEvent, error: leadEventError } = await supabase
           .from("lead_events")
           .insert({
             brand_id: metaApp.brand_id,
             contact_id: contactId,
             deal_id: dealId,
-            source: "webhook",
-            source_name: leadData?.campaign_name || leadData?.ad_name || "Meta Lead Ads",
+            source: "meta",
+            source_name: `Meta: ${leadData?.campaign_name || leadData?.ad_name || "Lead Ads"}`,
             external_id: leadgenId,
             occurred_at: leadData?.created_time ? new Date(parseInt(leadData.created_time) * 1000).toISOString() : new Date().toISOString(),
             raw_payload: {
