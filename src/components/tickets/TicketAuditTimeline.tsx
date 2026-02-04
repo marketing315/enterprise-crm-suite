@@ -87,8 +87,10 @@ function formatAuditDetails(log: TicketAuditLogType): string {
   }
 }
 
+const defaultActionConfig = { icon: History, label: "Evento", color: "bg-gray-400" };
+
 function AuditLogItem({ log }: { log: TicketAuditLogType }) {
-  const config = actionConfig[log.action_type];
+  const config = actionConfig[log.action_type] ?? defaultActionConfig;
   const Icon = config.icon;
   const isAuto = log.action_type === "assignment_change" && log.metadata?.is_auto;
   const isAiCreated = log.action_type === "created" && log.metadata?.created_by === "ai";
