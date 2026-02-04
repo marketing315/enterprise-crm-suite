@@ -19,16 +19,32 @@ export interface SearchResult {
   match_type: string;
 }
 
+export interface ContactSearchFilters {
+  status?: ContactStatus;
+  createdFrom?: Date;
+  createdTo?: Date;
+}
+
 export function useContactSearch(
   query: string,
-  status?: ContactStatus,
+  filters: ContactSearchFilters = {},
   limit = 50,
   offset = 0
 ) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
+  const { status, createdFrom, createdTo } = filters;
 
   return useQuery({
-    queryKey: ["contact-search", isAllBrandsSelected ? "all" : currentBrand?.id, query, status, limit, offset],
+    queryKey: [
+      "contact-search", 
+      isAllBrandsSelected ? "all" : currentBrand?.id, 
+      query, 
+      status, 
+      createdFrom?.toISOString(), 
+      createdTo?.toISOString(),
+      limit, 
+      offset
+    ],
     queryFn: async (): Promise<SearchResult[]> => {
       // Check if we have valid brand selection
       const hasValidBrands = isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand;
@@ -54,6 +70,17 @@ export function useContactSearch(
 
         if (status) {
           queryBuilder = queryBuilder.eq("status", status);
+        }
+
+        // Apply date filters
+        if (createdFrom) {
+          queryBuilder = queryBuilder.gte("created_at", createdFrom.toISOString());
+        }
+        if (createdTo) {
+          // Add one day to include the entire end date
+          const endOfDay = new Date(createdTo);
+          endOfDay.setHours(23, 59, 59, 999);
+          queryBuilder = queryBuilder.lte("created_at", endOfDay.toISOString());
         }
 
         const { data, error } = await queryBuilder;
@@ -107,7 +134,23 @@ export function useContactSearch(
         phones: Array<{ id: string; phone_normalized: string; is_primary: boolean }> | null;
       }> } | null;
 
-      return (result?.contacts || []).map((c) => ({
+      // Apply client-side date filtering for RPC results
+      let contacts = result?.contacts || [];
+      
+      if (createdFrom || createdTo) {
+        contacts = contacts.filter((c) => {
+          const createdAt = new Date(c.created_at);
+          if (createdFrom && createdAt < createdFrom) return false;
+          if (createdTo) {
+            const endOfDay = new Date(createdTo);
+            endOfDay.setHours(23, 59, 59, 999);
+            if (createdAt > endOfDay) return false;
+          }
+          return true;
+        });
+      }
+
+      return contacts.map((c) => ({
         id: c.id,
         brand_id: c.brand_id,
         first_name: c.first_name,
