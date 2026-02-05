@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2, Ticket } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { ClickToCallButton } from './ClickToCallButton';
 import { CreateTicketDialog } from '@/components/tickets/CreateTicketDialog';
@@ -44,6 +45,7 @@ import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
 import { BrandBadge } from '@/components/layout/BrandBadge';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
+import { useContactDeal } from '@/hooks/useContactDeal';
 import { toast } from 'sonner';
 import type { ContactStatus } from '@/types/database';
 
@@ -66,6 +68,7 @@ interface EditFormData {
 }
 
 export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDetailSheetProps) {
+  const navigate = useNavigate();
   const [conflictContactId, setConflictContactId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
@@ -83,6 +86,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
+  const { data: openDeal } = useContactDeal(contactId);
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
 
@@ -435,6 +439,20 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
               <Separator />
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Azioni Rapide</h3>
+                {openDeal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      navigate(`/pipeline?deal=${openDeal.id}`);
+                    }}
+                    className="w-full justify-start"
+                  >
+                    <Briefcase className="h-4 w-4 mr-2" />
+                    Apri Deal
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
