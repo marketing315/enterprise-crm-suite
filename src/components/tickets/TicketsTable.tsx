@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock, Hand, AlertTriangle } from "lucide-react";
+import { User, Clock, Hand, AlertTriangle, Archive, ArchiveRestore, Trash2, MoreHorizontal } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -20,10 +37,12 @@ import {
 } from "@/components/ui/tooltip";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
-import { TicketWithRelations } from "@/hooks/useTickets";
+import { TicketWithRelations, useArchiveTicket, useDeleteTicket } from "@/hooks/useTickets";
 import { isSlaBreached } from "@/hooks/useTicketQueue";
 import { SlaThresholds } from "@/hooks/useBrandSettings";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface TicketsTableProps {
   tickets: TicketWithRelations[];
@@ -47,6 +66,12 @@ export function TicketsTable({
   onSelectionChange,
   showCheckboxes = false,
 }: TicketsTableProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
+  
+  const archiveTicket = useArchiveTicket();
+  const deleteTicket = useDeleteTicket();
+
   const getContactName = (ticket: TicketWithRelations) => {
     if (!ticket.contacts) return "—";
     const { first_name, last_name, email } = ticket.contacts;
@@ -87,9 +112,39 @@ export function TicketsTable({
     onSelectionChange(newSet);
   };
 
-  const colSpan = (showCheckboxes ? 1 : 0) + 7 + (onTakeOwnership ? 1 : 0);
+  const colSpan = (showCheckboxes ? 1 : 0) + 8 + (onTakeOwnership ? 1 : 0);
+
+  const handleArchive = async (ticketId: string, currentArchived: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await archiveTicket.mutateAsync({ ticketId, archived: !currentArchived });
+      toast.success(currentArchived ? "Ticket ripristinato" : "Ticket archiviato");
+    } catch {
+      toast.error("Errore nell'archiviazione");
+    }
+  };
+
+  const handleDeleteClick = (ticketId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTicketToDelete(ticketId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!ticketToDelete) return;
+    try {
+      await deleteTicket.mutateAsync(ticketToDelete);
+      toast.success("Ticket eliminato");
+    } catch {
+      toast.error("Errore nell'eliminazione");
+    } finally {
+      setDeleteDialogOpen(false);
+      setTicketToDelete(null);
+    }
+  };
 
   return (
+    <>
     <div className="rounded-md border overflow-x-auto">
       <Table data-testid="tickets-table" className="min-w-[800px]">
         <TableHeader>
@@ -112,6 +167,7 @@ export function TicketsTable({
             <TableHead className="min-w-[120px]">Assegnato</TableHead>
             <TableHead className="w-[110px]">Aging</TableHead>
             {onTakeOwnership && <TableHead className="w-[80px]">Azione</TableHead>}
+            <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -244,11 +300,64 @@ export function TicketsTable({
                     )}
                   </TableCell>
                 )}
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => handleArchive(ticket.id, ticket.archived, e as unknown as React.MouseEvent)}>
+                        {ticket.archived ? (
+                          <>
+                            <ArchiveRestore className="h-4 w-4 mr-2" />
+                            Ripristina
+                          </>
+                        ) : (
+                          <>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archivia
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={(e) => handleDeleteClick(ticket.id, e as unknown as React.MouseEvent)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
     </div>
+
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Eliminare questo ticket?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Questa azione è irreversibile. Il ticket e tutti i suoi dati verranno eliminati permanentemente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Annulla</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteConfirm}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Elimina
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
