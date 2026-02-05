@@ -7,6 +7,7 @@ import { AlertCircle, List, Activity, Download } from "lucide-react";
 import { WebhookList } from "./webhooks/WebhookList";
 import { DeliveriesMonitor } from "./webhooks/DeliveriesMonitor";
 import { InboundSourceList } from "./inbound/InboundSourceList";
+ import { WebhookEndpointsOverview } from "./webhooks/WebhookEndpointsOverview";
 
 export function WebhookSettings() {
   const { hasRole } = useAuth();
@@ -28,6 +29,8 @@ export function WebhookSettings() {
 
   return (
     <div className="space-y-6">
+       <WebhookEndpointsOverview />
+       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="inbound" className="gap-2" data-testid="inbound-tab">
