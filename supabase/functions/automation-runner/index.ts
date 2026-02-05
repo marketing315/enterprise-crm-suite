@@ -42,7 +42,7 @@ interface ConditionItem {
 }
 
 interface Action {
-  type: "upsert_contact" | "add_tag" | "create_deal" | "create_ticket" | "send_outbound_webhook" | "set_callback_requested" | "log_note";
+  type: "upsert_contact" | "add_tag" | "create_deal" | "create_ticket" | "send_outbound_webhook" | "set_callback_requested" | "log_note" | "schedule_job" | "update_contact_field";
   match?: Record<string, string>;
   fields?: Record<string, string>;
   entity?: "contact" | "deal" | "ticket";
@@ -50,6 +50,14 @@ interface Action {
   webhook_id?: string;
   value?: boolean;
   note?: string;
+  // schedule_job fields
+  endpoint?: string;
+  job_type?: string;
+  run_at_field?: string;
+  payload_template?: string;
+  // update_contact_field
+  field?: string;
+  field_value?: string;
 }
 
 interface StepLog {
@@ -331,6 +339,306 @@ async function executeLogNote(action: Action, ctx: ActionContext): Promise<Recor
   return { note_id: data.id };
 }
 
+async function executeScheduleJob(action: Action, ctx: ActionContext): Promise<Record<string, unknown>> {
+  const contactId = ctx.createdEntities.contact_id;
+  const endpoint = action.endpoint || "";
+  const jobType = action.job_type || "keplero.callback";
+  
+  if (!endpoint) throw new Error("schedule_job requires endpoint");
+  
+  // Parse run_at from esito_chiamata field
+  const esitoChiamata = action.run_at_field 
+    ? resolveTemplate(action.run_at_field, { payload: ctx.payload })
+    : resolvePath(ctx.payload, "args.esito_chiamata") as string || "";
+  
+  const { parseCallbackTime } = await import("../_shared/parseCallbackTime.ts");
+  const parseResult = parseCallbackTime(esitoChiamata);
+  
+  // Build payload from template or default user snapshot
+  let jobPayload: Record<string, unknown>;
+  
+  if (action.payload_template) {
+    const template = resolveTemplate(action.payload_template, { payload: ctx.payload, entities: ctx.createdEntities });
+    try {
+      jobPayload = JSON.parse(template);
+    } catch {
+      jobPayload = { raw: template };
+    }
+  } else {
+    // Build full user snapshot payload
+    jobPayload = await buildKepleroPayload(ctx, esitoChiamata, parseResult);
+  }
+  
+  // Create scheduled job
+  const { data: job, error } = await ctx.supabase
+    .from("automation_jobs")
+    .insert({
+      brand_id: ctx.brandId,
+      source_event_id: (ctx as ActionContextWithEvent).eventId || null,
+      contact_id: contactId || null,
+      job_type: jobType,
+      run_at: parseResult.run_at_utc,
+      endpoint,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      payload: jobPayload,
+      status: "scheduled",
+    })
+    .select("id")
+    .single();
+  
+  if (error) throw error;
+  
+  ctx.createdEntities.automation_job_id = job.id;
+  
+  return { 
+    job_id: job.id, 
+    run_at: parseResult.run_at_local,
+    run_at_utc: parseResult.run_at_utc,
+    confidence: parseResult.confidence,
+    strategy: parseResult.strategy,
+    notes: parseResult.notes,
+  };
+}
+
+interface ParseResult {
+  run_at: Date;
+  run_at_utc: string;
+  run_at_local: string;
+  confidence: number;
+  strategy: string;
+  notes: string;
+}
+
+interface ActionContextWithEvent extends ActionContext {
+  eventId?: string;
+}
+
+async function buildKepleroPayload(
+  ctx: ActionContext,
+  esitoChiamata: string,
+  parseResult: ParseResult
+): Promise<Record<string, unknown>> {
+  const contactId = ctx.createdEntities.contact_id;
+  
+  // Fetch contact data
+  let contact: Record<string, unknown> | null = null;
+  let phones: Array<Record<string, unknown>> = [];
+  let tags: string[] = [];
+  
+  if (contactId) {
+    const { data: contactData } = await ctx.supabase
+      .from("contacts")
+      .select("*, contact_phones(*)")
+      .eq("id", contactId)
+      .single();
+    
+    if (contactData) {
+      contact = contactData;
+      phones = contactData.contact_phones || [];
+    }
+    
+    // Fetch tags
+    const { data: tagData } = await ctx.supabase
+      .from("contact_tags")
+      .select("tags(name)")
+      .eq("contact_id", contactId);
+    
+    tags = tagData?.map((t: { tags: { name: string } }) => t.tags.name) || [];
+  }
+  
+  // Fetch brand info
+  const { data: brand } = await ctx.supabase
+    .from("brands")
+    .select("id, name")
+    .eq("id", ctx.brandId)
+    .single();
+  
+  // Fetch active deals
+  const { data: deals } = await ctx.supabase
+    .from("deals")
+    .select("*, pipeline_stages(name), users(full_name)")
+    .eq("brand_id", ctx.brandId)
+    .eq("contact_id", contactId || "")
+    .eq("status", "open")
+    .limit(5);
+  
+  // Fetch open tickets
+  const { data: tickets } = await ctx.supabase
+    .from("tickets")
+    .select("id, status, priority, created_at, title")
+    .eq("brand_id", ctx.brandId)
+    .eq("contact_id", contactId || "")
+    .eq("status", "open")
+    .limit(5);
+  
+  // Fetch sales orders
+  const { data: orders } = await ctx.supabase
+    .from("sales_orders")
+    .select("id, confirmed_at, status, total_amount, currency, payment_method")
+    .eq("brand_id", ctx.brandId)
+    .eq("contact_id", contactId || "")
+    .order("confirmed_at", { ascending: false })
+    .limit(10);
+  
+  const now = new Date().toISOString();
+  const primaryPhone = phones.find((p: Record<string, unknown>) => p.is_primary) || phones[0];
+  
+  return {
+    schema_version: "crm.keplero.user_snapshot.v1",
+    event: {
+      name: "recontact_scheduled",
+      source: "crm",
+      occurred_at: now,
+      timezone: "Europe/Rome",
+      trigger: {
+        type: "inbound_webhook",
+        webhook_name: "Ricontatto Keplero",
+        inbound_event_id: (ctx as ActionContextWithEvent).eventId || null,
+        raw: ctx.payload,
+      },
+    },
+    schedule: {
+      requested_text: esitoChiamata,
+      run_at: parseResult.run_at_local,
+      run_at_utc: parseResult.run_at_utc,
+      parser: {
+        strategy: parseResult.strategy,
+        confidence: parseResult.confidence,
+        notes: parseResult.notes,
+      },
+    },
+    brand: {
+      id: brand?.id,
+      name: brand?.name,
+      external_refs: {
+        meta_pixel_id: null,
+        meta_ad_account: null,
+      },
+    },
+    contact: contact ? {
+      id: contact.id,
+      created_at: contact.created_at,
+      updated_at: contact.updated_at,
+      identity: {
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        full_name: [contact.first_name, contact.last_name].filter(Boolean).join(" "),
+        email: contact.email,
+        emails: contact.email ? [contact.email] : [],
+        company: {
+          ragione_sociale: contact.company_name || null,
+          partita_iva: contact.vat_number || null,
+          codice_fiscale: contact.fiscal_code || null,
+        },
+      },
+      phones: {
+        primary: primaryPhone?.phone_normalized || null,
+        all: phones.map((p: Record<string, unknown>) => ({
+          phone_normalized: p.phone_normalized,
+          is_primary: p.is_primary,
+          is_active: p.is_active,
+        })),
+      },
+      address: {
+        indirizzo: contact.address,
+        citta: contact.city,
+        prov: contact.province,
+        cap: contact.cap,
+        nazione: contact.country || "IT",
+      },
+      crm_fields: {
+        esito_chiamata: contact.esito_chiamata || esitoChiamata,
+        notes: contact.notes,
+        status: contact.status,
+      },
+      tags,
+    } : null,
+    tracking: {
+      first_touch_at: contact?.created_at || null,
+      client: { ip: null, user_agent: null },
+      meta: { fbp: null, fbc: null },
+      google: { gclid: null, wbraid: null, gbraid: null },
+      utm: { source: null, medium: null, campaign: null, content: null, term: null },
+    },
+    sales: {
+      summary: {
+        orders_count: orders?.length || 0,
+        orders_total: orders?.reduce((sum, o: { total_amount: number }) => sum + (o.total_amount || 0), 0) || 0,
+        currency: "EUR",
+        last_order_at: orders?.[0]?.confirmed_at || null,
+      },
+      orders: orders?.slice(0, 5) || [],
+    },
+    pipeline: {
+      deals_summary: {
+        open: deals?.filter((d: { status: string }) => d.status === "open").length || 0,
+        won: 0,
+        lost: 0,
+        last_deal_at: deals?.[0]?.created_at || null,
+      },
+      active_deals: deals?.map((d: Record<string, unknown>) => ({
+        id: d.id,
+        title: `Deal ${d.id}`,
+        status: d.status,
+        stage: (d.pipeline_stages as { name: string })?.name || null,
+        value: d.value,
+        currency: "EUR",
+        created_at: d.created_at,
+        updated_at: d.updated_at,
+        owner: d.users ? { user_id: d.assigned_user_id, name: (d.users as { full_name: string }).full_name } : null,
+      })) || [],
+    },
+    support: {
+      tickets_summary: {
+        open: tickets?.length || 0,
+        closed: 0,
+        last_ticket_at: tickets?.[0]?.created_at || null,
+      },
+      open_tickets: tickets || [],
+    },
+    communications: {
+      calls: { last_call_at: null, last_call_status: null, total_calls_30d: 0 },
+      chats: { last_message_at: null, channels: [], unread_count: 0 },
+      emails: { last_email_at: null },
+    },
+    automation: {
+      job: {
+        job_id: ctx.createdEntities.automation_job_id || null,
+        job_type: "keplero.callback",
+        status: "scheduled",
+        attempts: 0,
+      },
+    },
+  };
+}
+
+async function executeUpdateContactField(action: Action, ctx: ActionContext): Promise<Record<string, unknown>> {
+  const contactId = ctx.createdEntities.contact_id;
+  if (!contactId) throw new Error("update_contact_field requires contact_id");
+  
+  const fieldName = action.field || "";
+  const fieldValue = action.field_value 
+    ? resolveTemplate(action.field_value, { payload: ctx.payload })
+    : "";
+  
+  if (!fieldName) throw new Error("update_contact_field requires field name");
+  
+  // Allowed fields to update
+  const allowedFields = ["esito_chiamata", "notes", "address", "city", "cap", "province", "country"];
+  if (!allowedFields.includes(fieldName)) {
+    throw new Error(`Field ${fieldName} not allowed for update_contact_field`);
+  }
+  
+  const { error } = await ctx.supabase
+    .from("contacts")
+    .update({ [fieldName]: fieldValue })
+    .eq("id", contactId);
+  
+  if (error) throw error;
+  return { contact_id: contactId, field: fieldName, value: fieldValue };
+}
+
 async function executeAction(action: Action, ctx: ActionContext): Promise<Record<string, unknown>> {
   switch (action.type) {
     case "upsert_contact":
@@ -347,6 +655,10 @@ async function executeAction(action: Action, ctx: ActionContext): Promise<Record
       return executeSetCallbackRequested(action, ctx);
     case "log_note":
       return executeLogNote(action, ctx);
+    case "schedule_job":
+      return executeScheduleJob(action, ctx);
+    case "update_contact_field":
+      return executeUpdateContactField(action, ctx);
     default:
       throw new Error(`Unknown action type: ${action.type}`);
   }

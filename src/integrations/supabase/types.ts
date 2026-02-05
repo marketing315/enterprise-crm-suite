@@ -884,6 +884,88 @@ export type Database = {
           },
         ]
       }
+      automation_jobs: {
+        Row: {
+          attempts: number
+          brand_id: string
+          contact_id: string | null
+          created_at: string
+          endpoint: string
+          headers: Json
+          id: string
+          job_type: string
+          last_error: string | null
+          max_attempts: number
+          method: string
+          payload: Json
+          run_at: string
+          sent_at: string | null
+          source_event_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          brand_id: string
+          contact_id?: string | null
+          created_at?: string
+          endpoint: string
+          headers?: Json
+          id?: string
+          job_type?: string
+          last_error?: string | null
+          max_attempts?: number
+          method?: string
+          payload?: Json
+          run_at: string
+          sent_at?: string | null
+          source_event_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          brand_id?: string
+          contact_id?: string | null
+          created_at?: string
+          endpoint?: string
+          headers?: Json
+          id?: string
+          job_type?: string
+          last_error?: string | null
+          max_attempts?: number
+          method?: string
+          payload?: Json
+          run_at?: string
+          sent_at?: string | null
+          source_event_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_jobs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_jobs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_jobs_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_inbound_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_logs: {
         Row: {
           action_details: Json | null
@@ -1991,6 +2073,7 @@ export type Database = {
           country: string | null
           created_at: string
           email: string | null
+          esito_chiamata: string | null
           fax: string | null
           first_name: string | null
           fiscal_code: string | null
@@ -2038,6 +2121,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           email?: string | null
+          esito_chiamata?: string | null
           fax?: string | null
           first_name?: string | null
           fiscal_code?: string | null
@@ -2085,6 +2169,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           email?: string | null
+          esito_chiamata?: string | null
           fax?: string | null
           first_name?: string | null
           fiscal_code?: string | null

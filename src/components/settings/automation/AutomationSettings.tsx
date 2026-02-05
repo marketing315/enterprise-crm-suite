@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Zap, Play, Trash2, Edit2, History, AlertCircle } from "lucide-react";
+import { Plus, Zap, Play, Trash2, Edit2, History, Clock, Copy } from "lucide-react";
 import {
   useAutomationRules,
   useUpdateAutomationRule,
@@ -18,6 +18,8 @@ import {
 import { AutomationRuleFormDrawer } from "./AutomationRuleFormDrawer";
 import { AutomationLogsTable } from "./AutomationLogsTable";
 import { InboundEventsTable } from "./InboundEventsTable";
+import { AutomationJobsTable } from "./AutomationJobsTable";
+import { DuplicateRuleDialog } from "./DuplicateRuleDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +37,7 @@ export function AutomationSettings() {
   const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRule, setDeletingRule] = useState<AutomationRule | null>(null);
+  const [duplicatingRule, setDuplicatingRule] = useState<AutomationRule | null>(null);
 
   const { data: rules, isLoading: rulesLoading } = useAutomationRules();
   const { data: logs } = useAutomationLogs({ limit: 50 });
@@ -114,6 +117,10 @@ export function AutomationSettings() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="jobs" className="gap-2">
+              <Clock className="h-4 w-4" />
+              Job Programmati
+            </TabsTrigger>
           </TabsList>
 
           {activeTab === "rules" && (
@@ -172,6 +179,14 @@ export function AutomationSettings() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => setDuplicatingRule(rule)}
+                          title="Duplica"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDelete(rule)}
                           title="Elimina"
                         >
@@ -208,6 +223,20 @@ export function AutomationSettings() {
         <TabsContent value="events" className="mt-4">
           <InboundEventsTable events={events || []} />
         </TabsContent>
+
+        <TabsContent value="jobs" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Programmati</CardTitle>
+              <CardDescription>
+                Job schedulati per invio automatico a endpoint esterni (es. Keplero)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AutomationJobsTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <AutomationRuleFormDrawer
@@ -232,6 +261,12 @@ export function AutomationSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DuplicateRuleDialog
+        rule={duplicatingRule as any}
+        open={!!duplicatingRule}
+        onOpenChange={(open) => !open && setDuplicatingRule(null)}
+      />
     </div>
   );
 }
