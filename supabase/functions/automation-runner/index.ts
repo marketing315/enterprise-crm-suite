@@ -42,7 +42,7 @@ interface ConditionItem {
 }
 
 interface Action {
-  type: "upsert_contact" | "add_tag" | "create_deal" | "create_ticket" | "send_outbound_webhook" | "set_callback_requested" | "log_note";
+  type: "upsert_contact" | "add_tag" | "create_deal" | "create_ticket" | "send_outbound_webhook" | "set_callback_requested" | "log_note" | "schedule_job" | "update_contact_field";
   match?: Record<string, string>;
   fields?: Record<string, string>;
   entity?: "contact" | "deal" | "ticket";
@@ -50,6 +50,14 @@ interface Action {
   webhook_id?: string;
   value?: boolean;
   note?: string;
+  // schedule_job fields
+  endpoint?: string;
+  job_type?: string;
+  run_at_field?: string;
+  payload_template?: string;
+  // update_contact_field
+  field?: string;
+  field_value?: string;
 }
 
 interface StepLog {
