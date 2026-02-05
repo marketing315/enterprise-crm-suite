@@ -104,6 +104,8 @@ export function useAdvancedAnalytics({ from, to }: UseAdvancedAnalyticsParams = 
       return data as unknown as SourceAnalytics;
     },
     enabled: !!currentBrand?.id,
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 
   const velocityQuery = useQuery({
