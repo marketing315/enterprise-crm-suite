@@ -85,6 +85,8 @@ export function useAdvancedAnalytics({ from, to }: UseAdvancedAnalyticsParams = 
       return data as unknown as FunnelAnalytics;
     },
     enabled: !!currentBrand?.id,
+    staleTime: 2 * 60_000, // 2 minutes
+    refetchInterval: 5 * 60_000, // 5 minutes (heavy query)
   });
 
   const sourceQuery = useQuery({
@@ -102,6 +104,8 @@ export function useAdvancedAnalytics({ from, to }: UseAdvancedAnalyticsParams = 
       return data as unknown as SourceAnalytics;
     },
     enabled: !!currentBrand?.id,
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 
   const velocityQuery = useQuery({
@@ -119,6 +123,8 @@ export function useAdvancedAnalytics({ from, to }: UseAdvancedAnalyticsParams = 
       return data as unknown as VelocityMetrics;
     },
     enabled: !!currentBrand?.id,
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 
   return {
