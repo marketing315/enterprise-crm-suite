@@ -42,6 +42,7 @@ interface SortableColumnItemProps {
   onToggle: (key: string) => void;
 }
 
+// Extracted as a separate component to avoid forwardRef warning with @dnd-kit
 function SortableColumnItem({ column, onToggle }: SortableColumnItemProps) {
   const {
     attributes,
@@ -65,16 +66,16 @@ function SortableColumnItem({ column, onToggle }: SortableColumnItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-3 bg-background border rounded-lg"
+      className="flex items-center gap-3 p-3 bg-background border rounded-lg touch-none"
     >
-      <button
+      <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing touch-none"
+        className="cursor-grab active:cursor-grabbing p-1 -m-1"
         aria-label="Trascina per riordinare"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </button>
+      </div>
 
       <div className="flex-1 flex items-center gap-2">
         <span className={column.visible ? "font-medium" : "text-muted-foreground"}>
