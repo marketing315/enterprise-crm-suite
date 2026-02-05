@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock } from "lucide-react";
+import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check } from "lucide-react";
 import {
   useCreateAutomationRule,
   useUpdateAutomationRule,
