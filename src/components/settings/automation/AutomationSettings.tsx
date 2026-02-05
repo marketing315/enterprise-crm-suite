@@ -117,6 +117,10 @@ export function AutomationSettings() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="jobs" className="gap-2">
+              <Clock className="h-4 w-4" />
+              Job Programmati
+            </TabsTrigger>
           </TabsList>
 
           {activeTab === "rules" && (
