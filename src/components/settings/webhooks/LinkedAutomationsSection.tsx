@@ -25,10 +25,10 @@
  useAutomationRules,
  useUpdateAutomationRule,
  useDeleteAutomationRule,
- AUTOMATION_EVENT_TYPES,
  ACTION_TYPES,
  type AutomationRule,
  } from "@/hooks/useAutomationRules";
+ import { useAutomationEventTypes } from "@/hooks/useInboundSources";
  import { AutomationRuleFormDrawer } from "@/components/settings/automation/AutomationRuleFormDrawer";
  
  interface LinkedAutomationsSectionProps {
@@ -65,6 +65,7 @@
    const { data: allRules, isLoading } = useAutomationRules();
    const updateRule = useUpdateAutomationRule();
    const deleteRule = useDeleteAutomationRule();
+   const { eventTypes: AUTOMATION_EVENT_TYPES } = useAutomationEventTypes();
  
    const [isOpen, setIsOpen] = useState(true);
    const [formOpen, setFormOpen] = useState(false);
