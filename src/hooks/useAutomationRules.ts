@@ -27,6 +27,8 @@ export type ActionType =
   | "set_callback_requested"
   | "log_note";
 
+ export type TriggerType = "webhook_event" | "cron";
+
 export interface Action {
   type: ActionType;
   match?: Record<string, string>;
@@ -48,6 +50,7 @@ export interface AutomationRule {
   trigger_config: Record<string, unknown>;
   trigger_event_type: string | null;
   trigger_source: string | null;
+  cron_expression: string | null;
   conditions: Conditions;
   action_type: string;
   action_config: Record<string, unknown>;
@@ -125,6 +128,22 @@ export const AUTOMATION_EVENT_TYPES = [
   { value: "inbound.*", label: "Inbound - Tutti i webhook" },
 ];
 
+ export const TRIGGER_TYPES: { value: TriggerType; label: string; description: string }[] = [
+   { value: "webhook_event", label: "Evento Webhook", description: "Si attiva quando arriva un webhook" },
+   { value: "cron", label: "Schedulato (Cron)", description: "Si attiva su schedule temporale" },
+ ];
+
+ export const COMMON_CRON_EXPRESSIONS = [
+   { value: "* * * * *", label: "Ogni minuto" },
+   { value: "*/5 * * * *", label: "Ogni 5 minuti" },
+   { value: "*/15 * * * *", label: "Ogni 15 minuti" },
+   { value: "0 * * * *", label: "Ogni ora" },
+   { value: "0 9 * * *", label: "Ogni giorno alle 9:00" },
+   { value: "0 9 * * 1-5", label: "Giorni feriali alle 9:00" },
+   { value: "0 9 * * 1", label: "Ogni lunedì alle 9:00" },
+   { value: "0 0 1 * *", label: "Primo del mese a mezzanotte" },
+ ];
+
 export const ACTION_TYPES: { value: ActionType; label: string; description: string }[] = [
   { value: "upsert_contact", label: "Crea/Aggiorna Contatto", description: "Trova o crea un contatto basandosi sul telefono" },
   { value: "add_tag", label: "Aggiungi Tag", description: "Tagga il contatto o deal creato" },
@@ -199,8 +218,10 @@ export function useCreateAutomationRule() {
     mutationFn: async (params: {
       name: string;
       description?: string;
+      trigger_type?: TriggerType;
       trigger_event_type: string;
       trigger_source?: string;
+      cron_expression?: string;
       conditions?: Conditions;
       actions: Action[];
       stop_on_failure?: boolean;
@@ -215,10 +236,11 @@ export function useCreateAutomationRule() {
           brand_id: currentBrand.id,
           name: params.name,
           description: params.description || null,
-          trigger_type: "webhook_event",
+          trigger_type: params.trigger_type || "webhook_event",
           trigger_config: {},
           trigger_event_type: params.trigger_event_type,
           trigger_source: params.trigger_source || null,
+          cron_expression: params.cron_expression || null,
           conditions: (params.conditions || {}) as Json,
           action_type: "multi_action",
           action_config: {},
@@ -248,8 +270,10 @@ export function useUpdateAutomationRule() {
       id: string;
       name?: string;
       description?: string;
+      trigger_type?: TriggerType;
       trigger_event_type?: string;
       trigger_source?: string;
+      cron_expression?: string;
       conditions?: Conditions;
       actions?: Action[];
       stop_on_failure?: boolean;
@@ -259,8 +283,10 @@ export function useUpdateAutomationRule() {
       const updateData: Record<string, unknown> = {};
       if (params.name !== undefined) updateData.name = params.name;
       if (params.description !== undefined) updateData.description = params.description;
+      if (params.trigger_type !== undefined) updateData.trigger_type = params.trigger_type;
       if (params.trigger_event_type !== undefined) updateData.trigger_event_type = params.trigger_event_type;
       if (params.trigger_source !== undefined) updateData.trigger_source = params.trigger_source;
+      if (params.cron_expression !== undefined) updateData.cron_expression = params.cron_expression;
       if (params.conditions !== undefined) updateData.conditions = params.conditions;
       if (params.actions !== undefined) updateData.actions = params.actions;
       if (params.stop_on_failure !== undefined) updateData.stop_on_failure = params.stop_on_failure;

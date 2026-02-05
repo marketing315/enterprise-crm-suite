@@ -985,6 +985,7 @@ export type Database = {
           conditions: Json
           created_at: string
           created_by: string | null
+          cron_expression: string | null
           description: string | null
           execution_count: number
           id: string
@@ -1008,6 +1009,7 @@ export type Database = {
           conditions?: Json
           created_at?: string
           created_by?: string | null
+          cron_expression?: string | null
           description?: string | null
           execution_count?: number
           id?: string
@@ -1031,6 +1033,7 @@ export type Database = {
           conditions?: Json
           created_at?: string
           created_by?: string | null
+          cron_expression?: string | null
           description?: string | null
           execution_count?: number
           id?: string
