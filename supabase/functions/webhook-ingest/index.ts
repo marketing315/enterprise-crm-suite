@@ -723,6 +723,7 @@ Deno.serve(async (req: Request) => {
         p_email: email,
         p_city: city,
         p_cap: cap,
+        p_lead_message: extractedFields.notes || null,
       }
     );
 
