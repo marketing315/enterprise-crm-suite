@@ -140,6 +140,68 @@ export function TicketsTable({
 
   const colSpan = (showCheckboxes ? 1 : 0) + 8 + (onTakeOwnership ? 1 : 0);
 
+  const handleTakeOwnershipInternal = async (ticketId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentOperator) return;
+    try {
+      await assignTicket.mutateAsync({ ticketId, userId: currentOperator.user_id });
+      toast.success("Ticket preso in carico");
+    } catch {
+      toast.error("Errore nell'assegnazione");
+    }
+  };
+
+  const handleAssign = async (ticketId: string, userId: string | null) => {
+    try {
+      await assignTicket.mutateAsync({ ticketId, userId });
+      toast.success(userId ? "Ticket assegnato" : "Assegnazione rimossa");
+    } catch {
+      toast.error("Errore nell'assegnazione");
+    }
+  };
+
+  const handleStatusChange = async (ticketId: string, status: TicketStatus) => {
+    try {
+      await updateStatus.mutateAsync({ ticketId, status });
+      toast.success("Stato aggiornato");
+    } catch {
+      toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const handlePriorityChange = async (ticketId: string, priority: number) => {
+    try {
+      await updatePriority.mutateAsync({ ticketId, priority });
+      toast.success("Priorità aggiornata");
+    } catch {
+      toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const handleCategoryChange = async (ticketId: string, categoryTagId: string | null) => {
+    try {
+      await updateCategory.mutateAsync({ ticketId, categoryTagId });
+      toast.success("Categoria aggiornata");
+    } catch {
+      toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const statusOptions: { value: TicketStatus; label: string }[] = [
+    { value: "open", label: "Aperto" },
+    { value: "in_progress", label: "In Lavorazione" },
+    { value: "resolved", label: "Risolto" },
+    { value: "closed", label: "Chiuso" },
+  ];
+
+  const priorityOptions = [
+    { value: 1, label: "Critica", color: "text-red-500" },
+    { value: 2, label: "Alta", color: "text-orange-500" },
+    { value: 3, label: "Media", color: "text-yellow-500" },
+    { value: 4, label: "Bassa", color: "text-blue-500" },
+    { value: 5, label: "Minima", color: "text-muted-foreground" },
+  ];
+
   const handleArchive = async (ticketId: string, currentArchived: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
