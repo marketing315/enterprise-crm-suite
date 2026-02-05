@@ -4576,6 +4576,9 @@ export type Database = {
       }
       tickets: {
         Row: {
+          archived: boolean
+          archived_at: string | null
+          archived_by_user_id: string | null
           assigned_at: string | null
           assigned_by_user_id: string | null
           assigned_to_user_id: string | null
@@ -4598,6 +4601,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived?: boolean
+          archived_at?: string | null
+          archived_by_user_id?: string | null
           assigned_at?: string | null
           assigned_by_user_id?: string | null
           assigned_to_user_id?: string | null
@@ -4620,6 +4626,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived?: boolean
+          archived_at?: string | null
+          archived_by_user_id?: string | null
           assigned_at?: string | null
           assigned_by_user_id?: string | null
           assigned_to_user_id?: string | null
@@ -4642,6 +4651,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tickets_archived_by_user_id_fkey"
+            columns: ["archived_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tickets_assigned_by_user_id_fkey"
             columns: ["assigned_by_user_id"]
