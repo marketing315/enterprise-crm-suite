@@ -19,22 +19,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock } from "lucide-react";
 import {
   useCreateAutomationRule,
   useUpdateAutomationRule,
   ACTION_TYPES,
   PAYLOAD_FIELDS,
+  TRIGGER_TYPES,
+  COMMON_CRON_EXPRESSIONS,
   type AutomationRule,
   type Action,
   type Conditions,
   type ConditionItem,
+  type TriggerType,
   CONDITION_OPERATORS,
 } from "@/hooks/useAutomationRules";
  import { useAutomationEventTypes } from "@/hooks/useInboundSources";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   open: boolean;
@@ -57,12 +62,19 @@ interface Props {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [triggerType, setTriggerType] = useState<TriggerType>("webhook_event");
   const [triggerEventType, setTriggerEventType] = useState("");
+  const [cronExpression, setCronExpression] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [stopOnFailure, setStopOnFailure] = useState(true);
   const [priority, setPriority] = useState(100);
   const [conditions, setConditions] = useState<ConditionItem[]>([]);
   const [actions, setActions] = useState<Action[]>([]);
+  
+  // AI generation state
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiSectionOpen, setAiSectionOpen] = useState(false);
 
   // Reset form when opening/closing or changing edit target
   useEffect(() => {
@@ -70,21 +82,29 @@ interface Props {
       if (editingRule) {
         setName(editingRule.name);
         setDescription(editingRule.description || "");
+        setTriggerType((editingRule.trigger_type as TriggerType) || "webhook_event");
         setTriggerEventType(editingRule.trigger_event_type || "");
+        setCronExpression(editingRule.cron_expression || "");
         setIsActive(editingRule.is_active);
         setStopOnFailure(editingRule.stop_on_failure);
         setPriority(editingRule.priority);
         setConditions(editingRule.conditions?.all || []);
         setActions(editingRule.actions || []);
+        setAiPrompt("");
+        setAiSectionOpen(false);
       } else {
         setName("");
         setDescription("");
+        setTriggerType("webhook_event");
          setTriggerEventType(defaultEventType || "");
+        setCronExpression("");
         setIsActive(true);
         setStopOnFailure(true);
         setPriority(100);
         setConditions([]);
         setActions([]);
+        setAiPrompt("");
+        setAiSectionOpen(!defaultEventType); // Open AI section if no default event type
       }
     }
    }, [open, editingRule, defaultEventType]);
@@ -117,13 +137,58 @@ interface Props {
     setActions(newActions);
   };
 
+  const handleGenerateFromAI = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Inserisci una descrizione dell'automazione");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-generate-automation", {
+        body: {
+          prompt: aiPrompt,
+          eventTypes: AUTOMATION_EVENT_TYPES,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      const automation = data.automation;
+
+      // Apply generated config to form
+      setName(automation.name || "");
+      setDescription(automation.description || "");
+      setTriggerType(automation.trigger_type || "webhook_event");
+      setTriggerEventType(automation.trigger_event_type || "");
+      setCronExpression(automation.cron_expression || "");
+      setConditions(automation.conditions?.all || []);
+      setActions(automation.actions || []);
+      setStopOnFailure(automation.stop_on_failure ?? true);
+      setPriority(automation.priority || 100);
+
+      toast.success("Automazione generata! Rivedi e modifica se necessario.");
+      setAiSectionOpen(false);
+    } catch (e) {
+      console.error("AI generation error:", e);
+      toast.error(e instanceof Error ? e.message : "Errore generazione AI");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       toast.error("Nome obbligatorio");
       return;
     }
-    if (!triggerEventType) {
-      toast.error("Seleziona un evento trigger");
+    if (triggerType === "webhook_event" && !triggerEventType) {
+      toast.error("Seleziona un evento trigger per webhook");
+      return;
+    }
+    if (triggerType === "cron" && !cronExpression) {
+      toast.error("Inserisci un'espressione cron");
       return;
     }
     if (actions.length === 0) {
@@ -139,8 +204,10 @@ interface Props {
           id: editingRule.id,
           name,
           description: description || undefined,
-          trigger_event_type: triggerEventType,
+          trigger_type: triggerType,
+          trigger_event_type: triggerType === "webhook_event" ? triggerEventType : undefined,
            trigger_source: defaultSource || undefined,
+          cron_expression: triggerType === "cron" ? cronExpression : undefined,
           conditions: conditionsObj,
           actions,
           stop_on_failure: stopOnFailure,
@@ -152,8 +219,10 @@ interface Props {
         await createMutation.mutateAsync({
           name,
           description: description || undefined,
-          trigger_event_type: triggerEventType,
+          trigger_type: triggerType,
+          trigger_event_type: triggerType === "webhook_event" ? triggerEventType : "cron.scheduled",
            trigger_source: defaultSource || undefined,
+          cron_expression: triggerType === "cron" ? cronExpression : undefined,
           conditions: conditionsObj,
           actions,
           stop_on_failure: stopOnFailure,
@@ -176,11 +245,59 @@ interface Props {
         <SheetHeader>
           <SheetTitle>{editingRule ? "Modifica Regola" : "Nuova Regola"}</SheetTitle>
           <SheetDescription>
-            Configura un'automazione che si attiva quando arriva un webhook
+            Configura un'automazione da webhook o schedulata
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-6 mt-6">
+          {/* AI Generation Section */}
+          {!editingRule && (
+            <Collapsible open={aiSectionOpen} onOpenChange={setAiSectionOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="w-full justify-between bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Genera con AI
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${aiSectionOpen ? "rotate-180" : ""}`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3 space-y-3">
+                <Textarea
+                  placeholder="Descrivi cosa vuoi automatizzare in linguaggio naturale...&#10;&#10;Esempio: Quando arriva un ricontatto da Keplero, crea il contatto con nome e telefono, tagga come 'ricontatto' e imposta la richiesta di callback"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+                <Button
+                  type="button"
+                  onClick={handleGenerateFromAI}
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  className="w-full"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Genera Automazione
+                    </>
+                  )}
+                </Button>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {/* Basic Info */}
           <div className="space-y-4">
             <div className="space-y-2">
@@ -206,15 +323,15 @@ interface Props {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Evento Trigger *</Label>
-                <Select value={triggerEventType} onValueChange={setTriggerEventType}>
+                <Label>Tipo Trigger *</Label>
+                <Select value={triggerType} onValueChange={(v) => setTriggerType(v as TriggerType)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleziona evento..." />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {AUTOMATION_EVENT_TYPES.map((event) => (
-                      <SelectItem key={event.value} value={event.value}>
-                        {event.label}
+                    {TRIGGER_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -232,6 +349,64 @@ interface Props {
                 />
               </div>
             </div>
+
+            {/* Webhook Event Trigger */}
+            {triggerType === "webhook_event" && (
+              <div className="space-y-2">
+                <Label>Evento Trigger *</Label>
+                <Select value={triggerEventType} onValueChange={setTriggerEventType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona evento..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AUTOMATION_EVENT_TYPES.map((event) => (
+                      <SelectItem key={event.value} value={event.value}>
+                        {event.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Cron Trigger */}
+            {triggerType === "cron" && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Espressione Cron *
+                </Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={COMMON_CRON_EXPRESSIONS.find((c) => c.value === cronExpression)?.value || "custom"}
+                    onValueChange={(v) => {
+                      if (v !== "custom") setCronExpression(v);
+                    }}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Preset..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMMON_CRON_EXPRESSIONS.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom">Personalizzato</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="flex-1 font-mono"
+                    placeholder="* * * * * (min hour day month weekday)"
+                    value={cronExpression}
+                    onChange={(e) => setCronExpression(e.target.value)}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Formato: minuto (0-59) ora (0-23) giorno (1-31) mese (1-12) giorno settimana (0-6)
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
