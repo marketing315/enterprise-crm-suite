@@ -87,6 +87,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
   const { data: openDeal } = useContactDeal(contactId);
+  const createDeal = useCreateContactDeal();
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
 
