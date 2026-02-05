@@ -179,6 +179,14 @@ export function AutomationSettings() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => setDuplicatingRule(rule)}
+                          title="Duplica"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDelete(rule)}
                           title="Elimina"
                         >
