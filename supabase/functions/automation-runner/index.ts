@@ -414,6 +414,33 @@ interface ActionContextWithEvent extends ActionContext {
   eventId?: string;
 }
 
+// Extract normalized scheduling text from raw esito
+function extractNormalizedText(text: string): string {
+  const lowerText = text.toLowerCase().trim();
+  
+  // Extract the core scheduling part
+  const patterns = [
+    /tra\s+\d+\s*min\w*/i,
+    /tra\s+\d+\s*or[ae]/i,
+    /tra\s+mezz['']?\s*ora/i,
+    /tra\s+un['']?\s*ora/i,
+    /domani\s*(mattina|pomeriggio|sera)?/i,
+    /oggi\s*(pomeriggio|sera)?/i,
+    /stasera/i,
+    /stamattina/i,
+    /(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)/i,
+    /\d{1,2}[\/\-]\d{1,2}(\s+(?:alle|ore)\s*\d{1,2}[:\.]\d{2})?/i,
+    /(?:alle|ore)\s*\d{1,2}[:\.]\d{2}/i,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = lowerText.match(pattern);
+    if (match) return match[0].trim();
+  }
+  
+  return lowerText;
+}
+
 async function buildKepleroPayload(
   ctx: ActionContext,
   esitoChiamata: string,
@@ -421,21 +448,25 @@ async function buildKepleroPayload(
 ): Promise<Record<string, unknown>> {
   const contactId = ctx.createdEntities.contact_id;
   
-  // Fetch contact data
+  // Fetch contact data with tracking
   let contact: Record<string, unknown> | null = null;
   let phones: Array<Record<string, unknown>> = [];
   let tags: string[] = [];
+  let tracking: Record<string, unknown> | null = null;
   
   if (contactId) {
     const { data: contactData } = await ctx.supabase
       .from("contacts")
-      .select("*, contact_phones(*)")
+      .select("*, contact_phones(*), contact_tracking(*)")
       .eq("id", contactId)
       .single();
     
     if (contactData) {
       contact = contactData;
       phones = contactData.contact_phones || [];
+      tracking = Array.isArray(contactData.contact_tracking) 
+        ? contactData.contact_tracking[0] 
+        : contactData.contact_tracking;
     }
     
     // Fetch tags
@@ -480,9 +511,33 @@ async function buildKepleroPayload(
     .eq("contact_id", contactId || "")
     .order("confirmed_at", { ascending: false })
     .limit(10);
+
+  // Fetch last call log
+  const { data: lastCall } = await ctx.supabase
+    .from("call_logs")
+    .select("*")
+    .eq("contact_id", contactId || "")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Fetch recent inbound events (last 5)
+  const { data: recentEvents } = await ctx.supabase
+    .from("webhook_inbound_events")
+    .select("id, event_type, source, received_at, payload")
+    .eq("brand_id", ctx.brandId)
+    .order("received_at", { ascending: false })
+    .limit(5);
   
   const now = new Date().toISOString();
   const primaryPhone = phones.find((p: Record<string, unknown>) => p.is_primary) || phones[0];
+  
+  // Format phone to E.164
+  const phoneE164 = primaryPhone?.phone_normalized 
+    ? (primaryPhone.phone_normalized.toString().startsWith("+") 
+        ? primaryPhone.phone_normalized 
+        : `+39${primaryPhone.phone_normalized}`)
+    : null;
   
   return {
     schema_version: "crm.keplero.user_snapshot.v1",
@@ -500,6 +555,7 @@ async function buildKepleroPayload(
     },
     schedule: {
       requested_text: esitoChiamata,
+      normalized_text: extractNormalizedText(esitoChiamata),
       run_at: parseResult.run_at_local,
       run_at_utc: parseResult.run_at_utc,
       parser: {
@@ -515,6 +571,12 @@ async function buildKepleroPayload(
         meta_pixel_id: null,
         meta_ad_account: null,
       },
+    },
+    // Stable identifiers for reconciliation
+    external_ids: {
+      crm_contact_id: contactId || null,
+      crm_brand_id: ctx.brandId,
+      phone_primary_e164: phoneE164,
     },
     contact: contact ? {
       id: contact.id,
@@ -534,8 +596,10 @@ async function buildKepleroPayload(
       },
       phones: {
         primary: primaryPhone?.phone_normalized || null,
+        primary_e164: phoneE164,
         all: phones.map((p: Record<string, unknown>) => ({
           phone_normalized: p.phone_normalized,
+          phone_raw: p.phone_raw,
           is_primary: p.is_primary,
           is_active: p.is_active,
         })),
@@ -551,15 +615,40 @@ async function buildKepleroPayload(
         esito_chiamata: contact.esito_chiamata || esitoChiamata,
         notes: contact.notes,
         status: contact.status,
+        callback_requested: contact.callback_requested || false,
+        lead_type: contact.lead_type || null,
+        lead_message: contact.lead_message || null,
       },
       tags,
     } : null,
+    // Privacy/compliance
+    consent: {
+      marketing: contact?.marketing_consent || null,
+      profiling: contact?.profiling_consent || null,
+      updated_at: contact?.consent_updated_at || null,
+    },
     tracking: {
       first_touch_at: contact?.created_at || null,
-      client: { ip: null, user_agent: null },
-      meta: { fbp: null, fbc: null },
-      google: { gclid: null, wbraid: null, gbraid: null },
-      utm: { source: null, medium: null, campaign: null, content: null, term: null },
+      client: {
+        ip: tracking?.ip_address || null,
+        user_agent: tracking?.user_agent || null,
+      },
+      meta: {
+        fbp: tracking?.fbp || null,
+        fbc: tracking?.fbc || null,
+      },
+      google: {
+        gclid: tracking?.gclid || null,
+        wbraid: tracking?.wbraid || null,
+        gbraid: tracking?.gbraid || null,
+      },
+      utm: {
+        source: tracking?.utm_source || null,
+        medium: tracking?.utm_medium || null,
+        campaign: tracking?.utm_campaign || null,
+        content: tracking?.utm_content || null,
+        term: tracking?.utm_term || null,
+      },
     },
     sales: {
       summary: {
@@ -598,7 +687,12 @@ async function buildKepleroPayload(
       open_tickets: tickets || [],
     },
     communications: {
-      calls: { last_call_at: null, last_call_status: null, total_calls_30d: 0 },
+      calls: {
+        last_call_at: lastCall?.started_at || null,
+        last_call_status: lastCall?.status || null,
+        last_call_duration_seconds: lastCall?.duration_seconds || null,
+        total_calls_30d: 0, // Would require separate count query
+      },
       chats: { last_message_at: null, channels: [], unread_count: 0 },
       emails: { last_email_at: null },
     },
@@ -609,6 +703,50 @@ async function buildKepleroPayload(
         status: "scheduled",
         attempts: 0,
       },
+    },
+    // Raw entities dump for full data access
+    raw_entities: {
+      contacts: contact ? {
+        id: contact.id,
+        brand_id: contact.brand_id,
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        email: contact.email,
+        city: contact.city,
+        cap: contact.cap,
+        address: contact.address,
+        province: contact.province,
+        country: contact.country,
+        status: contact.status,
+        notes: contact.notes,
+        esito_chiamata: contact.esito_chiamata,
+        callback_requested: contact.callback_requested,
+        company_name: contact.company_name,
+        vat_number: contact.vat_number,
+        fiscal_code: contact.fiscal_code,
+        lead_type: contact.lead_type,
+        lead_message: contact.lead_message,
+        lead_cost: contact.lead_cost,
+        note1: contact.note1,
+        note2: contact.note2,
+        note3: contact.note3,
+        note4: contact.note4,
+        note5: contact.note5,
+        created_at: contact.created_at,
+        updated_at: contact.updated_at,
+      } : null,
+      contact_phones: phones.map((p: Record<string, unknown>) => ({
+        id: p.id,
+        phone_raw: p.phone_raw,
+        phone_normalized: p.phone_normalized,
+        country_code: p.country_code,
+        is_primary: p.is_primary,
+        is_active: p.is_active,
+      })),
+      contact_tracking: tracking || null,
+      tags,
+      last_call_log: lastCall || null,
+      last_webhook_events: recentEvents?.slice(0, 3) || [],
     },
   };
 }
