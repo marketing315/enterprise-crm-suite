@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
 import { User, Clock, MessageSquare, Send, ExternalLink, UserPlus, History, Bot, Archive, ArchiveRestore, Trash2 } from "lucide-react";
