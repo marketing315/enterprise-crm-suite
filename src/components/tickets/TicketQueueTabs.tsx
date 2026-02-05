@@ -25,7 +25,7 @@ export function TicketQueueTabs({
 }: TicketQueueTabsProps) {
   return (
     <Tabs value={value} onValueChange={(v) => onChange(v as QueueTab)} data-testid="tickets-tabs">
-      <TabsList className="h-auto p-1 gap-1 flex-wrap w-full sm:w-auto">
+      <TabsList className="h-auto p-1 gap-1 flex-wrap w-full sm:w-auto relative z-10">
         {showMyQueue && (
           <TabsTrigger
             value="my_queue"
