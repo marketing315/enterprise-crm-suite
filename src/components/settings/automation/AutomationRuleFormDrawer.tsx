@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock } from "lucide-react";
+import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check } from "lucide-react";
 import {
   useCreateAutomationRule,
   useUpdateAutomationRule,
@@ -40,6 +40,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { useTags } from "@/hooks/useTags";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -611,25 +615,7 @@ function ActionFields({
 
     case "add_tag":
       return (
-        <div className="space-y-2">
-          <Input
-            placeholder="Nome tag (es: keplero_ricontatto)"
-            value={action.tag || ""}
-            onChange={(e) => onChange({ tag: e.target.value })}
-          />
-          <Select
-            value={action.entity || "contact"}
-            onValueChange={(v) => onChange({ entity: v as "contact" | "deal" | "ticket" })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="contact">Contatto</SelectItem>
-              <SelectItem value="deal">Deal</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <AddTagActionFields action={action} onChange={onChange} />
       );
 
     case "create_deal":
@@ -697,4 +683,94 @@ function ActionFields({
     default:
       return null;
   }
+}
+
+// Dedicated component for add_tag action with tag selector
+function AddTagActionFields({
+  action,
+  onChange,
+}: {
+  action: Action;
+  onChange: (updates: Partial<Action>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: tags = [] } = useTags();
+  
+  const selectedTag = tags.find((t) => t.name === action.tag);
+  
+  return (
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+          >
+            {selectedTag ? (
+              <span className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: selectedTag.color }}
+                />
+                {selectedTag.name}
+              </span>
+            ) : (
+              "Seleziona un tag..."
+            )}
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <ScrollArea className="h-[200px]">
+            {tags.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Nessun tag disponibile. Creane uno nelle impostazioni Tag.
+              </div>
+            ) : (
+              <div className="p-1">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => {
+                      onChange({ tag: tag.name });
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors",
+                      action.tag === tag.name && "bg-accent"
+                    )}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    <span className="flex-1 text-left truncate">{tag.name}</span>
+                    {action.tag === tag.name && (
+                      <Check className="h-4 w-4 text-primary shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </PopoverContent>
+      </Popover>
+
+      <Select
+        value={action.entity || "contact"}
+        onValueChange={(v) => onChange({ entity: v as "contact" | "deal" | "ticket" })}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="contact">Contatto</SelectItem>
+          <SelectItem value="deal">Deal</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
