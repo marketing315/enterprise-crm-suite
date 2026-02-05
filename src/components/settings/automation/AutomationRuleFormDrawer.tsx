@@ -23,7 +23,6 @@ import { Plus, Trash2, GripVertical } from "lucide-react";
 import {
   useCreateAutomationRule,
   useUpdateAutomationRule,
-  AUTOMATION_EVENT_TYPES,
   ACTION_TYPES,
   PAYLOAD_FIELDS,
   type AutomationRule,
@@ -32,6 +31,7 @@ import {
   type ConditionItem,
   CONDITION_OPERATORS,
 } from "@/hooks/useAutomationRules";
+ import { useAutomationEventTypes } from "@/hooks/useInboundSources";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -53,6 +53,7 @@ interface Props {
  }: Props) {
   const createMutation = useCreateAutomationRule();
   const updateMutation = useUpdateAutomationRule();
+   const { eventTypes: AUTOMATION_EVENT_TYPES } = useAutomationEventTypes();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
