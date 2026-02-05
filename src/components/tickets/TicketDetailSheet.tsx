@@ -254,7 +254,7 @@ export function TicketDetailSheet({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="flex-1 text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Elimina
