@@ -161,7 +161,7 @@ export interface QueueCountsParams {
  * Lightweight hook to get queue counts for tabs + contextual auto/manual counts
  */
 export function useTicketQueueCounts(params?: QueueCountsParams) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
   const { supabaseUser } = useAuth();
   const { data: brandSettings } = useBrandSettings();
   const { data: operators = [] } = useBrandOperators();
@@ -172,22 +172,27 @@ export function useTicketQueueCounts(params?: QueueCountsParams) {
 
   const slaThresholds = brandSettings?.sla_thresholds_minutes;
 
+  // Determine which brand IDs to query
+  const effectiveBrandIds = isAllBrandsSelected ? allBrandIds : (currentBrand?.id ? [currentBrand.id] : []);
+
   return useQuery({
     queryKey: [
       "ticket-queue-counts",
-      currentBrand?.id,
+      isAllBrandsSelected ? "all-brands" : currentBrand?.id,
+      effectiveBrandIds,
       currentOperator?.user_id,
       slaThresholds,
       params?.queueTab,
       params?.tagIds,
     ],
     queryFn: async (): Promise<QueueCounts> => {
-      if (!currentBrand?.id) {
+      if (effectiveBrandIds.length === 0) {
         return { all: 0, my_queue: 0, unassigned: 0, sla_breached: 0, auto_count: 0, manual_count: 0 };
       }
 
       const { data, error } = await supabase.rpc("get_ticket_queue_counts", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: isAllBrandsSelected ? null : currentBrand!.id,
+        p_brand_ids: isAllBrandsSelected ? effectiveBrandIds : null,
         p_current_user_id: currentOperator?.user_id ?? null,
         p_sla_thresholds: slaThresholds ? JSON.stringify(slaThresholds) : null,
         p_queue_tab: params?.queueTab || "all",
@@ -198,7 +203,7 @@ export function useTicketQueueCounts(params?: QueueCountsParams) {
 
       return data as unknown as QueueCounts;
     },
-    enabled: !!currentBrand?.id,
+    enabled: effectiveBrandIds.length > 0,
     staleTime: 10000, // 10 seconds - counts refresh more frequently
   });
 }
