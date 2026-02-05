@@ -439,6 +439,20 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
               <Separator />
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Azioni Rapide</h3>
+                {openDeal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      navigate(`/pipeline?deal=${openDeal.id}`);
+                    }}
+                    className="w-full justify-start"
+                  >
+                    <Briefcase className="h-4 w-4 mr-2" />
+                    Apri Deal
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
