@@ -156,7 +156,7 @@ export function AutomationJobsTable() {
                           {statusLabels[job.status]}
                         </Badge>
                         {job.last_error && (
-                          <p className="text-xs text-red-500 mt-1 max-w-[200px] truncate" title={job.last_error}>
+                          <p className="text-xs text-destructive mt-1 max-w-[200px] truncate" title={job.last_error}>
                             {job.last_error}
                           </p>
                         )}

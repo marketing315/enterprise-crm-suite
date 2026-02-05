@@ -66,25 +66,27 @@ export function DuplicateRuleDialog({ rule, open, onOpenChange }: DuplicateRuleD
     mutationFn: async () => {
       if (!rule) throw new Error("Nessuna regola selezionata");
 
+      const newRule = {
+        name: newName,
+        brand_id: targetBrandId,
+        description: rule.description,
+        trigger_type: rule.trigger_type,
+        trigger_event_type: rule.trigger_event_type,
+        trigger_source: rule.trigger_source,
+        trigger_config: rule.trigger_config,
+        conditions: rule.conditions,
+        actions: rule.actions as unknown[],
+        action_type: rule.action_type,
+        action_config: rule.action_config,
+        priority: rule.priority,
+        requires_confirmation: rule.requires_confirmation,
+        stop_on_failure: rule.stop_on_failure,
+        is_active: false, // Start inactive for safety
+      };
+
       const { data, error } = await supabase
         .from("automation_rules")
-        .insert({
-          name: newName,
-          brand_id: targetBrandId,
-          description: rule.description,
-          trigger_type: rule.trigger_type,
-          trigger_event_type: rule.trigger_event_type,
-          trigger_source: rule.trigger_source,
-          trigger_config: rule.trigger_config,
-          conditions: rule.conditions,
-          actions: rule.actions,
-          action_type: rule.action_type,
-          action_config: rule.action_config,
-          priority: rule.priority,
-          requires_confirmation: rule.requires_confirmation,
-          stop_on_failure: rule.stop_on_failure,
-          is_active: false, // Start inactive for safety
-        })
+        .insert(newRule as unknown as Record<string, unknown>)
         .select("id")
         .single();
 

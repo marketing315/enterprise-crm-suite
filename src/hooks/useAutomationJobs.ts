@@ -30,7 +30,8 @@ export interface AutomationJob {
 }
 
 export function useAutomationJobs(status?: string) {
-  const { brandId, isSystemBrand, userBrandIds } = useBrandFilter();
+  const { currentBrand, isAllBrandsSelected, allBrandIds, isQueryEnabled } = useBrandFilter();
+  const brandId = currentBrand?.id;
 
   return useQuery({
     queryKey: ["automation-jobs", brandId, status],
@@ -48,8 +49,8 @@ export function useAutomationJobs(status?: string) {
         `)
         .order("run_at", { ascending: true });
 
-      if (isSystemBrand) {
-        query = query.in("brand_id", userBrandIds);
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
       } else if (brandId) {
         query = query.eq("brand_id", brandId);
       }
@@ -63,7 +64,7 @@ export function useAutomationJobs(status?: string) {
       if (error) throw error;
       return data as AutomationJob[];
     },
-    enabled: !!brandId,
+    enabled: isQueryEnabled(),
   });
 }
 
