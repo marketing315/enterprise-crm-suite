@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.automation-runner]
 verify_jwt = false
+
+[functions.ai-generate-automation]
+verify_jwt = false
