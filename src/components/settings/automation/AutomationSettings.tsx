@@ -223,6 +223,20 @@ export function AutomationSettings() {
         <TabsContent value="events" className="mt-4">
           <InboundEventsTable events={events || []} />
         </TabsContent>
+
+        <TabsContent value="jobs" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Programmati</CardTitle>
+              <CardDescription>
+                Job schedulati per invio automatico a endpoint esterni (es. Keplero)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AutomationJobsTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <AutomationRuleFormDrawer
