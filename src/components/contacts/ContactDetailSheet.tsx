@@ -45,7 +45,7 @@ import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
 import { BrandBadge } from '@/components/layout/BrandBadge';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
-import { useContactDeal } from '@/hooks/useContactDeal';
+import { useContactDeal, useCreateContactDeal } from '@/hooks/useContactDeal';
 import { toast } from 'sonner';
 import type { ContactStatus } from '@/types/database';
 
