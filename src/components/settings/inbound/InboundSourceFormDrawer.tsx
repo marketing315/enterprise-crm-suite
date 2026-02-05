@@ -29,6 +29,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Copy, Key, Shield } from "lucide-react";
+ import { LinkedAutomationsSection } from "@/components/settings/webhooks/LinkedAutomationsSection";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
@@ -448,6 +449,16 @@ export function InboundSourceFormDrawer({
                 )}
               </div>
 
+               {/* Linked Automations (only in edit mode) */}
+               {editingSource && (
+                 <LinkedAutomationsSection
+                   sourceFilter={editingSource.name}
+                   defaultEventType="inbound.*"
+                   defaultSource={editingSource.name}
+                   title="Automazioni per questa sorgente"
+                 />
+               )}
+ 
               <div className="flex gap-2 pt-4">
                 <Button
                   type="button"
