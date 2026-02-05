@@ -5890,16 +5890,28 @@ export type Database = {
           scope: Database["public"]["Enums"]["tag_scope"]
         }[]
       }
-      get_ticket_queue_counts: {
-        Args: {
-          p_brand_id: string
-          p_current_user_id?: string
-          p_queue_tab?: string
-          p_sla_thresholds?: Json
-          p_tag_ids?: string[]
-        }
-        Returns: Json
-      }
+      get_ticket_queue_counts:
+        | {
+            Args: {
+              p_brand_id?: string
+              p_brand_ids?: string[]
+              p_current_user_id?: string
+              p_queue_tab?: string
+              p_sla_thresholds?: string
+              p_tag_ids?: string[]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_brand_id: string
+              p_current_user_id?: string
+              p_queue_tab?: string
+              p_sla_thresholds?: Json
+              p_tag_ids?: string[]
+            }
+            Returns: Json
+          }
       get_ticket_trend_dashboard: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
@@ -6131,22 +6143,40 @@ export type Database = {
         }
         Returns: Json
       }
-      search_tickets_v2: {
-        Args: {
-          p_assignment_type?: string
-          p_brand_id: string
-          p_current_user_id?: string
-          p_cursor?: Json
-          p_direction?: string
-          p_limit?: number
-          p_queue_tab?: string
-          p_search_query?: string
-          p_sla_thresholds?: Json
-          p_statuses?: string[]
-          p_tag_ids?: string[]
-        }
-        Returns: Json
-      }
+      search_tickets_v2:
+        | {
+            Args: {
+              p_assignment_type?: string
+              p_brand_id?: string
+              p_brand_ids?: string[]
+              p_current_user_id?: string
+              p_cursor?: Json
+              p_direction?: string
+              p_limit?: number
+              p_queue_tab?: string
+              p_search_query?: string
+              p_sla_thresholds?: string
+              p_statuses?: string[]
+              p_tag_ids?: string[]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_assignment_type?: string
+              p_brand_id: string
+              p_current_user_id?: string
+              p_cursor?: Json
+              p_direction?: string
+              p_limit?: number
+              p_queue_tab?: string
+              p_search_query?: string
+              p_sla_thresholds?: Json
+              p_statuses?: string[]
+              p_tag_ids?: string[]
+            }
+            Returns: Json
+          }
       send_chat_message: {
         Args: {
           p_attachments?: Json
