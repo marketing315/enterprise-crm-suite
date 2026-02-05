@@ -25,6 +25,9 @@ export interface Ticket {
   sla_breached_at: string | null;
   created_at: string;
   updated_at: string;
+  archived: boolean;
+  archived_at: string | null;
+  archived_by_user_id: string | null;
 }
 
 export interface TicketWithRelations extends Ticket {
@@ -212,6 +215,65 @@ export function useUpdateTicketStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
+    },
+  });
+}
+
+export function useArchiveTicket() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async ({ ticketId, archived }: { ticketId: string; archived: boolean }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("supabase_auth_id", user.id)
+        .single();
+
+      const updates: Record<string, unknown> = {
+        archived,
+        archived_at: archived ? new Date().toISOString() : null,
+        archived_by_user_id: archived && userData ? userData.id : null,
+      };
+
+      const { error } = await supabase
+        .from("tickets")
+        .update(updates)
+        .eq("id", ticketId)
+        .eq("brand_id", currentBrand?.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
+    },
+  });
+}
+
+export function useDeleteTicket() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const { error } = await supabase
+        .from("tickets")
+        .delete()
+        .eq("id", ticketId)
+        .eq("brand_id", currentBrand?.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
     },
   });
 }

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock, MessageSquare, Send, ExternalLink, UserPlus, History, Bot } from "lucide-react";
+import { User, Clock, MessageSquare, Send, ExternalLink, UserPlus, History, Bot, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -33,6 +44,8 @@ import {
   useUpdateTicketStatus,
   useAddTicketComment,
   useAssignTicket,
+  useArchiveTicket,
+  useDeleteTicket,
 } from "@/hooks/useTickets";
 import { useLatestTicketAudit } from "@/hooks/useTicketAuditLogs";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
@@ -60,6 +73,8 @@ export function TicketDetailSheet({
   const updateStatus = useUpdateTicketStatus();
   const addComment = useAddTicketComment();
   const assignTicket = useAssignTicket();
+  const archiveTicket = useArchiveTicket();
+  const deleteTicket = useDeleteTicket();
 
   if (!ticket) return null;
 
@@ -73,6 +88,25 @@ export function TicketDetailSheet({
       toast.success("Stato aggiornato");
     } catch {
       toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const handleArchive = async () => {
+    try {
+      await archiveTicket.mutateAsync({ ticketId: ticket.id, archived: !ticket.archived });
+      toast.success(ticket.archived ? "Ticket ripristinato" : "Ticket archiviato");
+    } catch {
+      toast.error("Errore nell'archiviazione");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteTicket.mutateAsync(ticket.id);
+      toast.success("Ticket eliminato");
+      onOpenChange(false);
+    } catch {
+      toast.error("Errore nell'eliminazione");
     }
   };
 
@@ -129,6 +163,12 @@ export function TicketDetailSheet({
           <SheetTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
             <span className="truncate">{ticket.title}</span>
             <TicketPriorityBadge priority={ticket.priority} />
+            {ticket.archived && (
+              <Badge variant="secondary" className="text-xs">
+                <Archive className="h-3 w-3 mr-1" />
+                Archiviato
+              </Badge>
+            )}
           </SheetTitle>
           {/* Last updated badge */}
           {latestAudit && (
@@ -185,6 +225,59 @@ export function TicketDetailSheet({
                       <SelectItem value="closed">Chiuso</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Archive & Delete Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleArchive}
+                    disabled={archiveTicket.isPending}
+                    className="flex-1"
+                  >
+                    {ticket.archived ? (
+                      <>
+                        <ArchiveRestore className="h-4 w-4 mr-2" />
+                        Ripristina
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archivia
+                      </>
+                    )}
+                  </Button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Eliminare questo ticket?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Questa azione è irreversibile. Il ticket e tutti i suoi dati verranno eliminati permanentemente.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annulla</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDelete}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Elimina
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
 
                 {/* Assignment */}
