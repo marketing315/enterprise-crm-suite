@@ -74,9 +74,13 @@
  
    // Filter rules based on criteria
    const linkedRules = allRules?.filter((rule) => {
-     // Filter by source if provided
-     if (sourceFilter && rule.trigger_source !== sourceFilter) {
-       return false;
+     // Filter by source if provided - check both trigger_source and event type pattern
+     if (sourceFilter) {
+       const matchesSource = rule.trigger_source === sourceFilter;
+       const matchesEventPattern = rule.trigger_event_type === `inbound.${sourceFilter}`;
+       if (!matchesSource && !matchesEventPattern) {
+         return false;
+       }
      }
      
      // Filter by event type pattern if provided
