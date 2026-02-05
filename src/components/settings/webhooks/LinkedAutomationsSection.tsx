@@ -25,10 +25,10 @@
  useAutomationRules,
  useUpdateAutomationRule,
  useDeleteAutomationRule,
- AUTOMATION_EVENT_TYPES,
  ACTION_TYPES,
  type AutomationRule,
  } from "@/hooks/useAutomationRules";
+ import { useAutomationEventTypes } from "@/hooks/useInboundSources";
  import { AutomationRuleFormDrawer } from "@/components/settings/automation/AutomationRuleFormDrawer";
  
  interface LinkedAutomationsSectionProps {
@@ -65,6 +65,7 @@
    const { data: allRules, isLoading } = useAutomationRules();
    const updateRule = useUpdateAutomationRule();
    const deleteRule = useDeleteAutomationRule();
+   const { eventTypes: AUTOMATION_EVENT_TYPES } = useAutomationEventTypes();
  
    const [isOpen, setIsOpen] = useState(true);
    const [formOpen, setFormOpen] = useState(false);
@@ -73,9 +74,13 @@
  
    // Filter rules based on criteria
    const linkedRules = allRules?.filter((rule) => {
-     // Filter by source if provided
-     if (sourceFilter && rule.trigger_source !== sourceFilter) {
-       return false;
+     // Filter by source if provided - check both trigger_source and event type pattern
+     if (sourceFilter) {
+       const matchesSource = rule.trigger_source === sourceFilter;
+       const matchesEventPattern = rule.trigger_event_type === `inbound.${sourceFilter}`;
+       if (!matchesSource && !matchesEventPattern) {
+         return false;
+       }
      }
      
      // Filter by event type pattern if provided

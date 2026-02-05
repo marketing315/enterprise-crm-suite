@@ -453,7 +453,7 @@ export function InboundSourceFormDrawer({
                {editingSource && (
                  <LinkedAutomationsSection
                    sourceFilter={editingSource.name}
-                   defaultEventType="inbound.*"
+                   defaultEventType={`inbound.${editingSource.name}`}
                    defaultSource={editingSource.name}
                    title="Automazioni per questa sorgente"
                  />
