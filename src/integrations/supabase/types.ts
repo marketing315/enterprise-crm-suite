@@ -6026,6 +6026,10 @@ export type Database = {
         }
         Returns: Json
       }
+      map_stage_to_contact_status: {
+        Args: { p_stage_name: string }
+        Returns: Database["public"]["Enums"]["contact_status"]
+      }
       mark_all_notifications_read: {
         Args: { p_brand_id?: string }
         Returns: number
