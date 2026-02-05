@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock, Hand, AlertTriangle, Archive, ArchiveRestore, Trash2, MoreHorizontal } from "lucide-react";
+import { User, Clock, Hand, AlertTriangle, Archive, ArchiveRestore, Trash2, MoreHorizontal, UserPlus, Tag, Circle, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -18,6 +18,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -37,12 +41,24 @@ import {
 } from "@/components/ui/tooltip";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
-import { TicketWithRelations, useArchiveTicket, useDeleteTicket } from "@/hooks/useTickets";
+import { 
+  TicketWithRelations, 
+  TicketStatus,
+  useArchiveTicket, 
+  useDeleteTicket,
+  useUpdateTicketStatus,
+  useUpdateTicketPriority,
+  useUpdateTicketCategory,
+  useAssignTicket,
+} from "@/hooks/useTickets";
+import { useBrandOperators } from "@/hooks/useBrandOperators";
+import { useTags } from "@/hooks/useTags";
 import { isSlaBreached } from "@/hooks/useTicketQueue";
 import { SlaThresholds } from "@/hooks/useBrandSettings";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TicketsTableProps {
   tickets: TicketWithRelations[];
@@ -71,6 +87,16 @@ export function TicketsTable({
   
   const archiveTicket = useArchiveTicket();
   const deleteTicket = useDeleteTicket();
+  const updateStatus = useUpdateTicketStatus();
+  const updatePriority = useUpdateTicketPriority();
+  const updateCategory = useUpdateTicketCategory();
+  const assignTicket = useAssignTicket();
+  
+  const { supabaseUser } = useAuth();
+  const { data: operators = [] } = useBrandOperators();
+  const { data: categoryTags = [] } = useTags("ticket");
+  
+  const currentOperator = operators.find((op) => op.supabase_auth_id === supabaseUser?.id);
 
   const getContactName = (ticket: TicketWithRelations) => {
     if (!ticket.contacts) return "—";
@@ -113,6 +139,68 @@ export function TicketsTable({
   };
 
   const colSpan = (showCheckboxes ? 1 : 0) + 8 + (onTakeOwnership ? 1 : 0);
+
+  const handleTakeOwnershipInternal = async (ticketId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentOperator) return;
+    try {
+      await assignTicket.mutateAsync({ ticketId, userId: currentOperator.user_id });
+      toast.success("Ticket preso in carico");
+    } catch {
+      toast.error("Errore nell'assegnazione");
+    }
+  };
+
+  const handleAssign = async (ticketId: string, userId: string | null) => {
+    try {
+      await assignTicket.mutateAsync({ ticketId, userId });
+      toast.success(userId ? "Ticket assegnato" : "Assegnazione rimossa");
+    } catch {
+      toast.error("Errore nell'assegnazione");
+    }
+  };
+
+  const handleStatusChange = async (ticketId: string, status: TicketStatus) => {
+    try {
+      await updateStatus.mutateAsync({ ticketId, status });
+      toast.success("Stato aggiornato");
+    } catch {
+      toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const handlePriorityChange = async (ticketId: string, priority: number) => {
+    try {
+      await updatePriority.mutateAsync({ ticketId, priority });
+      toast.success("Priorità aggiornata");
+    } catch {
+      toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const handleCategoryChange = async (ticketId: string, categoryTagId: string | null) => {
+    try {
+      await updateCategory.mutateAsync({ ticketId, categoryTagId });
+      toast.success("Categoria aggiornata");
+    } catch {
+      toast.error("Errore nell'aggiornamento");
+    }
+  };
+
+  const statusOptions: { value: TicketStatus; label: string }[] = [
+    { value: "open", label: "Aperto" },
+    { value: "in_progress", label: "In Lavorazione" },
+    { value: "resolved", label: "Risolto" },
+    { value: "closed", label: "Chiuso" },
+  ];
+
+  const priorityOptions = [
+    { value: 1, label: "Critica", color: "text-red-500" },
+    { value: 2, label: "Alta", color: "text-orange-500" },
+    { value: 3, label: "Media", color: "text-yellow-500" },
+    { value: 4, label: "Bassa", color: "text-blue-500" },
+    { value: 5, label: "Minima", color: "text-muted-foreground" },
+  ];
 
   const handleArchive = async (ticketId: string, currentArchived: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -308,6 +396,118 @@ export function TicketsTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {/* Take ownership */}
+                      {!ticket.assigned_to_user_id && currentOperator && (
+                        <DropdownMenuItem onClick={(e) => handleTakeOwnershipInternal(ticket.id, e as unknown as React.MouseEvent)}>
+                          <Hand className="h-4 w-4 mr-2" />
+                          Prendi in carico
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {/* Assign to */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Assegna a
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => handleAssign(ticket.id, null)}>
+                              <span className="text-muted-foreground">Non assegnato</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {operators.map((op) => (
+                              <DropdownMenuItem 
+                                key={op.user_id} 
+                                onClick={() => handleAssign(ticket.id, op.user_id)}
+                              >
+                                {ticket.assigned_to_user_id === op.user_id && (
+                                  <Circle className="h-2 w-2 mr-2 fill-current" />
+                                )}
+                                {op.full_name || op.email}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                      
+                      {/* Status */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <ChevronRight className="h-4 w-4 mr-2" />
+                          Stato
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {statusOptions.map((opt) => (
+                              <DropdownMenuItem 
+                                key={opt.value} 
+                                onClick={() => handleStatusChange(ticket.id, opt.value)}
+                              >
+                                {ticket.status === opt.value && (
+                                  <Circle className="h-2 w-2 mr-2 fill-current" />
+                                )}
+                                {opt.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                      
+                      {/* Priority */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          Priorità
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {priorityOptions.map((opt) => (
+                              <DropdownMenuItem 
+                                key={opt.value} 
+                                onClick={() => handlePriorityChange(ticket.id, opt.value)}
+                                className={opt.color}
+                              >
+                                {ticket.priority === opt.value && (
+                                  <Circle className="h-2 w-2 mr-2 fill-current" />
+                                )}
+                                {opt.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                      
+                      {/* Category */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Tag className="h-4 w-4 mr-2" />
+                          Categoria
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => handleCategoryChange(ticket.id, null)}>
+                              <span className="text-muted-foreground">Nessuna</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {categoryTags.map((tag) => (
+                              <DropdownMenuItem 
+                                key={tag.id} 
+                                onClick={() => handleCategoryChange(ticket.id, tag.id)}
+                              >
+                                {ticket.category_tag_id === tag.id && (
+                                  <Circle className="h-2 w-2 mr-2 fill-current" />
+                                )}
+                                <span style={{ color: tag.color }}>{tag.name}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      {/* Archive */}
                       <DropdownMenuItem onClick={(e) => handleArchive(ticket.id, ticket.archived, e as unknown as React.MouseEvent)}>
                         {ticket.archived ? (
                           <>
@@ -321,7 +521,8 @@ export function TicketsTable({
                           </>
                         )}
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                      
+                      {/* Delete */}
                       <DropdownMenuItem 
                         onClick={(e) => handleDeleteClick(ticket.id, e as unknown as React.MouseEvent)}
                         className="text-destructive focus:text-destructive"
