@@ -26,5 +26,7 @@ export function useCeoDashboard(from: Date, to: Date) {
       return data as unknown as CeoKpi;
     },
     enabled: !!brandId && hasAccess,
+    staleTime: 2 * 60_000, // 2 minutes
+    refetchInterval: 5 * 60_000, // 5 minutes (heavy query)
   });
 }

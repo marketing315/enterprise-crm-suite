@@ -123,6 +123,8 @@ export function useAdvancedAnalytics({ from, to }: UseAdvancedAnalyticsParams = 
       return data as unknown as VelocityMetrics;
     },
     enabled: !!currentBrand?.id,
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 
   return {
