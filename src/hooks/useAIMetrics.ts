@@ -73,6 +73,8 @@ export function useAIMetricsOverview(period: MetricsPeriod = "7d") {
       return data as unknown as AIMetricsOverview;
     },
     enabled: !!currentBrand?.id,
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 }
 
