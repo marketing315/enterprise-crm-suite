@@ -47,7 +47,7 @@ interface DuplicateRuleDialogProps {
 }
 
 export function DuplicateRuleDialog({ rule, open, onOpenChange }: DuplicateRuleDialogProps) {
-  const { brands } = useBrandHierarchy();
+  const { data: brands } = useBrandHierarchy();
   const queryClient = useQueryClient();
 
   const [newName, setNewName] = useState("");
