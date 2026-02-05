@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Zap, Play, Trash2, Edit2, History, AlertCircle } from "lucide-react";
+import { Plus, Zap, Play, Trash2, Edit2, History, Clock, Copy } from "lucide-react";
 import {
   useAutomationRules,
   useUpdateAutomationRule,
@@ -18,6 +18,8 @@ import {
 import { AutomationRuleFormDrawer } from "./AutomationRuleFormDrawer";
 import { AutomationLogsTable } from "./AutomationLogsTable";
 import { InboundEventsTable } from "./InboundEventsTable";
+import { AutomationJobsTable } from "./AutomationJobsTable";
+import { DuplicateRuleDialog } from "./DuplicateRuleDialog";
 import {
   AlertDialog,
   AlertDialogAction,
