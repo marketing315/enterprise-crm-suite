@@ -87,6 +87,16 @@ export function TicketsTable({
   
   const archiveTicket = useArchiveTicket();
   const deleteTicket = useDeleteTicket();
+  const updateStatus = useUpdateTicketStatus();
+  const updatePriority = useUpdateTicketPriority();
+  const updateCategory = useUpdateTicketCategory();
+  const assignTicket = useAssignTicket();
+  
+  const { supabaseUser } = useAuth();
+  const { data: operators = [] } = useBrandOperators();
+  const { data: categoryTags = [] } = useTags("ticket");
+  
+  const currentOperator = operators.find((op) => op.supabase_auth_id === supabaseUser?.id);
 
   const getContactName = (ticket: TicketWithRelations) => {
     if (!ticket.contacts) return "—";
