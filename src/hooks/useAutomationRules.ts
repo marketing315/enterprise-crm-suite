@@ -107,13 +107,22 @@ export interface WebhookInboundEvent {
 // ============= Event Types =============
 
 export const AUTOMATION_EVENT_TYPES = [
+  // Keplero events
   { value: "keplero.ricontatto", label: "Keplero - Ricontatto" },
   { value: "keplero.appuntamento", label: "Keplero - Appuntamento" },
   { value: "keplero.rifiuto", label: "Keplero - Rifiuto" },
   { value: "keplero.lead", label: "Keplero - Nuovo Lead" },
   { value: "keplero.*", label: "Keplero - Tutti gli eventi" },
-  { value: "inbound.*", label: "Inbound - Tutti i webhook" },
+  // Meta events
   { value: "meta.lead", label: "Meta Lead Ads" },
+  // VOIspeed events
+  { value: "voispeed.call_start", label: "VOIspeed - Inizio Chiamata" },
+  { value: "voispeed.call_end", label: "VOIspeed - Fine Chiamata" },
+  { value: "voispeed.call_answered", label: "VOIspeed - Chiamata Risposta" },
+  { value: "voispeed.call_missed", label: "VOIspeed - Chiamata Persa" },
+  { value: "voispeed.*", label: "VOIspeed - Tutti gli eventi" },
+  // Generic inbound
+  { value: "inbound.*", label: "Inbound - Tutti i webhook" },
 ];
 
 export const ACTION_TYPES: { value: ActionType; label: string; description: string }[] = [
