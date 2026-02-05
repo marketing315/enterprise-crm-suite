@@ -2102,6 +2102,8 @@ export type Database = {
           note8: string | null
           note9: string | null
           notes: string | null
+          phone: string | null
+          phone_normalized: string | null
           province: string | null
           status: Database["public"]["Enums"]["contact_status"]
           updated_at: string
@@ -2150,6 +2152,8 @@ export type Database = {
           note8?: string | null
           note9?: string | null
           notes?: string | null
+          phone?: string | null
+          phone_normalized?: string | null
           province?: string | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
@@ -2198,6 +2202,8 @@ export type Database = {
           note8?: string | null
           note9?: string | null
           notes?: string | null
+          phone?: string | null
+          phone_normalized?: string | null
           province?: string | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
