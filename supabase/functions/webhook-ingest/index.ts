@@ -738,14 +738,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Update contact notes if AI extracted any
-    if (extractedFields.notes) {
-      await supabaseAdmin
-        .from("contacts")
-        .update({ notes: extractedFields.notes })
-        .eq("id", contactId)
-        .is("notes", null); // Only update if notes are empty
-    }
+    // Notes are now passed to find_or_create_contact via p_lead_message
 
     // Extract and save tracking parameters for CAPI attribution
     const trackingParams = {
