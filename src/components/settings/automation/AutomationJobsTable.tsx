@@ -182,7 +182,7 @@ export function AutomationJobsTable() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => cancelJob.mutate(job.id)}
-                                  className="text-red-600"
+                                  className="text-destructive"
                                 >
                                   <X className="h-4 w-4 mr-2" />
                                   Annulla
