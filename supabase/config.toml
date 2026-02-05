@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.automation-jobs-dispatcher]
 verify_jwt = false
+
+[functions.admin-manage-team]
+verify_jwt = false
