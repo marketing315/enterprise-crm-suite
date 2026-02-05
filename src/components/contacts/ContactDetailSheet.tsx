@@ -68,6 +68,7 @@ interface EditFormData {
 }
 
 export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDetailSheetProps) {
+  const navigate = useNavigate();
   const [conflictContactId, setConflictContactId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
@@ -85,6 +86,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
+  const { data: openDeal } = useContactDeal(contactId);
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
 
