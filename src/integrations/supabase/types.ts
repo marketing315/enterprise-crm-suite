@@ -5448,11 +5448,11 @@ export type Database = {
       }
       find_or_create_contact: {
         Args: {
-          p_assumed_country: boolean
+          p_assumed_country?: boolean
           p_brand_id: string
           p_cap?: string
           p_city?: string
-          p_country_code: string
+          p_country_code?: string
           p_email?: string
           p_first_name?: string
           p_last_name?: string
