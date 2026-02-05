@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -25,3 +25,27 @@ export function useContactDeal(contactId: string | null) {
     enabled: !!contactId,
   });
 }
+
+/**
+ * Hook to create a deal for a contact using the find_or_create_deal RPC.
+ */
+export function useCreateContactDeal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ brandId, contactId }: { brandId: string; contactId: string }) => {
+      const { data, error } = await supabase.rpc('find_or_create_deal', {
+        p_brand_id: brandId,
+        p_contact_id: contactId,
+      });
+
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['contact-deal', variables.contactId] });
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
+    },
+  });
+}
+

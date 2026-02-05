@@ -45,7 +45,7 @@ import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
 import { BrandBadge } from '@/components/layout/BrandBadge';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
-import { useContactDeal } from '@/hooks/useContactDeal';
+import { useContactDeal, useCreateContactDeal } from '@/hooks/useContactDeal';
 import { toast } from 'sonner';
 import type { ContactStatus } from '@/types/database';
 
@@ -87,6 +87,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
   const { data: openDeal } = useContactDeal(contactId);
+  const createDeal = useCreateContactDeal();
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
 
@@ -439,7 +440,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
               <Separator />
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Azioni Rapide</h3>
-                {openDeal && (
+                {openDeal ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -451,6 +452,29 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   >
                     <Briefcase className="h-4 w-4 mr-2" />
                     Apri Deal
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const dealId = await createDeal.mutateAsync({
+                          brandId: contact.brand_id,
+                          contactId: contact.id,
+                        });
+                        toast.success('Deal creato');
+                        onOpenChange(false);
+                        navigate(`/pipeline?deal=${dealId}`);
+                      } catch (error: any) {
+                        toast.error(error.message || 'Errore durante la creazione del deal');
+                      }
+                    }}
+                    disabled={createDeal.isPending}
+                    className="w-full justify-start"
+                  >
+                    <Briefcase className="h-4 w-4 mr-2" />
+                    {createDeal.isPending ? 'Creazione...' : 'Crea Deal'}
                   </Button>
                 )}
                 <Button
