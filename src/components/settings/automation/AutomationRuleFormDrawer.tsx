@@ -40,9 +40,17 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingRule: AutomationRule | null;
+   defaultEventType?: string;
+   defaultSource?: string;
 }
 
-export function AutomationRuleFormDrawer({ open, onOpenChange, editingRule }: Props) {
+ export function AutomationRuleFormDrawer({ 
+   open, 
+   onOpenChange, 
+   editingRule,
+   defaultEventType,
+   defaultSource,
+ }: Props) {
   const createMutation = useCreateAutomationRule();
   const updateMutation = useUpdateAutomationRule();
 
@@ -70,7 +78,7 @@ export function AutomationRuleFormDrawer({ open, onOpenChange, editingRule }: Pr
       } else {
         setName("");
         setDescription("");
-        setTriggerEventType("");
+         setTriggerEventType(defaultEventType || "");
         setIsActive(true);
         setStopOnFailure(true);
         setPriority(100);
@@ -78,7 +86,7 @@ export function AutomationRuleFormDrawer({ open, onOpenChange, editingRule }: Pr
         setActions([]);
       }
     }
-  }, [open, editingRule]);
+   }, [open, editingRule, defaultEventType]);
 
   const handleAddCondition = () => {
     setConditions([...conditions, { path: "", op: "exists" }]);
@@ -131,6 +139,7 @@ export function AutomationRuleFormDrawer({ open, onOpenChange, editingRule }: Pr
           name,
           description: description || undefined,
           trigger_event_type: triggerEventType,
+           trigger_source: defaultSource || undefined,
           conditions: conditionsObj,
           actions,
           stop_on_failure: stopOnFailure,
@@ -143,6 +152,7 @@ export function AutomationRuleFormDrawer({ open, onOpenChange, editingRule }: Pr
           name,
           description: description || undefined,
           trigger_event_type: triggerEventType,
+           trigger_source: defaultSource || undefined,
           conditions: conditionsObj,
           actions,
           stop_on_failure: stopOnFailure,
