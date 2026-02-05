@@ -615,25 +615,7 @@ function ActionFields({
 
     case "add_tag":
       return (
-        <div className="space-y-2">
-          <Input
-            placeholder="Nome tag (es: keplero_ricontatto)"
-            value={action.tag || ""}
-            onChange={(e) => onChange({ tag: e.target.value })}
-          />
-          <Select
-            value={action.entity || "contact"}
-            onValueChange={(v) => onChange({ entity: v as "contact" | "deal" | "ticket" })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="contact">Contatto</SelectItem>
-              <SelectItem value="deal">Deal</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <AddTagActionFields action={action} onChange={onChange} />
       );
 
     case "create_deal":
