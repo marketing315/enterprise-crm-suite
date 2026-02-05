@@ -84,9 +84,10 @@ export function DuplicateRuleDialog({ rule, open, onOpenChange }: DuplicateRuleD
         is_active: false, // Start inactive for safety
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from("automation_rules")
-        .insert(newRule as unknown as Record<string, unknown>)
+        .insert(newRule as any)
         .select("id")
         .single();
 
