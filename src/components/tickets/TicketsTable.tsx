@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock, Hand, AlertTriangle, Archive, ArchiveRestore, Trash2, MoreHorizontal } from "lucide-react";
+import { User, Clock, Hand, AlertTriangle, Archive, ArchiveRestore, Trash2, MoreHorizontal, UserPlus, Tag, Circle, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -18,6 +18,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -37,12 +41,24 @@ import {
 } from "@/components/ui/tooltip";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
-import { TicketWithRelations, useArchiveTicket, useDeleteTicket } from "@/hooks/useTickets";
+import { 
+  TicketWithRelations, 
+  TicketStatus,
+  useArchiveTicket, 
+  useDeleteTicket,
+  useUpdateTicketStatus,
+  useUpdateTicketPriority,
+  useUpdateTicketCategory,
+  useAssignTicket,
+} from "@/hooks/useTickets";
+import { useBrandOperators } from "@/hooks/useBrandOperators";
+import { useTags } from "@/hooks/useTags";
 import { isSlaBreached } from "@/hooks/useTicketQueue";
 import { SlaThresholds } from "@/hooks/useBrandSettings";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TicketsTableProps {
   tickets: TicketWithRelations[];
