@@ -278,6 +278,48 @@ export function useDeleteTicket() {
   });
 }
 
+export function useUpdateTicketPriority() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async ({ ticketId, priority }: { ticketId: string; priority: number }) => {
+      const { error } = await supabase
+        .from("tickets")
+        .update({ priority })
+        .eq("id", ticketId)
+        .eq("brand_id", currentBrand?.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket"] });
+    },
+  });
+}
+
+export function useUpdateTicketCategory() {
+  const queryClient = useQueryClient();
+  const { currentBrand } = useBrand();
+
+  return useMutation({
+    mutationFn: async ({ ticketId, categoryTagId }: { ticketId: string; categoryTagId: string | null }) => {
+      const { error } = await supabase
+        .from("tickets")
+        .update({ category_tag_id: categoryTagId })
+        .eq("id", ticketId)
+        .eq("brand_id", currentBrand?.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket"] });
+    },
+  });
+}
+
 export function useAddTicketComment() {
   const queryClient = useQueryClient();
   const { currentBrand } = useBrand();
