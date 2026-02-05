@@ -169,7 +169,7 @@ function getAssignableRolesForRole(managerRole: AppRole): { value: AppRole; labe
   return allRoles.filter(r => canManageRole(managerRole, r.value));
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
