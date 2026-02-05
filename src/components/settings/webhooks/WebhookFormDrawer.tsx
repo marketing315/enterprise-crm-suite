@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/collapsible";
 import { AIMappingGenerator } from "./AIMappingGenerator";
 import { FieldMappingEditor } from "./FieldMappingEditor";
+ import { LinkedAutomationsSection } from "./LinkedAutomationsSection";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome obbligatorio").max(100),
@@ -434,6 +435,15 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
             />
           </div>
 
+           {/* Linked Automations - show for outbound webhooks */}
+           {isEdit && (
+             <LinkedAutomationsSection
+               eventTypeFilter="inbound.*"
+               defaultEventType="inbound.*"
+               title="Automazioni collegate"
+             />
+           )}
+ 
           <SheetFooter>
             <Button
               type="button"
