@@ -37,6 +37,7 @@ export function AutomationSettings() {
   const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRule, setDeletingRule] = useState<AutomationRule | null>(null);
+  const [duplicatingRule, setDuplicatingRule] = useState<AutomationRule | null>(null);
 
   const { data: rules, isLoading: rulesLoading } = useAutomationRules();
   const { data: logs } = useAutomationLogs({ limit: 50 });
