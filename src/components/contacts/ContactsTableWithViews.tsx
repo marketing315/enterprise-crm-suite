@@ -506,9 +506,10 @@ export function ContactsTableWithViews({
         </div>
       </div>
 
-      {/* Table with vertical scroll */}
-      <div className="rounded-md border overflow-auto max-h-[calc(100vh-280px)]">
-        <Table className="min-w-[750px]">
+      {/* Table with horizontal and vertical scroll */}
+      <div className="rounded-md border max-h-[calc(100vh-280px)] overflow-y-auto">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[900px] w-max">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[40px]">
