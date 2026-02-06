@@ -354,31 +354,31 @@ Deno.serve(async (req) => {
             if (dealError) {
               console.error(`[META-EVENT] Failed to create deal for ${leadgenId}:`, dealError);
             } else {
-            dealId = dealResult;
-            console.log(`[META-EVENT] Deal created/found for ${leadgenId}: ${dealId}`);
-          }
+              dealId = dealResult;
+              console.log(`[META-EVENT] Deal created/found for ${leadgenId}: ${dealId}`);
+            }
 
-          // Upsert contact_tracking for CAPI attribution (Meta Lead Ads)
-          try {
-            await supabase
-              .from("contact_tracking")
-              .upsert({
-                brand_id: metaApp.brand_id,
-                contact_id: contactId,
-                utm_source: "meta",
-                utm_medium: "paid",
-                utm_campaign: leadData?.campaign_name || null,
-                first_touch_source: "meta-leads-webhook",
-                first_touch_at: new Date().toISOString(),
-                last_touch_at: new Date().toISOString(),
-              }, { onConflict: "contact_id" });
-          } catch (trackingErr) {
-            console.error(`[META-EVENT] Failed to save tracking (non-blocking):`, trackingErr);
+            // Upsert contact_tracking for CAPI attribution (Meta Lead Ads)
+            try {
+              await supabase
+                .from("contact_tracking")
+                .upsert({
+                  brand_id: metaApp.brand_id,
+                  contact_id: contactId,
+                  utm_source: "meta",
+                  utm_medium: "paid",
+                  utm_campaign: leadData?.campaign_name || null,
+                  first_touch_source: "meta-leads-webhook",
+                  first_touch_at: new Date().toISOString(),
+                  last_touch_at: new Date().toISOString(),
+                }, { onConflict: "contact_id" });
+            } catch (trackingErr) {
+              console.error(`[META-EVENT] Failed to save tracking (non-blocking):`, trackingErr);
+            }
           }
+        } else {
+          console.warn(`[META-EVENT] No phone found for ${leadgenId}, skipping contact creation`);
         }
-      } else {
-        console.warn(`[META-EVENT] No phone found for ${leadgenId}, skipping contact creation`);
-      }
 
         // Create lead_event with contact_id and deal_id - clearly marked as Meta source
         const { data: leadEvent, error: leadEventError } = await supabase
