@@ -60,24 +60,22 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
       grouped[stage.id] = [];
     });
     
+    if (!stages?.length) return grouped;
+    
     deals?.forEach((deal) => {
+      // If deal has a valid stage ID that exists in our stages, use it
       if (deal.current_stage_id && grouped[deal.current_stage_id]) {
-        // Direct stage ID match (same brand)
         grouped[deal.current_stage_id].push(deal);
-      } else if (isSystemBrand && stages) {
-        // For global view, match by stage order_index position
-        // Find the stage with matching order_index from the deal's original brand
-        // As a fallback, put in first stage
-        if (stages[0]) {
-          grouped[stages[0].id]?.push(deal);
+      } else {
+        // Fallback: assign to first stage if no stage or stage not found
+        const firstStage = stages[0];
+        if (firstStage) {
+          grouped[firstStage.id].push(deal);
         }
-      } else if (stages?.[0]) {
-        // Fallback to first stage if no stage assigned
-        grouped[stages[0].id]?.push(deal);
       }
     });
     return grouped;
-  }, [stages, deals, isSystemBrand]);
+  }, [stages, deals]);
 
   const activeDeal = useMemo(() => {
     if (!activeId || !deals) return null;
