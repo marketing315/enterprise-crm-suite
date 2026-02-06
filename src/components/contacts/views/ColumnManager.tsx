@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, forwardRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -42,62 +42,64 @@ interface SortableColumnItemProps {
   onToggle: (key: string) => void;
 }
 
-// Extracted as a separate component to avoid forwardRef warning with @dnd-kit
-function SortableColumnItem({ column, onToggle }: SortableColumnItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: column.key });
+// Wrapped with forwardRef to support @dnd-kit ref forwarding
+const SortableColumnItem = forwardRef<HTMLDivElement, SortableColumnItemProps>(
+  function SortableColumnItem({ column, onToggle }, _ref) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: column.key });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
 
-  const isCustomField = column.key.startsWith("cf_");
-  const isNameColumn = column.key === "full_name";
+    const isCustomField = column.key.startsWith("cf_");
+    const isNameColumn = column.key === "full_name";
 
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="flex items-center gap-3 p-3 bg-background border rounded-lg touch-none"
-    >
+    return (
       <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1 -m-1"
-        aria-label="Trascina per riordinare"
+        ref={setNodeRef}
+        style={style}
+        className="flex items-center gap-3 p-3 bg-background border rounded-lg touch-none"
       >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 -m-1"
+          aria-label="Trascina per riordinare"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
 
-      <div className="flex-1 flex items-center gap-2">
-        <span className={column.visible ? "font-medium" : "text-muted-foreground"}>
-          {column.label}
-        </span>
-        {isCustomField && (
-          <Badge variant="outline" className="text-xs gap-1">
-            <Tag className="h-3 w-3" />
-            Custom
-          </Badge>
-        )}
-      </div>
+        <div className="flex-1 flex items-center gap-2">
+          <span className={column.visible ? "font-medium" : "text-muted-foreground"}>
+            {column.label}
+          </span>
+          {isCustomField && (
+            <Badge variant="outline" className="text-xs gap-1">
+              <Tag className="h-3 w-3" />
+              Custom
+            </Badge>
+          )}
+        </div>
 
-      <Switch
-        checked={column.visible}
-        onCheckedChange={() => onToggle(column.key)}
-        disabled={isNameColumn}
-        aria-label={column.visible ? "Nascondi colonna" : "Mostra colonna"}
-      />
-    </div>
-  );
-}
+        <Switch
+          checked={column.visible}
+          onCheckedChange={() => onToggle(column.key)}
+          disabled={isNameColumn}
+          aria-label={column.visible ? "Nascondi colonna" : "Mostra colonna"}
+        />
+      </div>
+    );
+  }
+);
 
 export function ColumnManager({
   open,
