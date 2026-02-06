@@ -145,6 +145,7 @@ export function useTicketUrlState() {
         }
       }
 
+      console.log('[useTicketUrlState] New params:', newParams.toString());
       return newParams;
     }, { replace: true });
   }, [setSearchParams]);
