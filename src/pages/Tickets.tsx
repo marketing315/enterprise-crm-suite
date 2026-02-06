@@ -109,10 +109,11 @@ export default function Tickets() {
 
   // Handle tab change - reset pagination and selection
   const handleTabChange = useCallback((tab: typeof activeTab) => {
+    console.log('[Tickets] Tab change requested:', tab, 'current:', activeTab);
     updateUrl({ tab });
     resetPagination();
     clearSelection();
-  }, [updateUrl, resetPagination, clearSelection]);
+  }, [updateUrl, resetPagination, clearSelection, activeTab]);
 
   // Handle filter changes - reset pagination
   const handleSearchChange = useCallback((query: string) => {
