@@ -44,7 +44,7 @@ function normalizePhoneNumber(phone: string): string {
   return digits;
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // VOIspeed sends events as GET with querystring
   const url = new URL(req.url);
   const params = Object.fromEntries(url.searchParams.entries()) as unknown as VOIspeedEvent;
