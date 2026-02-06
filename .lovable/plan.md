@@ -1,42 +1,70 @@
 
 
-# Fix Foreign Key Mismatch su `contact_table_views`
+# Mostrare tutti i dati importanti nella scheda contatto
 
-## Problema
+Attualmente molti dati del contatto e degli eventi lead vengono salvati nel database ma non vengono mai mostrati nella UI della scheda contatto. Ecco il piano per risolvere.
 
-La colonna `owner_user_id` ha un vincolo FK verso `auth.users(id)`, ma il codice frontend inserisce il valore `user.id` proveniente dalla tabella `public.users`. Questi due UUID sono diversi:
+## Cosa manca attualmente
 
-```text
-public.users.id          --> UUID interno app (es. abc-123)
-public.users.supabase_auth_id --> UUID di auth.users (es. xyz-789)
+### Dati contatto non visualizzati
+- **Indirizzo completo** (address, province, country) -- visibile solo in modifica, non in lettura
+- **Dati aziendali**: ragione sociale, indirizzo azienda, P.IVA, codice fiscale
+- **Dati lead**: tipo lead, costo lead, validita lead, note lead, motivo lead
+- **Consenso marketing**: visibile solo in modifica
+- **Callback richiesta** e **esito chiamata**
+- **Fax**
 
-INSERT owner_user_id = abc-123  -- public.users.id
-FK controlla auth.users(id)     -- xyz-789 non trovato --> ERRORE
-```
+### Dati evento lead non visualizzati
+- **Tipo lead** (lead_type)
+- **Confidenza AI** (ai_confidence)
+- **Motivazione AI** (ai_rationale)
+- **Riepilogo conversazione AI** (ai_conversation_summary)
 
-Le policy RLS gia' usano `current_app_user_id()` che restituisce `public.users.id`, quindi tutto il sistema e' gia' allineato su `public.users.id`. L'unico problema e' il vincolo FK.
+---
 
-## Soluzione
+## Modifiche previste
 
-Cambiare il vincolo FK da `auth.users(id)` a `public.users(id)`, allineandolo al resto del sistema.
+### 1. Sezione "Informazioni" -- aggiungere indirizzo completo
+Aggiungere la visualizzazione dell'indirizzo (address), provincia e paese quando presenti, sotto citta/CAP.
 
-## Dettaglio Tecnico
+### 2. Nuova sezione "Dati Aziendali"
+Mostrare company_name, company_address, company_city, company_province, company_zip, vat_number, fiscal_code, fax -- solo quando almeno uno di questi campi e valorizzato.
 
-### Migrazione SQL
+### 3. Nuova sezione "Dati Lead"
+Mostrare lead_type, lead_cost, lead_valid, lead_note, lead_reason -- solo quando almeno uno di questi campi e valorizzato. Include anche callback_requested e esito_chiamata.
 
-```sql
--- Rimuovere il FK verso auth.users
-ALTER TABLE contact_table_views
-  DROP CONSTRAINT contact_table_views_owner_user_id_fkey;
+### 4. Consenso Marketing in lettura
+Aggiungere un badge o indicatore del consenso marketing nella sezione informazioni (quando attivo).
 
--- Creare il FK verso public.users
-ALTER TABLE contact_table_views
-  ADD CONSTRAINT contact_table_views_owner_user_id_fkey
-  FOREIGN KEY (owner_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-```
+### 5. Arricchire la card evento lead
+Nella lista eventi, aggiungere:
+- Badge con lead_type
+- Confidenza AI (percentuale)
+- Motivazione AI (testo espandibile)
+- Riepilogo conversazione AI (se presente)
 
-Nessuna modifica al codice frontend necessaria: `useCreateTableView` e le policy RLS gia' utilizzano correttamente `public.users.id`.
+---
+
+## Dettaglio tecnico
 
 ### File da modificare
-1. **Nuova migrazione SQL** -- unico file coinvolto
+**`src/components/contacts/ContactDetailSheet.tsx`**
+
+1. **Sezione Informazioni (righe 371-423)**: aggiungere visualizzazione indirizzo completo e marketing consent badge
+
+2. **Nuova sezione "Dati Aziendali" (dopo riga 437)**: blocco condizionale che mostra i dati aziendali solo se almeno un campo e valorizzato. Usa icona `Building` da lucide-react.
+
+3. **Nuova sezione "Dati Lead" (dopo sezione aziendali)**: blocco condizionale per tipo lead, costo, validita, note lead, esito chiamata e callback. Usa icona `Tag` o `FileText`.
+
+4. **Card eventi lead (righe 540-588)**: aggiungere dentro ogni card evento:
+   - Badge lead_type (se presente)
+   - ai_confidence come percentuale accanto a ai_priority
+   - ai_rationale in un blocco espandibile
+   - ai_conversation_summary se presente
+
+### Accesso ai dati
+Tutti i campi sono gia disponibili: la query `useContact` usa `select(*)` quindi tutti i campi del contatto sono caricati. I lead_events usano anch'essi `select(*)`. Non servono modifiche al backend. Dove il tipo TypeScript non include il campo, si usa il cast `(contact as any).campo` coerente con il pattern esistente.
+
+### Importazioni aggiuntive
+Aggiungere `Building, FileText, Shield, PhoneForwarded` alle icone importate da lucide-react.
 
