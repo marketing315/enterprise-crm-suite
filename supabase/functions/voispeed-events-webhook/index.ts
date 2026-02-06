@@ -1,5 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 /**
  * VOIspeed v4 Events Webhook
@@ -45,7 +44,7 @@ function normalizePhoneNumber(phone: string): string {
   return digits;
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // VOIspeed sends events as GET with querystring
   const url = new URL(req.url);
   const params = Object.fromEntries(url.searchParams.entries()) as unknown as VOIspeedEvent;
