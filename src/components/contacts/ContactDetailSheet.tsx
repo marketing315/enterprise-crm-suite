@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, FileJson, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { ClickToCallButton } from './ClickToCallButton';
 import { CreateTicketDialog } from '@/components/tickets/CreateTicketDialog';
@@ -44,6 +44,9 @@ import { EntityTagList } from '@/components/tags/EntityTagList';
 import { WebsiteTagsSection } from './WebsiteTagsSection';
 import { CorrectPhoneDialog } from './CorrectPhoneDialog';
 import { BrandBadge } from '@/components/layout/BrandBadge';
+import { ContactCompanySection } from './ContactCompanySection';
+import { ContactLeadDataSection } from './ContactLeadDataSection';
+import { LeadEventCard } from './LeadEventCard';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
 import { useContactDeal, useCreateContactDeal } from '@/hooks/useContactDeal';
 import { toast } from 'sonner';
@@ -414,6 +417,21 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   </div>
                 )}
 
+                {(contact as any).address && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <span className="text-muted-foreground ml-6">
+                      {[(contact as any).address, (contact as any).province, (contact as any).country].filter(Boolean).join(', ')}
+                    </span>
+                  </div>
+                )}
+
+                {(contact as any).marketing_consent && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Shield className="h-4 w-4 text-primary" />
+                    <span className="text-primary font-medium">Consenso Marketing</span>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   <span>
@@ -435,6 +453,12 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   scope="contact"
                 />
               </div>
+
+              {/* Company Data */}
+              <ContactCompanySection contact={contact as any} />
+
+              {/* Lead Data */}
+              <ContactLeadDataSection contact={contact as any} />
 
               {/* Quick Actions */}
               <Separator />
@@ -539,53 +563,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 ) : events && events.length > 0 ? (
                   <div className="space-y-3">
                     {events.map((event) => (
-                      <div 
-                        key={event.id} 
-                        className="rounded-lg border p-3 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline">{event.source}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(event.received_at), 'dd/MM/yyyy HH:mm', { locale: it })}
-                          </span>
-                        </div>
-                        
-                        {event.source_name && (
-                          <p className="text-sm">
-                            <span className="text-muted-foreground">Sorgente:</span> {event.source_name}
-                          </p>
-                        )}
-
-                        {event.raw_payload && typeof event.raw_payload === 'object' && (event.raw_payload as any).source_url && (
-                          <p className="text-sm truncate">
-                            <span className="text-muted-foreground">URL:</span>{' '}
-                            <a 
-                              href={(event.raw_payload as any).source_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              {(event.raw_payload as any).source_url}
-                            </a>
-                          </p>
-                        )}
-
-                        {event.ai_priority !== null && (
-                          <p className="text-sm">
-                            <span className="text-muted-foreground">Priorità AI:</span> {event.ai_priority}
-                          </p>
-                        )}
-
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-muted-foreground flex items-center gap-1">
-                            <FileJson className="h-3 w-3" />
-                            Payload raw
-                          </summary>
-                          <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
-                            {JSON.stringify(event.raw_payload, null, 2)}
-                          </pre>
-                        </details>
-                      </div>
+                      <LeadEventCard key={event.id} event={event as any} />
                     ))}
                   </div>
                 ) : (
