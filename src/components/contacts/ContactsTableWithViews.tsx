@@ -579,6 +579,7 @@ export function ContactsTableWithViews({
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Bulk actions bar */}
