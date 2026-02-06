@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -46,12 +46,12 @@ export function EditViewDialog({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Sync state when view changes
-  useState(() => {
+  useEffect(() => {
     if (view) {
       setName(view.name);
       setIsDefault(view.is_default);
     }
-  });
+  }, [view]);
 
   const handleSave = () => {
     if (!view || !name.trim()) return;
