@@ -74,11 +74,14 @@ export function useTicketUrlState() {
 
   // Update URL with new state (merges with existing params)
   const updateUrl = useCallback((updates: Partial<TicketUrlState>) => {
+    console.log('[useTicketUrlState] updateUrl called with:', updates);
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
+      console.log('[useTicketUrlState] Current params:', prev.toString());
 
       // Tab
       if (updates.tab !== undefined) {
+        console.log('[useTicketUrlState] Setting tab:', updates.tab, 'default:', DEFAULTS.tab);
         if (updates.tab === DEFAULTS.tab) {
           newParams.delete("tab");
         } else {
