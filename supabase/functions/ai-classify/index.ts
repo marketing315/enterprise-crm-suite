@@ -245,7 +245,7 @@ async function logAIDecision(
   rawResponse: unknown,
   confidence: number
 ): Promise<void> {
-  await supabase.from("ai_decision_logs").insert({
+  const { error: decisionError } = await supabase.from("ai_decision_logs").insert({
     brand_id: brandId,
     lead_event_id: leadEventId,
     ai_job_id: jobId,
@@ -263,6 +263,9 @@ async function logAIDecision(
     confidence: confidence,
     raw_response: rawResponse,
   });
+  if (decisionError) {
+    console.error("[ai-classify] Failed to log AI decision:", { lead_event_id: leadEventId, error: decisionError.message });
+  }
 }
 
 // deno-lint-ignore no-explicit-any
@@ -282,7 +285,7 @@ async function applyClassification(
   await logAIDecision(supabase, brandId, leadEventId, jobId, result, rawResponse, confidence);
 
   // 2. Update lead_event with PRD-aligned fields
-  await supabase
+  const { error: leadUpdateError } = await supabase
     .from("lead_events")
     .update({
       lead_type: result.lead_type,
@@ -296,6 +299,11 @@ async function applyClassification(
       should_create_ticket: result.should_create_ticket,
     })
     .eq("id", leadEventId);
+
+  if (leadUpdateError) {
+    console.error("[ai-classify] Failed to update lead_event:", { id: leadEventId, error: leadUpdateError.message });
+    throw new Error(`Failed to update lead_event: ${leadUpdateError.message}`);
+  }
 
   // 3. Update deal stage if we have a deal
   if (dealId) {
@@ -311,10 +319,13 @@ async function applyClassification(
     );
 
     if (matchedStage) {
-      await supabase
+      const { error: dealStageError } = await supabase
         .from("deals")
         .update({ current_stage_id: matchedStage.id })
         .eq("id", dealId);
+      if (dealStageError) {
+        console.error("[ai-classify] Failed to update deal stage:", { deal_id: dealId, stage: matchedStage.name, error: dealStageError.message });
+      }
     }
   }
 

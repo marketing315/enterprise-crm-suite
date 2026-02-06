@@ -265,27 +265,37 @@ Deno.serve(async (req: Request) => {
 
   // Update contact address if provided
   if (args.indirizzo_completo) {
-    await supabaseAdmin
+    const { error: addressError } = await supabaseAdmin
       .from("contacts")
       .update({ address: args.indirizzo_completo })
       .eq("id", contactId);
+    if (addressError) {
+      console.error("[Keplero] Failed to update contact address:", { contact_id: contactId, error: addressError.message });
+    }
   }
 
   // Add secondary phone if provided
   if (args.telefono_secondario) {
     const secondaryNormalized = normalizePhone(args.telefono_secondario);
-    await supabaseAdmin.rpc("add_contact_phone", {
+    const { error: phoneError } = await supabaseAdmin.rpc("add_contact_phone", {
       p_contact_id: contactId,
       p_phone_raw: secondaryNormalized.raw,
       p_is_primary: false,
-    }).catch(err => console.warn("Secondary phone add failed:", err));
+    });
+    if (phoneError) {
+      console.error("[Keplero] Failed to add secondary phone:", { contact_id: contactId, error: phoneError.message });
+    }
   }
 
   // Find or create deal
-  const { data: dealId } = await supabaseAdmin.rpc("find_or_create_deal", {
+  const { data: dealId, error: dealError } = await supabaseAdmin.rpc("find_or_create_deal", {
     p_brand_id: brandId,
     p_contact_id: contactId,
   });
+
+  if (dealError) {
+    console.error("[Keplero] Failed to find/create deal:", { contact_id: contactId, brand_id: brandId, error: dealError.message });
+  }
 
   // Parse appointment date/time
   const dateStr = parseDate(args.data_appuntamento || "");

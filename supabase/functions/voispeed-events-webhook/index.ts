@@ -24,22 +24,17 @@ interface VOIspeedEvent {
   error_msg?: string;
 }
 
-// Normalize phone number to E.164-like format (strip non-digits, ensure country code)
+// Normalize phone number: strip non-digits and country code prefix
+// to match CRM contact_phones.phone_normalized format (e.g. "3331234567")
 function normalizePhoneNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  // If starts with 0039 or 39, convert to +39
+  let digits = phone.replace(/\D/g, "");
+  // Strip 0039 prefix (international dialing)
   if (digits.startsWith("0039")) {
-    return "+" + digits.substring(2);
+    digits = digits.substring(4);
   }
-  if (digits.startsWith("39") && digits.length > 10) {
-    return "+" + digits;
-  }
-  // If Italian mobile/landline without country code
-  if (digits.startsWith("3") && digits.length === 10) {
-    return "+39" + digits;
-  }
-  if (digits.startsWith("0") && digits.length >= 9) {
-    return "+39" + digits;
+  // Strip 39 prefix for Italian numbers (mobile/landline with country code)
+  else if (digits.startsWith("39") && digits.length > 10) {
+    digits = digits.substring(2);
   }
   return digits;
 }
@@ -49,7 +44,7 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const params = Object.fromEntries(url.searchParams.entries()) as unknown as VOIspeedEvent;
   
-  console.log("VOIspeed event received:", params);
+  console.log("[VOIspeed] Event received:", params);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -66,19 +61,31 @@ Deno.serve(async (req: Request) => {
     const eventTime = datetime ? new Date(datetime).toISOString() : new Date().toISOString();
 
     // Find user by VOIspeed extension
-    const { data: user } = await supabase
+    const { data: user, error: userError } = await supabase
       .from("users")
       .select("id, brand_id:user_roles(brand_id)")
       .eq("voispeed_ext", ext)
       .maybeSingle();
 
+    if (userError) {
+      console.error("[VOIspeed] Failed to find user by ext:", { ext, error: userError.message });
+    }
+
     // Find contact by phone number
-    const { data: contactPhone } = await supabase
+    const { data: contactPhone, error: phoneError } = await supabase
       .from("contact_phones")
       .select("contact_id, brand_id")
       .eq("phone_normalized", normalizedNumber)
       .eq("is_active", true)
       .maybeSingle();
+
+    if (phoneError) {
+      console.error("[VOIspeed] Failed to find contact phone:", { phone: normalizedNumber, error: phoneError.message });
+    }
+
+    if (!contactPhone) {
+      console.warn("[VOIspeed] No contact found for phone:", { phone: normalizedNumber, event: event_name });
+    }
 
     // Get brand_id from contact or user
     let brandId: string | null = contactPhone?.brand_id || null;
@@ -91,7 +98,7 @@ Deno.serve(async (req: Request) => {
       case "incoming_call": {
         // Create call log for inbound call
         if (brandId && user?.id) {
-          const { data: callLog } = await supabase
+          const { data: callLog, error: callLogError } = await supabase
             .from("call_logs")
             .insert({
               brand_id: brandId,
@@ -107,12 +114,17 @@ Deno.serve(async (req: Request) => {
             .select("id")
             .single();
 
+          if (callLogError) {
+            console.error("[VOIspeed] Failed to insert call_log (incoming):", { error: callLogError.message, ext, phone: normalizedNumber });
+            break;
+          }
+
           // Create incoming_call notification for screen-pop
           if (callLog) {
             // Find open deal for contact
             let dealId: string | null = null;
             if (contactPhone?.contact_id) {
-              const { data: deal } = await supabase
+              const { data: deal, error: dealError } = await supabase
                 .from("deals")
                 .select("id")
                 .eq("contact_id", contactPhone.contact_id)
@@ -121,10 +133,13 @@ Deno.serve(async (req: Request) => {
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
+              if (dealError) {
+                console.error("[VOIspeed] Failed to find deal:", { contact_id: contactPhone.contact_id, error: dealError.message });
+              }
               dealId = deal?.id || null;
             }
 
-            await supabase
+            const { error: incomingError } = await supabase
               .from("incoming_calls")
               .insert({
                 brand_id: brandId,
@@ -138,7 +153,11 @@ Deno.serve(async (req: Request) => {
                 status: "ringing",
               });
 
-            console.log(`Screen-pop notification created for user ${user.id}`);
+            if (incomingError) {
+              console.error("[VOIspeed] Failed to insert incoming_call:", { error: incomingError.message, call_log_id: callLog.id });
+            } else {
+              console.log(`[VOIspeed] Screen-pop notification created for user ${user.id}`);
+            }
           }
         }
         break;
@@ -147,17 +166,22 @@ Deno.serve(async (req: Request) => {
       case "outgoing_call": {
         // If we have extid, link to existing call_log
         if (extid) {
-          await supabase
+          const { error: updateError } = await supabase
             .from("call_logs")
             .update({
               provider_call_id: usercallid,
               status: "ringing",
             })
             .eq("provider_ext_id", extid);
-          console.log(`Outgoing call linked via extid: ${extid}`);
+
+          if (updateError) {
+            console.error("[VOIspeed] Failed to update call_log (outgoing extid):", { extid, error: updateError.message });
+          } else {
+            console.log(`[VOIspeed] Outgoing call linked via extid: ${extid}`);
+          }
         } else if (brandId && user?.id) {
           // Create new call log if no extid (manual dial from phone)
-          await supabase
+          const { error: insertError } = await supabase
             .from("call_logs")
             .insert({
               brand_id: brandId,
@@ -170,6 +194,10 @@ Deno.serve(async (req: Request) => {
               provider_call_id: usercallid,
               started_at: eventTime,
             });
+
+          if (insertError) {
+            console.error("[VOIspeed] Failed to insert call_log (outgoing manual):", { error: insertError.message, ext, phone: normalizedNumber });
+          }
         }
         break;
       }
@@ -177,16 +205,24 @@ Deno.serve(async (req: Request) => {
       case "call_answered": {
         // Update call log to answered
         if (usercallid) {
-          await supabase
+          const { error: callUpdateError } = await supabase
             .from("call_logs")
             .update({ status: "answered" })
             .eq("provider_call_id", usercallid);
 
+          if (callUpdateError) {
+            console.error("[VOIspeed] Failed to update call_log (answered):", { usercallid, error: callUpdateError.message });
+          }
+
           // Update incoming_call notification
-          await supabase
+          const { error: incomingUpdateError } = await supabase
             .from("incoming_calls")
             .update({ status: "answered" })
             .eq("provider_call_id", usercallid);
+
+          if (incomingUpdateError) {
+            console.error("[VOIspeed] Failed to update incoming_call (answered):", { usercallid, error: incomingUpdateError.message });
+          }
         }
         break;
       }
@@ -197,7 +233,7 @@ Deno.serve(async (req: Request) => {
         if (usercallid) {
           const durationSeconds = duration ? parseInt(duration, 10) : null;
           
-          await supabase
+          const { error: callUpdateError } = await supabase
             .from("call_logs")
             .update({
               status: "completed",
@@ -206,14 +242,22 @@ Deno.serve(async (req: Request) => {
             })
             .eq("provider_call_id", usercallid);
 
+          if (callUpdateError) {
+            console.error("[VOIspeed] Failed to update call_log (disconnect):", { usercallid, error: callUpdateError.message });
+          }
+
           // Mark incoming_call as dismissed
-          await supabase
+          const { error: incomingUpdateError } = await supabase
             .from("incoming_calls")
             .update({ 
               status: "dismissed",
               dismissed_at: eventTime,
             })
             .eq("provider_call_id", usercallid);
+
+          if (incomingUpdateError) {
+            console.error("[VOIspeed] Failed to update incoming_call (dismissed):", { usercallid, error: incomingUpdateError.message });
+          }
         }
         break;
       }
@@ -221,7 +265,7 @@ Deno.serve(async (req: Request) => {
       case "lost_call": {
         // Missed call
         if (usercallid) {
-          await supabase
+          const { error: callUpdateError } = await supabase
             .from("call_logs")
             .update({
               status: "no_answer",
@@ -229,13 +273,21 @@ Deno.serve(async (req: Request) => {
             })
             .eq("provider_call_id", usercallid);
 
-          await supabase
+          if (callUpdateError) {
+            console.error("[VOIspeed] Failed to update call_log (lost):", { usercallid, error: callUpdateError.message });
+          }
+
+          const { error: incomingUpdateError } = await supabase
             .from("incoming_calls")
             .update({ status: "missed" })
             .eq("provider_call_id", usercallid);
+
+          if (incomingUpdateError) {
+            console.error("[VOIspeed] Failed to update incoming_call (missed):", { usercallid, error: incomingUpdateError.message });
+          }
         } else if (brandId && user?.id) {
           // Create missed call log
-          await supabase
+          const { error: insertError } = await supabase
             .from("call_logs")
             .insert({
               brand_id: brandId,
@@ -248,6 +300,10 @@ Deno.serve(async (req: Request) => {
               started_at: eventTime,
               ended_at: eventTime,
             });
+
+          if (insertError) {
+            console.error("[VOIspeed] Failed to insert call_log (lost, no usercallid):", { error: insertError.message, ext, phone: normalizedNumber });
+          }
         }
         break;
       }
@@ -257,7 +313,7 @@ Deno.serve(async (req: Request) => {
         const errorMsg = params.error_msg || params.error_code || "Unknown error";
         
         if (extid) {
-          await supabase
+          const { error: updateError } = await supabase
             .from("call_logs")
             .update({
               status: "failed",
@@ -265,20 +321,24 @@ Deno.serve(async (req: Request) => {
               ended_at: eventTime,
             })
             .eq("provider_ext_id", extid);
+
+          if (updateError) {
+            console.error("[VOIspeed] Failed to update call_log (cmd_failed):", { extid, error: updateError.message });
+          }
         }
-        console.error(`VOIspeed cmd_failed: ${errorMsg}`);
+        console.error(`[VOIspeed] cmd_failed: ${errorMsg}`, { ext, extid, usercallid });
         break;
       }
 
       default:
-        console.log(`Unhandled VOIspeed event: ${event_name}`);
+        console.log(`[VOIspeed] Unhandled event: ${event_name}`);
     }
 
     // VOIspeed expects 200 OK
     return new Response("OK", { status: 200 });
 
   } catch (error) {
-    console.error("VOIspeed webhook error:", error);
+    console.error("[VOIspeed] Unhandled webhook error:", error);
     // Still return 200 to prevent VOIspeed retries
     return new Response("Error logged", { status: 200 });
   }

@@ -330,20 +330,22 @@ Deno.serve(async (req) => {
             }
           );
 
-          // Auto-enable marketing consent for Meta leads (user opted in via Meta form)
-          if (contactResult) {
-            await supabase
-              .from("contacts")
-              .update({ marketing_consent: true })
-              .eq("id", contactResult);
-            console.log(`[META-EVENT] Marketing consent enabled for contact ${contactResult}`);
-          }
-
           if (contactError || !contactResult) {
             console.error(`[META-EVENT] Failed to create contact for ${leadgenId}:`, contactError);
           } else {
             contactId = contactResult;
             console.log(`[META-EVENT] Contact created/found for ${leadgenId}: ${contactId}`);
+
+            // Auto-enable marketing consent for Meta leads (user opted in via Meta form)
+            const { error: consentError } = await supabase
+              .from("contacts")
+              .update({ marketing_consent: true })
+              .eq("id", contactId);
+            if (consentError) {
+              console.error(`[META-EVENT] Failed to update marketing consent for ${contactId}:`, consentError);
+            } else {
+              console.log(`[META-EVENT] Marketing consent enabled for contact ${contactId}`);
+            }
 
             // Find or create deal
             const { data: dealResult, error: dealError } = await supabase.rpc(
@@ -433,9 +435,13 @@ Deno.serve(async (req) => {
           })
           .eq("id", metaEvent.id);
 
+        const resultStatus = contactId ? "ingested" : "ingested_no_contact";
+        if (!contactId) {
+          console.warn(`[META-EVENT] Lead ingested WITHOUT contact for ${leadgenId} (no phone found)`);
+        }
         results.push({ 
           leadgen_id: leadgenId, 
-          status: "ingested", 
+          status: resultStatus, 
           lead_event_id: leadEvent.id,
           contact_id: contactId,
           deal_id: dealId
