@@ -500,6 +500,19 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 </>
               )}
 
+              {/* Lead Message (from webhook AI extraction) */}
+              {(contact as any).lead_message && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Messaggio Lead</h3>
+                    <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-3">
+                      {(contact as any).lead_message}
+                    </p>
+                  </div>
+                </>
+              )}
+
               {contact.notes && (
                 <>
                   <Separator />
@@ -540,6 +553,20 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                         {event.source_name && (
                           <p className="text-sm">
                             <span className="text-muted-foreground">Sorgente:</span> {event.source_name}
+                          </p>
+                        )}
+
+                        {event.raw_payload && typeof event.raw_payload === 'object' && (event.raw_payload as any).source_url && (
+                          <p className="text-sm truncate">
+                            <span className="text-muted-foreground">URL:</span>{' '}
+                            <a 
+                              href={(event.raw_payload as any).source_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              {(event.raw_payload as any).source_url}
+                            </a>
                           </p>
                         )}
 
