@@ -1972,6 +1972,13 @@ export type Database = {
             referencedRelation: "brands"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contact_table_views_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contact_tracking: {
