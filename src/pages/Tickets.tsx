@@ -107,12 +107,17 @@ export default function Tickets() {
     setSelectedIds(new Set());
   }, []);
 
-  // Handle tab change - reset pagination and selection
+  // Handle tab change - reset pagination and selection in single update
   const handleTabChange = useCallback((tab: typeof activeTab) => {
-    updateUrl({ tab });
-    resetPagination();
+    // Combine tab change and pagination reset in single URL update
+    updateUrl({ 
+      tab,
+      cursor: null,
+      direction: "next",
+      pageStack: [],
+    });
     clearSelection();
-  }, [updateUrl, resetPagination, clearSelection]);
+  }, [updateUrl, clearSelection, activeTab]);
 
   // Handle filter changes - reset pagination
   const handleSearchChange = useCallback((query: string) => {
