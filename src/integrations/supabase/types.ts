@@ -5489,6 +5489,7 @@ export type Database = {
         Args: { p_deal_id: string }
         Returns: string
       }
+      current_app_user_id: { Args: never; Returns: string }
       current_brand_role: {
         Args: { p_brand_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
