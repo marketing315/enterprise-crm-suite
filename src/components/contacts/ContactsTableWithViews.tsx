@@ -242,7 +242,7 @@ export function ContactsTableWithViews({
 
   const handleUpdateView = (
     id: string,
-    updates: { name?: string; is_default?: boolean }
+    updates: { name?: string; is_default?: boolean; columns?: TableColumn[] }
   ) => {
     updateView.mutate(
       { id, updates },
@@ -266,6 +266,7 @@ export function ContactsTableWithViews({
   };
 
   const handleEditView = (view: ContactTableView) => {
+    setActiveViewId(view.id);
     setEditingView(view);
     setEditDialogOpen(true);
   };
