@@ -183,7 +183,13 @@ Deno.serve(async (req) => {
           const data: MetaInsightsResponse = await response.json();
 
           if (data.error) {
-            console.error(`Meta API error for ${accountId}:`, data.error);
+            console.error(`[ads-stats-meta] Meta API error:`, {
+              account_id: accountId,
+              brand_id: metaApp.brand_id,
+              error_code: data.error.code,
+              error_message: data.error.message,
+              date_range: datePreset || `${sinceDate}-${untilDate}`,
+            });
             results.push({
               brand_id: metaApp.brand_id,
               account_id: accountId,

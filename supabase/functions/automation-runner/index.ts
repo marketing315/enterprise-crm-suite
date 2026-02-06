@@ -235,11 +235,15 @@ async function executeAddTag(action: Action, ctx: ActionContext): Promise<Record
   const tableName = entityType === "contact" ? "contact_tags" : entityType === "deal" ? "deal_tags" : "ticket_tags";
   const entityColumn = `${entityType}_id`;
   
-  await ctx.supabase.from(tableName).upsert({
+  const { error: tagError } = await ctx.supabase.from(tableName).upsert({
     [entityColumn]: entityId,
     tag_id: tagId,
     assigned_by: "rule",
   }, { onConflict: `${entityColumn},tag_id` });
+
+  if (tagError) {
+    throw new Error(`Failed to upsert tag in ${tableName}: ${tagError.message}`);
+  }
   
   return { tag_id: tagId, entity_id: entityId };
 }
