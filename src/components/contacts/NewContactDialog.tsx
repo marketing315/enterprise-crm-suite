@@ -4,8 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Phone, User, Mail, MapPin, FileText, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { normalizePhone, isValidPhoneNumber } from "@/lib/phoneUtils";
 import { useQueryClient } from "@tanstack/react-query";
 
