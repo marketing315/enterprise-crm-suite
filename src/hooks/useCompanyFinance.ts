@@ -76,7 +76,7 @@ export function useExpenseCategories() {
 
 export function useCreateExpenseCategory() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useMutation({
