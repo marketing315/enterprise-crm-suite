@@ -51,6 +51,16 @@ const ROLE_LABELS: Partial<Record<AppRole, string>> = {
   sales: 'Sales',
 };
 
+/** All possible dashboard views for admin/ceo oversight */
+const ALL_DASHBOARD_VIEWS: { role: AppRole; path: string; label: string }[] = [
+  { role: 'admin', path: '/dashboard/admin', label: 'Admin' },
+  { role: 'ceo', path: '/dashboard/ceo', label: 'CEO' },
+  { role: 'responsabile_callcenter', path: '/dashboard/responsabile-callcenter', label: 'Resp. Call Center' },
+  { role: 'responsabile_venditori', path: '/dashboard/responsabile-venditori', label: 'Resp. Venditori' },
+  { role: 'operatore_callcenter', path: '/dashboard/callcenter', label: 'Operatore Call Center' },
+  { role: 'venditore', path: '/dashboard/venditore', label: 'Venditore' },
+];
+
 export function useRoleDashboard(): RoleDashboardInfo {
   const { userRoles, isAdmin, isCeo } = useAuth();
   const { currentBrand, isAllBrandsSelected } = useBrand();
@@ -70,17 +80,31 @@ export function useRoleDashboard(): RoleDashboardInfo {
     userRoles.forEach(r => activeRoles.add(r.role as AppRole));
   }
 
+  // Admin and CEO can see ALL dashboard views for oversight
+  const canSeeAll = isAdmin || isCeo;
+
   // Build available dashboards (deduplicated by path)
   const seenPaths = new Set<string>();
   const availableDashboards: RoleDashboardInfo['availableDashboards'] = [];
 
-  for (const entry of ROLE_DASHBOARD_MAP) {
-    if (activeRoles.has(entry.role) && !seenPaths.has(entry.path)) {
-      seenPaths.add(entry.path);
-      availableDashboards.push({
-        ...entry,
-        label: ROLE_LABELS[entry.role] || entry.role,
-      });
+  if (canSeeAll) {
+    // Admin/CEO: show all dashboard views
+    for (const entry of ALL_DASHBOARD_VIEWS) {
+      if (!seenPaths.has(entry.path)) {
+        seenPaths.add(entry.path);
+        availableDashboards.push(entry);
+      }
+    }
+  } else {
+    // Regular users: only dashboards matching their roles
+    for (const entry of ROLE_DASHBOARD_MAP) {
+      if (activeRoles.has(entry.role) && !seenPaths.has(entry.path)) {
+        seenPaths.add(entry.path);
+        availableDashboards.push({
+          ...entry,
+          label: ROLE_LABELS[entry.role] || entry.role,
+        });
+      }
     }
   }
 
