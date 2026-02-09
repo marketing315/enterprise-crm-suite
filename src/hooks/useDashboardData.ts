@@ -274,7 +274,7 @@ export function useDashboardData() {
       return days;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 120000,
+    staleTime: 120000,
   });
 
   return {
