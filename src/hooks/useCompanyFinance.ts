@@ -26,11 +26,10 @@ export function useHasFinanceAccess() {
 
 // Fetch finance KPIs
 export function useFinanceKpis(from: Date, to: Date) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
   
-  // Use company brand if "Tutti i brand" is selected, otherwise use current brand
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['finance-kpis', brandId, from.toISOString(), to.toISOString()],
