@@ -29,6 +29,17 @@ export default function AdminAnalytics() {
     to: dateRange?.to,
   });
 
+  const {
+    metrics: funnelMetrics,
+    losses: funnelLosses,
+    breakdown: funnelBreakdown,
+    isLoading: funnelLoading,
+    refetch: refetchFunnel,
+  } = useFunnelMetrics({
+    from: dateRange?.from,
+    to: dateRange?.to,
+  });
+
   return (
     <div className="h-full overflow-auto space-y-6">
       {/* Header */}
