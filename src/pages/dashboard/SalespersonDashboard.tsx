@@ -175,7 +175,7 @@ export default function SalespersonDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
+              <Lightbulb className="h-5 w-5 text-primary" />
               Today Focus
             </CardTitle>
             <CardDescription>Azioni consigliate</CardDescription>
