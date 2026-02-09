@@ -170,7 +170,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
 
       // Find or create deal for this contact
       const { error: dealError } = await supabase.rpc("find_or_create_deal", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandId,
         p_contact_id: contactId,
       });
 
