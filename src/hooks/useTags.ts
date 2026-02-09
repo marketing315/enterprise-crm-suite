@@ -1,13 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { createClient } from "@supabase/supabase-js";
 import { useBrand } from "@/contexts/BrandContext";
 import type { TagScope, AssignedBy } from "@/types/database";
-
-// Untyped client for new tables not yet in generated types
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const untypedClient = createClient(supabaseUrl, supabaseKey);
+import { untypedClient } from "@/integrations/supabase/untypedClient";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 
 export interface Tag {
   id: string;
@@ -54,19 +50,25 @@ export interface TagWithCount extends Tag {
 
 // Fetch all tags for current brand (flat list)
 export function useTags(scope?: TagScope) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["tags", currentBrand?.id, scope],
+    queryKey: ["tags", isAllBrandsSelected ? "all" : currentBrand?.id, scope],
     queryFn: async (): Promise<Tag[]> => {
-      if (!currentBrand) return [];
+      if (!isAllBrandsSelected && !currentBrand) return [];
+      if (isAllBrandsSelected && allBrandIds.length === 0) return [];
 
       let query = untypedClient
         .from("tags")
         .select("*")
-        .eq("brand_id", currentBrand.id)
         .eq("is_active", true)
         .order("order_index", { ascending: true });
+
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
+      } else {
+        query = query.eq("brand_id", currentBrand!.id);
+      }
 
       if (scope) {
         query = query.or(`scope.eq.${scope},scope.eq.mixed`);
@@ -76,7 +78,7 @@ export function useTags(scope?: TagScope) {
       if (error) throw error;
       return (data || []) as Tag[];
     },
-    enabled: !!currentBrand,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand,
   });
 }
 
@@ -157,12 +159,10 @@ function buildTagTree(items: Array<{
 
 // Fetch tags assigned to a specific entity
 export function useEntityTags(entityType: "contact" | "event" | "deal" | "appointment" | "ticket", entityId: string | null) {
-  const { currentBrand } = useBrand();
-
   return useQuery({
-    queryKey: ["entity-tags", entityType, entityId, currentBrand?.id],
+    queryKey: ["entity-tags", entityType, entityId],
     queryFn: async (): Promise<TagAssignment[]> => {
-      if (!currentBrand || !entityId) return [];
+      if (!entityId) return [];
 
       const columnMap = {
         contact: "contact_id",
@@ -172,26 +172,26 @@ export function useEntityTags(entityType: "contact" | "event" | "deal" | "appoin
         ticket: "ticket_id",
       };
 
+      // No brand filter needed — RLS handles security, and we want tags visible cross-brand
       const { data, error } = await untypedClient
         .from("tag_assignments")
         .select(`
           *,
           tag:tags(*)
         `)
-        .eq("brand_id", currentBrand.id)
         .eq(columnMap[entityType], entityId);
 
       if (error) throw error;
       return (data || []) as TagAssignment[];
     },
-    enabled: !!currentBrand && !!entityId,
+    enabled: !!entityId,
   });
 }
 
 // Create tag
 export function useCreateTag() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (params: {
@@ -201,12 +201,12 @@ export function useCreateTag() {
       color?: string;
       scope?: TagScope;
     }) => {
-      if (!currentBrand) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data, error } = await untypedClient
         .from("tags")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           name: params.name,
           parent_id: params.parent_id || null,
           description: params.description || null,
@@ -229,7 +229,6 @@ export function useCreateTag() {
 // Update tag
 export function useUpdateTag() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (params: {
@@ -244,13 +243,11 @@ export function useUpdateTag() {
         order_index: number;
       }>;
     }) => {
-      if (!currentBrand) throw new Error("No brand selected");
-
+      // Filter by ID only — RLS handles security
       const { error } = await untypedClient
         .from("tags")
         .update(params.updates)
-        .eq("id", params.id)
-        .eq("brand_id", currentBrand.id);
+        .eq("id", params.id);
 
       if (error) throw error;
     },
@@ -264,17 +261,14 @@ export function useUpdateTag() {
 // Delete tag
 export function useDeleteTag() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (tagId: string) => {
-      if (!currentBrand) throw new Error("No brand selected");
-
+      // Filter by ID only — RLS handles security
       const { error } = await untypedClient
         .from("tags")
         .delete()
-        .eq("id", tagId)
-        .eq("brand_id", currentBrand.id);
+        .eq("id", tagId);
 
       if (error) throw error;
     },
@@ -285,10 +279,12 @@ export function useDeleteTag() {
   });
 }
 
-// Assign tag to entity
+// Assign tag to entity — requires brand_id for the assignment row.
+// For entities visible cross-brand, we read brand_id from the entity itself
+// rather than from currentBrand, so it works in global view too.
 export function useAssignTag() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (params: {
@@ -297,8 +293,10 @@ export function useAssignTag() {
       entityId: string;
       assignedBy?: AssignedBy;
       confidence?: number;
+      brandId?: string; // Optional: pass entity's brand_id for global view
     }) => {
-      if (!currentBrand) throw new Error("No brand selected");
+      // Use provided brandId (from the entity) or fall back to write brand
+      const brandId = params.brandId || getWriteBrandId();
 
       const assignmentData: {
         brand_id: string;
@@ -311,7 +309,7 @@ export function useAssignTag() {
         appointment_id?: string;
         ticket_id?: string;
       } = {
-        brand_id: currentBrand.id,
+        brand_id: brandId,
         tag_id: params.tagId,
         assigned_by: params.assignedBy || "user",
         confidence: params.confidence,

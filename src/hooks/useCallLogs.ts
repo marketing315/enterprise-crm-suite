@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,18 +30,18 @@ export interface CreateCallLogInput {
 
 export function useCreateCallLog() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
   const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (input: CreateCallLogInput) => {
-      if (!currentBrand) throw new Error("Nessun brand selezionato");
+      const brandId = getWriteBrandId();
       if (!user) throw new Error("Utente non autenticato");
 
       const { data, error } = await supabase
         .from("call_logs")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           contact_id: input.contact_id,
           deal_id: input.deal_id || null,
           user_id: user.id,

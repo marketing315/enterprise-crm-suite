@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,17 +12,17 @@ interface CostFilters {
 }
 
 export function useMarketingCosts(filters?: CostFilters) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
   const brandId = currentBrand?.id;
   const campaignFilter = filters?.campaignId ?? "all";
   const fromFilter = filters?.fromDate ?? "all";
   const toFilter = filters?.toDate ?? "all";
 
   return useQuery({
-    // Use primitive values in queryKey for stable cache
-    queryKey: ["marketing-costs", brandId ?? "", campaignFilter, fromFilter, toFilter],
+    queryKey: ["marketing-costs", isAllBrandsSelected ? "all" : (brandId ?? ""), campaignFilter, fromFilter, toFilter],
     queryFn: async (): Promise<MarketingCost[]> => {
-      if (!brandId) return [];
+      if (!isAllBrandsSelected && !brandId) return [];
+      if (isAllBrandsSelected && allBrandIds.length === 0) return [];
 
       let query = supabase
         .from("marketing_costs")
@@ -29,8 +30,14 @@ export function useMarketingCosts(filters?: CostFilters) {
           *,
           marketing_campaigns(id, name, channel_id)
         `)
-        .eq("brand_id", brandId)
         .order("cost_date", { ascending: false });
+
+      // Apply brand filter
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
+      } else {
+        query = query.eq("brand_id", brandId!);
+      }
 
       if (filters?.campaignId) {
         query = query.eq("campaign_id", filters.campaignId);
@@ -47,7 +54,7 @@ export function useMarketingCosts(filters?: CostFilters) {
       if (error) throw error;
       return (data || []) as unknown as MarketingCost[];
     },
-    enabled: !!brandId,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!brandId,
   });
 }
 
@@ -61,18 +68,18 @@ interface CreateCostInput {
 
 export function useCreateMarketingCost() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
   const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (input: CreateCostInput) => {
-      if (!currentBrand) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
       if (!user) throw new Error("User not authenticated");
 
       const { data, error } = await supabase
         .from("marketing_costs")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           created_by: user.id,
           ...input,
         })

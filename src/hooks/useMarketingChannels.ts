@@ -1,48 +1,63 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import type { MarketingChannel, MarketingChannelType } from "@/types/marketing";
 
 export function useMarketingChannels() {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["marketing-channels", currentBrand?.id],
+    queryKey: ["marketing-channels", isAllBrandsSelected ? "all" : currentBrand?.id],
     queryFn: async (): Promise<MarketingChannel[]> => {
-      if (!currentBrand) return [];
+      if (!isAllBrandsSelected && !currentBrand) return [];
+      if (isAllBrandsSelected && allBrandIds.length === 0) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("marketing_channels")
         .select("*")
-        .eq("brand_id", currentBrand.id)
         .order("name");
 
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
+      } else {
+        query = query.eq("brand_id", currentBrand!.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as unknown as MarketingChannel[];
     },
-    enabled: !!currentBrand,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand,
   });
 }
 
 export function useActiveMarketingChannels() {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["marketing-channels-active", currentBrand?.id],
+    queryKey: ["marketing-channels-active", isAllBrandsSelected ? "all" : currentBrand?.id],
     queryFn: async (): Promise<MarketingChannel[]> => {
-      if (!currentBrand) return [];
+      if (!isAllBrandsSelected && !currentBrand) return [];
+      if (isAllBrandsSelected && allBrandIds.length === 0) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("marketing_channels")
         .select("*")
-        .eq("brand_id", currentBrand.id)
         .eq("is_active", true)
         .order("name");
 
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
+      } else {
+        query = query.eq("brand_id", currentBrand!.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as unknown as MarketingChannel[];
     },
-    enabled: !!currentBrand,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand,
   });
 }
 
@@ -53,16 +68,16 @@ interface CreateChannelInput {
 
 export function useCreateMarketingChannel() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (input: CreateChannelInput) => {
-      if (!currentBrand) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data, error } = await supabase
         .from("marketing_channels")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           name: input.name,
           type: input.type,
         })

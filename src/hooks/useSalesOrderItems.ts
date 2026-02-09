@@ -1,12 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import type { SalesOrderItem, CreateOrderItemInput } from "@/types/sales";
-
-// Untyped client for new tables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const untypedClient = createClient(supabaseUrl, supabaseKey);
+import { untypedClient } from "@/integrations/supabase/untypedClient";
 
 export function useSalesOrderItems(orderId: string | null) {
   return useQuery({
