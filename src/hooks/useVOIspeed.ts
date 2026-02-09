@@ -60,15 +60,27 @@ export function useVOIspeedConfig() {
 
 // Check if current user has VOIspeed extension configured
 export function useUserVOIspeedExt() {
-  const { user } = useAuth();
+  const { supabaseUser } = useAuth();
 
   return useQuery({
-    queryKey: ["user-voispeed-ext", user?.id],
+    queryKey: ["user-voispeed-ext", supabaseUser?.id],
     queryFn: async () => {
-      if (!user) return null;
-      return user.voispeed_ext as string | null;
+      if (!supabaseUser?.id) return null;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("voispeed_ext")
+        .eq("supabase_auth_id", supabaseUser.id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching user VOIspeed ext:", error);
+        return null;
+      }
+
+      return data?.voispeed_ext as string | null;
     },
-    enabled: !!user?.id,
+    enabled: !!supabaseUser?.id,
   });
 }
 
