@@ -57,7 +57,7 @@ export default function CallcenterOperatorDashboard() {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return 0;
 
-      let query = supabase
+      let query = untypedClient
         .from('tickets')
         .select('id', { count: 'exact', head: true })
         .eq('assigned_to', user.id)
