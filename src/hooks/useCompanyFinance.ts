@@ -51,9 +51,9 @@ export function useFinanceKpis(from: Date, to: Date) {
 
 // Expense Categories
 export function useExpenseCategories() {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['expense-categories', brandId],
