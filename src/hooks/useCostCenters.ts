@@ -6,8 +6,8 @@ import type { CostCenter } from '@/types/company';
 import { toast } from 'sonner';
 
 export function useCostCenters() {
-  const { currentBrand } = useBrand();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const { currentBrand, isAllBrandsSelected } = useBrand();
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['cost-centers', brandId],
