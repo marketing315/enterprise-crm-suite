@@ -1,5 +1,7 @@
 import { TrendingUp, TrendingDown, Euro, Percent, Target, Wallet } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { formatCurrency, formatPercent } from '@/lib/formatKpi';
 import type { CeoKpi } from '@/types/company';
@@ -9,6 +11,8 @@ interface CeoKpiCardsProps {
 }
 
 export function CeoKpiCards({ data }: CeoKpiCardsProps) {
+  const navigate = useNavigate();
+
   const kpis = [
     {
       title: 'Utile Netto Stimato',
@@ -40,13 +44,15 @@ export function CeoKpiCards({ data }: CeoKpiCardsProps) {
       value: formatCurrency(data.revenue_total),
       icon: TrendingUp,
       trend: data.revenue_change_percent,
+      href: '/azienda',
     },
     {
       title: 'Costi Totali',
       value: formatCurrency(data.costs_total),
       icon: Wallet,
       trend: data.costs_change_percent,
-      invertTrend: true, // Cost increase is bad
+      invertTrend: true,
+      href: '/azienda/costi',
     },
     {
       title: 'Budget Disponibile',
@@ -54,6 +60,7 @@ export function CeoKpiCards({ data }: CeoKpiCardsProps) {
       icon: Target,
       subtitle: `${formatPercent(data.budget_baseline.variance_percent)} del budget`,
       color: data.budget_baseline.variance >= 0 ? 'text-green-600' : 'text-red-600',
+      href: '/azienda/budget',
     },
   ];
 
@@ -101,6 +108,17 @@ export function CeoKpiCards({ data }: CeoKpiCardsProps) {
                   {kpi.trend >= 0 ? '+' : ''}{kpi.trend.toFixed(1)}% vs periodo prec.
                 </span>
               </div>
+            )}
+
+            {kpi.href && (
+              <Button
+                variant="link"
+                size="sm"
+                className="px-0 mt-1 h-auto text-xs"
+                onClick={() => navigate(kpi.href!)}
+              >
+                Dettagli →
+              </Button>
             )}
           </CardContent>
         </Card>
