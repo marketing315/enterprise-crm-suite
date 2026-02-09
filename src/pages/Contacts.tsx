@@ -40,6 +40,7 @@ const statusOptions: { value: ContactStatus | 'all'; label: string }[] = [
 export default function Contacts() {
   const isMobile = useIsMobile();
   const { currentBrand, isAllBrandsSelected, brands } = useBrand();
+  useContactsRealtime();
   const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
