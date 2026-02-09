@@ -66,6 +66,7 @@ import {
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
 
 // Base menu items (always visible if brand selected)
 const baseMenuItems = [
