@@ -119,8 +119,8 @@ export function DashboardShell({
             </DropdownMenu>
           )}
 
-          {/* Period selector */}
-          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          {/* Period selector — hidden until wired to queries (Fase B) */}
+          {/* <Select value={_period} onValueChange={(v) => _setPeriod(v as Period)}>
             <SelectTrigger className="w-[140px] h-9">
               <SelectValue />
             </SelectTrigger>
@@ -129,7 +129,7 @@ export function DashboardShell({
                 <SelectItem key={k} value={k}>{v}</SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select> */}
 
           {/* Auto-refresh */}
           <Select
