@@ -67,7 +67,6 @@ export function useDashboardData() {
       return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 60000,
   });
 
   // KPI: Deal aperti
