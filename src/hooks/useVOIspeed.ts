@@ -130,15 +130,9 @@ export function useIncomingCallsRealtime(onIncomingCall: (call: IncomingCall) =>
   useEffect(() => {
     if (!user?.id) return;
 
-    // Get CRM user ID first
+    // user.id is already the CRM user ID (from users table)
     const setupSubscription = async () => {
-      const { data: crmUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("supabase_auth_id", user.id)
-        .single();
-
-      if (!crmUser) return;
+      const crmUserId = user.id;
 
       const channel = supabase
         .channel("incoming-calls")
