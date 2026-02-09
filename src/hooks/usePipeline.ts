@@ -1,16 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { useBrand } from "@/contexts/BrandContext";
 import type { PipelineStage, DealWithContact, DealStatus } from "@/types/database";
-
-// Untyped client for new tables not yet in generated types
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const untypedClient = createClient(supabaseUrl, supabaseKey);
-
-// Typed client for existing tables
 import { supabase } from "@/integrations/supabase/client";
+import { untypedClient } from "@/integrations/supabase/untypedClient";
 
 // Tag type for deals
 interface DealTag {

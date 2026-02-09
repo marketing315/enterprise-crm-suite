@@ -1,14 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@supabase/supabase-js";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { Payment, RecordPaymentInput } from "@/types/sales";
-
-// Untyped client for new tables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const untypedClient = createClient(supabaseUrl, supabaseKey);
+import { untypedClient } from "@/integrations/supabase/untypedClient";
 
 export function useOrderPayments(orderId: string | null) {
   return useQuery({
@@ -35,16 +31,16 @@ export function useOrderPayments(orderId: string | null) {
 export function useRecordPayment() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (input: RecordPaymentInput) => {
-      if (!currentBrand) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data, error } = await untypedClient
         .from("payments")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           order_id: input.order_id,
           amount: input.amount,
           method: input.method,

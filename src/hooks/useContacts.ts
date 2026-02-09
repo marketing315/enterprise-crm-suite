@@ -4,12 +4,13 @@ import { useBrand } from '@/contexts/BrandContext';
 import type { Contact, ContactWithPhones, ContactStatus } from '@/types/database';
 
 export function useContacts(status?: ContactStatus) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ['contacts', currentBrand?.id, status],
+    queryKey: ['contacts', isAllBrandsSelected ? 'all' : currentBrand?.id, status],
     queryFn: async () => {
-      if (!currentBrand?.id) return [];
+      if (!isAllBrandsSelected && !currentBrand?.id) return [];
+      if (isAllBrandsSelected && allBrandIds.length === 0) return [];
 
       let query = supabase
         .from('contacts')
@@ -17,8 +18,13 @@ export function useContacts(status?: ContactStatus) {
           *,
           contact_phones (*)
         `)
-        .eq('brand_id', currentBrand.id)
         .order('created_at', { ascending: false });
+
+      if (isAllBrandsSelected) {
+        query = query.in('brand_id', allBrandIds);
+      } else {
+        query = query.eq('brand_id', currentBrand!.id);
+      }
 
       if (status) {
         query = query.eq('status', status);
@@ -28,7 +34,7 @@ export function useContacts(status?: ContactStatus) {
       if (error) throw error;
       return data as ContactWithPhones[];
     },
-    enabled: !!currentBrand?.id,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id,
   });
 }
 

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
+import { useWriteBrandId } from '@/hooks/useWriteBrandId';
 import { toast } from 'sonner';
 import type {
   LeadSourceChannel,
@@ -70,14 +71,14 @@ export interface ContactLeadEvent {
  */
 export function useCreateManualLeadEvent() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (params: CreateManualLeadEventParams) => {
-      if (!currentBrand?.id) throw new Error('No brand selected');
+      const brandId = getWriteBrandId();
 
       const { data, error } = await supabase.rpc('create_manual_lead_event', {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandId,
         p_contact_id: params.contactId,
         p_source_name: params.sourceName ?? 'Creazione manuale',
         p_lead_source_channel: params.leadSourceChannel ?? null,

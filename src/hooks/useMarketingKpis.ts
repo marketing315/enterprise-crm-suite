@@ -15,15 +15,14 @@ interface KpiFilters {
 }
 
 export function useMarketingCampaignKpis(filters: KpiFilters) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id;
   const { fromDate, toDate, channelId, campaignId } = filters;
 
   return useQuery({
-    // Use primitive values in queryKey for stable cache
     queryKey: [
       "marketing-kpis-campaigns",
-      brandId ?? "",
+      isAllBrandsSelected ? "all" : (brandId ?? ""),
       fromDate,
       toDate,
       channelId ?? "all",
@@ -32,6 +31,7 @@ export function useMarketingCampaignKpis(filters: KpiFilters) {
     queryFn: async (): Promise<MarketingCampaignKpi[]> => {
       if (!brandId) return [];
 
+      // Pass brand_id to RPC — the RPC handles system brand resolution internally
       const { data, error } = await supabase.rpc("get_marketing_campaign_kpis", {
         p_brand_id: brandId,
         p_from: fromDate,
@@ -48,11 +48,11 @@ export function useMarketingCampaignKpis(filters: KpiFilters) {
 }
 
 export function useMarketingChannelKpis(fromDate: string, toDate: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["marketing-kpis-channels", brandId ?? "", fromDate, toDate],
+    queryKey: ["marketing-kpis-channels", isAllBrandsSelected ? "all" : (brandId ?? ""), fromDate, toDate],
     queryFn: async (): Promise<MarketingChannelKpi[]> => {
       if (!brandId) return [];
 
@@ -70,11 +70,11 @@ export function useMarketingChannelKpis(fromDate: string, toDate: string) {
 }
 
 export function useMarketingSummaryKpis(fromDate: string, toDate: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["marketing-kpis-summary", brandId ?? "", fromDate, toDate],
+    queryKey: ["marketing-kpis-summary", isAllBrandsSelected ? "all" : (brandId ?? ""), fromDate, toDate],
     queryFn: async (): Promise<MarketingSummaryKpi | null> => {
       if (!brandId) return null;
 
@@ -101,11 +101,11 @@ export interface MarketingMonthlyTrend {
 }
 
 export function useMarketingMonthlyTrend(monthsBack: number = 6) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["marketing-monthly-trend", brandId ?? "", monthsBack],
+    queryKey: ["marketing-monthly-trend", isAllBrandsSelected ? "all" : (brandId ?? ""), monthsBack],
     queryFn: async (): Promise<MarketingMonthlyTrend[]> => {
       if (!brandId) return [];
 

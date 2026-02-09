@@ -1,31 +1,33 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@supabase/supabase-js";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import type { Product } from "@/types/sales";
-
-// Untyped client for new tables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const untypedClient = createClient(supabaseUrl, supabaseKey);
+import { untypedClient } from "@/integrations/supabase/untypedClient";
 
 interface UseProductsOptions {
   activeOnly?: boolean;
 }
 
 export function useProducts(options: UseProductsOptions = { activeOnly: true }) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["products", currentBrand?.id, options.activeOnly],
+    queryKey: ["products", isAllBrandsSelected ? "all" : currentBrand?.id, options.activeOnly],
     queryFn: async (): Promise<Product[]> => {
-      if (!currentBrand) return [];
+      if (!isAllBrandsSelected && !currentBrand) return [];
+      if (isAllBrandsSelected && allBrandIds.length === 0) return [];
 
       let query = untypedClient
         .from("products")
         .select("*")
-        .eq("brand_id", currentBrand.id)
         .order("name", { ascending: true });
+
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
+      } else {
+        query = query.eq("brand_id", currentBrand!.id);
+      }
 
       if (options.activeOnly) {
         query = query.eq("is_active", true);
@@ -36,7 +38,7 @@ export function useProducts(options: UseProductsOptions = { activeOnly: true }) 
       if (error) throw error;
       return (data || []) as Product[];
     },
-    enabled: !!currentBrand,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand,
   });
 }
 
@@ -69,16 +71,16 @@ export interface CreateProductInput {
 
 export function useCreateProduct() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (input: CreateProductInput) => {
-      if (!currentBrand) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data, error } = await untypedClient
         .from("products")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           name: input.name,
           description: input.description || null,
           sku: input.sku || null,

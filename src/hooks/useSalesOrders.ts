@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@supabase/supabase-js";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -9,11 +8,7 @@ import type {
   SalesOrderStatus,
   SalesKpis 
 } from "@/types/sales";
-
-// Untyped client for new tables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const untypedClient = createClient(supabaseUrl, supabaseKey);
+import { untypedClient } from "@/integrations/supabase/untypedClient";
 
 interface UseSalesOrdersOptions {
   status?: SalesOrderStatus | SalesOrderStatus[];
@@ -210,10 +205,10 @@ export function useUpdateSalesOrder() {
 }
 
 export function useSalesKpis(from: Date, to: Date, userId?: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
 
   return useQuery({
-    queryKey: ["sales-kpis", currentBrand?.id, from.toISOString(), to.toISOString(), userId],
+    queryKey: ["sales-kpis", isAllBrandsSelected ? "all" : currentBrand?.id, from.toISOString(), to.toISOString(), userId],
     queryFn: async (): Promise<SalesKpis> => {
       if (!currentBrand) {
         return {
@@ -226,6 +221,7 @@ export function useSalesKpis(from: Date, to: Date, userId?: string) {
         };
       }
 
+      // Pass brand_id to RPC — the RPC handles system brand resolution internally
       const { data, error } = await untypedClient
         .rpc("get_sales_kpis", {
           p_brand_id: currentBrand.id,

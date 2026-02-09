@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed" | "reopened";
 
@@ -404,11 +405,11 @@ export interface CreateTicketInput {
 
 export function useCreateTicket() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (input: CreateTicketInput) => {
-      if (!currentBrand?.id) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -416,7 +417,7 @@ export function useCreateTicket() {
       const { data, error } = await supabase
         .from("tickets")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           contact_id: input.contactId,
           deal_id: input.dealId || null,
           title: input.title,
