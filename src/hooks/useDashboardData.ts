@@ -37,7 +37,6 @@ export function useDashboardData() {
       return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 30000,
   });
 
   // KPI: Lead ultimi 7 giorni (contatti unici, non eventi)
@@ -68,7 +67,6 @@ export function useDashboardData() {
       return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 60000,
   });
 
   // KPI: Deal aperti
@@ -94,7 +92,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 30000,
   });
 
   // KPI: Deal nuovi - use estimation based on open deals
@@ -124,7 +121,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 30000,
   });
 
   // KPI: Ticket con SLA breach
@@ -151,7 +147,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 30000,
   });
 
   // KPI: Contatti totali
@@ -174,7 +169,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 60000,
   });
 
   // KPI: Appuntamenti oggi
@@ -202,7 +196,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 60000,
   });
 
   // Trend data (7 giorni) - optimized: 2 queries instead of 14
@@ -281,7 +274,7 @@ export function useDashboardData() {
       return days;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 120000,
+    staleTime: 120000,
   });
 
   return {

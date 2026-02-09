@@ -1,3 +1,4 @@
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
@@ -74,7 +75,7 @@ export function useUnreadNotificationCount() {
       return (data as number) || 0;
     },
     enabled: !!currentBrand || isAllBrandsSelected,
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 60000, // Refetch every 60 seconds (realtime handles instant updates)
   });
 }
 
@@ -103,9 +104,10 @@ export function useMarkNotificationsRead() {
 
 export function useNotificationRealtime(onNewNotification?: (notification: Notification) => void) {
   const queryClient = useQueryClient();
+  const onNewRef = React.useRef(onNewNotification);
+  onNewRef.current = onNewNotification;
 
-  // Subscribe to realtime notifications
-  const subscribeToNotifications = () => {
+  React.useEffect(() => {
     const channel = supabase
       .channel("notifications-realtime")
       .on(
@@ -117,16 +119,14 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
         },
         (payload) => {
           const notification = payload.new as Notification;
-          
+
           // Invalidate queries to refresh data
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
           queryClient.invalidateQueries({ queryKey: ["unread-notification-count"] });
           queryClient.invalidateQueries({ queryKey: ["paginated-notifications"] });
-          
+
           // Call callback if provided
-          if (onNewNotification) {
-            onNewNotification(notification);
-          }
+          onNewRef.current?.(notification);
         }
       )
       .subscribe();
@@ -134,9 +134,7 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
     return () => {
       supabase.removeChannel(channel);
     };
-  };
-
-  return { subscribeToNotifications };
+  }, [queryClient]);
 }
 
 // =============================================
