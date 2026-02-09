@@ -56,24 +56,16 @@ export function useTableViews() {
   const { currentBrand, isAllBrandsSelected } = useBrand();
 
   return useQuery({
-    queryKey: ["table-views", user?.id, currentBrand?.id],
+    queryKey: ["table-views", user?.id],
     queryFn: async (): Promise<ContactTableView[]> => {
       if (!user) return [];
 
-      let query = supabase
+      // Show all user's views regardless of brand context
+      const { data, error } = await supabase
         .from("contact_table_views")
         .select("*")
         .eq("owner_user_id", user.id)
         .order("name");
-
-      // Filter by current context
-      if (isAllBrandsSelected) {
-        query = query.eq("brand_scope", "all_accessible");
-      } else if (currentBrand) {
-        query = query.or(`brand_scope.eq.all_accessible,brand_id.eq.${currentBrand.id}`);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
 
       return (data || []).map((v) => ({
@@ -142,8 +134,8 @@ export function useCreateTableView() {
 
       const insertData = {
         owner_user_id: user.id,
-        brand_scope: isAllBrandsSelected ? "all_accessible" : "single_brand",
-        brand_id: isAllBrandsSelected ? null : currentBrand?.id,
+        brand_scope: "all_accessible" as const,
+        brand_id: null,
         name: params.name,
         columns: params.columns,
         filters: params.filters || {},
