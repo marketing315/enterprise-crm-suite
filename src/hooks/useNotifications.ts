@@ -103,9 +103,10 @@ export function useMarkNotificationsRead() {
 
 export function useNotificationRealtime(onNewNotification?: (notification: Notification) => void) {
   const queryClient = useQueryClient();
+  const onNewRef = React.useRef(onNewNotification);
+  onNewRef.current = onNewNotification;
 
-  // Subscribe to realtime notifications
-  const subscribeToNotifications = () => {
+  React.useEffect(() => {
     const channel = supabase
       .channel("notifications-realtime")
       .on(
@@ -117,16 +118,14 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
         },
         (payload) => {
           const notification = payload.new as Notification;
-          
+
           // Invalidate queries to refresh data
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
           queryClient.invalidateQueries({ queryKey: ["unread-notification-count"] });
           queryClient.invalidateQueries({ queryKey: ["paginated-notifications"] });
-          
+
           // Call callback if provided
-          if (onNewNotification) {
-            onNewNotification(notification);
-          }
+          onNewRef.current?.(notification);
         }
       )
       .subscribe();
@@ -134,9 +133,7 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
     return () => {
       supabase.removeChannel(channel);
     };
-  };
-
-  return { subscribeToNotifications };
+  }, [queryClient]);
 }
 
 // =============================================

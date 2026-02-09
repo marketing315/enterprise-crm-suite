@@ -58,17 +58,14 @@ export function NotificationBell() {
   const { data: notifications = [], isLoading } = useNotifications(30);
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const markRead = useMarkNotificationsRead();
-  const { subscribeToNotifications } = useNotificationRealtime((notification) => {
+
+  // Realtime subscription (hook manages its own lifecycle now)
+  const handleNewNotification = useCallback((notification: Notification) => {
     toast.info(notification.title, {
       description: notification.body || undefined,
     });
-  });
-
-  // Subscribe to realtime notifications
-  useEffect(() => {
-    const unsubscribe = subscribeToNotifications();
-    return unsubscribe;
-  }, [subscribeToNotifications]);
+  }, []);
+  useNotificationRealtime(handleNewNotification);
 
   // Mark as read when popover opens
   useEffect(() => {
