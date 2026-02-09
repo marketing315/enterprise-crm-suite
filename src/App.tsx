@@ -42,7 +42,15 @@ import MarketingReports from "@/pages/marketing/MarketingReports";
 import CeoDashboard from "@/pages/CeoDashboard";
 import Install from "@/pages/Install";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -91,7 +99,7 @@ const App = () => (
                 <Route path="/azienda/costi" element={<CompanyExpenses />} />
                 <Route path="/azienda/budget" element={<CompanyBudget />} />
                 <Route path="/azienda/report" element={<CompanyReports />} />
-                <Route path="/analytics" element={<AdminAnalytics />} />
+                
                 <Route path="/marketing" element={<MarketingDashboard />} />
                 <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
                 <Route path="/marketing/costi" element={<MarketingCosts />} />

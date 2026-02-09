@@ -5,11 +5,10 @@ import { useHasFinanceAccess, COMPANY_BRAND_ID } from './useCompanyFinance';
 import type { CeoKpi } from '@/types/company';
 
 export function useCeoDashboard(from: Date, to: Date) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
   
-  // Use company brand if "Tutti i brand" is selected, otherwise use current brand
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['ceo-dashboard-kpis', brandId, from.toISOString(), to.toISOString()],

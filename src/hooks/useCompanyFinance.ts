@@ -26,11 +26,10 @@ export function useHasFinanceAccess() {
 
 // Fetch finance KPIs
 export function useFinanceKpis(from: Date, to: Date) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
   
-  // Use company brand if "Tutti i brand" is selected, otherwise use current brand
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['finance-kpis', brandId, from.toISOString(), to.toISOString()],
@@ -52,9 +51,9 @@ export function useFinanceKpis(from: Date, to: Date) {
 
 // Expense Categories
 export function useExpenseCategories() {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['expense-categories', brandId],
@@ -77,8 +76,8 @@ export function useExpenseCategories() {
 
 export function useCreateExpenseCategory() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const { currentBrand, isAllBrandsSelected } = useBrand();
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useMutation({
     mutationFn: async (name: string) => {
@@ -105,9 +104,9 @@ export function useCreateExpenseCategory() {
 
 // Expenses CRUD
 export function useExpenses(from: Date, to: Date, categoryId?: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['expenses', brandId, from.toISOString(), to.toISOString(), categoryId],
@@ -141,9 +140,9 @@ export function useExpenses(from: Date, to: Date, categoryId?: string) {
 
 export function useCreateExpense() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const { user } = useAuth();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useMutation({
     mutationFn: async (data: ExpenseFormData) => {
@@ -232,9 +231,9 @@ export function useDeleteExpense() {
 
 // Budgets CRUD
 export function useBudgets(periodMonth?: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['budgets', brandId, periodMonth],
@@ -265,9 +264,9 @@ export function useBudgets(periodMonth?: string) {
 
 export function useCreateBudget() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const { user } = useAuth();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useMutation({
     mutationFn: async (data: BudgetFormData) => {

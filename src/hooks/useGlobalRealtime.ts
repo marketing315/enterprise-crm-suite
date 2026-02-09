@@ -8,9 +8,9 @@ import { useBrand } from '@/contexts/BrandContext';
  * When a realtime event arrives for a table, all listed query keys are invalidated.
  */
 const TABLE_QUERY_MAP: Record<string, string[][]> = {
-  deals: [['deals'], ['deal-scoring'], ['pipeline-stages'], ['forecast']],
+  deals: [['deals'], ['deal-score'], ['deal-score-history'], ['brand-deal-scores'], ['pipeline-stages'], ['revenue-forecast'], ['forecast-history']],
   deal_stage_history: [['deals']],
-  lead_events: [['lead-events'], ['contact-lead-events']],
+  lead_events: [['lead-events'], ['contact']],
   appointments: [['appointments']],
   sales_orders: [['sales-orders'], ['sales-kpis']],
   sales_order_items: [['sales-orders'], ['sales-order-items']],

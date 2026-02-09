@@ -4,8 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Phone, User, Mail, MapPin, FileText, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { normalizePhone, isValidPhoneNumber } from "@/lib/phoneUtils";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -61,7 +61,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateInfo | null>(null);
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId, isGlobalView, currentBrand } = useWriteBrandId();
   const queryClient = useQueryClient();
 
   const form = useForm<FormValues>({
@@ -112,8 +112,11 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!currentBrand) {
-      toast.error("Nessun brand selezionato");
+    let brandId: string;
+    try {
+      brandId = getWriteBrandId();
+    } catch (e: any) {
+      toast.error(e.message);
       return;
     }
 
@@ -132,7 +135,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
       const { data: contactId, error: contactError } = await supabase.rpc(
         "find_or_create_contact",
         {
-          p_brand_id: currentBrand.id,
+          p_brand_id: brandId,
           p_phone_normalized: normalized.normalized,
           p_phone_raw: normalized.raw,
           p_country_code: normalized.countryCode,
@@ -149,7 +152,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
 
       // Create manual lead event for audit trail
       const { error: eventError } = await supabase.from("lead_events").insert({
-        brand_id: currentBrand.id,
+        brand_id: brandId,
         contact_id: contactId,
         source: "manual",
         source_name: "Creazione manuale",
@@ -167,7 +170,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
 
       // Find or create deal for this contact
       const { error: dealError } = await supabase.rpc("find_or_create_deal", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandId,
         p_contact_id: contactId,
       });
 
@@ -201,7 +204,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button disabled={isGlobalView} title={isGlobalView ? "Seleziona un brand specifico per creare contatti" : undefined}>
           <Plus className="h-4 w-4 mr-2" />
           Nuovo contatto
         </Button>

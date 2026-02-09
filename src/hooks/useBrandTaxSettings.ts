@@ -7,8 +7,8 @@ import type { BrandTaxSettings } from '@/types/company';
 import { toast } from 'sonner';
 
 export function useBrandTaxSettings() {
-  const { currentBrand } = useBrand();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const { currentBrand, isAllBrandsSelected } = useBrand();
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['brand-tax-settings', brandId],
@@ -46,9 +46,9 @@ export function useBrandTaxSettings() {
 
 export function useUpsertBrandTaxSettings() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const { user } = useAuth();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useMutation({
     mutationFn: async (data: Partial<Omit<BrandTaxSettings, 'id' | 'brand_id' | 'updated_at' | 'updated_by'>>) => {
