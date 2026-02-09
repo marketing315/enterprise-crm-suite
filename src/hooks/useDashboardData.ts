@@ -196,7 +196,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 60000,
   });
 
   // Trend data (7 giorni) - optimized: 2 queries instead of 14
