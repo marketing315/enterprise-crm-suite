@@ -154,7 +154,7 @@ export function useIncomingCallsRealtime(onIncomingCall: (call: IncomingCall) =>
             event: "INSERT",
             schema: "public",
             table: "incoming_calls",
-            filter: `user_id=eq.${crmUser.id}`,
+            filter: `user_id=eq.${crmUserId}`,
           },
           (payload) => {
             const call = payload.new as IncomingCall;

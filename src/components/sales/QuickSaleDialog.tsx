@@ -184,14 +184,9 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
 
     setIsSaving(true);
     try {
-      // Create a quick sale order
-      const { data: userData } = await supabase
-        .from("users")
-        .select("id")
-        .eq("supabase_auth_id", user.id)
-        .single();
-
-      if (!userData) throw new Error("User not found");
+      // user.id is already the CRM internal user ID
+      if (!user?.id) throw new Error("User not found");
+      const userData = { id: user.id };
 
       // Generate order number
       const orderNumber = `QS-${Date.now().toString(36).toUpperCase()}`;
