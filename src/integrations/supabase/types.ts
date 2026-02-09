@@ -5773,6 +5773,15 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_ceo_operational_kpis: {
+        Args: {
+          p_brand_id: string
+          p_brand_ids?: string[]
+          p_from?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       get_contact_field_definitions: {
         Args: { p_brand_id: string }
         Returns: {
