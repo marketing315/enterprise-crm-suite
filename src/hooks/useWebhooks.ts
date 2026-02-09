@@ -331,7 +331,7 @@ export function useWebhookDeliveries(params: {
       return data as unknown as DeliveriesResponse;
     },
     enabled: !!currentBrand?.id,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
 }
 
