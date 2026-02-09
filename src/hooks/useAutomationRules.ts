@@ -350,7 +350,7 @@ export function useAutomationLogs(params: { ruleId?: string; limit?: number }) {
       return (data || []) as unknown as AutomationLog[];
     },
     enabled: !!currentBrand?.id,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
 }
 
