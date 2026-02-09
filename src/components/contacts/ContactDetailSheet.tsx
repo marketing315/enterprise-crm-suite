@@ -435,7 +435,16 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   <span>
-                    Creato il {format(new Date(contact.created_at), 'dd MMMM yyyy HH:mm', { locale: it })}
+                    Creato il {(() => {
+                      // Use earliest occurred_at from lead_events if available and valid
+                      const leadEvents = (contact as any).lead_events as any[] | undefined;
+                      const validDates = leadEvents
+                        ?.map((e: any) => e.occurred_at)
+                        .filter((d: any) => d && new Date(d).getFullYear() > 2000)
+                        .sort() || [];
+                      const displayDate = validDates.length > 0 ? validDates[0] : contact.created_at;
+                      return format(new Date(displayDate), 'dd MMMM yyyy HH:mm', { locale: it });
+                    })()}
                   </span>
                 </div>
               </div>
