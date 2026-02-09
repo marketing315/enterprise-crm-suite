@@ -392,7 +392,7 @@ Deno.serve(async (req) => {
             source: "meta",
             source_name: `Meta: ${leadData?.campaign_name || leadData?.ad_name || "Lead Ads"}`,
             external_id: leadgenId,
-            occurred_at: leadData?.created_time ? new Date(parseInt(leadData.created_time) * 1000).toISOString() : new Date().toISOString(),
+            occurred_at: leadData?.created_time ? new Date(leadData.created_time).toISOString() : new Date().toISOString(),
             raw_payload: {
               meta_leadgen_id: leadgenId,
               meta_page_id: pageId,
