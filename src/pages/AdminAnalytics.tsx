@@ -94,8 +94,8 @@ export default function AdminAnalytics() {
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="icon" onClick={() => refetch()}>
-            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+          <Button variant="outline" size="icon" onClick={() => { refetch(); refetchFunnel(); }}>
+            <RefreshCw className={cn("h-4 w-4", (isLoading || funnelLoading) && "animate-spin")} />
           </Button>
         </div>
       </div>
