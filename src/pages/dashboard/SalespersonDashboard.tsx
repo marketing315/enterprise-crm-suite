@@ -216,7 +216,7 @@ export default function SalespersonDashboard() {
                         className="h-7 w-7"
                         onClick={() => actSuggestion.mutate(sug.id)}
                       >
-                        <Target className="h-3.5 w-3.5 text-green-600" />
+                        <Target className="h-3.5 w-3.5 text-primary" />
                       </Button>
                       <Button
                         variant="ghost"
