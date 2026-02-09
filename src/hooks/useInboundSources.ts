@@ -23,9 +23,9 @@ export function useInboundSources() {
       if (!isAllBrandsSelected && !currentBrand?.id) return [];
       if (isAllBrandsSelected && allBrandIds.length === 0) return [];
 
-      let query = supabase
-        .from("webhook_sources")
-        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
+      let query = (supabase
+        .from("webhook_sources_safe" as any)
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at") as any)
         .order("name", { ascending: true });
 
       if (isAllBrandsSelected) {

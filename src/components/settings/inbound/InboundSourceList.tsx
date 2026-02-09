@@ -39,9 +39,9 @@ export function InboundSourceList() {
     queryKey: ["inbound-sources", currentBrand?.id],
     queryFn: async () => {
       if (!currentBrand?.id) return [];
-      const { data, error } = await supabase
-        .from("webhook_sources")
-        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
+      const { data, error } = await (supabase
+        .from("webhook_sources_safe" as any)
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at") as any)
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
