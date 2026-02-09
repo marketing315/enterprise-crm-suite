@@ -112,8 +112,11 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!currentBrand) {
-      toast.error("Nessun brand selezionato");
+    let brandId: string;
+    try {
+      brandId = getWriteBrandId();
+    } catch (e: any) {
+      toast.error(e.message);
       return;
     }
 
