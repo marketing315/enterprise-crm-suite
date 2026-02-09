@@ -2862,6 +2862,13 @@ export type Database = {
             referencedRelation: "webhook_sources"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "incoming_requests_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_sources_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lead_event_clinical_topics: {
@@ -3915,6 +3922,13 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: true
             referencedRelation: "webhook_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rate_limit_buckets_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: true
+            referencedRelation: "webhook_sources_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -5090,6 +5104,13 @@ export type Database = {
             referencedRelation: "webhook_sources"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "webhook_inbound_events_webhook_source_id_fkey"
+            columns: ["webhook_source_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_sources_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       webhook_sources: {
@@ -5193,6 +5214,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "outbound_webhooks_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_sources_safe: {
+        Row: {
+          brand_id: string | null
+          created_at: string | null
+          description: string | null
+          hmac_enabled: boolean | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          rate_limit_per_min: number | null
+          replay_window_seconds: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          hmac_enabled?: boolean | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          rate_limit_per_min?: number | null
+          replay_window_seconds?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          hmac_enabled?: boolean | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          rate_limit_per_min?: number | null
+          replay_window_seconds?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_sources_brand_id_fkey"
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
