@@ -6280,8 +6280,6 @@ export type Database = {
         Args: { p_event_id: string; p_topic_ids: string[] }
         Returns: undefined
       }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
       update_appointment: {
         Args: {
