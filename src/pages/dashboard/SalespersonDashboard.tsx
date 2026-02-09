@@ -238,7 +238,7 @@ export default function SalespersonDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Flame className="h-5 w-5 text-orange-500" />
+              <Flame className="h-5 w-5 text-destructive" />
               Deal caldi ({hotDeals.length})
             </CardTitle>
             <CardDescription>Score ≥ 60</CardDescription>

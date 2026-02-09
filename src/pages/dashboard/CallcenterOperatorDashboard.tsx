@@ -58,7 +58,7 @@ export default function CallcenterOperatorDashboard() {
 
       let query = supabase
         .from('tickets')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('assigned_to', user.id)
         .in('status', ['open', 'in_progress', 'reopened']);
 
