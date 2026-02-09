@@ -7,8 +7,8 @@ import type { BrandTaxSettings } from '@/types/company';
 import { toast } from 'sonner';
 
 export function useBrandTaxSettings() {
-  const { currentBrand } = useBrand();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const { currentBrand, isAllBrandsSelected } = useBrand();
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['brand-tax-settings', brandId],
