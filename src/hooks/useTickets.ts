@@ -116,12 +116,10 @@ export function useTickets(status?: TicketStatus) {
 }
 
 export function useTicket(ticketId: string | null) {
-  const { currentBrand } = useBrand();
-
   return useQuery({
     queryKey: ["ticket", ticketId],
     queryFn: async () => {
-      if (!ticketId || !currentBrand?.id) return null;
+      if (!ticketId) return null;
 
       const { data, error } = await supabase
         .from("tickets")
@@ -133,13 +131,12 @@ export function useTicket(ticketId: string | null) {
           assigned_by:assigned_by_user_id (id, full_name, email)
         `)
         .eq("id", ticketId)
-        .eq("brand_id", currentBrand.id)
         .single();
 
       if (error) throw error;
       return data as unknown as TicketWithRelations;
     },
-    enabled: !!ticketId && !!currentBrand?.id,
+    enabled: !!ticketId,
   });
 }
 
@@ -189,7 +186,6 @@ export function useTicketComments(ticketId: string | null) {
 
 export function useUpdateTicketStatus() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ ticketId, status }: { ticketId: string; status: TicketStatus }) => {
@@ -207,21 +203,20 @@ export function useUpdateTicketStatus() {
       const { error } = await supabase
         .from("tickets")
         .update(updates)
-        .eq("id", ticketId)
-        .eq("brand_id", currentBrand?.id);
+        .eq("id", ticketId);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
     },
   });
 }
 
 export function useArchiveTicket() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ ticketId, archived }: { ticketId: string; archived: boolean }) => {
@@ -243,8 +238,7 @@ export function useArchiveTicket() {
       const { error } = await supabase
         .from("tickets")
         .update(updates)
-        .eq("id", ticketId)
-        .eq("brand_id", currentBrand?.id);
+        .eq("id", ticketId);
 
       if (error) throw error;
     },
@@ -258,15 +252,13 @@ export function useArchiveTicket() {
 
 export function useDeleteTicket() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (ticketId: string) => {
       const { error } = await supabase
         .from("tickets")
         .delete()
-        .eq("id", ticketId)
-        .eq("brand_id", currentBrand?.id);
+        .eq("id", ticketId);
 
       if (error) throw error;
     },
@@ -280,49 +272,46 @@ export function useDeleteTicket() {
 
 export function useUpdateTicketPriority() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ ticketId, priority }: { ticketId: string; priority: number }) => {
       const { error } = await supabase
         .from("tickets")
         .update({ priority })
-        .eq("id", ticketId)
-        .eq("brand_id", currentBrand?.id);
+        .eq("id", ticketId);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
     },
   });
 }
 
 export function useUpdateTicketCategory() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ ticketId, categoryTagId }: { ticketId: string; categoryTagId: string | null }) => {
       const { error } = await supabase
         .from("tickets")
         .update({ category_tag_id: categoryTagId })
-        .eq("id", ticketId)
-        .eq("brand_id", currentBrand?.id);
+        .eq("id", ticketId);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
     },
   });
 }
 
 export function useAddTicketComment() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ ticketId, body }: { ticketId: string; body: string }) => {
@@ -338,10 +327,17 @@ export function useAddTicketComment() {
 
       if (!userData) throw new Error("User not found");
 
+      // Get the ticket's brand_id to use for the comment
+      const { data: ticket } = await supabase
+        .from("tickets")
+        .select("brand_id")
+        .eq("id", ticketId)
+        .single();
+
       const { error } = await supabase
         .from("ticket_comments")
         .insert({
-          brand_id: currentBrand?.id,
+          brand_id: ticket?.brand_id,
           ticket_id: ticketId,
           author_user_id: userData.id,
           body,
@@ -357,7 +353,6 @@ export function useAddTicketComment() {
 
 export function useAssignTicket() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ ticketId, userId }: { ticketId: string; userId: string | null }) => {
@@ -387,14 +382,14 @@ export function useAssignTicket() {
       const { error } = await supabase
         .from("tickets")
         .update(updates)
-        .eq("id", ticketId)
-        .eq("brand_id", currentBrand?.id);
+        .eq("id", ticketId);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
     },
   });
 }
