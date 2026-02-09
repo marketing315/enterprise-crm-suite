@@ -59,7 +59,8 @@ export function DashboardShell({
   const location = useLocation();
   const queryClient = useQueryClient();
 
-  const [period, setPeriod] = useState<Period>('today');
+  // Period filter — hidden until wired to queries (Fase B)
+  const [_period, _setPeriod] = useState<Period>('today');
   const [refreshMs, setRefreshMs] = useState(defaultRefreshMs);
 
   // Auto-refresh logic
