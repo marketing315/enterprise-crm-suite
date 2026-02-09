@@ -7,7 +7,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
  * Events include: incoming_call, outgoing_call, call_answered, 
  * call_disconnect_in, call_disconnect_out, lost_call, cmd_failed
  * 
- * For security, validate the token parameter matches our config.
+ * Security: validates the token parameter against VOISPEED_WEBHOOK_TOKEN secret.
  */
 
 interface VOIspeedEvent {
@@ -28,25 +28,46 @@ interface VOIspeedEvent {
 // to match CRM contact_phones.phone_normalized format (e.g. "3331234567")
 function normalizePhoneNumber(phone: string): string {
   let digits = phone.replace(/\D/g, "");
-  // Strip 0039 prefix (international dialing)
   if (digits.startsWith("0039")) {
     digits = digits.substring(4);
-  }
-  // Strip 39 prefix for Italian numbers (mobile/landline with country code)
-  else if (digits.startsWith("39") && digits.length > 10) {
+  } else if (digits.startsWith("39") && digits.length > 10) {
     digits = digits.substring(2);
   }
   return digits;
+}
+
+// Constant-time string comparison to prevent timing attacks
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 Deno.serve(async (req: Request) => {
   // VOIspeed sends events as GET with querystring
   const url = new URL(req.url);
   const params = Object.fromEntries(url.searchParams.entries()) as unknown as VOIspeedEvent;
-  
-  console.log("[VOIspeed] Event received:", params);
 
   try {
+    // --- Authentication: validate shared secret token ---
+    const expectedToken = Deno.env.get("VOISPEED_WEBHOOK_TOKEN");
+    if (!expectedToken) {
+      console.error("[VOIspeed] VOISPEED_WEBHOOK_TOKEN not configured");
+      return new Response("Server misconfigured", { status: 500 });
+    }
+
+    const providedToken = params.token || "";
+    if (!providedToken || !timingSafeEqual(providedToken, expectedToken)) {
+      console.warn("[VOIspeed] Unauthorized request - invalid or missing token");
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    // --- Validated, proceed with event processing ---
+    console.log("[VOIspeed] Event received:", { event_name: params.event_name, ext: params.ext });
+
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -334,12 +355,10 @@ Deno.serve(async (req: Request) => {
         console.log(`[VOIspeed] Unhandled event: ${event_name}`);
     }
 
-    // VOIspeed expects 200 OK
     return new Response("OK", { status: 200 });
 
   } catch (error) {
     console.error("[VOIspeed] Unhandled webhook error:", error);
-    // Still return 200 to prevent VOIspeed retries
     return new Response("Error logged", { status: 200 });
   }
 });
