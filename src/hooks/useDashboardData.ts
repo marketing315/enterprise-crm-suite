@@ -37,7 +37,6 @@ export function useDashboardData() {
       return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 30000,
   });
 
   // KPI: Lead ultimi 7 giorni (contatti unici, non eventi)
