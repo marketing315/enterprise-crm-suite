@@ -121,7 +121,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 30000,
   });
 
   // KPI: Ticket con SLA breach
