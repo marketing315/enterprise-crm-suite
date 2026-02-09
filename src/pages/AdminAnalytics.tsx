@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useAdvancedAnalytics } from "@/hooks/useAdvancedAnalytics";
+import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { AnalyticsKpiCards } from "@/components/admin/analytics/AnalyticsKpiCards";
 import { FunnelChart } from "@/components/admin/analytics/FunnelChart";
+import { MarketingFunnelChart } from "@/components/admin/analytics/MarketingFunnelChart";
+import { FunnelLossTable } from "@/components/admin/analytics/FunnelLossTable";
+import { FunnelBreakdownTable } from "@/components/admin/analytics/FunnelBreakdownTable";
 import { SourcePerformanceChart } from "@/components/admin/analytics/SourcePerformanceChart";
 import { TrendComparisonChart } from "@/components/admin/analytics/TrendComparisonChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
