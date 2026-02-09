@@ -124,6 +124,9 @@ export function MainLayout() {
   const { newTicketsCount, myNewAssignmentsCount, slaBreachCount, resetCounts } = useTicketRealtime();
   const ticketActivityCount = newTicketsCount + myNewAssignmentsCount;
 
+  // Global realtime subscriptions for all data tables
+  useGlobalRealtime();
+
   // Build menu items based on permissions
   const menuItems = useMemo(() => {
     const items = [...baseMenuItems];
