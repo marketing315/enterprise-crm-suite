@@ -36,17 +36,30 @@ export interface TicketNotificationState {
   slaBreachCount: number;
 }
 
+// Helper: check if a brand_id belongs to the current view
+function isBrandInScope(
+  brandId: string,
+  isAllBrandsSelected: boolean,
+  allBrandIds: string[],
+  currentBrandId?: string
+): boolean {
+  if (isAllBrandsSelected) {
+    return allBrandIds.includes(brandId);
+  }
+  return brandId === currentBrandId;
+}
+
 /**
  * Hook for realtime ticket notifications.
- * Subscribes to tickets and ticket_comments changes for the current brand.
- * Returns notification counts and provides automatic query invalidation.
+ * Subscribes to tickets and ticket_comments changes for the current brand(s).
+ * In "Azienda Intera" view, subscribes to ALL brand tickets.
  */
 export function useTicketRealtime(
   onNewTicket?: () => void,
   onAssignedToMe?: (ticketTitle: string) => void
 ): TicketNotificationState & { resetCounts: () => void } {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
   const { supabaseUser } = useAuth();
   const { data: operators } = useBrandOperators();
   
@@ -77,14 +90,17 @@ export function useTicketRealtime(
 
       // INSERT event
       if (payload.eventType === "INSERT" && newTicket) {
-        if (newTicket.brand_id !== currentBrand?.id) return;
+        if (!isBrandInScope(newTicket.brand_id, isAllBrandsSelected, allBrandIds, currentBrand?.id)) return;
 
         setNotificationState((prev) => ({
           ...prev,
           newTicketsCount: prev.newTicketsCount + 1,
         }));
 
-        queryClient.invalidateQueries({ queryKey: ["tickets", currentBrand?.id] });
+        // Invalidate all relevant ticket queries
+        queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        queryClient.invalidateQueries({ queryKey: ["tickets-search"] });
+        queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
 
         toast.info("Nuovo ticket", {
           description: newTicket.title || "Un nuovo ticket è stato creato",
@@ -95,7 +111,7 @@ export function useTicketRealtime(
 
       // UPDATE event
       if (payload.eventType === "UPDATE" && newTicket && oldTicket) {
-        if (newTicket.brand_id !== currentBrand?.id) return;
+        if (!isBrandInScope(newTicket.brand_id, isAllBrandsSelected, allBrandIds, currentBrand?.id)) return;
 
         // Check if ticket was just assigned to me
         if (
@@ -115,11 +131,13 @@ export function useTicketRealtime(
           onAssignedToMe?.(newTicket.title);
         }
 
-        queryClient.invalidateQueries({ queryKey: ["tickets", currentBrand?.id] });
+        queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        queryClient.invalidateQueries({ queryKey: ["tickets-search"] });
         queryClient.invalidateQueries({ queryKey: ["ticket", newTicket.id] });
+        queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
       }
     },
-    [currentBrand?.id, myUserId, queryClient, onNewTicket, onAssignedToMe]
+    [currentBrand?.id, isAllBrandsSelected, allBrandIds, myUserId, queryClient, onNewTicket, onAssignedToMe]
   );
 
   const handleCommentChange = useCallback(
@@ -127,14 +145,14 @@ export function useTicketRealtime(
       const newComment = payload.new as CommentRow | undefined;
 
       if (payload.eventType === "INSERT" && newComment) {
-        if (newComment.brand_id !== currentBrand?.id) return;
+        if (!isBrandInScope(newComment.brand_id, isAllBrandsSelected, allBrandIds, currentBrand?.id)) return;
 
         queryClient.invalidateQueries({
           queryKey: ["ticket-comments", newComment.ticket_id],
         });
       }
     },
-    [currentBrand?.id, queryClient]
+    [currentBrand?.id, isAllBrandsSelected, allBrandIds, queryClient]
   );
 
   const handleAuditLogChange = useCallback(
@@ -143,7 +161,7 @@ export function useTicketRealtime(
 
       // Only handle SLA breach events
       if (payload.eventType === "INSERT" && newLog && newLog.action_type === "sla_breach") {
-        if (newLog.brand_id !== currentBrand?.id) return;
+        if (!isBrandInScope(newLog.brand_id, isAllBrandsSelected, allBrandIds, currentBrand?.id)) return;
 
         // Fetch ticket to check assignment
         const { data: ticket } = await supabase
@@ -172,12 +190,14 @@ export function useTicketRealtime(
         }
 
         // Always invalidate queries to refresh the list
-        queryClient.invalidateQueries({ queryKey: ["tickets", currentBrand?.id] });
+        queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        queryClient.invalidateQueries({ queryKey: ["tickets-search"] });
         queryClient.invalidateQueries({ queryKey: ["ticket", newLog.ticket_id] });
         queryClient.invalidateQueries({ queryKey: ["ticket-audit-logs", newLog.ticket_id] });
+        queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
       }
     },
-    [currentBrand?.id, myUserId, queryClient]
+    [currentBrand?.id, isAllBrandsSelected, allBrandIds, myUserId, queryClient]
   );
 
   useEffect(() => {
@@ -186,16 +206,24 @@ export function useTicketRealtime(
     // Reset notification counts when brand changes
     resetCounts();
 
+    // In global view, subscribe without brand filter to catch all brands' events.
+    // In single brand view, use a brand filter for efficiency.
+    const brandFilter = isAllBrandsSelected
+      ? undefined
+      : `brand_id=eq.${currentBrand.id}`;
+
+    const channelSuffix = isAllBrandsSelected ? "all" : currentBrand.id;
+
     // Subscribe to tickets table
     const ticketsChannel = supabase
-      .channel(`tickets-realtime-${currentBrand.id}`)
+      .channel(`tickets-realtime-${channelSuffix}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "tickets",
-          filter: `brand_id=eq.${currentBrand.id}`,
+          ...(brandFilter ? { filter: brandFilter } : {}),
         },
         handleTicketChange
       )
@@ -203,14 +231,14 @@ export function useTicketRealtime(
 
     // Subscribe to ticket_comments table
     const commentsChannel = supabase
-      .channel(`comments-realtime-${currentBrand.id}`)
+      .channel(`comments-realtime-${channelSuffix}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "ticket_comments",
-          filter: `brand_id=eq.${currentBrand.id}`,
+          ...(brandFilter ? { filter: brandFilter } : {}),
         },
         handleCommentChange
       )
@@ -218,14 +246,14 @@ export function useTicketRealtime(
 
     // Subscribe to ticket_audit_logs for SLA breach notifications
     const auditChannel = supabase
-      .channel(`audit-realtime-${currentBrand.id}`)
+      .channel(`audit-realtime-${channelSuffix}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "ticket_audit_logs",
-          filter: `brand_id=eq.${currentBrand.id}`,
+          ...(brandFilter ? { filter: brandFilter } : {}),
         },
         handleAuditLogChange
       )
@@ -236,7 +264,7 @@ export function useTicketRealtime(
       supabase.removeChannel(commentsChannel);
       supabase.removeChannel(auditChannel);
     };
-  }, [currentBrand?.id, handleTicketChange, handleCommentChange, handleAuditLogChange, resetCounts]);
+  }, [currentBrand?.id, isAllBrandsSelected, handleTicketChange, handleCommentChange, handleAuditLogChange, resetCounts]);
 
   return { ...notificationState, resetCounts };
 }

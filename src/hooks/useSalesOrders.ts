@@ -22,12 +22,15 @@ interface UseSalesOrdersOptions {
   to?: Date;
 }
 
+// System brand ID for global view
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+
 export function useSalesOrders(options: UseSalesOrdersOptions = {}) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
   const { status, assignedUserId, from, to } = options;
 
   return useQuery({
-    queryKey: ["sales-orders", currentBrand?.id, status, assignedUserId, from?.toISOString(), to?.toISOString()],
+    queryKey: ["sales-orders", isAllBrandsSelected ? "all" : currentBrand?.id, status, assignedUserId, from?.toISOString(), to?.toISOString()],
     queryFn: async (): Promise<SalesOrderWithRelations[]> => {
       if (!currentBrand) return [];
 
@@ -38,8 +41,18 @@ export function useSalesOrders(options: UseSalesOrdersOptions = {}) {
           contact:contacts(id, first_name, last_name, email),
           assigned_user:users!sales_orders_assigned_user_id_fkey(id, full_name, email)
         `)
-        .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
+
+      // Apply brand filter based on selection mode
+      if (isAllBrandsSelected) {
+        if (allBrandIds.length > 0) {
+          query = query.in("brand_id", allBrandIds);
+        } else {
+          return [];
+        }
+      } else {
+        query = query.eq("brand_id", currentBrand.id);
+      }
 
       if (status) {
         if (Array.isArray(status)) {
