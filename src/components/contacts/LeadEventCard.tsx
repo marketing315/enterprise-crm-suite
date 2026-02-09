@@ -7,6 +7,7 @@ interface LeadEvent {
   id: string;
   source: string;
   received_at: string;
+  occurred_at?: string | null;
   source_name?: string | null;
   raw_payload?: any;
   ai_priority?: number | null;
@@ -23,6 +24,11 @@ interface LeadEventCardProps {
 export function LeadEventCard({ event }: LeadEventCardProps) {
   const ev = event as any;
 
+  // Use occurred_at (original event time) if valid, otherwise fall back to received_at
+  const displayDate = event.occurred_at && new Date(event.occurred_at).getFullYear() > 2000
+    ? event.occurred_at
+    : event.received_at;
+
   return (
     <div className="rounded-lg border p-3 space-y-2 overflow-hidden">
       <div className="flex items-center justify-between">
@@ -33,7 +39,7 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
           )}
         </div>
         <span className="text-xs text-muted-foreground">
-          {format(new Date(event.received_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+          {format(new Date(displayDate), 'dd/MM/yyyy HH:mm', { locale: it })}
         </span>
       </div>
 
