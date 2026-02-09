@@ -135,7 +135,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
       const { data: contactId, error: contactError } = await supabase.rpc(
         "find_or_create_contact",
         {
-          p_brand_id: currentBrand.id,
+          p_brand_id: brandId,
           p_phone_normalized: normalized.normalized,
           p_phone_raw: normalized.raw,
           p_country_code: normalized.countryCode,
