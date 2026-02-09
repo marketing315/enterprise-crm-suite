@@ -20,6 +20,7 @@ import {
 } from "@/hooks/useNotifications";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useCallback } from "react";
 
 const entityRoutes: Record<string, (id: string) => string> = {
   ticket: (id) => `/tickets?open=${id}`,
