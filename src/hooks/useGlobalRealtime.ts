@@ -54,13 +54,11 @@ export function useGlobalRealtime() {
         const channel = supabase.channel(channelName);
 
         tables.forEach((table) => {
-          // Build filter: skip brand_id filter in "Azienda Intera" mode
-          const filterOpts: Parameters<typeof channel.on>[2] =
-            isAllBrandsSelected
-              ? { event: '*', schema: 'public', table }
-              : { event: '*', schema: 'public', table, filter: `brand_id=eq.${brandId}` };
+          const opts = isAllBrandsSelected
+            ? { event: '*' as const, schema: 'public' as const, table }
+            : { event: '*' as const, schema: 'public' as const, table, filter: `brand_id=eq.${brandId}` };
 
-          channel.on('postgres_changes', filterOpts, () => {
+          channel.on('postgres_changes', opts, () => {
             const keys = TABLE_QUERY_MAP[table];
             if (keys) {
               keys.forEach((queryKey) =>
