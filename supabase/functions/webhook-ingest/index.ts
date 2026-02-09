@@ -821,7 +821,7 @@ Deno.serve(async (req: Request) => {
         await updateAuditRecord(auditId, "failed", `lead_event_failed: ${leadEventError.message}`);
       }
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to create lead event", contact_id: contactId }),
+        JSON.stringify({ success: false, error: "Failed to process lead event" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
