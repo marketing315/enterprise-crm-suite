@@ -61,7 +61,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateInfo | null>(null);
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId, isGlobalView, currentBrand } = useWriteBrandId();
   const queryClient = useQueryClient();
 
   const form = useForm<FormValues>({
