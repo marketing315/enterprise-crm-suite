@@ -152,7 +152,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
 
       // Create manual lead event for audit trail
       const { error: eventError } = await supabase.from("lead_events").insert({
-        brand_id: currentBrand.id,
+        brand_id: brandId,
         contact_id: contactId,
         source: "manual",
         source_name: "Creazione manuale",
