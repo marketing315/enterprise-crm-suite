@@ -1,14 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@supabase/supabase-js";
 import { useBrand } from "@/contexts/BrandContext";
-
-// Untyped client for new tables not in generated types
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const untypedClient = createClient(supabaseUrl, supabaseKey);
-
-// System brand ID for global view
-const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+import { untypedClient } from "@/integrations/supabase/untypedClient";
 
 interface ContactSalesTotals {
   contact_id: string;

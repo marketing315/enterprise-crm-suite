@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand, ALL_BRANDS_ID } from "@/contexts/BrandContext";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import type { AppointmentStatus, AppointmentWithRelations } from "@/types/database";
 
 interface AppointmentSearchParams {
@@ -94,14 +95,14 @@ interface CreateAppointmentParams {
 
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (params: CreateAppointmentParams) => {
-      if (!currentBrand?.id) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data, error } = await supabase.rpc("create_appointment", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandId,
         p_contact_id: params.contactId,
         p_deal_id: params.dealId || null,
         p_scheduled_at: params.scheduledAt,

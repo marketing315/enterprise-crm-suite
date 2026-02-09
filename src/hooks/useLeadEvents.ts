@@ -65,7 +65,7 @@ interface UseLeadEventsParams {
 }
 
 export function useLeadEvents(params: UseLeadEventsParams = {}) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const { isAdmin, isCeo } = useAuth();
   
   const {
@@ -107,7 +107,7 @@ export function useLeadEvents(params: UseLeadEventsParams = {}) {
   return useQuery({
     queryKey: [
       "lead-events-rpc",
-      currentBrand?.id,
+      isAllBrandsSelected ? "all" : currentBrand?.id,
       periodFilter,
       sourceFilter,
       sourceNameFilter,

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import type { Json } from "@/integrations/supabase/types";
 
 // ============= Types =============
@@ -212,7 +213,7 @@ export function useAutomationRules() {
 
 export function useCreateAutomationRule() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (params: {
@@ -228,12 +229,12 @@ export function useCreateAutomationRule() {
       priority?: number;
       is_active?: boolean;
     }) => {
-      if (!currentBrand?.id) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data, error } = await supabase
         .from("automation_rules")
         .insert({
-          brand_id: currentBrand.id,
+          brand_id: brandId,
           name: params.name,
           description: params.description || null,
           trigger_type: params.trigger_type || "webhook_event",
@@ -256,14 +257,13 @@ export function useCreateAutomationRule() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["automation-rules", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["automation-rules"] });
     },
   });
 }
 
 export function useUpdateAutomationRule() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (params: {
@@ -301,14 +301,13 @@ export function useUpdateAutomationRule() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["automation-rules", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["automation-rules"] });
     },
   });
 }
 
 export function useDeleteAutomationRule() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -320,7 +319,7 @@ export function useDeleteAutomationRule() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["automation-rules", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["automation-rules"] });
     },
   });
 }

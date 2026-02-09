@@ -4,10 +4,10 @@ import { useBrand } from "@/contexts/BrandContext";
 import type { ForecastResult, Forecast, ForecastFactor } from "@/types/predictive";
 
 export function useRevenueForecast(period: "month" | "quarter" = "month") {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
 
   return useQuery({
-    queryKey: ["revenue-forecast", currentBrand?.id, period],
+    queryKey: ["revenue-forecast", isAllBrandsSelected ? "all" : currentBrand?.id, period],
     queryFn: async (): Promise<ForecastResult | null> => {
       if (!currentBrand) return null;
 
@@ -25,20 +25,27 @@ export function useRevenueForecast(period: "month" | "quarter" = "month") {
 }
 
 export function useForecastHistory(forecastType: "revenue" | "deals" | "margin" = "revenue") {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["forecast-history", currentBrand?.id, forecastType],
+    queryKey: ["forecast-history", isAllBrandsSelected ? "all" : currentBrand?.id, forecastType],
     queryFn: async (): Promise<Forecast[]> => {
       if (!currentBrand) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("forecasts")
         .select("*")
-        .eq("brand_id", currentBrand.id)
         .eq("forecast_type", forecastType)
         .order("period_start", { ascending: false })
         .limit(12);
+
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
+      } else {
+        query = query.eq("brand_id", currentBrand.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

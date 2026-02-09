@@ -15,11 +15,11 @@ interface UseAdPlatformStatsParams {
 }
 
 export function useAdPlatformStats({ fromDate, toDate, platform }: UseAdPlatformStatsParams) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["ad-platform-stats", brandId, fromDate, toDate, platform],
+    queryKey: ["ad-platform-stats", isAllBrandsSelected ? "all" : brandId, fromDate, toDate, platform],
     queryFn: async (): Promise<AdPlatformStatAggregated[]> => {
       if (!brandId) return [];
 
@@ -38,11 +38,11 @@ export function useAdPlatformStats({ fromDate, toDate, platform }: UseAdPlatform
 }
 
 export function useAdPlatformStatsTrend({ fromDate, toDate, platform }: UseAdPlatformStatsParams) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["ad-platform-stats-trend", brandId, fromDate, toDate, platform],
+    queryKey: ["ad-platform-stats-trend", isAllBrandsSelected ? "all" : brandId, fromDate, toDate, platform],
     queryFn: async (): Promise<AdPlatformStatTrend[]> => {
       if (!brandId) return [];
 
@@ -61,11 +61,11 @@ export function useAdPlatformStatsTrend({ fromDate, toDate, platform }: UseAdPla
 }
 
 export function useAdPlatformStatsSummary({ fromDate, toDate, platform }: UseAdPlatformStatsParams) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const brandId = currentBrand?.id;
 
   return useQuery({
-    queryKey: ["ad-platform-stats-summary", brandId, fromDate, toDate, platform],
+    queryKey: ["ad-platform-stats-summary", isAllBrandsSelected ? "all" : brandId, fromDate, toDate, platform],
     queryFn: async (): Promise<AdPlatformStatSummary | null> => {
       if (!brandId) return null;
 
