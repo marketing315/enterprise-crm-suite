@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
             continue;
           }
           console.error(`[META-EVENT] Insert error:`, insertError);
-          results.push({ leadgen_id: leadgenId, status: "error", error: insertError.message });
+          results.push({ leadgen_id: leadgenId, status: "error" });
           continue;
         }
 
