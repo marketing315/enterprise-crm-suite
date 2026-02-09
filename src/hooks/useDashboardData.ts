@@ -205,57 +205,76 @@ export function useDashboardData() {
     refetchInterval: 60000,
   });
 
-  // Trend data (7 giorni)
+  // Trend data (7 giorni) - optimized: 2 queries instead of 14
   const trendData = useQuery({
     queryKey: ["dashboard-trend", getQueryKeyBrand()],
     queryFn: async () => {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return [];
 
+      const weekAgo = subDays(new Date(), 6);
+      const todayEnd = endOfDay(new Date());
+
+      // Batch query: get all lead events for the 7-day range
+      let leadsQuery = supabase
+        .from("lead_events")
+        .select("contact_id, received_at")
+        .gte("received_at", startOfDay(weekAgo).toISOString())
+        .lte("received_at", todayEnd.toISOString())
+        .not("contact_id", "is", null);
+
+      if (brandIds.length === 1) {
+        leadsQuery = leadsQuery.eq("brand_id", brandIds[0]);
+      } else {
+        leadsQuery = leadsQuery.in("brand_id", brandIds);
+      }
+
+      // Batch query: get all tickets for the 7-day range
+      let ticketsQuery = supabase
+        .from("tickets")
+        .select("created_at")
+        .gte("created_at", startOfDay(weekAgo).toISOString())
+        .lte("created_at", todayEnd.toISOString());
+
+      if (brandIds.length === 1) {
+        ticketsQuery = ticketsQuery.eq("brand_id", brandIds[0]);
+      } else {
+        ticketsQuery = ticketsQuery.in("brand_id", brandIds);
+      }
+
+      const [leadsResult, ticketsResult] = await Promise.all([leadsQuery, ticketsQuery]);
+
+      if (leadsResult.error) throw leadsResult.error;
+      if (ticketsResult.error) throw ticketsResult.error;
+
+      // Group by day client-side
       const days: { date: string; label: string; leads: number; tickets: number }[] = [];
 
       for (let i = 6; i >= 0; i--) {
         const date = subDays(new Date(), i);
         const dateStr = format(date, "yyyy-MM-dd");
         const label = format(date, "EEE", { locale: it });
+        const dayStart = startOfDay(date);
+        const dayEnd = endOfDay(date);
 
-        // Count unique contacts for this day (not events)
-        let leadsQuery = supabase
-          .from("lead_events")
-          .select("contact_id")
-          .gte("received_at", startOfDay(date).toISOString())
-          .lte("received_at", endOfDay(date).toISOString())
-          .not("contact_id", "is", null);
-
-        if (brandIds.length === 1) {
-          leadsQuery = leadsQuery.eq("brand_id", brandIds[0]);
-        } else {
-          leadsQuery = leadsQuery.in("brand_id", brandIds);
-        }
-
-        const { data: leadsData } = await leadsQuery;
-        const leadsCount = new Set(leadsData?.map(e => e.contact_id) || []).size;
+        // Count unique contacts for this day
+        const dayLeads = (leadsResult.data || []).filter(e => {
+          const t = new Date(e.received_at);
+          return t >= dayStart && t <= dayEnd;
+        });
+        const uniqueContacts = new Set(dayLeads.map(e => e.contact_id));
 
         // Count tickets for this day
-        let ticketsQuery = supabase
-          .from("tickets")
-          .select("*", { count: "exact", head: true })
-          .gte("created_at", startOfDay(date).toISOString())
-          .lte("created_at", endOfDay(date).toISOString());
-
-        if (brandIds.length === 1) {
-          ticketsQuery = ticketsQuery.eq("brand_id", brandIds[0]);
-        } else {
-          ticketsQuery = ticketsQuery.in("brand_id", brandIds);
-        }
-
-        const { count: ticketsCount } = await ticketsQuery;
+        const dayTickets = (ticketsResult.data || []).filter(t => {
+          const ts = new Date(t.created_at);
+          return ts >= dayStart && ts <= dayEnd;
+        });
 
         days.push({
           date: dateStr,
           label: label.charAt(0).toUpperCase() + label.slice(1),
-          leads: leadsCount,
-          tickets: ticketsCount || 0,
+          leads: uniqueContacts.size,
+          tickets: dayTickets.length,
         });
       }
 

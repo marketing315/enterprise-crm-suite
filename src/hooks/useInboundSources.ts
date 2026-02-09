@@ -14,24 +14,33 @@
    updated_at: string;
  }
  
- export function useInboundSources() {
-   const { currentBrand } = useBrand();
- 
-   return useQuery({
-     queryKey: ["inbound-sources", currentBrand?.id],
-     queryFn: async (): Promise<InboundSource[]> => {
-       if (!currentBrand?.id) return [];
-       const { data, error } = await supabase
-         .from("webhook_sources")
-         .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
-         .eq("brand_id", currentBrand.id)
-         .order("name", { ascending: true });
-       if (error) throw error;
-       return data as InboundSource[];
-     },
-     enabled: !!currentBrand?.id,
-   });
- }
+export function useInboundSources() {
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
+
+  return useQuery({
+    queryKey: ["inbound-sources", isAllBrandsSelected ? "all" : currentBrand?.id],
+    queryFn: async (): Promise<InboundSource[]> => {
+      if (!isAllBrandsSelected && !currentBrand?.id) return [];
+      if (isAllBrandsSelected && allBrandIds.length === 0) return [];
+
+      let query = supabase
+        .from("webhook_sources")
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
+        .order("name", { ascending: true });
+
+      if (isAllBrandsSelected) {
+        query = query.in("brand_id", allBrandIds);
+      } else {
+        query = query.eq("brand_id", currentBrand!.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as InboundSource[];
+    },
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id,
+  });
+}
  
  /**
   * Hook to get automation event types including dynamic inbound sources

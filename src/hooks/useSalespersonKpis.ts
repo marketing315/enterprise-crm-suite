@@ -23,10 +23,10 @@ interface UseSalespersonKpisOptions {
 }
 
 export function useSalespersonKpis(options: UseSalespersonKpisOptions = {}) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
 
   return useQuery({
-    queryKey: ["salesperson-kpis", currentBrand?.id, options.from?.toISOString(), options.to?.toISOString()],
+    queryKey: ["salesperson-kpis", isAllBrandsSelected ? "all" : currentBrand?.id, options.from?.toISOString(), options.to?.toISOString()],
     queryFn: async (): Promise<SalespersonKpi[]> => {
       if (!currentBrand) return [];
 

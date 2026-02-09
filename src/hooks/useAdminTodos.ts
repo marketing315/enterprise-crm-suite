@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import type { Database } from "@/integrations/supabase/types";
 
 type AdminTodo = Database["public"]["Tables"]["admin_todos"]["Row"];
@@ -46,17 +47,14 @@ export function useAdminTodos() {
     enabled: hasBrandSelected,
   });
 
+  const { getWriteBrandId } = useWriteBrandId();
+
   const addTodo = useMutation({
     mutationFn: async (title: string) => {
+      const targetBrandId = getWriteBrandId();
+
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Not authenticated");
-
-      // For "all brands" mode, use the first brand. For single brand, use that brand.
-      const targetBrandId = isAllBrandsSelected 
-        ? (allBrandIds.length > 0 ? allBrandIds[0] : null)
-        : brandId;
-      
-      if (!targetBrandId) throw new Error("No brand available");
 
       // Get user_id from users table using RPC
       const { data: userId, error: rpcError } = await supabase.rpc("get_user_id", { 

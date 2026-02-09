@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import type { Json } from "@/integrations/supabase/types";
 
 export type PayloadFormat = "json" | "form_urlencoded";
@@ -138,13 +139,14 @@ export function generateWebhookSecret(): string {
 // ============= Webhooks CRUD =============
 
 export function useWebhooks() {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["webhooks", currentBrand?.id],
+    queryKey: ["webhooks", isAllBrandsSelected ? "all" : currentBrand?.id],
     queryFn: async (): Promise<OutboundWebhook[]> => {
       if (!currentBrand?.id) return [];
 
+      // RPC handles system brand resolution internally
       const { data, error } = await supabase.rpc("list_outbound_webhooks", {
         p_brand_id: currentBrand.id,
       });
@@ -158,7 +160,7 @@ export function useWebhooks() {
 
 export function useCreateWebhook() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
 
   return useMutation({
     mutationFn: async (params: {
@@ -171,10 +173,10 @@ export function useCreateWebhook() {
       payload_mapping?: PayloadMapping | null;
       custom_url_params?: CustomUrlParams | null;
     }): Promise<{ webhook_id: string; secret: string }> => {
-      if (!currentBrand?.id) throw new Error("No brand selected");
+      const brandId = getWriteBrandId();
 
       const { data, error } = await supabase.rpc("create_outbound_webhook", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandId,
         p_name: params.name,
         p_url: params.url,
         p_secret: params.secret,
@@ -193,14 +195,13 @@ export function useCreateWebhook() {
       return result[0];
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["webhooks", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
     },
   });
 }
 
 export function useUpdateWebhook() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (params: {
@@ -228,14 +229,13 @@ export function useUpdateWebhook() {
       return data as boolean;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["webhooks", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
     },
   });
 }
 
 export function useRotateWebhookSecret() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (params: {
@@ -251,14 +251,13 @@ export function useRotateWebhookSecret() {
       return data as string;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["webhooks", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
     },
   });
 }
 
 export function useDeleteWebhook() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (id: string): Promise<boolean> => {
@@ -270,14 +269,13 @@ export function useDeleteWebhook() {
       return data as boolean;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["webhooks", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
     },
   });
 }
 
 export function useTestWebhook() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (webhookId: string): Promise<string> => {
@@ -290,7 +288,7 @@ export function useTestWebhook() {
     },
     onSuccess: () => {
       // Refresh deliveries after test
-      queryClient.invalidateQueries({ queryKey: ["webhook-deliveries", currentBrand?.id] });
+      queryClient.invalidateQueries({ queryKey: ["webhook-deliveries"] });
     },
   });
 }
@@ -304,12 +302,12 @@ export function useWebhookDeliveries(params: {
   limit?: number;
   offset?: number;
 }) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
 
   return useQuery({
     queryKey: [
       "webhook-deliveries",
-      currentBrand?.id,
+      isAllBrandsSelected ? "all" : currentBrand?.id,
       params.webhookId,
       params.status,
       params.eventType,
@@ -333,7 +331,7 @@ export function useWebhookDeliveries(params: {
       return data as unknown as DeliveriesResponse;
     },
     enabled: !!currentBrand?.id,
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 10000,
   });
 }
 

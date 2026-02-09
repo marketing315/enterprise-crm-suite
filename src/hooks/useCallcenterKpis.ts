@@ -30,10 +30,10 @@ export interface OperatorKpis {
 }
 
 export function useCallcenterKpisOverview(from: Date, to: Date) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
 
   return useQuery({
-    queryKey: ["callcenter-kpis-overview", currentBrand?.id, from.toISOString(), to.toISOString()],
+    queryKey: ["callcenter-kpis-overview", isAllBrandsSelected ? "all" : currentBrand?.id, from.toISOString(), to.toISOString()],
     queryFn: async () => {
       if (!currentBrand?.id) return null;
 
@@ -52,10 +52,10 @@ export function useCallcenterKpisOverview(from: Date, to: Date) {
 }
 
 export function useCallcenterKpisByOperator(from: Date, to: Date) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
 
   return useQuery({
-    queryKey: ["callcenter-kpis-by-operator", currentBrand?.id, from.toISOString(), to.toISOString()],
+    queryKey: ["callcenter-kpis-by-operator", isAllBrandsSelected ? "all" : currentBrand?.id, from.toISOString(), to.toISOString()],
     queryFn: async () => {
       if (!currentBrand?.id) return [];
 
