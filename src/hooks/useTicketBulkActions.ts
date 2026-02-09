@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useBrand } from "@/contexts/BrandContext";
 import { TicketStatus } from "@/hooks/useTickets";
 
 export interface BulkUpdateParams {
@@ -13,12 +12,11 @@ export interface BulkUpdateParams {
 
 export function useTicketBulkUpdate() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async ({ ticketIds, status, priority, categoryTagId, assignToUserId }: BulkUpdateParams) => {
-      if (!currentBrand?.id || ticketIds.length === 0) {
-        throw new Error("No brand or tickets selected");
+      if (ticketIds.length === 0) {
+        throw new Error("No tickets selected");
       }
 
       // Build update object dynamically
@@ -72,10 +70,10 @@ export function useTicketBulkUpdate() {
         return { updated: 0 };
       }
 
+      // Filter by ticket IDs only — RLS handles security, no brand filter needed
       const { error, count } = await supabase
         .from("tickets")
         .update(updates)
-        .eq("brand_id", currentBrand.id)
         .in("id", ticketIds);
 
       if (error) throw error;
@@ -85,18 +83,19 @@ export function useTicketBulkUpdate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["tickets-search"] });
     },
   });
 }
 
 export function useTicketBulkAssignToMe() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (ticketIds: string[]) => {
-      if (!currentBrand?.id || ticketIds.length === 0) {
-        throw new Error("No brand or tickets selected");
+      if (ticketIds.length === 0) {
+        throw new Error("No tickets selected");
       }
 
       // Get current user
@@ -111,6 +110,7 @@ export function useTicketBulkAssignToMe() {
 
       if (!currentUserData) throw new Error("User not found");
 
+      // Filter by ticket IDs only — RLS handles security, no brand filter needed
       const { error, count } = await supabase
         .from("tickets")
         .update({
@@ -118,7 +118,6 @@ export function useTicketBulkAssignToMe() {
           assigned_at: new Date().toISOString(),
           assigned_by_user_id: currentUserData.id,
         })
-        .eq("brand_id", currentBrand.id)
         .in("id", ticketIds);
 
       if (error) throw error;
@@ -128,6 +127,8 @@ export function useTicketBulkAssignToMe() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["tickets-search"] });
     },
   });
 }

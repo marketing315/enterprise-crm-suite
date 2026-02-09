@@ -57,15 +57,14 @@ export function useContact(contactId: string | null) {
 
 export function useUpdateContact() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (params: { id: string; updates: Partial<Contact> }) => {
+      // Filter by ID only — RLS handles security, no brand filter needed
       const { data, error } = await supabase
         .from('contacts')
         .update(params.updates)
         .eq('id', params.id)
-        .eq('brand_id', currentBrand?.id)
         .select()
         .single();
 
@@ -81,15 +80,14 @@ export function useUpdateContact() {
 
 export function useDeleteContact() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (contactId: string) => {
+      // Filter by ID only — RLS handles security, no brand filter needed
       const { error } = await supabase
         .from('contacts')
         .delete()
-        .eq('id', contactId)
-        .eq('brand_id', currentBrand?.id);
+        .eq('id', contactId);
 
       if (error) throw error;
     },

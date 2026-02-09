@@ -7,6 +7,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const untypedClient = createClient(supabaseUrl, supabaseKey);
 
+// System brand ID for global view
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+
 interface ContactSalesTotals {
   contact_id: string;
   sales_count: number;
@@ -14,15 +17,18 @@ interface ContactSalesTotals {
 }
 
 export function useContactsSalesTotals() {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["contacts-sales-totals", currentBrand?.id],
+    queryKey: ["contacts-sales-totals", isAllBrandsSelected ? "all" : currentBrand?.id],
     queryFn: async (): Promise<Map<string, { count: number; total: number }>> => {
       if (!currentBrand) return new Map();
 
+      // In global view, pass null to get all brands; otherwise pass the specific brand
+      const brandId = isAllBrandsSelected ? null : currentBrand.id;
+
       const { data, error } = await untypedClient
-        .rpc("get_contacts_with_sales_totals", { p_brand_id: currentBrand.id });
+        .rpc("get_contacts_with_sales_totals", { p_brand_id: brandId });
 
       if (error) throw error;
 
