@@ -140,9 +140,9 @@ export function useExpenses(from: Date, to: Date, categoryId?: string) {
 
 export function useCreateExpense() {
   const queryClient = useQueryClient();
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const { user } = useAuth();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useMutation({
     mutationFn: async (data: ExpenseFormData) => {
