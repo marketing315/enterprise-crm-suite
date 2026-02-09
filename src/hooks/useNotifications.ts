@@ -57,7 +57,7 @@ export function useNotifications(limit: number = 50) {
       return (data || []) as Notification[];
     },
     enabled: !!currentBrand || isAllBrandsSelected,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 60000, // Realtime handles instant updates, no polling needed
   });
 }
 
