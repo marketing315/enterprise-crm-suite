@@ -24,7 +24,7 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
   const ev = event as any;
 
   return (
-    <div className="rounded-lg border p-3 space-y-2">
+    <div className="rounded-lg border p-3 space-y-2 overflow-hidden">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline">{event.source}</Badge>
@@ -38,7 +38,7 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
       </div>
 
       {event.source_name && (
-        <p className="text-sm">
+        <p className="text-sm break-words">
           <span className="text-muted-foreground">Sorgente:</span> {event.source_name}
         </p>
       )}
@@ -77,7 +77,7 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
       {ev.ai_conversation_summary && (
         <div className="text-sm">
           <span className="text-muted-foreground">Riepilogo AI:</span>{' '}
-          <span className="whitespace-pre-wrap">{ev.ai_conversation_summary}</span>
+          <span className="whitespace-pre-wrap break-words">{ev.ai_conversation_summary}</span>
         </div>
       )}
 
@@ -87,7 +87,7 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
             <Brain className="h-3 w-3" />
             Motivazione AI
           </summary>
-          <p className="mt-1 p-2 bg-muted rounded text-xs whitespace-pre-wrap">
+          <p className="mt-1 p-2 bg-muted rounded text-xs whitespace-pre-wrap break-words">
             {ev.ai_rationale}
           </p>
         </details>
@@ -98,7 +98,7 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
           <FileJson className="h-3 w-3" />
           Payload raw
         </summary>
-        <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
+        <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto whitespace-pre-wrap break-words">
           {JSON.stringify(event.raw_payload, null, 2)}
         </pre>
       </details>

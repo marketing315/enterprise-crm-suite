@@ -189,7 +189,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg">
+      <SheetContent className="w-full sm:max-w-lg overflow-hidden">
         <SheetHeader className="flex flex-row items-center justify-between">
           <SheetTitle>Dettaglio Contatto</SheetTitle>
           {contact && !isEditing && (
@@ -530,7 +530,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   <Separator />
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-muted-foreground">Messaggio Lead</h3>
-                    <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-3">
+                    <p className="text-sm whitespace-pre-wrap break-words overflow-hidden bg-muted/50 rounded-md p-3">
                       {(contact as any).lead_message}
                     </p>
                   </div>
