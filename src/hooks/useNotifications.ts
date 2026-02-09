@@ -74,7 +74,7 @@ export function useUnreadNotificationCount() {
       return (data as number) || 0;
     },
     enabled: !!currentBrand || isAllBrandsSelected,
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 60000, // Refetch every 60 seconds (realtime handles instant updates)
   });
 }
 
