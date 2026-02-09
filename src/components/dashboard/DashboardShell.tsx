@@ -59,7 +59,8 @@ export function DashboardShell({
   const location = useLocation();
   const queryClient = useQueryClient();
 
-  const [period, setPeriod] = useState<Period>('today');
+  // Period filter — hidden until wired to queries (Fase B)
+  const [_period, _setPeriod] = useState<Period>('today');
   const [refreshMs, setRefreshMs] = useState(defaultRefreshMs);
 
   // Auto-refresh logic
@@ -118,8 +119,8 @@ export function DashboardShell({
             </DropdownMenu>
           )}
 
-          {/* Period selector */}
-          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          {/* Period selector — hidden until wired to queries (Fase B) */}
+          {/* <Select value={_period} onValueChange={(v) => _setPeriod(v as Period)}>
             <SelectTrigger className="w-[140px] h-9">
               <SelectValue />
             </SelectTrigger>
@@ -128,7 +129,7 @@ export function DashboardShell({
                 <SelectItem key={k} value={k}>{v}</SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select> */}
 
           {/* Auto-refresh */}
           <Select
