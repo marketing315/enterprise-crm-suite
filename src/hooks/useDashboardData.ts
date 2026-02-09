@@ -169,7 +169,6 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
-    refetchInterval: 60000,
   });
 
   // KPI: Appuntamenti oggi
