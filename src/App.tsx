@@ -10,6 +10,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
 import SelectBrand from "@/pages/SelectBrand";
+import DashboardRedirect from "@/pages/DashboardRedirect";
 import Dashboard from "@/pages/Dashboard";
 import Contacts from "@/pages/Contacts";
 import Pipeline from "@/pages/Pipeline";
@@ -41,6 +42,14 @@ import MarketingCosts from "@/pages/marketing/MarketingCosts";
 import MarketingReports from "@/pages/marketing/MarketingReports";
 import CeoDashboard from "@/pages/CeoDashboard";
 import Install from "@/pages/Install";
+
+// Role-based dashboard pages (lazy would be better, but keeping sync for now)
+import AdminDashboard from "@/pages/dashboard/AdminDashboard";
+import CeoDashboardView from "@/pages/dashboard/CeoDashboardView";
+import CallcenterManagerDashboard from "@/pages/dashboard/CallcenterManagerDashboard";
+import SalesManagerDashboard from "@/pages/dashboard/SalesManagerDashboard";
+import CallcenterOperatorDashboard from "@/pages/dashboard/CallcenterOperatorDashboard";
+import SalespersonDashboard from "@/pages/dashboard/SalespersonDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
