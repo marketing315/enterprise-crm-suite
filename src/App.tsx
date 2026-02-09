@@ -99,7 +99,7 @@ const App = () => (
                 <Route path="/azienda/costi" element={<CompanyExpenses />} />
                 <Route path="/azienda/budget" element={<CompanyBudget />} />
                 <Route path="/azienda/report" element={<CompanyReports />} />
-                <Route path="/analytics" element={<AdminAnalytics />} />
+                
                 <Route path="/marketing" element={<MarketingDashboard />} />
                 <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
                 <Route path="/marketing/costi" element={<MarketingCosts />} />
