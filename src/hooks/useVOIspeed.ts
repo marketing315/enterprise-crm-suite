@@ -65,20 +65,8 @@ export function useUserVOIspeedExt() {
   return useQuery({
     queryKey: ["user-voispeed-ext", user?.id],
     queryFn: async () => {
-      if (!user?.id) return null;
-
-      const { data, error } = await supabase
-        .from("users")
-        .select("voispeed_ext")
-        .eq("supabase_auth_id", user.id)
-        .single();
-
-      if (error) {
-        console.error("Error fetching user VOIspeed ext:", error);
-        return null;
-      }
-
-      return data?.voispeed_ext as string | null;
+      if (!user) return null;
+      return user.voispeed_ext as string | null;
     },
     enabled: !!user?.id,
   });
