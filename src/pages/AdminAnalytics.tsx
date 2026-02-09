@@ -109,12 +109,23 @@ export default function AdminAnalytics() {
       />
 
       {/* Tabs */}
-      <Tabs defaultValue="funnel" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="funnel">Funnel</TabsTrigger>
+      <Tabs defaultValue="marketing-funnel" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="marketing-funnel">Funnel Mkt</TabsTrigger>
+          <TabsTrigger value="losses">Perdite</TabsTrigger>
+          <TabsTrigger value="funnel">Pipeline</TabsTrigger>
           <TabsTrigger value="sources">Fonti</TabsTrigger>
           <TabsTrigger value="trends">Trend</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="marketing-funnel" className="space-y-4">
+          <MarketingFunnelChart data={funnelMetrics} isLoading={funnelLoading} />
+          <FunnelBreakdownTable data={funnelBreakdown} isLoading={funnelLoading} />
+        </TabsContent>
+
+        <TabsContent value="losses" className="space-y-4">
+          <FunnelLossTable data={funnelLosses} isLoading={funnelLoading} />
+        </TabsContent>
 
         <TabsContent value="funnel" className="space-y-4">
           <FunnelChart data={funnel} isLoading={isLoading} />
