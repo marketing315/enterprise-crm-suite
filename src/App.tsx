@@ -94,7 +94,14 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
-                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/dashboard" element={<DashboardRedirect />} />
+                <Route path="/dashboard/overview" element={<Dashboard />} />
+                <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                <Route path="/dashboard/ceo" element={<CeoDashboardView />} />
+                <Route path="/dashboard/responsabile-callcenter" element={<CallcenterManagerDashboard />} />
+                <Route path="/dashboard/responsabile-venditori" element={<SalesManagerDashboard />} />
+                <Route path="/dashboard/callcenter" element={<CallcenterOperatorDashboard />} />
+                <Route path="/dashboard/venditore" element={<SalespersonDashboard />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/pipeline" element={<Pipeline />} />
                 <Route path="/sales" element={<Sales />} />
