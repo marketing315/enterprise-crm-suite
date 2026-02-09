@@ -231,9 +231,9 @@ export function useDeleteExpense() {
 
 // Budgets CRUD
 export function useBudgets(periodMonth?: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['budgets', brandId, periodMonth],
