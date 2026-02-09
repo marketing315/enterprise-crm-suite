@@ -60,17 +60,17 @@ export function useVOIspeedConfig() {
 
 // Check if current user has VOIspeed extension configured
 export function useUserVOIspeedExt() {
-  const { user } = useAuth();
+  const { supabaseUser } = useAuth();
 
   return useQuery({
-    queryKey: ["user-voispeed-ext", user?.id],
+    queryKey: ["user-voispeed-ext", supabaseUser?.id],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!supabaseUser?.id) return null;
 
       const { data, error } = await supabase
         .from("users")
         .select("voispeed_ext")
-        .eq("supabase_auth_id", user.id)
+        .eq("supabase_auth_id", supabaseUser.id)
         .single();
 
       if (error) {
@@ -80,7 +80,7 @@ export function useUserVOIspeedExt() {
 
       return data?.voispeed_ext as string | null;
     },
-    enabled: !!user?.id,
+    enabled: !!supabaseUser?.id,
   });
 }
 
@@ -142,15 +142,9 @@ export function useIncomingCallsRealtime(onIncomingCall: (call: IncomingCall) =>
   useEffect(() => {
     if (!user?.id) return;
 
-    // Get CRM user ID first
+    // user.id is already the CRM user ID (from users table)
     const setupSubscription = async () => {
-      const { data: crmUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("supabase_auth_id", user.id)
-        .single();
-
-      if (!crmUser) return;
+      const crmUserId = user.id;
 
       const channel = supabase
         .channel("incoming-calls")
@@ -160,7 +154,7 @@ export function useIncomingCallsRealtime(onIncomingCall: (call: IncomingCall) =>
             event: "INSERT",
             schema: "public",
             table: "incoming_calls",
-            filter: `user_id=eq.${crmUser.id}`,
+            filter: `user_id=eq.${crmUserId}`,
           },
           (payload) => {
             const call = payload.new as IncomingCall;
