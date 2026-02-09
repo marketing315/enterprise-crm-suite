@@ -104,9 +104,9 @@ export function useCreateExpenseCategory() {
 
 // Expenses CRUD
 export function useExpenses(from: Date, to: Date, categoryId?: string) {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
-  const brandId = currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id;
+  const brandId = isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id;
   
   return useQuery({
     queryKey: ['expenses', brandId, from.toISOString(), to.toISOString(), categoryId],
