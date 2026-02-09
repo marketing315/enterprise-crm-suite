@@ -1237,6 +1237,7 @@ export type Database = {
           alert_thresholds: Json | null
           auto_assign_enabled: boolean
           created_at: string
+          funnel_lost_threshold_days: number
           id: string
           is_system: boolean | null
           name: string
@@ -1250,6 +1251,7 @@ export type Database = {
           alert_thresholds?: Json | null
           auto_assign_enabled?: boolean
           created_at?: string
+          funnel_lost_threshold_days?: number
           id?: string
           is_system?: boolean | null
           name: string
@@ -1263,6 +1265,7 @@ export type Database = {
           alert_thresholds?: Json | null
           auto_assign_enabled?: boolean
           created_at?: string
+          funnel_lost_threshold_days?: number
           id?: string
           is_system?: boolean | null
           name?: string
@@ -5796,6 +5799,36 @@ export type Database = {
       get_cron_secret: { Args: never; Returns: string }
       get_deal_velocity_metrics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      get_funnel_breakdown: {
+        Args: {
+          p_brand_id: string
+          p_from?: string
+          p_role?: string
+          p_to?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      get_funnel_losses: {
+        Args: {
+          p_brand_id: string
+          p_from?: string
+          p_role?: string
+          p_to?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      get_funnel_metrics: {
+        Args: {
+          p_brand_id: string
+          p_from?: string
+          p_role?: string
+          p_to?: string
+          p_user_id?: string
+        }
         Returns: Json
       }
       get_lead_source_analytics: {
