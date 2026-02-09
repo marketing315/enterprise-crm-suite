@@ -1,41 +1,144 @@
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { Shield } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Shield, Users, Webhook, Ticket, AlertCircle, Kanban, TrendingUp } from 'lucide-react';
+import { DashboardKpiGrid, KpiItem } from '@/components/dashboard/DashboardKpiGrid';
+import { DashboardTrendChart } from '@/components/dashboard/DashboardTrendChart';
+import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemStatus';
+import { WebhookDeliveriesCompact } from '@/components/admin/WebhookDeliveriesCompact';
+import { useDashboardData } from '@/hooks/useDashboardData';
+import { useWebhookMetrics24h } from '@/hooks/useWebhookMetrics';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const {
+    leadsToday,
+    leadsWeek,
+    openDeals,
+    openTickets,
+    slaBreachedTickets,
+    totalContacts,
+    trendData,
+    isLoading,
+    isTrendLoading,
+  } = useDashboardData();
+
+  const { data: webhookMetrics, isLoading: webhookLoading } = useWebhookMetrics24h();
+
+  const webhookOk = webhookMetrics?.success_count ?? 0;
+  const webhookKo = webhookMetrics?.failed_count ?? 0;
+  const webhookTotal = webhookMetrics?.total_deliveries ?? 0;
+
+  const kpis: KpiItem[] = [
+    {
+      title: 'Contatti totali',
+      value: totalContacts,
+      subtitle: `${leadsToday} lead oggi · ${leadsWeek} ultimi 7gg`,
+      icon: Users,
+      variant: 'default',
+    },
+    {
+      title: 'Webhook (24h)',
+      value: webhookTotal,
+      subtitle: `✓ ${webhookOk} OK · ✗ ${webhookKo} KO`,
+      icon: Webhook,
+      variant: webhookKo > 0 ? 'warning' : 'default',
+    },
+    {
+      title: 'Ticket aperti',
+      value: openTickets,
+      subtitle: `${slaBreachedTickets} SLA breach`,
+      icon: Ticket,
+      variant: slaBreachedTickets > 0 ? 'destructive' : openTickets > 10 ? 'warning' : 'default',
+    },
+    {
+      title: 'Deal aperti',
+      value: openDeals,
+      subtitle: 'Pipeline attiva',
+      icon: Kanban,
+      variant: 'default',
+    },
+  ];
+
   return (
     <DashboardShell
       title="Admin Dashboard"
       subtitle="Salute piattaforma e controllo operativo globale"
       icon={<Shield className="h-6 w-6 text-primary" />}
+      queryKeys={[
+        ['dashboard-leads-today'],
+        ['dashboard-open-deals'],
+        ['dashboard-open-tickets'],
+        ['dashboard-sla-breached'],
+        ['dashboard-total-contacts'],
+        ['dashboard-trend'],
+        ['webhook-metrics-24h'],
+      ]}
     >
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <PlaceholderCard title="Utenti attivi oggi" />
-        <PlaceholderCard title="Webhook OK / KO" />
-        <PlaceholderCard title="Ticket aperti / SLA" />
-        <PlaceholderCard title="Deal totali + vinti" />
-        <PlaceholderCard title="Errori API 4xx/5xx" />
-        <PlaceholderCard title="System Health" />
+      {/* KPI Cards */}
+      <DashboardKpiGrid items={kpis} isLoading={isLoading || webhookLoading} />
+
+      {/* Charts row */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <DashboardTrendChart data={trendData} isLoading={isTrendLoading} />
+        <DashboardSystemStatus />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <PlaceholderCard title="Webhook Monitor" description="Ultime 50 delivery" />
-        <PlaceholderCard title="Audit Log" description="Ultimi cambi config" />
+      {/* Webhook Monitor + Quick Actions */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <WebhookDeliveriesCompact />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Azioni rapide</CardTitle>
+            <CardDescription>Gestione operativa</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate('/admin/webhooks')}
+            >
+              <Webhook className="h-4 w-4" />
+              Webhook Monitor completo
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate('/tickets')}
+            >
+              <Ticket className="h-4 w-4" />
+              Gestisci Ticket
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate('/team')}
+            >
+              <Users className="h-4 w-4" />
+              Gestione Team / Ruoli
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate('/admin/ai')}
+            >
+              <TrendingUp className="h-4 w-4" />
+              AI Performance
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate('/settings')}
+            >
+              <AlertCircle className="h-4 w-4" />
+              Impostazioni
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </DashboardShell>
-  );
-}
-
-function PlaceholderCard({ title, description }: { title: string; description?: string }) {
-  return (
-    <Card className="border-dashed">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-bold text-muted-foreground">—</p>
-        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
-      </CardContent>
-    </Card>
   );
 }
