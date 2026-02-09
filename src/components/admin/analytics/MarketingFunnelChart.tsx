@@ -140,7 +140,7 @@ export function MarketingFunnelChart({ data, isLoading }: MarketingFunnelChartPr
         {/* Revenue summary */}
         {data && data.sales_revenue > 0 && (
           <div className="mt-6 pt-4 border-t text-center">
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            <p className="text-2xl font-bold text-primary">
               €{(data.sales_revenue / 1000).toFixed(1)}K
             </p>
             <p className="text-xs text-muted-foreground">Revenue da vendite chiuse</p>
