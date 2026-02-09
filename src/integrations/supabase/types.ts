@@ -6091,29 +6091,17 @@ export type Database = {
           user_id: string
         }[]
       }
-      list_webhook_deliveries:
-        | {
-            Args: {
-              p_brand_id: string
-              p_event_type?: string
-              p_limit?: number
-              p_offset?: number
-              p_status?: string
-              p_webhook_id?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_brand_id: string
-              p_event_type?: string
-              p_limit?: number
-              p_offset?: number
-              p_status?: Database["public"]["Enums"]["webhook_delivery_status"]
-              p_webhook_id?: string
-            }
-            Returns: Json
-          }
+      list_webhook_deliveries: {
+        Args: {
+          p_brand_id: string
+          p_event_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+          p_webhook_id?: string
+        }
+        Returns: Json
+      }
       map_stage_to_contact_status: {
         Args: { p_stage_name: string }
         Returns: Database["public"]["Enums"]["contact_status"]
