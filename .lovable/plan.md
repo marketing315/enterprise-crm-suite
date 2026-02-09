@@ -1,93 +1,97 @@
 
+# Analisi Approfondita dei Bug
 
-# Aggiornamento Realtime su tutto il sito
+## Bug Trovati
 
-## Obiettivo
-Ogni modifica (inserimento, aggiornamento, eliminazione) su qualsiasi dato del CRM sara' visibile istantaneamente a tutti gli utenti connessi, senza ricaricare la pagina.
+### BUG 1 (CRITICO) - Costante `__ALL_BRANDS__` obsoleta in 4 hooks
+I file seguenti usano `currentBrand?.id === '__ALL_BRANDS__'` per determinare la vista globale, ma il sistema ora usa `SYSTEM_BRAND_ID` (`00000000-0000-0000-0000-000000000000`). La condizione `=== '__ALL_BRANDS__'` non sara' MAI vera, quindi quando l'utente seleziona "Azienda Intera", questi hook NON passeranno alla vista aggregata e filtreranno per il system brand UUID raw, mostrando dati errati o vuoti.
 
-## Stato attuale
-Tabelle GIA' abilitate al realtime:
-- contacts, contact_phones
-- tickets, ticket_comments, ticket_audit_logs
-- chat_messages, chat_message_reads
-- notifications
-- incoming_calls, call_logs
-- automation_jobs, webhook_inbound_events
+**File coinvolti:**
+- `src/hooks/useCompanyFinance.ts` (7 occorrenze)
+- `src/hooks/useCeoDashboard.ts` (1 occorrenza)
+- `src/hooks/useBrandTaxSettings.ts` (2 occorrenze)
+- `src/hooks/useCostCenters.ts` (2 occorrenze)
 
-## Tabelle da aggiungere al realtime
+**Fix:** Sostituire `currentBrand?.id === '__ALL_BRANDS__'` con `isAllBrandsSelected` dal context BrandContext, ottenendo `isAllBrandsSelected` tramite `useBrand()`.
 
-| Tabella | Pagina/Sezione |
-|---------|---------------|
-| deals | Pipeline / Kanban |
-| deal_stage_history | Pipeline timeline |
-| lead_events | Eventi Lead |
-| appointments | Appuntamenti |
-| sales_orders | Vendite |
-| sales_order_items | Dettaglio vendite |
-| payments | Pagamenti |
-| products | Prodotti |
-| marketing_campaigns | Marketing Campagne |
-| marketing_costs | Marketing Costi |
-| tags | Tag ovunque |
-| tag_assignments | Tag su contatti/deal |
-| pipeline_stages | Configurazione pipeline |
-| admin_todos | Dashboard TODO |
-| action_suggestions | Dashboard suggerimenti |
+---
+
+### BUG 2 (MEDIO) - Query key errate in `useGlobalRealtime.ts`
+La mappa `TABLE_QUERY_MAP` invalida query key inesistenti, rendendo il realtime inefficace per alcune aree:
+
+| Chiave invalida usata | Chiave corretta effettiva |
+|---|---|
+| `['deal-scoring']` | `['deal-score']`, `['deal-score-history']`, `['brand-deal-scores']` |
+| `['forecast']` | `['revenue-forecast']`, `['forecast-history']` |
+| `['contact-lead-events']` | `['lead-events']` (gia' coperto), `['contact']` |
+
+**Fix:** Aggiornare la mappa con le chiavi corrette.
+
+---
+
+### BUG 3 (BASSO) - Route duplicata `/analytics`
+In `App.tsx`:
+- Riga 94: `<Route path="/analytics" element={<AdminAnalytics />} />`
+- Riga 108: `<Route path="/admin/analytics" element={<AdminAnalytics />} />`
+
+La sidebar punta a `/admin/analytics`. La route `/analytics` non e' raggiungibile da nessun link nell'interfaccia ed e' codice morto.
+
+**Fix:** Rimuovere la riga 94.
+
+---
+
+### BUG 4 (BASSO) - `NewContactDialog` non usa `useWriteBrandId`
+Il componente usa direttamente `currentBrand.id` per le operazioni di scrittura, bypassando la protezione di `useWriteBrandId` che impedisce la creazione nella vista "Azienda Intera". Se un utente admin in vista globale apre il dialog, il contatto verrebbe creato sotto il system brand UUID.
+
+**Fix:** Usare `useWriteBrandId` e disabilitare il bottone "Nuovo contatto" nella vista globale tramite `isGlobalView`.
+
+---
+
+### BUG 5 (BASSO) - `QueryClient` creato senza opzioni di retry/stale
+Il `QueryClient` in `App.tsx` (riga 45) e' istanziato senza configurazione. Per un'app in produzione, bisogna configurare: `retry`, `staleTime`, `refetchOnWindowFocus` per evitare eccesso di richieste quando l'utente torna nella tab.
+
+**Fix:** Aggiungere configurazione default ragionevole.
+
+---
 
 ## Implementazione
 
-### 1. Migrazione database
-Una singola migrazione SQL per abilitare il realtime su tutte le tabelle mancanti:
+### Passo 1 - Fix `__ALL_BRANDS__` (4 file)
+Per ogni file coinvolto:
+1. Importare `useBrand` (o aggiungere `isAllBrandsSelected` al destructuring esistente)
+2. Sostituire `currentBrand?.id === '__ALL_BRANDS__' ? COMPANY_BRAND_ID : currentBrand?.id` con una logica che usa `isAllBrandsSelected ? COMPANY_BRAND_ID : currentBrand?.id`
 
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.deals;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.deal_stage_history;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.lead_events;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.appointments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.sales_orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.sales_order_items;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.payments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.marketing_campaigns;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.marketing_costs;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tags;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tag_assignments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.pipeline_stages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.admin_todos;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.action_suggestions;
+### Passo 2 - Fix query key map in `useGlobalRealtime.ts`
+Aggiornare `TABLE_QUERY_MAP`:
+```text
+deals: [['deals'], ['deal-score'], ['brand-deal-scores'], ['pipeline-stages'], ['revenue-forecast'], ['forecast-history']]
+```
+Rimuovere `['contact-lead-events']` e aggiungere `['contact']` per gli eventi lead.
+
+### Passo 3 - Rimuovere route duplicata
+Rimuovere `<Route path="/analytics" ...>` da App.tsx (riga 94).
+
+### Passo 4 - Fix `NewContactDialog`
+Sostituire l'uso diretto di `currentBrand` con `useWriteBrandId` per le operazioni di INSERT, e disabilitare il bottone nella vista globale.
+
+### Passo 5 - Configurare `QueryClient`
+Aggiungere configurazione default:
+```text
+defaultOptions: {
+  queries: {
+    staleTime: 1000 * 60,       // 1 minuto
+    retry: 1,
+    refetchOnWindowFocus: false, // evita tempeste di richieste
+  }
+}
 ```
 
-### 2. Hook centralizzato: `useGlobalRealtime.ts`
-Un unico hook che sottoscrive TUTTE le tabelle rimanenti e invalida le cache React-Query corrispondenti. Struttura:
+## Riepilogo
 
-- Un canale per gruppo logico (pipeline, sales, marketing, ecc.)
-- Filtraggio per `brand_id` quando non in modalita' "Azienda Intera"
-- Invalidazione mirata delle queryKey corrette per ogni tabella
-
-Mappatura tabella -> queryKey da invalidare:
-- `deals` -> `["deals"]`, `["deal-scoring"]`, `["pipeline-stages"]`
-- `deal_stage_history` -> `["deals"]`
-- `lead_events` -> `["lead-events"]`, `["contact-lead-events"]`
-- `appointments` -> `["appointments"]`
-- `sales_orders` -> `["sales-orders"]`, `["sales-kpis"]`
-- `sales_order_items` -> `["sales-orders"]`, `["sales-order-items"]`
-- `payments` -> `["payments"]`
-- `products` -> `["products"]`
-- `marketing_campaigns` -> `["marketing-campaigns"]`
-- `marketing_costs` -> `["marketing-costs"]`, `["marketing-kpis"]`
-- `tags` / `tag_assignments` -> `["tags"]`, `["deals"]`, `["contacts"]`, `["contact-search"]`
-- `pipeline_stages` -> `["pipeline-stages"]`
-- `admin_todos` -> `["admin-todos"]`
-- `action_suggestions` -> `["action-suggestions"]`
-
-### 3. Integrazione nel layout
-L'hook `useGlobalRealtime()` viene chiamato una sola volta dentro `MainLayout.tsx`, cosi' e' attivo su TUTTE le pagine senza doverlo aggiungere pagina per pagina. Questo si affianca agli hook gia' esistenti (`useTicketRealtime`, `useContactsRealtime`) che restano separati perche' gestiscono anche notifiche/toast specifici.
-
-### Dettagli tecnici
-
-- I canali Supabase saranno raggruppati per dominio (es. `global-pipeline-rt`, `global-sales-rt`, `global-marketing-rt`) per mantenere il codice organizzato
-- La sottoscrizione viene ricostruita quando cambia il brand selezionato
-- In modalita' "Azienda Intera" non si applica filtro `brand_id` (si ascolta tutto)
-- L'invalidazione usa `queryClient.invalidateQueries` con match parziale cosi' copre tutte le varianti di parametri nelle query key
-- Nessun impatto sulle performance: Supabase Realtime usa WebSocket, i messaggi arrivano solo quando ci sono cambiamenti effettivi
-
+| # | Severita' | Area | Impatto |
+|---|-----------|------|---------|
+| 1 | CRITICO | Company finance, CEO dashboard, tax, cost centers | Vista globale mostra dati errati o vuoti |
+| 2 | MEDIO | Realtime invalidation | Deal scoring e forecast non si aggiornano in realtime |
+| 3 | BASSO | Routing | Route morta, nessun impatto funzionale |
+| 4 | BASSO | Contatti - creazione | Possibile creazione sotto brand errato in vista globale |
+| 5 | BASSO | Performance | Eccesso di richieste su cambio tab |
