@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { useToast } from "@/hooks/use-toast";
 
 // Types for custom fields
@@ -87,23 +88,22 @@ export function useFieldDefinitions() {
 
 // Hook to get field values for a specific contact
 export function useContactFieldValues(contactId: string | null) {
-  const { currentBrand } = useBrand();
-
   return useQuery({
     queryKey: ["contact-field-values", contactId],
     queryFn: async (): Promise<FieldValue[]> => {
-      if (!contactId || !currentBrand) return [];
+      if (!contactId) return [];
 
+      // Don't filter by brand — RLS handles security, and in global view
+      // we need to see all field values for the contact
       const { data, error } = await supabase
         .from("contact_field_values")
         .select("*")
-        .eq("contact_id", contactId)
-        .eq("brand_id", currentBrand.id);
+        .eq("contact_id", contactId);
 
       if (error) throw error;
       return (data || []) as FieldValue[];
     },
-    enabled: !!contactId && !!currentBrand,
+    enabled: !!contactId,
   });
 }
 
@@ -196,7 +196,7 @@ export function useUpsertFieldValues() {
 
 // Admin: Create field definition
 export function useCreateFieldDefinition() {
-  const { currentBrand } = useBrand();
+  const { getWriteBrandId } = useWriteBrandId();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -212,13 +212,15 @@ export function useCreateFieldDefinition() {
       is_indexed?: boolean;
       display_order?: number;
     }) => {
+      const brandId = getWriteBrandId();
+
       const insertData = {
         key: params.key,
         label: params.label,
         field_type: params.field_type,
         scope: params.scope,
         description: params.description || null,
-        brand_id: params.scope === 'brand' ? currentBrand?.id : null,
+        brand_id: params.scope === 'brand' ? brandId : null,
         options: (params.options || []) as unknown as Record<string, unknown>,
         is_required: params.is_required ?? false,
         is_indexed: params.is_indexed ?? false,
