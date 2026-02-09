@@ -420,7 +420,7 @@ Deno.serve(async (req) => {
             results.push({ leadgen_id: leadgenId, status: "duplicate_lead_event" });
           } else {
             console.error(`[META-EVENT] lead_event insert error:`, leadEventError);
-            results.push({ leadgen_id: leadgenId, status: "error", error: leadEventError.message });
+            results.push({ leadgen_id: leadgenId, status: "error" });
           }
           continue;
         }
