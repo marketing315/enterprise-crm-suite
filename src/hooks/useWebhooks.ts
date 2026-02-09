@@ -317,11 +317,10 @@ export function useWebhookDeliveries(params: {
     queryFn: async (): Promise<DeliveriesResponse> => {
       if (!currentBrand?.id) return { deliveries: [], total_count: 0, limit: 50, offset: 0 };
 
-      const { data, error } = await supabase.rpc("list_webhook_deliveries", {
+      const { data, error } = await supabase.rpc("list_webhook_deliveries" as any, {
         p_brand_id: currentBrand.id,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         p_webhook_id: params.webhookId || null,
-        p_status: (params.status || null) as "pending" | "sending" | "success" | "failed" | null,
+        p_status: params.status || null,
         p_event_type: params.eventType || null,
         p_limit: params.limit ?? 50,
         p_offset: params.offset ?? 0,
