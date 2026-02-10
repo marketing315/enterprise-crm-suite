@@ -60,10 +60,11 @@ export function useCapiEventsList(
   status: string | null,
   eventName: string | null
 ) {
-  const { brandIds } = useBrandFilter();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
+  const brandIds = getBrandIds();
 
   return useQuery({
-    queryKey: ["capi-events", brandIds, from, to, status, eventName],
+    queryKey: ["capi-events", getQueryKeyBrand(), from, to, status, eventName],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("list_capi_events" as any, {
         p_brand_ids: brandIds,
