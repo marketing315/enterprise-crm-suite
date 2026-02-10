@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-hub-signature-256",
 };
 
-// Phone normalization with country detection (same as webhook-ingest)
+// Phone normalization with country detection
 interface NormalizedPhone {
   normalized: string;
   countryCode: string;
@@ -20,14 +20,8 @@ function normalizePhone(phone: string, defaultCountry = "IT"): NormalizedPhone {
   let assumedCountry = true;
 
   const prefixes: Record<string, string> = {
-    "39": "IT",
-    "44": "GB",
-    "49": "DE",
-    "33": "FR",
-    "34": "ES",
-    "41": "CH",
-    "43": "AT",
-    "1": "US",
+    "39": "IT", "44": "GB", "49": "DE", "33": "FR",
+    "34": "ES", "41": "CH", "43": "AT", "1": "US",
   };
 
   const sortedPrefixes = Object.entries(prefixes).sort(
@@ -51,14 +45,11 @@ async function verifySignature(payload: string, signature: string, secret: strin
   if (!signature || !signature.startsWith("sha256=")) {
     return false;
   }
-  const expectedSig = signature.slice(7); // Remove "sha256=" prefix
+  const expectedSig = signature.slice(7);
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
+    "raw", encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
   );
   const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
   const computedSig = Array.from(new Uint8Array(signatureBuffer))
@@ -67,15 +58,298 @@ async function verifySignature(payload: string, signature: string, secret: strin
   return computedSig === expectedSig;
 }
 
+// Helper to detect Meta test lead placeholder data
+function isTestPlaceholder(value: string | null): boolean {
+  return value !== null && value.includes("<test lead:");
+}
+
+// Extract field from Meta field_data array
+function getField(fieldData: any[], name: string): string | null {
+  const field = fieldData.find((f: any) => f.name?.toLowerCase() === name.toLowerCase());
+  return field?.values?.[0] || null;
+}
+
+// Build combined message from non-standard fields
+function buildLeadMessage(fieldData: any[]): string {
+  const leadMessage = getField(fieldData, "message") || getField(fieldData, "messaggio") || 
+    getField(fieldData, "note") || getField(fieldData, "notes") ||
+    getField(fieldData, "additional_info") || getField(fieldData, "informazioni_aggiuntive") || 
+    getField(fieldData, "richiesta") || getField(fieldData, "motivo") || 
+    getField(fieldData, "descrizione") || getField(fieldData, "problema") || 
+    getField(fieldData, "sintomi");
+
+  const standardFields = ['full_name', 'first_name', 'last_name', 'nome', 'cognome', 'email', 'e-mail',
+    'phone_number', 'phone', 'city', 'zip', 'postal_code', 'codice_postale'];
+  const additionalMessages: string[] = [];
+  for (const field of fieldData) {
+    const fieldName = field.name?.toLowerCase();
+    if (fieldName && !standardFields.includes(fieldName) && field.values?.[0]) {
+      const value = field.values[0];
+      if (!isTestPlaceholder(value) && value.length > 2) {
+        additionalMessages.push(`${field.name}: ${value}`);
+      }
+    }
+  }
+  return [leadMessage, ...additionalMessages].filter(Boolean).join('\n');
+}
+
+interface MetaAppConfig {
+  id: string;
+  brand_id: string;
+  brand_slug: string;
+  verify_token: string;
+  app_secret: string;
+  page_id: string | null;
+  access_token: string;
+  is_active: boolean;
+}
+
+async function processLeadChange(
+  supabase: any,
+  metaApp: MetaAppConfig,
+  change: any,
+  brandSlug: string,
+): Promise<{ leadgen_id: string; status: string; lead_event_id?: string; contact_id?: string | null; deal_id?: string | null }> {
+  const leadgenId = change.value?.leadgen_id;
+  const pageId = change.value?.page_id;
+  const formId = change.value?.form_id;
+  const adId = change.value?.ad_id;
+
+  if (!leadgenId) {
+    console.warn(`[META-EVENT] Missing leadgen_id in change`);
+    return { leadgen_id: "unknown", status: "skipped_no_leadgen_id" };
+  }
+
+  // 1. Insert meta_lead_events (dedupe via unique constraint)
+  const { data: metaEvent, error: insertError } = await supabase
+    .from("meta_lead_events")
+    .insert({
+      brand_id: metaApp.brand_id,
+      source_id: metaApp.id,
+      leadgen_id: leadgenId,
+      page_id: pageId || metaApp.page_id || "unknown",
+      form_id: formId,
+      ad_id: adId,
+      raw_event: change.value,
+      status: "received",
+    })
+    .select("id")
+    .single();
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      console.log(`[META-EVENT] Duplicate leadgen_id=${leadgenId}, skipping`);
+      return { leadgen_id: leadgenId, status: "duplicate" };
+    }
+    console.error(`[META-EVENT] Insert error:`, insertError);
+    return { leadgen_id: leadgenId, status: "error" };
+  }
+
+  const metaEventId = metaEvent.id;
+
+  // 2. Fetch lead details from Graph API
+  let leadData: any = null;
+  try {
+    const graphUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${metaApp.access_token}`;
+    const graphRes = await fetch(graphUrl);
+    if (graphRes.ok) {
+      leadData = await graphRes.json();
+      console.log(`[META-EVENT] Graph API OK for ${leadgenId}`);
+    } else {
+      const errText = await graphRes.text();
+      console.error(`[META-EVENT] Graph API error for ${leadgenId}:`, errText);
+    }
+  } catch (graphErr) {
+    console.error(`[META-EVENT] Graph API fetch error:`, graphErr);
+  }
+
+  // Update meta_lead_events with fetched payload
+  if (leadData) {
+    const { error: fetchUpdateErr } = await supabase
+      .from("meta_lead_events")
+      .update({ fetched_payload: leadData, status: "fetched" })
+      .eq("id", metaEventId);
+    if (fetchUpdateErr) {
+      console.error(`[META-EVENT] Failed to update fetched_payload for ${metaEventId}:`, fetchUpdateErr);
+    }
+  }
+
+  // 3. Extract contact fields
+  const fieldData = leadData?.field_data || [];
+  const fullName = getField(fieldData, "full_name");
+  let firstName = getField(fieldData, "first_name") || getField(fieldData, "nome") || (fullName ? fullName.split(" ")[0] : null);
+  let lastName = getField(fieldData, "last_name") || getField(fieldData, "cognome") || (fullName ? fullName.split(" ").slice(1).join(" ") : null);
+  let email = getField(fieldData, "email") || getField(fieldData, "e-mail");
+  let phone = getField(fieldData, "phone_number") || getField(fieldData, "phone");
+  const city = getField(fieldData, "city");
+  let cap = getField(fieldData, "zip") || getField(fieldData, "postal_code") || getField(fieldData, "codice_postale");
+  const combinedMessage = buildLeadMessage(fieldData);
+
+  // Handle Meta test lead placeholders
+  if (isTestPlaceholder(firstName)) firstName = "Test";
+  if (isTestPlaceholder(lastName)) lastName = "Meta Lead";
+  if (isTestPlaceholder(phone)) {
+    const leadSuffix = leadgenId.slice(-6);
+    phone = `3331234${leadSuffix}`;
+    console.log(`[META-EVENT] Generated synthetic phone for test lead: ${phone}`);
+  }
+  if (isTestPlaceholder(cap)) cap = "00100";
+
+  // 4. Create/find contact and deal
+  let contactId: string | null = null;
+  let dealId: string | null = null;
+
+  if (phone) {
+    const normalizedPhone = normalizePhone(phone);
+    console.log(`[META-EVENT] Normalized phone: ${normalizedPhone.normalized} (${normalizedPhone.countryCode})`);
+
+    const { data: contactResult, error: contactError } = await supabase.rpc(
+      "find_or_create_contact",
+      {
+        p_brand_id: metaApp.brand_id,
+        p_phone_normalized: normalizedPhone.normalized,
+        p_phone_raw: normalizedPhone.raw,
+        p_country_code: normalizedPhone.countryCode,
+        p_assumed_country: normalizedPhone.assumedCountry,
+        p_first_name: firstName,
+        p_last_name: lastName,
+        p_email: email,
+        p_city: city,
+        p_cap: cap,
+        p_lead_message: combinedMessage || null,
+      }
+    );
+
+    if (contactError || !contactResult) {
+      console.error(`[META-EVENT] Failed to create contact for ${leadgenId}:`, contactError);
+    } else {
+      contactId = contactResult;
+      console.log(`[META-EVENT] Contact: ${contactId}`);
+
+      // Enable marketing consent
+      const { error: consentError } = await supabase
+        .from("contacts")
+        .update({ marketing_consent: true })
+        .eq("id", contactId);
+      if (consentError) {
+        console.error(`[META-EVENT] Failed marketing consent for ${contactId}:`, consentError);
+      }
+
+      // Find or create deal
+      const { data: dealResult, error: dealError } = await supabase.rpc(
+        "find_or_create_deal",
+        { p_brand_id: metaApp.brand_id, p_contact_id: contactId }
+      );
+      if (dealError) {
+        console.error(`[META-EVENT] Failed to create deal for ${leadgenId}:`, dealError);
+      } else {
+        dealId = dealResult;
+        console.log(`[META-EVENT] Deal: ${dealId}`);
+      }
+
+      // Upsert contact_tracking for CAPI attribution
+      try {
+        await supabase
+          .from("contact_tracking")
+          .upsert({
+            brand_id: metaApp.brand_id,
+            contact_id: contactId,
+            utm_source: "meta",
+            utm_medium: "paid",
+            utm_campaign: leadData?.campaign_name || null,
+            first_touch_source: "meta-leads-webhook",
+            first_touch_at: new Date().toISOString(),
+            last_touch_at: new Date().toISOString(),
+          }, { onConflict: "contact_id" });
+      } catch (trackingErr) {
+        console.error(`[META-EVENT] Tracking error (non-blocking):`, trackingErr);
+      }
+    }
+  } else {
+    console.warn(`[META-EVENT] No phone for ${leadgenId}, skipping contact creation`);
+  }
+
+  // 5. Create lead_event
+  const { data: leadEvent, error: leadEventError } = await supabase
+    .from("lead_events")
+    .insert({
+      brand_id: metaApp.brand_id,
+      contact_id: contactId,
+      deal_id: dealId,
+      source: "meta",
+      source_name: `Meta: ${leadData?.campaign_name || leadData?.ad_name || "Lead Ads"}`,
+      external_id: leadgenId,
+      occurred_at: leadData?.created_time ? new Date(leadData.created_time).toISOString() : new Date().toISOString(),
+      raw_payload: {
+        meta_leadgen_id: leadgenId,
+        meta_page_id: pageId,
+        meta_form_id: formId,
+        meta_ad_id: adId,
+        meta_campaign_id: leadData?.campaign_id,
+        meta_campaign_name: leadData?.campaign_name,
+        meta_ad_name: leadData?.ad_name,
+        first_name: firstName,
+        last_name: lastName,
+        email, phone, city, cap,
+        field_data: fieldData,
+        fetched_payload: leadData,
+      },
+    })
+    .select("id")
+    .single();
+
+  if (leadEventError) {
+    if (leadEventError.code === "23505") {
+      console.log(`[META-EVENT] Duplicate lead_event for ${leadgenId}`);
+      // Still update meta_lead_events with contact_id even on duplicate
+      await supabase.from("meta_lead_events").update({
+        contact_id: contactId,
+        status: "ingested",
+        error: "duplicate_lead_event",
+      }).eq("id", metaEventId);
+      return { leadgen_id: leadgenId, status: "duplicate_lead_event" };
+    }
+    console.error(`[META-EVENT] lead_event insert error:`, leadEventError);
+    // Mark meta_lead_events as error with details
+    await supabase.from("meta_lead_events").update({
+      contact_id: contactId,
+      status: "error",
+      error: `lead_event_insert: ${leadEventError.message || leadEventError.code}`,
+    }).eq("id", metaEventId);
+    return { leadgen_id: leadgenId, status: "error" };
+  }
+
+  // 6. Update meta_lead_events with final linking
+  const { error: finalUpdateErr } = await supabase
+    .from("meta_lead_events")
+    .update({
+      lead_event_id: leadEvent.id,
+      contact_id: contactId,
+      status: "ingested",
+      processed_at: new Date().toISOString(),
+    })
+    .eq("id", metaEventId);
+
+  if (finalUpdateErr) {
+    console.error(`[META-EVENT] CRITICAL: Failed to update meta_lead_events ${metaEventId}:`, finalUpdateErr);
+  }
+
+  const resultStatus = contactId ? "ingested" : "ingested_no_contact";
+  if (!contactId) {
+    console.warn(`[META-EVENT] Lead ingested WITHOUT contact for ${leadgenId}`);
+  }
+  
+  console.log(`[META-EVENT] Done: leadgen=${leadgenId}, lead_event=${leadEvent.id}, contact=${contactId}, deal=${dealId}`);
+  return { leadgen_id: leadgenId, status: resultStatus, lead_event_id: leadEvent.id, contact_id: contactId, deal_id: dealId };
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);
-  // Expected path: /meta-leads-webhook/:brandSlug
   const brandSlug = pathParts[pathParts.length - 1];
 
   if (!brandSlug || brandSlug === "meta-leads-webhook") {
@@ -86,24 +360,11 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Initialize Supabase client with service role
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // Define MetaApp type
-  interface MetaAppConfig {
-    id: string;
-    brand_id: string;
-    brand_slug: string;
-    verify_token: string;
-    app_secret: string;
-    page_id: string | null;
-    access_token: string;
-    is_active: boolean;
-  }
-
-  // Find meta app config by brand slug
+  // Find meta app config
   const { data: metaAppData, error: configError } = await supabase
     .rpc("find_meta_app_by_slug", { p_brand_slug: brandSlug })
     .maybeSingle();
@@ -143,10 +404,7 @@ Deno.serve(async (req) => {
     }
 
     console.error(`[META-VERIFY] Failed for ${brandSlug}: token mismatch`);
-    return new Response("Forbidden", {
-      status: 403,
-      headers: corsHeaders,
-    });
+    return new Response("Forbidden", { status: 403, headers: corsHeaders });
   }
 
   // ============ POST: Lead Event ============
@@ -154,7 +412,6 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     const signature = req.headers.get("x-hub-signature-256") || "";
 
-    // Verify signature
     const isValid = await verifySignature(rawBody, signature, metaApp.app_secret);
     if (!isValid) {
       console.error(`[META-EVENT] Invalid signature for ${brandSlug}`);
@@ -179,274 +436,16 @@ Deno.serve(async (req) => {
 
     const results: any[] = [];
 
-    // Process each entry
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
         if (change.field !== "leadgen") continue;
-
-        const leadgenId = change.value?.leadgen_id;
-        const pageId = change.value?.page_id;
-        const formId = change.value?.form_id;
-        const adId = change.value?.ad_id;
-        const createdTime = change.value?.created_time;
-
-        if (!leadgenId) {
-          console.warn(`[META-EVENT] Missing leadgen_id in change`);
-          continue;
-        }
-
-        // Insert into meta_lead_events for audit (dedupe via unique constraint)
-        const { data: metaEvent, error: insertError } = await supabase
-          .from("meta_lead_events")
-          .insert({
-            brand_id: metaApp.brand_id,
-            source_id: metaApp.id, // Use meta_apps.id as source_id
-            leadgen_id: leadgenId,
-            page_id: pageId || metaApp.page_id || "unknown",
-            form_id: formId,
-            ad_id: adId,
-            raw_event: change.value,
-            status: "received",
-          })
-          .select("id")
-          .single();
-
-        if (insertError) {
-          // Check if duplicate
-          if (insertError.code === "23505") {
-            console.log(`[META-EVENT] Duplicate leadgen_id=${leadgenId}, skipping`);
-            results.push({ leadgen_id: leadgenId, status: "duplicate" });
-            continue;
-          }
-          console.error(`[META-EVENT] Insert error:`, insertError);
-          results.push({ leadgen_id: leadgenId, status: "error" });
-          continue;
-        }
-
-        // Fetch lead details from Graph API
-        let leadData: any = null;
         try {
-          const graphUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${metaApp.access_token}`;
-          const graphRes = await fetch(graphUrl);
-          if (graphRes.ok) {
-            leadData = await graphRes.json();
-            console.log(`[META-EVENT] Graph API response for ${leadgenId}:`, JSON.stringify(leadData));
-          } else {
-            const errText = await graphRes.text();
-            console.error(`[META-EVENT] Graph API error for ${leadgenId}:`, errText);
-          }
-        } catch (graphErr) {
-          console.error(`[META-EVENT] Graph API fetch error:`, graphErr);
+          const result = await processLeadChange(supabase, metaApp, change, brandSlug);
+          results.push(result);
+        } catch (err) {
+          console.error(`[META-EVENT] Unhandled error processing change:`, err);
+          results.push({ leadgen_id: change.value?.leadgen_id || "unknown", status: "unhandled_error" });
         }
-
-        // Update meta_lead_events with fetched payload
-        if (leadData) {
-          await supabase
-            .from("meta_lead_events")
-            .update({
-              fetched_payload: leadData,
-              status: "fetched",
-            })
-            .eq("id", metaEvent.id);
-        }
-
-        // Map lead data to contact fields
-        const fieldData = leadData?.field_data || [];
-        const getField = (name: string): string | null => {
-          const field = fieldData.find((f: any) => f.name?.toLowerCase() === name.toLowerCase());
-          return field?.values?.[0] || null;
-        };
-
-        // Helper to detect Meta test lead placeholder data
-        const isTestPlaceholder = (value: string | null): boolean => {
-          return value !== null && value.includes("<test lead:");
-        };
-
-        const fullName = getField("full_name");
-        let firstName = getField("first_name") || getField("nome") || (fullName ? fullName.split(" ")[0] : null);
-        let lastName = getField("last_name") || getField("cognome") || (fullName ? fullName.split(" ").slice(1).join(" ") : null);
-        let email = getField("email") || getField("e-mail");
-        let phone = getField("phone_number") || getField("phone");
-        const city = getField("city");
-        let cap = getField("zip") || getField("postal_code") || getField("codice_postale");
-        
-        // Extract additional fields - messages, notes, and any other text fields
-        // Common Meta Lead Ads field names for additional info
-        const leadMessage = getField("message") || getField("messaggio") || getField("note") || getField("notes") || 
-                           getField("additional_info") || getField("informazioni_aggiuntive") || getField("richiesta") ||
-                           getField("motivo") || getField("descrizione") || getField("problema") || getField("sintomi");
-        
-        // Collect ALL non-standard fields into a combined message
-        const standardFields = ['full_name', 'first_name', 'last_name', 'nome', 'cognome', 'email', 'e-mail', 
-                                'phone_number', 'phone', 'city', 'zip', 'postal_code', 'codice_postale'];
-        const additionalMessages: string[] = [];
-        for (const field of fieldData) {
-          const fieldName = field.name?.toLowerCase();
-          if (fieldName && !standardFields.includes(fieldName) && field.values?.[0]) {
-            const value = field.values[0];
-            if (!isTestPlaceholder(value) && value.length > 2) {
-              additionalMessages.push(`${field.name}: ${value}`);
-            }
-          }
-        }
-        const combinedMessage = [leadMessage, ...additionalMessages].filter(Boolean).join('\n');
-        
-        console.log(`[META-EVENT] Additional message for ${leadgenId}: ${combinedMessage || '(none)'}`);
-
-        // For Meta test leads, replace placeholder data with usable test values
-        if (isTestPlaceholder(firstName)) firstName = "Test";
-        if (isTestPlaceholder(lastName)) lastName = "Meta Lead";
-        if (isTestPlaceholder(phone)) {
-          // Generate a synthetic phone number using leadgenId suffix for uniqueness
-          const leadSuffix = leadgenId.slice(-6);
-          phone = `3331234${leadSuffix}`;
-          console.log(`[META-EVENT] Generated synthetic phone for test lead: ${phone}`);
-        }
-        if (isTestPlaceholder(cap)) cap = "00100";
-
-        // === Contact & Deal Creation (aligned with webhook-ingest) ===
-        let contactId: string | null = null;
-        let dealId: string | null = null;
-
-        if (phone) {
-          const normalizedPhone = normalizePhone(phone);
-          console.log(`[META-EVENT] Normalized phone for ${leadgenId}: ${normalizedPhone.normalized} (country: ${normalizedPhone.countryCode})`);
-
-          // Find or create contact with additional message data
-          const { data: contactResult, error: contactError } = await supabase.rpc(
-            "find_or_create_contact",
-            {
-              p_brand_id: metaApp.brand_id,
-              p_phone_normalized: normalizedPhone.normalized,
-              p_phone_raw: normalizedPhone.raw,
-              p_country_code: normalizedPhone.countryCode,
-              p_assumed_country: normalizedPhone.assumedCountry,
-              p_first_name: firstName,
-              p_last_name: lastName,
-              p_email: email,
-              p_city: city,
-              p_cap: cap,
-              p_lead_message: combinedMessage || null,
-            }
-          );
-
-          if (contactError || !contactResult) {
-            console.error(`[META-EVENT] Failed to create contact for ${leadgenId}:`, contactError);
-          } else {
-            contactId = contactResult;
-            console.log(`[META-EVENT] Contact created/found for ${leadgenId}: ${contactId}`);
-
-            // Auto-enable marketing consent for Meta leads (user opted in via Meta form)
-            const { error: consentError } = await supabase
-              .from("contacts")
-              .update({ marketing_consent: true })
-              .eq("id", contactId);
-            if (consentError) {
-              console.error(`[META-EVENT] Failed to update marketing consent for ${contactId}:`, consentError);
-            } else {
-              console.log(`[META-EVENT] Marketing consent enabled for contact ${contactId}`);
-            }
-
-            // Find or create deal
-            const { data: dealResult, error: dealError } = await supabase.rpc(
-              "find_or_create_deal",
-              { p_brand_id: metaApp.brand_id, p_contact_id: contactId }
-            );
-
-            if (dealError) {
-              console.error(`[META-EVENT] Failed to create deal for ${leadgenId}:`, dealError);
-            } else {
-              dealId = dealResult;
-              console.log(`[META-EVENT] Deal created/found for ${leadgenId}: ${dealId}`);
-            }
-
-            // Upsert contact_tracking for CAPI attribution (Meta Lead Ads)
-            try {
-              await supabase
-                .from("contact_tracking")
-                .upsert({
-                  brand_id: metaApp.brand_id,
-                  contact_id: contactId,
-                  utm_source: "meta",
-                  utm_medium: "paid",
-                  utm_campaign: leadData?.campaign_name || null,
-                  first_touch_source: "meta-leads-webhook",
-                  first_touch_at: new Date().toISOString(),
-                  last_touch_at: new Date().toISOString(),
-                }, { onConflict: "contact_id" });
-            } catch (trackingErr) {
-              console.error(`[META-EVENT] Failed to save tracking (non-blocking):`, trackingErr);
-            }
-          }
-        } else {
-          console.warn(`[META-EVENT] No phone found for ${leadgenId}, skipping contact creation`);
-        }
-
-        // Create lead_event with contact_id and deal_id - clearly marked as Meta source
-        const { data: leadEvent, error: leadEventError } = await supabase
-          .from("lead_events")
-          .insert({
-            brand_id: metaApp.brand_id,
-            contact_id: contactId,
-            deal_id: dealId,
-            source: "meta",
-            source_name: `Meta: ${leadData?.campaign_name || leadData?.ad_name || "Lead Ads"}`,
-            external_id: leadgenId,
-            occurred_at: leadData?.created_time ? new Date(leadData.created_time).toISOString() : new Date().toISOString(),
-            raw_payload: {
-              meta_leadgen_id: leadgenId,
-              meta_page_id: pageId,
-              meta_form_id: formId,
-              meta_ad_id: adId,
-              meta_campaign_id: leadData?.campaign_id,
-              meta_campaign_name: leadData?.campaign_name,
-              meta_ad_name: leadData?.ad_name,
-              first_name: firstName,
-              last_name: lastName,
-              email,
-              phone,
-              city,
-              cap,
-              field_data: fieldData,
-              fetched_payload: leadData,
-            },
-          })
-          .select("id")
-          .single();
-
-        if (leadEventError) {
-          if (leadEventError.code === "23505") {
-            console.log(`[META-EVENT] Duplicate lead_event for ${leadgenId}`);
-            results.push({ leadgen_id: leadgenId, status: "duplicate_lead_event" });
-          } else {
-            console.error(`[META-EVENT] lead_event insert error:`, leadEventError);
-            results.push({ leadgen_id: leadgenId, status: "error" });
-          }
-          continue;
-        }
-
-        // Update meta_lead_events with lead_event_id and contact_id
-        await supabase
-          .from("meta_lead_events")
-          .update({
-            lead_event_id: leadEvent.id,
-            contact_id: contactId,
-            status: "ingested",
-          })
-          .eq("id", metaEvent.id);
-
-        const resultStatus = contactId ? "ingested" : "ingested_no_contact";
-        if (!contactId) {
-          console.warn(`[META-EVENT] Lead ingested WITHOUT contact for ${leadgenId} (no phone found)`);
-        }
-        results.push({ 
-          leadgen_id: leadgenId, 
-          status: resultStatus, 
-          lead_event_id: leadEvent.id,
-          contact_id: contactId,
-          deal_id: dealId
-        });
-        console.log(`[META-EVENT] Ingested leadgen_id=${leadgenId} -> lead_event_id=${leadEvent.id}, contact_id=${contactId}, deal_id=${dealId}`);
       }
     }
 
@@ -456,8 +455,5 @@ Deno.serve(async (req) => {
     });
   }
 
-  return new Response("Method not allowed", {
-    status: 405,
-    headers: corsHeaders,
-  });
+  return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 });
