@@ -84,7 +84,7 @@ function statusBadge(status: string) {
 }
 
 export default function AdminCapiMonitor() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const { currentBrand, hasBrandSelected } = useBrand();
 
   const [period, setPeriod] = useState("7d");
