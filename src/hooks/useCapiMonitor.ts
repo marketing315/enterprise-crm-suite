@@ -35,10 +35,11 @@ export interface CapiSummary {
 }
 
 export function useCapiEventsSummary(from: string, to: string) {
-  const { brandIds } = useBrandFilter();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
+  const brandIds = getBrandIds();
 
   return useQuery({
-    queryKey: ["capi-summary", brandIds, from, to],
+    queryKey: ["capi-summary", getQueryKeyBrand(), from, to],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("capi_events_summary" as any, {
         p_brand_ids: brandIds,
