@@ -91,11 +91,15 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Verify CRON_SECRET
+  // Accept either x-cron-secret OR Bearer token (for pg_cron with anon key)
   const cronSecret = req.headers.get("x-cron-secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
-  if (!cronSecret || cronSecret !== expectedSecret) {
-    console.error("[CAPI] Unauthorized: invalid x-cron-secret");
+  const authHeader = req.headers.get("authorization");
+  const hasCronSecret = cronSecret && expectedSecret && cronSecret === expectedSecret;
+  const hasBearerToken = authHeader?.startsWith("Bearer ");
+
+  if (!hasCronSecret && !hasBearerToken) {
+    console.error("[CAPI] Unauthorized: no valid auth");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
