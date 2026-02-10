@@ -63,6 +63,7 @@ import {
   DollarSign,
   FileText,
   LineChart,
+  Zap,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
