@@ -264,17 +264,26 @@ Deno.serve(async (req) => {
           ? await buildUserData(contact, phone, tracking)
           : { country: ["it"] };
 
+        // Merge lead_id from DB user_data if present
+        if (event.user_data?.lead_id) {
+          userData.lead_id = event.user_data.lead_id;
+        }
+
+        // Ensure CRM custom_data defaults
+        const customData = {
+          event_source: "crm",
+          lead_event_source: "RalphCRM",
+          ...(event.custom_data || {}),
+        };
+
         const eventPayload: Record<string, any> = {
           event_name: event.event_name,
           event_time: Math.floor(new Date(event.event_time).getTime() / 1000),
           event_id: event.event_id,
-          action_source: event.action_source,
+          action_source: "system_generated",
           user_data: userData,
+          custom_data: customData,
         };
-
-        if (event.custom_data) {
-          eventPayload.custom_data = event.custom_data;
-        }
 
         capiData.push(eventPayload);
         eventIdMap.set(event.event_id, event.id);
