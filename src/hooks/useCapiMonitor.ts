@@ -50,7 +50,7 @@ export function useCapiEventsSummary(from: string, to: string) {
       const row = (data as any)?.[0] ?? data;
       return row as CapiSummary;
     },
-    enabled: brandIds.length > 0,
+    enabled: isQueryEnabled(),
   });
 }
 
