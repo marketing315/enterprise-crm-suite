@@ -5351,6 +5351,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      capi_events_summary: {
+        Args: { p_brand_ids: string[]; p_from?: string; p_to?: string }
+        Returns: {
+          avg_attempts: number
+          failed_count: number
+          lead_events: number
+          pending_count: number
+          processing_count: number
+          purchase_events: number
+          sent_count: number
+          skipped_count: number
+          total_events: number
+        }[]
+      }
       check_all_brands_sla_breaches: { Args: never; Returns: Json }
       check_and_mark_sla_breaches: {
         Args: { p_brand_id: string }
@@ -6096,6 +6110,34 @@ export type Database = {
       is_thread_member: {
         Args: { p_thread_id: string; p_user_id: string }
         Returns: boolean
+      }
+      list_capi_events: {
+        Args: {
+          p_brand_ids: string[]
+          p_event_name?: string
+          p_from?: string
+          p_limit?: number
+          p_status?: string
+          p_to?: string
+        }
+        Returns: {
+          attempts: number
+          brand_id: string
+          consent_snapshot: boolean
+          contact_id: string
+          contact_name: string
+          created_at: string
+          deal_id: string
+          event_id: string
+          event_name: string
+          event_time: string
+          id: string
+          last_error: string
+          lead_event_id: string
+          max_attempts: number
+          sent_at: string
+          status: string
+        }[]
       }
       list_contact_lead_events: {
         Args: { p_contact_id: string; p_include_archived?: boolean }
