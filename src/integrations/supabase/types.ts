@@ -5380,7 +5380,7 @@ export type Database = {
         }[]
       }
       claim_capi_events: {
-        Args: { p_limit?: number; p_processing_by?: string }
+        Args: { p_limit: number; p_processing_by?: string }
         Returns: {
           action_source: string
           attempts: number | null

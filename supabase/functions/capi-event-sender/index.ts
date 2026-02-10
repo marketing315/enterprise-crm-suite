@@ -264,9 +264,12 @@ Deno.serve(async (req) => {
         const phone = event.contact_id ? phoneMap.get(event.contact_id) || null : null;
         const tracking = event.contact_id ? trackingMap.get(event.contact_id) || null : null;
 
-        const userData = contact
-          ? await buildUserData(contact, phone, tracking)
-          : { country: ["it"] };
+        let userData: Record<string, any>;
+        if (contact) {
+          userData = await buildUserData(contact, phone, tracking);
+        } else {
+          userData = { country: [await sha256("it")] };
+        }
 
         // Merge lead_id from DB user_data if present
         if (event.user_data?.lead_id) {
@@ -308,7 +311,7 @@ Deno.serve(async (req) => {
       // Send to Meta CAPI
       try {
         console.log(`[CAPI] Sending ${capiData.length} events to pixel ${metaApp.pixel_id}`);
-        console.log(`[CAPI] Payload:`, JSON.stringify(requestBody, null, 2).slice(0, 2000));
+        console.log(`[CAPI] Payload:`, JSON.stringify({ data: capiData, test_event_code: requestBody.test_event_code }, null, 2).slice(0, 2000));
         
         const response = await fetch(
           `https://graph.facebook.com/v24.0/${metaApp.pixel_id}/events`,
