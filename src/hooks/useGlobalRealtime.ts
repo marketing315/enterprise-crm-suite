@@ -8,10 +8,12 @@ import { useBrand } from '@/contexts/BrandContext';
  * When a realtime event arrives for a table, all listed query keys are invalidated.
  */
 const TABLE_QUERY_MAP: Record<string, string[][]> = {
-  deals: [['deals'], ['deal-score'], ['deal-score-history'], ['brand-deal-scores'], ['pipeline-stages'], ['revenue-forecast'], ['forecast-history']],
+  deals: [['deals'], ['deal-score'], ['deal-score-history'], ['brand-deal-scores'], ['pipeline-stages'], ['revenue-forecast'], ['forecast-history'], ['dashboard-open-deals'], ['dashboard-trend']],
   deal_stage_history: [['deals']],
-  lead_events: [['lead-events'], ['contact']],
-  appointments: [['appointments']],
+  lead_events: [['lead-events'], ['contact'], ['dashboard-leads-today'], ['dashboard-leads-week'], ['dashboard-trend']],
+  appointments: [['appointments'], ['dashboard-appointments-today']],
+  contacts: [['contacts'], ['contact-search'], ['dashboard-total-contacts']],
+  tickets: [['dashboard-open-tickets'], ['dashboard-sla-breached'], ['dashboard-trend']],
   sales_orders: [['sales-orders'], ['sales-kpis']],
   sales_order_items: [['sales-orders'], ['sales-order-items']],
   payments: [['payments']],
@@ -28,11 +30,12 @@ const TABLE_QUERY_MAP: Record<string, string[][]> = {
 /** Group tables into logical channels to keep subscriptions organized */
 const CHANNEL_GROUPS: Record<string, string[]> = {
   'global-pipeline-rt': ['deals', 'deal_stage_history', 'pipeline_stages'],
-  'global-leads-rt': ['lead_events', 'appointments'],
+  'global-leads-rt': ['lead_events', 'appointments', 'contacts'],
   'global-sales-rt': ['sales_orders', 'sales_order_items', 'payments', 'products'],
   'global-marketing-rt': ['marketing_campaigns', 'marketing_costs'],
   'global-tags-rt': ['tags', 'tag_assignments'],
   'global-admin-rt': ['admin_todos', 'action_suggestions'],
+  'global-tickets-rt': ['tickets'],
 };
 
 /**
