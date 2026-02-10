@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
         // Ensure CRM custom_data defaults
         const customData = {
           event_source: "crm",
-          lead_event_source: "RalphCRM",
+          lead_event_source: "CRM Gruppo Benessere",
           ...(event.custom_data || {}),
         };
 
