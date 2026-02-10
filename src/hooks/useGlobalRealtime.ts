@@ -30,11 +30,12 @@ const TABLE_QUERY_MAP: Record<string, string[][]> = {
 /** Group tables into logical channels to keep subscriptions organized */
 const CHANNEL_GROUPS: Record<string, string[]> = {
   'global-pipeline-rt': ['deals', 'deal_stage_history', 'pipeline_stages'],
-  'global-leads-rt': ['lead_events', 'appointments'],
+  'global-leads-rt': ['lead_events', 'appointments', 'contacts'],
   'global-sales-rt': ['sales_orders', 'sales_order_items', 'payments', 'products'],
   'global-marketing-rt': ['marketing_campaigns', 'marketing_costs'],
   'global-tags-rt': ['tags', 'tag_assignments'],
   'global-admin-rt': ['admin_todos', 'action_suggestions'],
+  'global-tickets-rt': ['tickets'],
 };
 
 /**
