@@ -71,7 +71,12 @@ export function useGlobalRealtime() {
           });
         });
 
-        channel.subscribe();
+        // H09 FIX: Handle subscribe errors
+        channel.subscribe((status, err) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn(`[Realtime] Channel ${channelName} error:`, status, err?.message);
+          }
+        });
         return channel;
       },
     );
