@@ -25,6 +25,7 @@ import AdminTicketTrend from "@/pages/AdminTicketTrend";
 import AdminWebhooksDashboard from "@/pages/AdminWebhooksDashboard";
 import AdminDlqDashboard from "@/pages/AdminDlqDashboard";
 import AdminAnalytics from "@/pages/AdminAnalytics";
+import AdminCapiMonitor from "@/pages/AdminCapiMonitor";
 import Chat from "@/pages/Chat";
 import Notifications from "@/pages/Notifications";
 import Team from "@/pages/Team";
