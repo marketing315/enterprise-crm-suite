@@ -55,6 +55,7 @@ interface CapiEvent {
   deal_id: string | null;
   lead_event_id: string | null;
   custom_data: Record<string, any> | null;
+  user_data: Record<string, any> | null;
 }
 
 interface MetaApp {
