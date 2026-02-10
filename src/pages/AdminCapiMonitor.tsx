@@ -90,6 +90,8 @@ export default function AdminCapiMonitor() {
   const [period, setPeriod] = useState("7d");
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
+  // H11 FIX: refreshKey forces recalculation of from/to on manual refresh
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { from, to } = useMemo(() => {
     const now = new Date();
@@ -105,7 +107,8 @@ export default function AdminCapiMonitor() {
         fromDate = subDays(now, 7);
     }
     return { from: fromDate.toISOString(), to: now.toISOString() };
-  }, [period]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, refreshKey]);
 
   const {
     data: summary,
