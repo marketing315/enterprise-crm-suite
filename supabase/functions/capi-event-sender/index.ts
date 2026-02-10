@@ -23,7 +23,7 @@ async function buildUserData(
   tracking: { fbp?: string | null; fbc?: string | null; client_ip?: string | null; client_user_agent?: string | null } | null
 ): Promise<Record<string, any>> {
   const userData: Record<string, any> = {
-    country: ["it"],
+    country: [await sha256("it")],
   };
 
   // Hash required fields
