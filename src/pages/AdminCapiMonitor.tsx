@@ -144,8 +144,8 @@ export default function AdminCapiMonitor() {
 
   const isLoading = loadingSummary || loadingEvents;
   const handleRefresh = () => {
-    refetchSummary();
-    refetchEvents();
+    // H11 FIX: Recalculate time range on manual refresh
+    setRefreshKey((k) => k + 1);
   };
 
   const sentRate =

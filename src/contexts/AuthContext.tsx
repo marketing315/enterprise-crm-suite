@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, UserRole, AppRole } from '@/types/database';
@@ -26,10 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch user profile and roles
-  const fetchUserData = async (authUserId: string) => {
+  // H01 FIX: Track current auth user ID to prevent stale fetches
+  const currentAuthIdRef = useRef<string | null>(null);
+  // H02 FIX: Track if initial fetch is done to prevent double fetch
+  const initialFetchDoneRef = useRef(false);
+
+  // H01 FIX: Stable fetchUserData with stale-check via ref
+  const fetchUserData = useCallback(async (authUserId: string) => {
+    // If the auth user changed while we were fetching, abort
+    if (currentAuthIdRef.current !== authUserId) return;
+
     try {
-      // Fetch user profile
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -41,14 +48,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Re-check: user might have logged out while we were fetching
+      if (currentAuthIdRef.current !== authUserId) return;
+
       if (userData) {
         setUser(userData as User);
 
-        // Fetch user roles
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
           .select('*')
           .eq('user_id', userData.id);
+
+        // Final stale check before setting roles
+        if (currentAuthIdRef.current !== authUserId) return;
 
         if (rolesError) {
           console.error('Error fetching roles:', rolesError);
@@ -59,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error in fetchUserData:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -69,16 +81,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSupabaseUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          // Use setTimeout to avoid potential race conditions
-          setTimeout(() => {
-            fetchUserData(newSession.user.id);
-          }, 0);
+          currentAuthIdRef.current = newSession.user.id;
+
+          // H02 FIX: Skip if getSession already handled this
+          if (!initialFetchDoneRef.current) {
+            // Will be handled by getSession below
+            return;
+          }
+          // H01 FIX: Direct call, no setTimeout
+          fetchUserData(newSession.user.id);
         } else {
+          currentAuthIdRef.current = null;
           setUser(null);
           setUserRoles([]);
         }
 
         if (event === 'SIGNED_OUT') {
+          currentAuthIdRef.current = null;
           setUser(null);
           setUserRoles([]);
         }
@@ -91,16 +110,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSupabaseUser(existingSession?.user ?? null);
 
       if (existingSession?.user) {
+        currentAuthIdRef.current = existingSession.user.id;
         await fetchUserData(existingSession.user.id);
       }
-      
+
+      // H03 FIX: Only set loading false AFTER fetchUserData completes
+      // This ensures userRoles are available before BrandContext reads isAdmin/isCeo
+      initialFetchDoneRef.current = true;
       setIsLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUserData]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -122,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    currentAuthIdRef.current = null;
     await supabase.auth.signOut();
     setUser(null);
     setUserRoles([]);

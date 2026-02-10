@@ -26,7 +26,6 @@ async function buildUserData(
     country: [await sha256("it")],
   };
 
-  // Hash required fields
   if (contact.email) userData.em = [await sha256(contact.email)];
   if (phone) userData.ph = [await sha256(phone)];
   if (contact.first_name) userData.fn = [await sha256(contact.first_name)];
@@ -34,7 +33,6 @@ async function buildUserData(
   if (contact.city) userData.ct = [await sha256(contact.city)];
   if (contact.cap) userData.zp = [await sha256(contact.cap)];
 
-  // Non-hashed fields
   if (tracking?.fbp) userData.fbp = tracking.fbp;
   if (tracking?.fbc) userData.fbc = tracking.fbc;
   if (tracking?.client_ip) userData.client_ip_address = tracking.client_ip;
@@ -86,20 +84,37 @@ interface Tracking {
   client_user_agent: string | null;
 }
 
+// H06 FIX: Validate cron secret strictly — no generic Bearer token accepted
+function isAuthorized(req: Request): boolean {
+  const cronSecret = req.headers.get("x-cron-secret");
+  const expectedSecret = Deno.env.get("CRON_SECRET");
+
+  // Primary auth: cron secret header
+  if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
+    return true;
+  }
+
+  // Fallback for pg_cron: validate Bearer token matches service role key
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.replace("Bearer ", "");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (serviceRoleKey && token === serviceRoleKey) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Accept either x-cron-secret OR Bearer token (for pg_cron with anon key)
-  const cronSecret = req.headers.get("x-cron-secret");
-  const expectedSecret = Deno.env.get("CRON_SECRET");
-  const authHeader = req.headers.get("authorization");
-  const hasCronSecret = cronSecret && expectedSecret && cronSecret === expectedSecret;
-  const hasBearerToken = authHeader?.startsWith("Bearer ");
-
-  if (!hasCronSecret && !hasBearerToken) {
-    console.error("[CAPI] Unauthorized: no valid auth");
+  // H06 FIX: Strict auth validation
+  if (!isAuthorized(req)) {
+    console.error("[CAPI] Unauthorized: no valid cron secret or service role key");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -159,14 +174,16 @@ Deno.serve(async (req) => {
 
     if (metaAppsError || !metaApps) {
       console.error("[CAPI] Failed to fetch meta_apps:", metaAppsError);
-      // Mark all as failed
-      for (const event of claimedEvents as CapiEvent[]) {
-        await supabase.rpc("update_capi_event_status", {
-          p_event_id: event.id,
-          p_status: "failed",
-          p_error: "Failed to fetch meta_apps config",
-        });
-      }
+      // H07 FIX: Mark all as failed in parallel
+      await Promise.all(
+        (claimedEvents as CapiEvent[]).map((event) =>
+          supabase.rpc("update_capi_event_status", {
+            p_event_id: event.id,
+            p_status: "failed",
+            p_error: "Failed to fetch meta_apps config",
+          })
+        )
+      );
       return new Response(JSON.stringify({ error: "Failed to fetch config" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -178,45 +195,41 @@ Deno.serve(async (req) => {
       metaAppMap.set(app.id, app);
     }
 
-    // 4. Fetch all contacts for events
-    const contactIds = [...new Set((claimedEvents as CapiEvent[]).map((e) => e.contact_id).filter(Boolean))];
+    // 4. Fetch all contacts, phones, tracking IN PARALLEL (H10 FIX)
+    const contactIds = [...new Set((claimedEvents as CapiEvent[]).map((e) => e.contact_id).filter(Boolean))] as string[];
     let contactMap = new Map<string, Contact>();
     let phoneMap = new Map<string, string>();
     let trackingMap = new Map<string, Tracking>();
 
     if (contactIds.length > 0) {
-      const { data: contacts } = await supabase
-        .from("contacts")
-        .select("id, email, first_name, last_name, city, cap")
-        .in("id", contactIds);
+      const [contactsRes, phonesRes, trackingRes] = await Promise.all([
+        supabase
+          .from("contacts")
+          .select("id, email, first_name, last_name, city, cap")
+          .in("id", contactIds),
+        supabase
+          .from("contact_phones")
+          .select("contact_id, phone_normalized, is_primary")
+          .in("contact_id", contactIds)
+          .eq("is_primary", true),
+        supabase
+          .from("contact_tracking")
+          .select("contact_id, fbp, fbc, client_ip, client_user_agent")
+          .in("contact_id", contactIds),
+      ]);
 
-      if (contacts) {
-        for (const c of contacts as Contact[]) {
+      if (contactsRes.data) {
+        for (const c of contactsRes.data as Contact[]) {
           contactMap.set(c.id, c);
         }
       }
-
-      // Fetch primary phones
-      const { data: phones } = await supabase
-        .from("contact_phones")
-        .select("contact_id, phone_normalized, is_primary")
-        .in("contact_id", contactIds)
-        .eq("is_primary", true);
-
-      if (phones) {
-        for (const p of phones as (ContactPhone & { contact_id: string })[]) {
+      if (phonesRes.data) {
+        for (const p of phonesRes.data as (ContactPhone & { contact_id: string })[]) {
           phoneMap.set(p.contact_id, p.phone_normalized);
         }
       }
-
-      // Fetch tracking data
-      const { data: trackingData } = await supabase
-        .from("contact_tracking")
-        .select("contact_id, fbp, fbc, client_ip, client_user_agent")
-        .in("contact_id", contactIds);
-
-      if (trackingData) {
-        for (const t of trackingData as (Tracking & { contact_id: string })[]) {
+      if (trackingRes.data) {
+        for (const t of trackingRes.data as (Tracking & { contact_id: string })[]) {
           trackingMap.set(t.contact_id, t);
         }
       }
@@ -229,35 +242,38 @@ Deno.serve(async (req) => {
       const metaApp = metaAppMap.get(metaAppId);
       if (!metaApp || !metaApp.pixel_id || !metaApp.capi_token_key) {
         console.error(`[CAPI] Missing config for meta_app ${metaAppId}`);
-        for (const event of events) {
-          await supabase.rpc("update_capi_event_status", {
-            p_event_id: event.id,
-            p_status: "failed",
-            p_error: "Missing pixel_id or capi_token_key",
-          });
-          results.failed++;
-        }
+        // H07 FIX: parallel updates
+        await Promise.all(
+          events.map((event) =>
+            supabase.rpc("update_capi_event_status", {
+              p_event_id: event.id,
+              p_status: "failed",
+              p_error: "Missing pixel_id or capi_token_key",
+            })
+          )
+        );
+        results.failed += events.length;
         continue;
       }
 
-      // Read token from environment
       const token = Deno.env.get(metaApp.capi_token_key);
       if (!token) {
         console.error(`[CAPI] Missing token env var: ${metaApp.capi_token_key}`);
-        for (const event of events) {
-          await supabase.rpc("update_capi_event_status", {
-            p_event_id: event.id,
-            p_status: "failed",
-            p_error: `Missing env var: ${metaApp.capi_token_key}`,
-          });
-          results.failed++;
-        }
+        await Promise.all(
+          events.map((event) =>
+            supabase.rpc("update_capi_event_status", {
+              p_event_id: event.id,
+              p_status: "failed",
+              p_error: `Missing env var: ${metaApp.capi_token_key}`,
+            })
+          )
+        );
+        results.failed += events.length;
         continue;
       }
 
       // Build CAPI payload
       const capiData: any[] = [];
-      const eventIdMap = new Map<string, string>(); // capi event_id -> db event id
 
       for (const event of events) {
         const contact = event.contact_id ? contactMap.get(event.contact_id) : null;
@@ -271,12 +287,10 @@ Deno.serve(async (req) => {
           userData = { country: [await sha256("it")] };
         }
 
-        // Merge lead_id from DB user_data if present
         if (event.user_data?.lead_id) {
           userData.lead_id = event.user_data.lead_id;
         }
 
-        // Ensure CRM custom_data defaults
         const customData = {
           event_source: "crm",
           lead_event_source: "CRM Gruppo Benessere",
@@ -293,16 +307,13 @@ Deno.serve(async (req) => {
         };
 
         capiData.push(eventPayload);
-        eventIdMap.set(event.event_id, event.id);
       }
 
-      // Build request body
       const requestBody: Record<string, any> = {
         data: capiData,
         access_token: token,
       };
 
-      // Only include test_event_code in non-production
       if (!isProduction && metaApp.capi_test_event_code) {
         requestBody.test_event_code = metaApp.capi_test_event_code;
         console.log(`[CAPI] Using test_event_code: ${metaApp.capi_test_event_code}`);
@@ -311,8 +322,12 @@ Deno.serve(async (req) => {
       // Send to Meta CAPI
       try {
         console.log(`[CAPI] Sending ${capiData.length} events to pixel ${metaApp.pixel_id}`);
-        console.log(`[CAPI] Payload:`, JSON.stringify({ data: capiData, test_event_code: requestBody.test_event_code }, null, 2).slice(0, 2000));
-        
+
+        // H12 FIX: Only log payload in non-production
+        if (!isProduction) {
+          console.log(`[CAPI] Payload preview:`, JSON.stringify({ data: capiData, test_event_code: requestBody.test_event_code }, null, 2).slice(0, 2000));
+        }
+
         const response = await fetch(
           `https://graph.facebook.com/v24.0/${metaApp.pixel_id}/events`,
           {
@@ -323,46 +338,60 @@ Deno.serve(async (req) => {
         );
 
         const responseText = await response.text();
-        console.log(`[CAPI] Response status: ${response.status}, body: ${responseText.slice(0, 1000)}`);
-        
+        console.log(`[CAPI] Response status: ${response.status}, body: ${responseText.slice(0, 500)}`);
+
         let responseData: any;
         try { responseData = JSON.parse(responseText); } catch { responseData = { raw: responseText }; }
 
         if (response.ok && responseData.events_received) {
-          console.log(`[CAPI] Success: ${responseData.events_received} events received by Meta`);
-          // Mark all as sent
-          for (const event of events) {
-            await supabase.rpc("update_capi_event_status", {
-              p_event_id: event.id,
-              p_status: "sent",
-              p_error: null,
-            });
-            results.sent++;
+          // H05 FIX: Check partial success
+          const received = responseData.events_received;
+          const expectedCount = capiData.length;
+
+          if (received < expectedCount) {
+            console.warn(`[CAPI] Partial success: Meta received ${received}/${expectedCount} events`);
           }
+
+          // Mark all as sent (Meta doesn't tell us WHICH ones failed in batch)
+          // but log the discrepancy for investigation
+          await Promise.all(
+            events.map((event) =>
+              supabase.rpc("update_capi_event_status", {
+                p_event_id: event.id,
+                p_status: "sent",
+                p_error: received < expectedCount
+                  ? `Partial: ${received}/${expectedCount} received by Meta`
+                  : null,
+              })
+            )
+          );
+          results.sent += events.length;
         } else {
           const errorMsg = responseData.error?.message || JSON.stringify(responseData);
           console.error(`[CAPI] Meta API error:`, errorMsg, responseData.error);
-          // Mark all as failed
-          for (const event of events) {
-            await supabase.rpc("update_capi_event_status", {
-              p_event_id: event.id,
-              p_status: "failed",
-              p_error: errorMsg.slice(0, 500),
-            });
-            results.failed++;
-          }
+          await Promise.all(
+            events.map((event) =>
+              supabase.rpc("update_capi_event_status", {
+                p_event_id: event.id,
+                p_status: "failed",
+                p_error: errorMsg.slice(0, 500),
+              })
+            )
+          );
+          results.failed += events.length;
         }
       } catch (fetchError: any) {
         console.error(`[CAPI] Fetch error:`, fetchError);
-        // Mark all as failed
-        for (const event of events) {
-          await supabase.rpc("update_capi_event_status", {
-            p_event_id: event.id,
-            p_status: "failed",
-            p_error: fetchError.message?.slice(0, 500) || "Network error",
-          });
-          results.failed++;
-        }
+        await Promise.all(
+          events.map((event) =>
+            supabase.rpc("update_capi_event_status", {
+              p_event_id: event.id,
+              p_status: "failed",
+              p_error: fetchError.message?.slice(0, 500) || "Network error",
+            })
+          )
+        );
+        results.failed += events.length;
       }
     }
 
