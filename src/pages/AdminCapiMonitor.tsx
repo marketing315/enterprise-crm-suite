@@ -84,7 +84,7 @@ function statusBadge(status: string) {
 }
 
 export default function AdminCapiMonitor() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const { currentBrand, hasBrandSelected } = useBrand();
 
   const [period, setPeriod] = useState("7d");
@@ -124,6 +124,7 @@ export default function AdminCapiMonitor() {
     eventFilter === "all" ? null : eventFilter
   );
 
+  if (authLoading) return <div className="flex items-center justify-center min-h-[60vh]"><RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   if (!hasBrandSelected) {
