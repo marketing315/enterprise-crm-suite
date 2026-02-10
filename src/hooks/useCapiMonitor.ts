@@ -77,6 +77,6 @@ export function useCapiEventsList(
       if (error) throw error;
       return (data as any as CapiEvent[]) ?? [];
     },
-    enabled: brandIds.length > 0,
+    enabled: isQueryEnabled(),
   });
 }
