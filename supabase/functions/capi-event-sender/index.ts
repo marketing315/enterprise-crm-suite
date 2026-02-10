@@ -264,9 +264,12 @@ Deno.serve(async (req) => {
         const phone = event.contact_id ? phoneMap.get(event.contact_id) || null : null;
         const tracking = event.contact_id ? trackingMap.get(event.contact_id) || null : null;
 
-        const userData = contact
-          ? await buildUserData(contact, phone, tracking)
-          : { country: ["it"] };
+        let userData: Record<string, any>;
+        if (contact) {
+          userData = await buildUserData(contact, phone, tracking);
+        } else {
+          userData = { country: [await sha256("it")] };
+        }
 
         // Merge lead_id from DB user_data if present
         if (event.user_data?.lead_id) {
