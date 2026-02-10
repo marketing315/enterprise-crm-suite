@@ -308,6 +308,7 @@ Deno.serve(async (req) => {
       // Send to Meta CAPI
       try {
         console.log(`[CAPI] Sending ${capiData.length} events to pixel ${metaApp.pixel_id}`);
+        console.log(`[CAPI] Payload:`, JSON.stringify(requestBody, null, 2).slice(0, 2000));
         
         const response = await fetch(
           `https://graph.facebook.com/v24.0/${metaApp.pixel_id}/events`,
@@ -318,7 +319,11 @@ Deno.serve(async (req) => {
           }
         );
 
-        const responseData = await response.json();
+        const responseText = await response.text();
+        console.log(`[CAPI] Response status: ${response.status}, body: ${responseText.slice(0, 1000)}`);
+        
+        let responseData: any;
+        try { responseData = JSON.parse(responseText); } catch { responseData = { raw: responseText }; }
 
         if (response.ok && responseData.events_received) {
           console.log(`[CAPI] Success: ${responseData.events_received} events received by Meta`);
@@ -333,7 +338,7 @@ Deno.serve(async (req) => {
           }
         } else {
           const errorMsg = responseData.error?.message || JSON.stringify(responseData);
-          console.error(`[CAPI] Meta API error:`, errorMsg);
+          console.error(`[CAPI] Meta API error:`, errorMsg, responseData.error);
           // Mark all as failed
           for (const event of events) {
             await supabase.rpc("update_capi_event_status", {
