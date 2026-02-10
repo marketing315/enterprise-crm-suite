@@ -296,7 +296,7 @@ Deno.serve(async (req) => {
         console.log(`[CAPI] Sending ${capiData.length} events to pixel ${metaApp.pixel_id}`);
         
         const response = await fetch(
-          `https://graph.facebook.com/v20.0/${metaApp.pixel_id}/events`,
+          `https://graph.facebook.com/v24.0/${metaApp.pixel_id}/events`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
