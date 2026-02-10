@@ -110,6 +110,7 @@ const adminMenuItems: Array<{
   { icon: TrendingUp, label: 'Trend Ticket', path: '/admin/ticket-trend' },
   { icon: Webhook, label: 'Webhook Monitor', path: '/admin/webhooks' },
   { icon: AlertTriangle, label: 'DLQ', path: '/admin/dlq' },
+  { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi' },
 ];
 
 export function MainLayout() {
