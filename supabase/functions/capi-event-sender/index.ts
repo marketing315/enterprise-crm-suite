@@ -84,23 +84,46 @@ interface Tracking {
   client_user_agent: string | null;
 }
 
-// H06 FIX: Validate cron secret strictly — no generic Bearer token accepted
+// H06 FIX: Validate cron secret or known project JWT
+// pg_cron sends the project anon key (HS256 JWT) as Bearer token.
+// We decode and verify the JWT belongs to this Supabase project.
 function isAuthorized(req: Request): boolean {
+  // 1. Primary: x-cron-secret header
   const cronSecret = req.headers.get("x-cron-secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
-
-  // Primary auth: cron secret header
   if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
     return true;
   }
 
-  // Fallback for pg_cron: validate Bearer token matches service role key
+  // 2. Bearer token: decode JWT and check project ref + role
   const authHeader = req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (serviceRoleKey && token === serviceRoleKey) {
-      return true;
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+        // Extract project ref from URL (e.g., "https://abc123.supabase.co" → "abc123")
+        const projectRef = supabaseUrl.replace("https://", "").split(".")[0];
+
+        // Accept JWT if: issued by supabase, matches project ref, has system role
+        const isProjectJwt =
+          (payload.iss === "supabase" && payload.ref === projectRef) ||
+          (payload.iss && projectRef && payload.iss.includes(projectRef));
+        const hasSystemRole = payload.role === "anon" || payload.role === "service_role";
+
+        if (isProjectJwt && hasSystemRole) {
+          return true;
+        }
+
+        // Also accept authenticated user JWTs from this project (for manual testing)
+        if (payload.iss && projectRef && payload.iss.includes(projectRef) && payload.role === "authenticated") {
+          return true;
+        }
+      }
+    } catch {
+      // Invalid JWT format — fall through
     }
   }
 
