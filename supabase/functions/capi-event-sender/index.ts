@@ -84,15 +84,16 @@ interface Tracking {
   client_user_agent: string | null;
 }
 
-// H06 FIX: Validate cron secret or known project JWT
-// pg_cron sends the project anon key (HS256 JWT) as Bearer token.
-// We decode and verify the JWT belongs to this Supabase project.
+// H06 FIX: Validate cron secret (dual-secret for zero-downtime rotation) or known project JWT
 function isAuthorized(req: Request): boolean {
-  // 1. Primary: x-cron-secret header
+  // 1. Primary: x-cron-secret header — accepts CRON_SECRET or CRON_SECRET_PREVIOUS
   const cronSecret = req.headers.get("x-cron-secret");
-  const expectedSecret = Deno.env.get("CRON_SECRET");
-  if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
-    return true;
+  if (cronSecret) {
+    const current = Deno.env.get("CRON_SECRET");
+    const previous = Deno.env.get("CRON_SECRET_PREVIOUS");
+    if ((current && cronSecret === current) || (previous && cronSecret === previous)) {
+      return true;
+    }
   }
 
   // 2. Bearer token: decode JWT and check project ref + role
