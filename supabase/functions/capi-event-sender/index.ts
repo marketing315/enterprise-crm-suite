@@ -433,7 +433,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[CAPI] Run ${requestId} complete:`, results);
+    const logSuffix = (logAuthOnSuccess || results.failed > 0) ? `, authorized_via: ${authMethod}` : "";
+    console.log(`[CAPI] Run ${requestId} complete:`, results, logSuffix);
 
     return new Response(JSON.stringify({ success: true, ...results }), {
       status: 200,
