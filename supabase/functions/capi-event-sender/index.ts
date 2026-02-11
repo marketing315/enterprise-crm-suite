@@ -85,14 +85,18 @@ interface Tracking {
 }
 
 // H06 FIX: Validate cron secret (dual-secret for zero-downtime rotation) or known project JWT
-function isAuthorized(req: Request): boolean {
+// Returns the auth method used for audit logging, or null if unauthorized
+function getAuthMethod(req: Request): string | null {
   // 1. Primary: x-cron-secret header — accepts CRON_SECRET or CRON_SECRET_PREVIOUS
   const cronSecret = req.headers.get("x-cron-secret");
-  if (cronSecret) {
+  if (cronSecret && cronSecret.length > 0) {
     const current = Deno.env.get("CRON_SECRET");
     const previous = Deno.env.get("CRON_SECRET_PREVIOUS");
-    if ((current && cronSecret === current) || (previous && cronSecret === previous)) {
-      return true;
+    if (current && current.length > 0 && cronSecret === current) {
+      return "cron_secret_current";
+    }
+    if (previous && previous.length > 0 && cronSecret === previous) {
+      return "cron_secret_previous";
     }
   }
 
@@ -105,22 +109,19 @@ function isAuthorized(req: Request): boolean {
       if (parts.length === 3) {
         const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
         const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-        // Extract project ref from URL (e.g., "https://abc123.supabase.co" → "abc123")
         const projectRef = supabaseUrl.replace("https://", "").split(".")[0];
 
-        // Accept JWT if: issued by supabase, matches project ref, has system role
         const isProjectJwt =
           (payload.iss === "supabase" && payload.ref === projectRef) ||
           (payload.iss && projectRef && payload.iss.includes(projectRef));
         const hasSystemRole = payload.role === "anon" || payload.role === "service_role";
 
         if (isProjectJwt && hasSystemRole) {
-          return true;
+          return `jwt_${payload.role}`;
         }
 
-        // Also accept authenticated user JWTs from this project (for manual testing)
         if (payload.iss && projectRef && payload.iss.includes(projectRef) && payload.role === "authenticated") {
-          return true;
+          return "jwt_authenticated";
         }
       }
     } catch {
@@ -128,7 +129,7 @@ function isAuthorized(req: Request): boolean {
     }
   }
 
-  return false;
+  return null;
 }
 
 Deno.serve(async (req) => {
