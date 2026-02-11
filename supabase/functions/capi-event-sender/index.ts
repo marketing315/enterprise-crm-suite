@@ -148,7 +148,8 @@ Deno.serve(async (req) => {
   }
 
   const requestId = crypto.randomUUID();
-  console.log(`[CAPI] Starting run ${requestId}, authorized_via: ${authMethod}`);
+  // Log auth method only when relevant (non-cron or for audit/debug)
+  const logAuthOnSuccess = authMethod !== "cron_secret_current";
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
