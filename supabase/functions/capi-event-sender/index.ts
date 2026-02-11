@@ -138,7 +138,8 @@ Deno.serve(async (req) => {
   }
 
   // H06 FIX: Strict auth validation
-  if (!isAuthorized(req)) {
+  const authMethod = getAuthMethod(req);
+  if (!authMethod) {
     console.error("[CAPI] Unauthorized: no valid cron secret or service role key");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -147,7 +148,7 @@ Deno.serve(async (req) => {
   }
 
   const requestId = crypto.randomUUID();
-  console.log(`[CAPI] Starting run ${requestId}`);
+  console.log(`[CAPI] Starting run ${requestId}, authorized_via: ${authMethod}`);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
