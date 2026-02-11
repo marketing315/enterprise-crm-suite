@@ -159,6 +159,12 @@ Deno.serve(async (req) => {
   const isProduction = environment === "production";
 
   try {
+    // 0. Auto-DLQ: mark events stuck in processing with exhausted retries
+    const { data: dlqCount } = await supabase.rpc("reclaim_stale_capi_events");
+    if (dlqCount && dlqCount > 0) {
+      console.warn(`[CAPI] ⚠️ Auto-DLQ: ${dlqCount} exhausted events moved to failed`);
+    }
+
     // 1. Claim events atomically
     const { data: claimedEvents, error: claimError } = await supabase.rpc("claim_capi_events", {
       p_limit: 50,
