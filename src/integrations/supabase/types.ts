@@ -3284,7 +3284,7 @@ export type Database = {
       meta_capi_event_queue: {
         Row: {
           action_source: string
-          attempts: number | null
+          attempts: number
           brand_id: string
           consent_snapshot: boolean
           contact_id: string | null
@@ -3297,7 +3297,7 @@ export type Database = {
           id: string
           last_error: string | null
           lead_event_id: string | null
-          max_attempts: number | null
+          max_attempts: number
           meta_app_id: string
           processing_at: string | null
           processing_by: string | null
@@ -3307,7 +3307,7 @@ export type Database = {
         }
         Insert: {
           action_source?: string
-          attempts?: number | null
+          attempts?: number
           brand_id: string
           consent_snapshot?: boolean
           contact_id?: string | null
@@ -3320,7 +3320,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           lead_event_id?: string | null
-          max_attempts?: number | null
+          max_attempts?: number
           meta_app_id: string
           processing_at?: string | null
           processing_by?: string | null
@@ -3330,7 +3330,7 @@ export type Database = {
         }
         Update: {
           action_source?: string
-          attempts?: number | null
+          attempts?: number
           brand_id?: string
           consent_snapshot?: boolean
           contact_id?: string | null
@@ -3343,7 +3343,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           lead_event_id?: string | null
-          max_attempts?: number | null
+          max_attempts?: number
           meta_app_id?: string
           processing_at?: string | null
           processing_by?: string | null
@@ -5383,7 +5383,7 @@ export type Database = {
         Args: { p_limit: number; p_processing_by?: string }
         Returns: {
           action_source: string
-          attempts: number | null
+          attempts: number
           brand_id: string
           consent_snapshot: boolean
           contact_id: string | null
@@ -5396,7 +5396,7 @@ export type Database = {
           id: string
           last_error: string | null
           lead_event_id: string | null
-          max_attempts: number | null
+          max_attempts: number
           meta_app_id: string
           processing_at: string | null
           processing_by: string | null
