@@ -100,7 +100,7 @@ function getAuthMethod(req: Request): string | null {
     }
   }
 
-  // 2. Bearer token: decode JWT and check project ref + role
+  // 2. Bearer token: only service_role JWT from this project is accepted
   const authHeader = req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
@@ -114,14 +114,10 @@ function getAuthMethod(req: Request): string | null {
         const isProjectJwt =
           (payload.iss === "supabase" && payload.ref === projectRef) ||
           (payload.iss && projectRef && payload.iss.includes(projectRef));
-        const hasSystemRole = payload.role === "anon" || payload.role === "service_role";
 
-        if (isProjectJwt && hasSystemRole) {
-          return `jwt_${payload.role}`;
-        }
-
-        if (payload.iss && projectRef && payload.iss.includes(projectRef) && payload.role === "authenticated") {
-          return "jwt_authenticated";
+        // ONLY service_role is authorized — anon and authenticated are rejected
+        if (isProjectJwt && payload.role === "service_role") {
+          return "jwt_service_role";
         }
       }
     } catch {
