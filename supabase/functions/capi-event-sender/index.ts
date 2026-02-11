@@ -184,7 +184,8 @@ Deno.serve(async (req) => {
         console.warn(`[CAPI] ⚠️ Backlog alert: ${pendingCount} pending events in queue`);
       }
 
-      console.log("[CAPI] No pending events to process");
+      if (logAuthOnSuccess) console.log(`[CAPI] No pending events, authorized_via: ${authMethod}`);
+      else console.log("[CAPI] No pending events to process");
       return new Response(JSON.stringify({ processed: 0, pending_backlog: pendingCount || 0 }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
