@@ -148,7 +148,8 @@ Deno.serve(async (req) => {
   }
 
   const requestId = crypto.randomUUID();
-  console.log(`[CAPI] Starting run ${requestId}, authorized_via: ${authMethod}`);
+  // Log auth method only when relevant (non-cron or for audit/debug)
+  const logAuthOnSuccess = authMethod !== "cron_secret_current";
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -158,6 +159,12 @@ Deno.serve(async (req) => {
   const isProduction = environment === "production";
 
   try {
+    // 0. Auto-DLQ: mark events stuck in processing with exhausted retries
+    const { data: dlqCount } = await supabase.rpc("reclaim_stale_capi_events");
+    if (dlqCount && dlqCount > 0) {
+      console.warn(`[CAPI] ⚠️ Auto-DLQ: ${dlqCount} exhausted events moved to failed`);
+    }
+
     // 1. Claim events atomically
     const { data: claimedEvents, error: claimError } = await supabase.rpc("claim_capi_events", {
       p_limit: 50,
@@ -183,7 +190,8 @@ Deno.serve(async (req) => {
         console.warn(`[CAPI] ⚠️ Backlog alert: ${pendingCount} pending events in queue`);
       }
 
-      console.log("[CAPI] No pending events to process");
+      if (logAuthOnSuccess) console.log(`[CAPI] No pending events, authorized_via: ${authMethod}`);
+      else console.log("[CAPI] No pending events to process");
       return new Response(JSON.stringify({ processed: 0, pending_backlog: pendingCount || 0 }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -431,7 +439,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[CAPI] Run ${requestId} complete:`, results);
+    const logSuffix = (logAuthOnSuccess || results.failed > 0) ? `, authorized_via: ${authMethod}` : "";
+    console.log(`[CAPI] Run ${requestId} complete:`, results, logSuffix);
 
     return new Response(JSON.stringify({ success: true, ...results }), {
       status: 200,

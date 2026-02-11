@@ -6211,6 +6211,7 @@ export type Database = {
       }
       reactivate_pipeline_stage: { Args: { p_stage_id: string }; Returns: Json }
       rebuild_contact_search_index: { Args: never; Returns: number }
+      reclaim_stale_capi_events: { Args: never; Returns: number }
       record_delivery_result: {
         Args: {
           p_delivery_id: string
