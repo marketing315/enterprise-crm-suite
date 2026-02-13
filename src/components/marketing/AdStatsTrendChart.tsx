@@ -24,7 +24,7 @@ export function AdStatsTrendChart({ data, isLoading }: AdStatsTrendChartProps) {
     date: format(parseISO(d.stat_date), "dd MMM", { locale: it }),
     spend: d.total_spend,
     clicks: d.total_clicks,
-    reach: d.total_reach,
+    leads: d.leads_count ?? 0,
   })) || [];
 
   return (
@@ -49,7 +49,7 @@ export function AdStatsTrendChart({ data, isLoading }: AdStatsTrendChartProps) {
                   <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="gradReach" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="gradLeads" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                 </linearGradient>
@@ -73,14 +73,14 @@ export function AdStatsTrendChart({ data, isLoading }: AdStatsTrendChartProps) {
               <Tooltip 
                 formatter={(value: number, name: string) => {
                   if (name === "spend") return [`€${value.toFixed(2)}`, "Spesa"];
-                  if (name === "reach") return [value.toLocaleString("it-IT"), "Reach"];
+                  if (name === "leads") return [value.toLocaleString("it-IT"), "Lead"];
                   return [value, "Click"];
                 }}
               />
               <Legend 
                 formatter={(value) => {
                   if (value === "spend") return "Spesa (€)";
-                  if (value === "reach") return "Reach";
+                  if (value === "leads") return "Lead";
                   return "Click";
                 }}
               />
@@ -95,9 +95,9 @@ export function AdStatsTrendChart({ data, isLoading }: AdStatsTrendChartProps) {
               <Area
                 yAxisId="right"
                 type="monotone"
-                dataKey="reach"
+                dataKey="leads"
                 stroke="hsl(var(--primary))"
-                fill="url(#gradReach)"
+                fill="url(#gradLeads)"
                 strokeWidth={2}
               />
             </AreaChart>
