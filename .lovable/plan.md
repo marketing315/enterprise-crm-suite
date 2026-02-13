@@ -1,117 +1,53 @@
 
 
-## Correzione bug CAPI - Piano step-by-step
+# Bug Fix: Impossibile eliminare i ticket
 
-Si interviene su 6 bug identificati nell'audit, raggruppati per priorita'.
+## Problema identificato
 
----
+La tabella `tickets` ha RLS (Row Level Security) attivato con policy per SELECT, INSERT e UPDATE, ma **manca completamente la policy per DELETE**. Questo significa che qualsiasi tentativo di eliminare un ticket viene silenziosamente bloccato dal database, senza errore visibile all'utente (il frontend mostra "Errore nell'eliminazione").
 
-### Step 1 — Recovery eventi stuck in "processing" (BUG 1)
+Lo stesso problema esiste per le tabelle correlate:
+- `ticket_events` -- manca la policy DELETE
+- `ticket_audit_logs` -- manca la policy DELETE
 
-**Problema**: Se l'edge function crasha dopo il claim, gli eventi restano in `processing` per sempre perche' `claim_capi_events` filtra solo `status = 'pending'`.
+La tabella `ticket_comments` ha gia una policy DELETE ma solo per i propri commenti.
 
-**Soluzione**: Modificare la funzione `claim_capi_events` per includere anche gli eventi in `processing` da piu' di 5 minuti (stale). Aggiungere la condizione:
+## Soluzione
 
-```text
-WHERE (status = 'pending' OR (status = 'processing' AND processing_at < NOW() - INTERVAL '5 minutes'))
+### 1. Aggiungere le policy DELETE mancanti
+
+Creare una migrazione SQL con le seguenti policy:
+
+```sql
+-- Policy DELETE per tickets: solo utenti del brand possono eliminare
+CREATE POLICY "Users can delete tickets in their brands"
+ON public.tickets
+FOR DELETE
+TO authenticated
+USING (user_belongs_to_brand(get_user_id(auth.uid()), brand_id));
+
+-- Policy DELETE per ticket_events: cascade con il ticket
+CREATE POLICY "Users can delete ticket events in their brands"
+ON public.ticket_events
+FOR DELETE
+TO authenticated
+USING (user_belongs_to_brand(get_user_id(auth.uid()), brand_id));
+
+-- Policy DELETE per ticket_audit_logs: cascade con il ticket
+CREATE POLICY "Users can delete audit logs in their brands"
+ON public.ticket_audit_logs
+FOR DELETE
+TO authenticated
+USING (user_belongs_to_brand(get_user_id(auth.uid()), brand_id));
 ```
 
-Tipo: migrazione SQL (CREATE OR REPLACE FUNCTION)
+### 2. Nessuna modifica al codice frontend
 
----
+Il codice frontend (useDeleteTicket, TicketsTable, TicketDetailSheet) e gia corretto: chiama `supabase.from("tickets").delete().eq("id", ticketId)` e gestisce l'errore. Il problema e esclusivamente lato database.
 
-### Step 2 — Country non hashato nel fallback (BUG 3)
+## Dettaglio tecnico
 
-**Problema**: Riga 269 del sender — quando non c'e' un contatto, `country` viene inviato come `["it"]` in chiaro invece che come hash SHA-256.
-
-**Soluzione**: Nel file `supabase/functions/capi-event-sender/index.ts`, sostituire il fallback:
-
-```text
-// Prima (bug):
-: { country: ["it"] };
-
-// Dopo (fix):
-: { country: [await sha256("it")] };
-```
-
-Questo richiede che il fallback diventi `async`. Si trasformera' il ternario in un blocco if/else.
-
----
-
-### Step 3 — Token esposto nei log (BUG 4)
-
-**Problema**: Riga 311 logga `requestBody` che contiene `access_token`.
-
-**Soluzione**: Loggare solo il campo `data` (senza il token):
-
-```text
-// Prima:
-console.log(`[CAPI] Payload:`, JSON.stringify(requestBody, null, 2).slice(0, 2000));
-
-// Dopo:
-console.log(`[CAPI] Payload:`, JSON.stringify({ data: capiData, test_event_code: requestBody.test_event_code }, null, 2).slice(0, 2000));
-```
-
----
-
-### Step 4 — Deal senza contact_id (BUG 5)
-
-**Problema**: `queue_capi_purchase_event` non verifica che `NEW.contact_id` sia NOT NULL. Un deal senza contatto genera un evento CAPI inutile.
-
-**Soluzione**: Aggiungere un early return nel trigger SQL:
-
-```text
-IF NEW.contact_id IS NULL THEN
-  RETURN NEW;
-END IF;
-```
-
-Tipo: migrazione SQL (CREATE OR REPLACE FUNCTION)
-
----
-
-### Step 5 — Cast bigint su lead_id (BUG 6)
-
-**Problema**: `v_lead_id::bigint` puo' crashare se `leadgen_id` contiene caratteri non numerici.
-
-**Soluzione**: In entrambi i trigger (`queue_capi_lead_event` e `queue_capi_purchase_event`), passare `lead_id` come testo nella jsonb senza cast:
-
-```text
-// Prima:
-v_user_data := jsonb_build_object('lead_id', v_lead_id::bigint);
-
-// Dopo:
-v_user_data := jsonb_build_object('lead_id', v_lead_id);
-```
-
-Meta accetta `lead_id` come stringa. Tipo: migrazione SQL.
-
----
-
-### Step 6 — Default colonna action_source (BUG 2)
-
-**Problema**: Il default della colonna e' `'website'` ma tutti i trigger usano `'system_generated'`.
-
-**Soluzione**: Allineare il default della colonna:
-
-```text
-ALTER TABLE meta_capi_event_queue
-  ALTER COLUMN action_source SET DEFAULT 'system_generated';
-```
-
-Tipo: migrazione SQL.
-
----
-
-### Riepilogo file modificati
-
-| File | Tipo modifica |
-|------|--------------|
-| Migrazione SQL | Ricrea `claim_capi_events` con recovery stale |
-| Migrazione SQL | Ricrea `queue_capi_purchase_event` con check NULL contact_id e rimuove cast bigint |
-| Migrazione SQL | Ricrea `queue_capi_lead_event` senza cast bigint |
-| Migrazione SQL | Cambia default colonna `action_source` |
-| `supabase/functions/capi-event-sender/index.ts` | Fix country hash fallback + rimuove token dai log |
-
-Tutte le modifiche SQL saranno in una singola migrazione. La modifica all'edge function e' un singolo file.
+- **File modificato**: 1 nuova migrazione SQL
+- **Rischio**: Basso. Aggiunge solo la capacita di eliminare, vincolata alla stessa logica di appartenenza al brand gia usata per le altre operazioni
+- **Tempo stimato**: Meno di 1 minuto
 
