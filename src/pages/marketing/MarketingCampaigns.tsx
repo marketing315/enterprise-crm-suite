@@ -257,9 +257,9 @@ export default function MarketingCampaigns() {
                           {kpi?.deals_won ?? "—"}
                         </TableCell>
                         <TableCell className={`text-right font-medium ${
-                          kpi && kpi.roi >= 0 ? "text-green-600" : kpi ? "text-red-600" : ""
+                          kpi && kpi.roi != null && kpi.roi >= 0 ? "text-green-600" : kpi && kpi.roi != null ? "text-red-600" : ""
                         }`}>
-                          {kpi ? `${kpi.roi.toFixed(1)}%` : "—"}
+                          {kpi && kpi.roi != null ? `${kpi.roi.toFixed(1)}%` : "—"}
                         </TableCell>
                         {canEdit && (
                           <TableCell>
