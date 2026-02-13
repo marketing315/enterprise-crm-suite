@@ -49,13 +49,33 @@ Deno.serve(async (req) => {
     // Security: Check authorization
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedSecret = Deno.env.get("CRON_SECRET");
+    const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
     const authHeader = req.headers.get("Authorization");
     
-    const isCronCall = cronSecret && cronSecret === expectedSecret;
+    const isCronCall = cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
     
+    // Check if the call is from a cron job using anon/service_role JWT
+    let isJwtCronCall = false;
+    if (!isCronCall && authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      try {
+        // Decode JWT to check if it's a service/anon role token (from pg_cron)
+        const payloadB64 = token.split(".")[1];
+        const payload = JSON.parse(atob(payloadB64));
+        if (
+          payload.iss?.includes("supabase") &&
+          (payload.role === "anon" || payload.role === "service_role")
+        ) {
+          isJwtCronCall = true;
+        }
+      } catch {
+        // Not a valid JWT, continue to user auth check
+      }
+    }
+
     // For manual calls, verify admin/CEO role
     let isAdminCall = false;
-    if (!isCronCall && authHeader?.startsWith("Bearer ")) {
+    if (!isCronCall && !isJwtCronCall && authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
       const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
         global: { headers: { Authorization: authHeader } }
@@ -98,7 +118,7 @@ Deno.serve(async (req) => {
       isAdminCall = true;
     }
     
-    if (!isCronCall && !isAdminCall) {
+    if (!isCronCall && !isJwtCronCall && !isAdminCall) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
