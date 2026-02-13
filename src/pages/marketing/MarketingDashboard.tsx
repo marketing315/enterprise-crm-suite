@@ -10,7 +10,10 @@ import { useBrand } from "@/contexts/BrandContext";
 import { CustomReportDialog } from "@/components/marketing/CustomReportDialog";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
 import { useMarketingSummaryKpis, useMarketingChannelKpis } from "@/hooks/useMarketingKpis";
+import { useAdPlatformStatsSummary } from "@/hooks/useAdPlatformStats";
+import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
+import { MarketingMiniFunnel } from "@/components/marketing/MarketingMiniFunnel";
 import { AdStatsTab } from "@/components/marketing/AdStatsTab";
 import { AdCreativesTab } from "@/components/marketing/AdCreativesTab";
 import { AdDemographicsTab } from "@/components/marketing/AdDemographicsTab";
@@ -52,6 +55,20 @@ export default function MarketingDashboard() {
     dateRange.from,
     dateRange.to
   );
+
+  // ADV summary for the same period
+  const { data: advSummary, isLoading: advLoading } = useAdPlatformStatsSummary({
+    fromDate: dateRange.from,
+    toDate: dateRange.to,
+  });
+
+  // Funnel metrics for the same period
+  const funnelFrom = useMemo(() => startOfMonth(selectedMonth), [selectedMonth]);
+  const funnelTo = useMemo(() => endOfMonth(selectedMonth), [selectedMonth]);
+  const { metrics: funnelMetrics, isLoading: funnelLoading } = useFunnelMetrics({
+    from: funnelFrom,
+    to: funnelTo,
+  });
 
   const handlePrevMonth = () => setSelectedMonth((d) => subMonths(d, 1));
   const handleNextMonth = () => setSelectedMonth((d) => {
@@ -146,14 +163,21 @@ export default function MarketingDashboard() {
             </Button>
           </div>
 
-          {/* KPI Cards */}
-          <MarketingKpiCards kpis={summaryKpis} isLoading={summaryLoading} />
+          {/* KPI Cards (with ADV metrics integrated) */}
+          <MarketingKpiCards
+            kpis={summaryKpis}
+            advSummary={advSummary}
+            isLoading={summaryLoading || advLoading}
+          />
+
+          {/* Mini Funnel */}
+          <MarketingMiniFunnel metrics={funnelMetrics} isLoading={funnelLoading} />
 
           {/* Charts */}
           <div className="grid md:grid-cols-2 gap-6">
-            <Card>
+            <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle>Ricavi vs Costi per Canale</CardTitle>
+                <CardTitle className="text-base">Ricavi vs Costi per Canale</CardTitle>
               </CardHeader>
               <CardContent>
                 {channelLoading ? (
@@ -167,24 +191,25 @@ export default function MarketingDashboard() {
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={revenueByChannel}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="name" className="text-xs" />
+                      <YAxis className="text-xs" />
                       <Tooltip 
                         formatter={(value: number) => `€${value.toLocaleString("it-IT")}`}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                       />
                       <Legend />
-                      <Bar dataKey="revenue" name="Ricavi" fill="hsl(var(--primary))" />
-                      <Bar dataKey="cost" name="Costi" fill="hsl(var(--destructive))" />
+                      <Bar dataKey="revenue" name="Ricavi" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="cost" name="Costi" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle>Distribuzione Ricavi per Canale</CardTitle>
+                <CardTitle className="text-base">Distribuzione Ricavi per Canale</CardTitle>
               </CardHeader>
               <CardContent>
                 {channelLoading ? (
@@ -205,8 +230,10 @@ export default function MarketingDashboard() {
                         labelLine={false}
                         label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                         outerRadius={100}
+                        innerRadius={50}
                         fill="#8884d8"
                         dataKey="value"
+                        strokeWidth={2}
                       >
                         {roiByChannel.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -214,6 +241,7 @@ export default function MarketingDashboard() {
                       </Pie>
                       <Tooltip 
                         formatter={(value: number) => `€${value.toLocaleString("it-IT")}`}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -223,9 +251,9 @@ export default function MarketingDashboard() {
           </div>
 
           {/* Channel Summary Table */}
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle>Performance per Canale</CardTitle>
+              <CardTitle className="text-base">Performance per Canale</CardTitle>
             </CardHeader>
             <CardContent>
               {channelLoading ? (
@@ -241,27 +269,27 @@ export default function MarketingDashboard() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2">Canale</th>
-                        <th className="text-left py-2">Tipo</th>
-                        <th className="text-right py-2">Campagne</th>
-                        <th className="text-right py-2">Lead</th>
-                        <th className="text-right py-2">Deal Vinti</th>
-                        <th className="text-right py-2">Ricavi</th>
-                        <th className="text-right py-2">Costi</th>
-                        <th className="text-right py-2">ROI</th>
+                        <th className="text-left py-2 font-medium text-muted-foreground">Canale</th>
+                        <th className="text-left py-2 font-medium text-muted-foreground">Tipo</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Campagne</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Lead</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Deal Vinti</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Ricavi</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Costi</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">ROI</th>
                       </tr>
                     </thead>
                     <tbody>
                       {channelKpis.map((ch) => (
-                        <tr key={ch.channel_id} className="border-b">
-                          <td className="py-2 font-medium">{ch.channel_name}</td>
-                          <td className="py-2 capitalize">{ch.channel_type}</td>
-                          <td className="py-2 text-right">{ch.campaigns_count}</td>
-                          <td className="py-2 text-right">{ch.leads_count}</td>
-                          <td className="py-2 text-right">{ch.deals_won}</td>
-                          <td className="py-2 text-right">€{ch.revenue.toLocaleString("it-IT")}</td>
-                          <td className="py-2 text-right">€{ch.marketing_cost.toLocaleString("it-IT")}</td>
-                          <td className={`py-2 text-right font-medium ${getPercentColorClass(ch.avg_roi)}`}>
+                        <tr key={ch.channel_id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                          <td className="py-2.5 font-medium">{ch.channel_name}</td>
+                          <td className="py-2.5 capitalize text-muted-foreground">{ch.channel_type}</td>
+                          <td className="py-2.5 text-right">{ch.campaigns_count}</td>
+                          <td className="py-2.5 text-right">{ch.leads_count}</td>
+                          <td className="py-2.5 text-right">{ch.deals_won}</td>
+                          <td className="py-2.5 text-right">€{ch.revenue.toLocaleString("it-IT")}</td>
+                          <td className="py-2.5 text-right">€{ch.marketing_cost.toLocaleString("it-IT")}</td>
+                          <td className={`py-2.5 text-right font-medium ${getPercentColorClass(ch.avg_roi)}`}>
                             {formatPercent(ch.avg_roi)}
                           </td>
                         </tr>
