@@ -115,11 +115,13 @@ export type Database = {
           currency: string
           external_campaign_id: string
           external_campaign_name: string | null
+          frequency: number | null
           id: string
           imported_at: string
           impressions: number
           platform: Database["public"]["Enums"]["ad_platform"]
           raw_data: Json | null
+          reach: number | null
           spend: number
           stat_date: string
         }
@@ -134,11 +136,13 @@ export type Database = {
           currency?: string
           external_campaign_id: string
           external_campaign_name?: string | null
+          frequency?: number | null
           id?: string
           imported_at?: string
           impressions?: number
           platform: Database["public"]["Enums"]["ad_platform"]
           raw_data?: Json | null
+          reach?: number | null
           spend?: number
           stat_date: string
         }
@@ -153,11 +157,13 @@ export type Database = {
           currency?: string
           external_campaign_id?: string
           external_campaign_name?: string | null
+          frequency?: number | null
           id?: string
           imported_at?: string
           impressions?: number
           platform?: Database["public"]["Enums"]["ad_platform"]
           raw_data?: Json | null
+          reach?: number | null
           spend?: number
           stat_date?: string
         }
@@ -5678,11 +5684,14 @@ export type Database = {
       get_ad_platform_stats: {
         Args: {
           p_brand_id: string
+          p_campaign_id?: string
           p_from: string
           p_platform?: Database["public"]["Enums"]["ad_platform"]
           p_to: string
         }
         Returns: {
+          avg_frequency: number
+          brand_id: string
           campaign_id: string
           campaign_name: string
           cpc: number
@@ -5695,12 +5704,14 @@ export type Database = {
           total_clicks: number
           total_conversions: number
           total_impressions: number
+          total_reach: number
           total_spend: number
         }[]
       }
       get_ad_platform_stats_summary: {
         Args: {
           p_brand_id: string
+          p_campaign_id?: string
           p_from: string
           p_platform?: Database["public"]["Enums"]["ad_platform"]
           p_to: string
@@ -5709,16 +5720,19 @@ export type Database = {
           avg_cpc: number
           avg_cpm: number
           avg_ctr: number
+          avg_frequency: number
           last_import: string
           total_clicks: number
           total_conversions: number
           total_impressions: number
+          total_reach: number
           total_spend: number
         }[]
       }
       get_ad_platform_stats_trend: {
         Args: {
           p_brand_id: string
+          p_campaign_id?: string
           p_from: string
           p_platform?: Database["public"]["Enums"]["ad_platform"]
           p_to: string
@@ -5727,6 +5741,7 @@ export type Database = {
           stat_date: string
           total_clicks: number
           total_impressions: number
+          total_reach: number
           total_spend: number
         }[]
       }
