@@ -48,18 +48,25 @@ export default function MarketingCampaigns() {
   const deleteCampaign = useDeleteMarketingCampaign();
   const createCampaign = useCreateMarketingCampaign();
 
-  // Client-side search filter
+  // Client-side search + hide campaigns with no spend
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
-    if (!searchQuery.trim()) return campaigns;
-    const q = searchQuery.toLowerCase();
-    return campaigns.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.external_id?.toLowerCase().includes(q) ||
-        c.marketing_channels?.name?.toLowerCase().includes(q)
-    );
-  }, [campaigns, searchQuery]);
+    return campaigns.filter((c) => {
+      // Hide campaigns with zero spend ADV
+      const kpi = kpis?.find((k) => k.campaign_id === c.id);
+      if (!kpi || (kpi.marketing_cost ?? 0) === 0) return false;
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          c.name.toLowerCase().includes(q) ||
+          c.external_id?.toLowerCase().includes(q) ||
+          c.marketing_channels?.name?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [campaigns, searchQuery, kpis]);
 
   const handleEdit = (campaign: MarketingCampaign) => {
     setSelectedCampaign(campaign);
