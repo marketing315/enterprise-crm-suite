@@ -64,3 +64,22 @@ export interface AdPlatformStatSummary {
   avg_cpc: number | null;
   last_import: string | null;
 }
+
+export interface AdCreativeStat {
+  external_ad_id: string;
+  external_ad_name: string | null;
+  external_campaign_id: string;
+  external_campaign_name: string | null;
+  thumbnail_url: string | null;
+  platform: AdPlatform;
+  brand_id: string;
+  total_spend: number;
+  total_impressions: number;
+  total_clicks: number;
+  total_reach: number;
+  avg_frequency: number | null;
+  ctr: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  days_count: number;
+}
