@@ -74,3 +74,9 @@ verify_jwt = false
 
 [functions.admin-manage-team]
 verify_jwt = false
+
+[functions.generate-weekly-report]
+verify_jwt = false
+
+[functions.send-n8n-webhook]
+verify_jwt = false

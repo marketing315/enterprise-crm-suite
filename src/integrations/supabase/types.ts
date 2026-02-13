@@ -4549,6 +4549,69 @@ export type Database = {
           },
         ]
       }
+      sync_runs: {
+        Row: {
+          brand_id: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          mode: string
+          period_from: string
+          period_to: string
+          report_payload: Json | null
+          status: string
+          triggered_by: string | null
+          webhook_response: string | null
+          webhook_status_code: number | null
+        }
+        Insert: {
+          brand_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          mode: string
+          period_from: string
+          period_to: string
+          report_payload?: Json | null
+          status?: string
+          triggered_by?: string | null
+          webhook_response?: string | null
+          webhook_status_code?: number | null
+        }
+        Update: {
+          brand_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          mode?: string
+          period_from?: string
+          period_to?: string
+          report_payload?: Json | null
+          status?: string
+          triggered_by?: string | null
+          webhook_response?: string | null
+          webhook_status_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_runs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_runs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tag_assignments: {
         Row: {
           assigned_at: string
@@ -5531,6 +5594,7 @@ export type Database = {
           last_name: string
         }[]
       }
+      check_report_rate_limit: { Args: { p_user_id: string }; Returns: boolean }
       claim_capi_events: {
         Args: { p_limit: number; p_processing_by?: string }
         Returns: {

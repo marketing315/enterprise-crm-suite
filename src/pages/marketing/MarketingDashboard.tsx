@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, ChevronLeft, ChevronRight, Megaphone, BarChart3, Image as ImageIcon, Users2 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
+import { CustomReportDialog } from "@/components/marketing/CustomReportDialog";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
 import { useMarketingSummaryKpis, useMarketingChannelKpis } from "@/hooks/useMarketingKpis";
 import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
@@ -108,6 +109,7 @@ export default function MarketingDashboard() {
             Performance marketing per {currentBrand?.name}
           </p>
         </div>
+        <CustomReportDialog />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
