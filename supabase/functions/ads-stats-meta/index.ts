@@ -69,12 +69,20 @@ Deno.serve(async (req) => {
         );
       }
       
-      // Check if user has admin or ceo role
+      // Resolve internal user_id from supabase_auth_id
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: internalUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("supabase_auth_id", claimsData.user.id)
+        .limit(1)
+        .maybeSingle();
+
+      // Check if user has admin or ceo role
       const { data: userRoles } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", claimsData.user.id);
+        .eq("user_id", internalUser?.id ?? "");
       
       const hasAdminAccess = userRoles?.some(r => 
         r.role === "admin" || r.role === "ceo"
