@@ -68,6 +68,7 @@ import {
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
+import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
 
 // Base menu items (always visible if brand selected)
 const baseMenuItems = [
@@ -129,6 +130,9 @@ export function MainLayout() {
 
   // Global realtime subscriptions for all data tables
   useGlobalRealtime();
+
+  // Smart prefetch: pre-warm cache for dashboard/pipeline/contacts on login
+  usePrefetchOnLogin();
 
   // Build menu items based on permissions
   const menuItems = useMemo(() => {

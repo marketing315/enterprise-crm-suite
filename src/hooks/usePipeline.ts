@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE, GC } from "@/lib/queryCache";
 import { useMemo } from "react";
 import { useBrand } from "@/contexts/BrandContext";
 import type { PipelineStage, DealWithContact, DealStatus } from "@/types/database";
@@ -78,6 +79,8 @@ export function usePipelineStages() {
       if (error) throw error;
       return (data || []) as unknown as PipelineStage[];
     },
+    staleTime: STALE.BACKGROUND,
+    gcTime: GC.LONG,
   });
 }
 
