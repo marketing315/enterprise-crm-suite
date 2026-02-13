@@ -3015,6 +3015,7 @@ export type Database = {
             | null
           lead_type: Database["public"]["Enums"]["lead_type"] | null
           logistics_notes: string | null
+          marketing_campaign_id: string | null
           objection_type: Database["public"]["Enums"]["objection_type"] | null
           occurred_at: string
           pacemaker_status:
@@ -3057,6 +3058,7 @@ export type Database = {
             | null
           lead_type?: Database["public"]["Enums"]["lead_type"] | null
           logistics_notes?: string | null
+          marketing_campaign_id?: string | null
           objection_type?: Database["public"]["Enums"]["objection_type"] | null
           occurred_at?: string
           pacemaker_status?:
@@ -3099,6 +3101,7 @@ export type Database = {
             | null
           lead_type?: Database["public"]["Enums"]["lead_type"] | null
           logistics_notes?: string | null
+          marketing_campaign_id?: string | null
           objection_type?: Database["public"]["Enums"]["objection_type"] | null
           occurred_at?: string
           pacemaker_status?:
@@ -3123,6 +3126,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_events_marketing_campaign_id_fkey"
+            columns: ["marketing_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -5594,6 +5604,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_marketing_lead: {
+        Args: {
+          p_brand_id: string
+          p_contact_id: string
+          p_marketing_campaign_id?: string
+          p_notes?: string
+          p_source_name?: string
+        }
+        Returns: string
+      }
       create_outbound_webhook:
         | {
             Args: {
@@ -6008,6 +6028,20 @@ export type Database = {
           leads_count: number
           marketing_cost: number
           revenue: number
+        }[]
+      }
+      get_marketing_leads_by_campaign: {
+        Args: { p_brand_ids: string[]; p_from_date: string; p_to_date: string }
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          channel_name: string
+          manual_leads: number
+          meta_leads: number
+          meta_matched: number
+          meta_unmatched: number
+          total_leads: number
+          webhook_leads: number
         }[]
       }
       get_marketing_monthly_trend: {

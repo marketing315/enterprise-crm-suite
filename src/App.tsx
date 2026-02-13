@@ -41,6 +41,7 @@ import MarketingDashboard from "@/pages/marketing/MarketingDashboard";
 import MarketingCampaigns from "@/pages/marketing/MarketingCampaigns";
 import MarketingCosts from "@/pages/marketing/MarketingCosts";
 import MarketingReports from "@/pages/marketing/MarketingReports";
+import MarketingLeads from "@/pages/marketing/MarketingLeads";
 import CeoDashboard from "@/pages/CeoDashboard";
 import Install from "@/pages/Install";
 
@@ -121,6 +122,7 @@ const App = () => (
                 <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
                 <Route path="/marketing/costi" element={<MarketingCosts />} />
                 <Route path="/marketing/report" element={<MarketingReports />} />
+                <Route path="/marketing/leads" element={<MarketingLeads />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/salespersons" element={<SalespersonKpi />} />

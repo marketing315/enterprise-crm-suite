@@ -87,6 +87,7 @@ const marketingSubItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/marketing' },
   { icon: Megaphone, label: 'Campagne', path: '/marketing/campagne' },
   { icon: DollarSign, label: 'Costi', path: '/marketing/costi' },
+  { icon: Users, label: 'Lead', path: '/marketing/leads' },
   { icon: FileText, label: 'Report', path: '/marketing/report' },
 ];
 
