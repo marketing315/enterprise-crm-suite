@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { startOfDay, endOfDay, subDays, format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useBrandFilter } from "@/hooks/useBrandFilter";
+import { STALE, GC } from "@/lib/queryCache";
 
 export function useDashboardData() {
   const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
@@ -37,6 +38,8 @@ export function useDashboardData() {
       return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
+    staleTime: STALE.CRITICAL,
+    gcTime: GC.SHORT,
   });
 
   // KPI: Lead ultimi 7 giorni (contatti unici, non eventi)
@@ -67,6 +70,8 @@ export function useDashboardData() {
       return uniqueContacts.size;
     },
     enabled: isQueryEnabled(),
+    staleTime: STALE.CRITICAL,
+    gcTime: GC.SHORT,
   });
 
   // KPI: Deal aperti
@@ -92,6 +97,8 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
+    staleTime: STALE.CRITICAL,
+    gcTime: GC.SHORT,
   });
 
   // KPI: Deal nuovi - use estimation based on open deals
@@ -121,6 +128,8 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
+    staleTime: STALE.CRITICAL,
+    gcTime: GC.SHORT,
   });
 
   // KPI: Ticket con SLA breach
@@ -147,6 +156,8 @@ export function useDashboardData() {
       return count || 0;
     },
     enabled: isQueryEnabled(),
+    staleTime: STALE.CRITICAL,
+    gcTime: GC.SHORT,
   });
 
   // KPI: Contatti totali
@@ -274,7 +285,8 @@ export function useDashboardData() {
       return days;
     },
     enabled: isQueryEnabled(),
-    staleTime: 120000,
+    staleTime: STALE.STANDARD,
+    gcTime: GC.MEDIUM,
   });
 
   return {

@@ -6,25 +6,70 @@ import { useBrand } from '@/contexts/BrandContext';
 /**
  * Table-to-queryKey mapping for cache invalidation.
  * When a realtime event arrives for a table, all listed query keys are invalidated.
+ *
+ * `exact: true` entries invalidate only the precise key (faster).
+ * Without `exact`, all queries whose key *starts with* the given array are invalidated.
  */
-const TABLE_QUERY_MAP: Record<string, string[][]> = {
-  deals: [['deals'], ['deal-score'], ['deal-score-history'], ['brand-deal-scores'], ['pipeline-stages'], ['revenue-forecast'], ['forecast-history'], ['dashboard-open-deals'], ['dashboard-trend']],
-  deal_stage_history: [['deals']],
-  lead_events: [['lead-events'], ['contact'], ['dashboard-leads-today'], ['dashboard-leads-week'], ['dashboard-trend']],
-  appointments: [['appointments'], ['dashboard-appointments-today']],
-  contacts: [['contacts'], ['contact-search'], ['dashboard-total-contacts']],
-  tickets: [['dashboard-open-tickets'], ['dashboard-sla-breached'], ['dashboard-trend']],
-  sales_orders: [['sales-orders'], ['sales-kpis']],
-  sales_order_items: [['sales-orders'], ['sales-order-items']],
-  payments: [['payments']],
-  products: [['products']],
-  marketing_campaigns: [['marketing-campaigns']],
-  marketing_costs: [['marketing-costs'], ['marketing-kpis']],
-  tags: [['tags'], ['deals'], ['contacts'], ['contact-search']],
-  tag_assignments: [['tags'], ['deals'], ['contacts'], ['contact-search']],
-  pipeline_stages: [['pipeline-stages']],
-  admin_todos: [['admin-todos']],
-  action_suggestions: [['action-suggestions']],
+interface InvalidationEntry {
+  key: string[];
+  exact?: boolean;
+}
+
+const TABLE_QUERY_MAP: Record<string, InvalidationEntry[]> = {
+  deals: [
+    { key: ['deals'] },
+    { key: ['deal-score'] },
+    { key: ['deal-score-history'] },
+    { key: ['brand-deal-scores'] },
+    { key: ['pipeline-stages'], exact: true },
+    { key: ['revenue-forecast'] },
+    { key: ['forecast-history'] },
+    { key: ['dashboard-open-deals'] },
+    { key: ['dashboard-trend'] },
+  ],
+  deal_stage_history: [{ key: ['deals'] }],
+  lead_events: [
+    { key: ['lead-events'] },
+    { key: ['contact'] },
+    { key: ['dashboard-leads-today'] },
+    { key: ['dashboard-leads-week'] },
+    { key: ['dashboard-trend'] },
+  ],
+  appointments: [
+    { key: ['appointments'] },
+    { key: ['dashboard-appointments-today'] },
+  ],
+  contacts: [
+    { key: ['contacts'] },
+    { key: ['contact-search'] },
+    { key: ['dashboard-total-contacts'] },
+  ],
+  tickets: [
+    { key: ['dashboard-open-tickets'] },
+    { key: ['dashboard-sla-breached'] },
+    { key: ['dashboard-trend'] },
+  ],
+  sales_orders: [{ key: ['sales-orders'] }, { key: ['sales-kpis'] }],
+  sales_order_items: [{ key: ['sales-orders'] }, { key: ['sales-order-items'] }],
+  payments: [{ key: ['payments'] }],
+  products: [{ key: ['products'], exact: true }],
+  marketing_campaigns: [{ key: ['marketing-campaigns'], exact: true }],
+  marketing_costs: [{ key: ['marketing-costs'] }, { key: ['marketing-kpis'] }],
+  tags: [
+    { key: ['tags'], exact: true },
+    { key: ['deals'] },
+    { key: ['contacts'] },
+    { key: ['contact-search'] },
+  ],
+  tag_assignments: [
+    { key: ['tags'], exact: true },
+    { key: ['deals'] },
+    { key: ['contacts'] },
+    { key: ['contact-search'] },
+  ],
+  pipeline_stages: [{ key: ['pipeline-stages'], exact: true }],
+  admin_todos: [{ key: ['admin-todos'], exact: true }],
+  action_suggestions: [{ key: ['action-suggestions'], exact: true }],
 };
 
 /** Group tables into logical channels to keep subscriptions organized */
@@ -41,6 +86,9 @@ const CHANNEL_GROUPS: Record<string, string[]> = {
 /**
  * Centralized realtime hook that subscribes to ALL remaining tables
  * and invalidates the corresponding React-Query caches.
+ *
+ * Uses granular invalidation: `exact: true` entries prevent
+ * unnecessary cascade invalidations across unrelated queries.
  *
  * Call once in MainLayout so it's active on every page.
  */
@@ -62,11 +110,14 @@ export function useGlobalRealtime() {
             : { event: '*' as const, schema: 'public' as const, table, filter: `brand_id=eq.${brandId}` };
 
           channel.on('postgres_changes', opts, () => {
-            const keys = TABLE_QUERY_MAP[table];
-            if (keys) {
-              keys.forEach((queryKey) =>
-                queryClient.invalidateQueries({ queryKey }),
-              );
+            const entries = TABLE_QUERY_MAP[table];
+            if (entries) {
+              entries.forEach((entry) => {
+                queryClient.invalidateQueries({
+                  queryKey: entry.key,
+                  exact: entry.exact ?? false,
+                });
+              });
             }
           });
         });
