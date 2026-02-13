@@ -24,9 +24,10 @@ import { toast } from "sonner";
 import type { AdPlatform } from "@/types/adPlatform";
 
 export function AdStatsTab() {
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [platformFilter, setPlatformFilter] = useState<AdPlatform | "all">("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [isSyncing, setIsSyncing] = useState(false);
 
   const dateRange = useMemo(() => ({
@@ -35,24 +36,46 @@ export function AdStatsTab() {
   }), [selectedMonth]);
 
   const platform = platformFilter === "all" ? null : platformFilter;
+  const campaignId = campaignFilter === "all" ? null : campaignFilter;
 
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useAdPlatformStats({
     fromDate: dateRange.from,
     toDate: dateRange.to,
     platform,
+    campaignId,
   });
 
   const { data: trend, isLoading: trendLoading, refetch: refetchTrend } = useAdPlatformStatsTrend({
     fromDate: dateRange.from,
     toDate: dateRange.to,
     platform,
+    campaignId,
   });
 
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useAdPlatformStatsSummary({
     fromDate: dateRange.from,
     toDate: dateRange.to,
     platform,
+    campaignId,
   });
+
+  // Build campaign options from stats (unfiltered by campaign)
+  const { data: allStats } = useAdPlatformStats({
+    fromDate: dateRange.from,
+    toDate: dateRange.to,
+    platform,
+  });
+
+  const campaignOptions = useMemo(() => {
+    if (!allStats?.length) return [];
+    const unique = new Map<string, string>();
+    for (const s of allStats) {
+      const key = s.external_campaign_id;
+      const label = s.campaign_name || s.external_campaign_name || key;
+      if (!unique.has(key)) unique.set(key, label);
+    }
+    return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
+  }, [allStats]);
 
   const handlePrevMonth = () => setSelectedMonth((d) => subMonths(d, 1));
   const handleNextMonth = () => {
@@ -130,7 +153,7 @@ export function AdStatsTab() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Select 
             value={platformFilter} 
             onValueChange={(v) => setPlatformFilter(v as AdPlatform | "all")}
@@ -146,6 +169,25 @@ export function AdStatsTab() {
               </SelectItem>
             </SelectContent>
           </Select>
+
+          {campaignOptions.length > 0 && (
+            <Select
+              value={campaignFilter}
+              onValueChange={setCampaignFilter}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Campagna" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le campagne</SelectItem>
+                {campaignOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -164,6 +206,13 @@ export function AdStatsTab() {
         </div>
       </div>
 
+      {/* Brand info for multi-brand */}
+      {isAllBrandsSelected && (
+        <div className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+          📊 Visualizzazione aggregata di tutti i brand
+        </div>
+      )}
+
       {/* Last Import Info */}
       {lastImport && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -179,7 +228,7 @@ export function AdStatsTab() {
       <AdStatsTrendChart data={trend} isLoading={trendLoading} />
 
       {/* Campaign Table */}
-      <AdStatsTable data={stats} isLoading={statsLoading} />
+      <AdStatsTable data={stats} isLoading={statsLoading} showBrand={isAllBrandsSelected} />
     </div>
   );
 }

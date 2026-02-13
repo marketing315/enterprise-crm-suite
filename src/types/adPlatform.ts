@@ -16,6 +16,8 @@ export interface AdPlatformStat {
   spend: number;
   impressions: number;
   clicks: number;
+  reach: number;
+  frequency: number;
   conversions: number | null;
   conversions_value: number | null;
   raw_data: Record<string, unknown> | null;
@@ -29,10 +31,13 @@ export interface AdPlatformStatAggregated {
   campaign_id: string | null;
   campaign_name: string | null;
   platform: AdPlatform;
+  brand_id: string;
   total_spend: number;
   total_impressions: number;
   total_clicks: number;
   total_conversions: number | null;
+  total_reach: number;
+  avg_frequency: number | null;
   ctr: number | null;
   cpm: number | null;
   cpc: number | null;
@@ -44,6 +49,7 @@ export interface AdPlatformStatTrend {
   total_spend: number;
   total_impressions: number;
   total_clicks: number;
+  total_reach: number;
 }
 
 export interface AdPlatformStatSummary {
@@ -51,6 +57,8 @@ export interface AdPlatformStatSummary {
   total_impressions: number;
   total_clicks: number;
   total_conversions: number;
+  total_reach: number;
+  avg_frequency: number | null;
   avg_ctr: number | null;
   avg_cpm: number | null;
   avg_cpc: number | null;

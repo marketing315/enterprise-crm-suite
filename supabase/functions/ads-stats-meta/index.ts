@@ -19,6 +19,8 @@ interface MetaInsight {
   spend: string;
   impressions: string;
   clicks: string;
+  reach?: string;
+  frequency?: string;
   actions?: Array<{ action_type: string; value: string }>;
   date_start: string;
   date_stop: string;
@@ -187,7 +189,7 @@ Deno.serve(async (req) => {
         
         // Build initial Meta Insights API URL
         let insightsUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
-        insightsUrl += `fields=campaign_id,campaign_name,spend,impressions,clicks,actions`;
+        insightsUrl += `fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,actions`;
         insightsUrl += `&level=campaign`;
         insightsUrl += `&time_increment=1`;
         
@@ -286,6 +288,8 @@ Deno.serve(async (req) => {
           spend: number;
           impressions: number;
           clicks: number;
+          reach: number;
+          frequency: number;
           conversions: number | null;
           conversions_value: number | null;
           raw_data: Record<string, unknown>;
@@ -326,10 +330,12 @@ Deno.serve(async (req) => {
             external_campaign_id: insight.campaign_id,
             external_campaign_name: insight.campaign_name,
             stat_date: insight.date_start,
-            currency: "EUR", // TODO: Fetch from account settings
+            currency: "EUR",
             spend: parseFloat(insight.spend) || 0,
             impressions: parseInt(insight.impressions) || 0,
             clicks: parseInt(insight.clicks) || 0,
+            reach: parseInt(insight.reach || "0") || 0,
+            frequency: parseFloat(insight.frequency || "0") || 0,
             conversions,
             conversions_value: null,
             raw_data: insight as unknown as Record<string, unknown>,

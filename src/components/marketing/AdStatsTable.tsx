@@ -14,9 +14,10 @@ import type { AdPlatformStatAggregated } from "@/types/adPlatform";
 interface AdStatsTableProps {
   data: AdPlatformStatAggregated[] | undefined;
   isLoading: boolean;
+  showBrand?: boolean;
 }
 
-export function AdStatsTable({ data, isLoading }: AdStatsTableProps) {
+export function AdStatsTable({ data, isLoading, showBrand }: AdStatsTableProps) {
   const formatCurrency = (v: number) => `€${v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatNumber = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toString();
   const formatPercent = (v: number | null) => v !== null ? `${v.toFixed(2)}%` : "—";
@@ -46,6 +47,8 @@ export function AdStatsTable({ data, isLoading }: AdStatsTableProps) {
                   <TableHead>Stato</TableHead>
                   <TableHead className="text-right">Spesa</TableHead>
                   <TableHead className="text-right">Impression</TableHead>
+                  <TableHead className="text-right">Reach</TableHead>
+                  <TableHead className="text-right">Freq.</TableHead>
                   <TableHead className="text-right">Click</TableHead>
                   <TableHead className="text-right">CTR</TableHead>
                   <TableHead className="text-right">CPC</TableHead>
@@ -54,7 +57,7 @@ export function AdStatsTable({ data, isLoading }: AdStatsTableProps) {
               </TableHeader>
               <TableBody>
                 {data.map((row) => (
-                  <TableRow key={`${row.platform}-${row.external_campaign_id}`}>
+                  <TableRow key={`${row.platform}-${row.external_campaign_id}-${row.brand_id}`}>
                     <TableCell>
                       <div>
                         <div className="font-medium">
@@ -81,6 +84,12 @@ export function AdStatsTable({ data, isLoading }: AdStatsTableProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       {formatNumber(row.total_impressions)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatNumber(row.total_reach)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {row.avg_frequency !== null ? row.avg_frequency.toFixed(2) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatNumber(row.total_clicks)}

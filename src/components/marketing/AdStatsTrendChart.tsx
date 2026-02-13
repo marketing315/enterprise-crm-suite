@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -24,6 +24,7 @@ export function AdStatsTrendChart({ data, isLoading }: AdStatsTrendChartProps) {
     date: format(parseISO(d.stat_date), "dd MMM", { locale: it }),
     spend: d.total_spend,
     clicks: d.total_clicks,
+    reach: d.total_reach,
   })) || [];
 
   return (
@@ -42,8 +43,18 @@ export function AdStatsTrendChart({ data, isLoading }: AdStatsTrendChartProps) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradReach" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis 
                 dataKey="date" 
                 fontSize={12}
@@ -60,31 +71,36 @@ export function AdStatsTrendChart({ data, isLoading }: AdStatsTrendChartProps) {
                 fontSize={12}
               />
               <Tooltip 
-                formatter={(value: number, name: string) => [
-                  name === "spend" ? `€${value.toFixed(2)}` : value,
-                  name === "spend" ? "Spesa" : "Click"
-                ]}
+                formatter={(value: number, name: string) => {
+                  if (name === "spend") return [`€${value.toFixed(2)}`, "Spesa"];
+                  if (name === "reach") return [value.toLocaleString("it-IT"), "Reach"];
+                  return [value, "Click"];
+                }}
               />
               <Legend 
-                formatter={(value) => value === "spend" ? "Spesa (€)" : "Click"}
+                formatter={(value) => {
+                  if (value === "spend") return "Spesa (€)";
+                  if (value === "reach") return "Reach";
+                  return "Click";
+                }}
               />
-              <Line
+              <Area
                 yAxisId="left"
                 type="monotone"
                 dataKey="spend"
                 stroke="hsl(var(--destructive))"
+                fill="url(#gradSpend)"
                 strokeWidth={2}
-                dot={false}
               />
-              <Line
+              <Area
                 yAxisId="right"
                 type="monotone"
-                dataKey="clicks"
+                dataKey="reach"
                 stroke="hsl(var(--primary))"
+                fill="url(#gradReach)"
                 strokeWidth={2}
-                dot={false}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         )}
       </CardContent>
