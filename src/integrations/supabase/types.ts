@@ -177,6 +177,68 @@ export type Database = {
           },
         ]
       }
+      ad_demographic_stats: {
+        Row: {
+          account_id: string
+          age_range: string
+          brand_id: string
+          clicks: number
+          conversions: number | null
+          created_at: string
+          external_campaign_id: string
+          gender: string
+          id: string
+          imported_at: string
+          impressions: number
+          platform: Database["public"]["Enums"]["ad_platform"]
+          reach: number | null
+          spend: number
+          stat_date: string
+        }
+        Insert: {
+          account_id: string
+          age_range: string
+          brand_id: string
+          clicks?: number
+          conversions?: number | null
+          created_at?: string
+          external_campaign_id: string
+          gender: string
+          id?: string
+          imported_at?: string
+          impressions?: number
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          reach?: number | null
+          spend?: number
+          stat_date: string
+        }
+        Update: {
+          account_id?: string
+          age_range?: string
+          brand_id?: string
+          clicks?: number
+          conversions?: number | null
+          created_at?: string
+          external_campaign_id?: string
+          gender?: string
+          id?: string
+          imported_at?: string
+          impressions?: number
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          reach?: number | null
+          spend?: number
+          stat_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_demographic_stats_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_platform_stats: {
         Row: {
           account_id: string
@@ -5796,6 +5858,25 @@ export type Database = {
           external_campaign_name: string
           platform: string
           thumbnail_url: string
+          total_clicks: number
+          total_impressions: number
+          total_reach: number
+          total_spend: number
+        }[]
+      }
+      get_ad_demographics: {
+        Args: {
+          p_brand_ids: string[]
+          p_campaign_id?: string
+          p_from_date: string
+          p_platform?: string
+          p_to_date: string
+        }
+        Returns: {
+          age_range: string
+          cpc: number
+          ctr: number
+          gender: string
           total_clicks: number
           total_impressions: number
           total_reach: number
