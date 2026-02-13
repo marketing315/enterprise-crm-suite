@@ -52,9 +52,9 @@ export default function MarketingCampaigns() {
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
     return campaigns.filter((c) => {
-      // Hide campaigns with zero spend ADV
+      // Hide campaigns with zero spend ADV, except planned ones
       const kpi = kpis?.find((k) => k.campaign_id === c.id);
-      if (!kpi || (kpi.marketing_cost ?? 0) === 0) return false;
+      if (c.status !== "planned" && (!kpi || (kpi.marketing_cost ?? 0) === 0)) return false;
       // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
