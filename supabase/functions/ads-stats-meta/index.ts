@@ -26,8 +26,28 @@ interface MetaInsight {
   date_stop: string;
 }
 
+interface MetaAdInsight {
+  campaign_id: string;
+  campaign_name: string;
+  ad_id: string;
+  ad_name: string;
+  spend: string;
+  impressions: string;
+  clicks: string;
+  reach?: string;
+  frequency?: string;
+  date_start: string;
+  date_stop: string;
+}
+
 interface MetaInsightsResponse {
   data: MetaInsight[];
+  paging?: { next?: string };
+  error?: { message: string; code: number };
+}
+
+interface MetaAdInsightsResponse {
+  data: MetaAdInsight[];
   paging?: { next?: string };
   error?: { message: string; code: number };
 }
@@ -37,6 +57,38 @@ interface CampaignMatch {
   external_id: string | null;
   name: string;
   allow_name_fallback: boolean;
+}
+
+// Fetch ad thumbnails in batch
+async function fetchAdThumbnails(
+  adIds: string[],
+  accessToken: string
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (adIds.length === 0) return map;
+
+  // Use batch API - fetch 50 at a time
+  const batchSize = 50;
+  for (let i = 0; i < adIds.length; i += batchSize) {
+    const batch = adIds.slice(i, i + batchSize);
+    const ids = batch.join(",");
+    try {
+      const resp = await fetch(
+        `https://graph.facebook.com/v20.0/?ids=${ids}&fields=creative{thumbnail_url}&access_token=${accessToken}`
+      );
+      const data = await resp.json();
+      if (data && !data.error) {
+        for (const [adId, adData] of Object.entries(data as Record<string, any>)) {
+          const thumbUrl = adData?.creative?.data?.[0]?.thumbnail_url 
+            || adData?.creative?.thumbnail_url;
+          if (thumbUrl) map.set(adId, thumbUrl);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch thumbnails batch:", err);
+    }
+  }
+  return map;
 }
 
 Deno.serve(async (req) => {
@@ -56,12 +108,10 @@ Deno.serve(async (req) => {
     
     const isCronCall = cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
     
-    // Check if the call is from a cron job using anon/service_role JWT
     let isJwtCronCall = false;
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
       try {
-        // Decode JWT to check if it's a service/anon role token (from pg_cron)
         const payloadB64 = token.split(".")[1];
         const payload = JSON.parse(atob(payloadB64));
         if (
@@ -71,11 +121,10 @@ Deno.serve(async (req) => {
           isJwtCronCall = true;
         }
       } catch {
-        // Not a valid JWT, continue to user auth check
+        // Not a valid JWT
       }
     }
 
-    // For manual calls, verify admin/CEO role
     let isAdminCall = false;
     if (!isCronCall && !isJwtCronCall && authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
@@ -91,7 +140,6 @@ Deno.serve(async (req) => {
         );
       }
       
-      // Resolve internal user_id from supabase_auth_id
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       const { data: internalUser } = await supabase
         .from("users")
@@ -100,7 +148,6 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      // Check if user has admin or ceo role
       const { data: userRoles } = await supabase
         .from("user_roles")
         .select("role")
@@ -129,13 +176,11 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse optional date parameters
     const url = new URL(req.url);
     const dateParam = url.searchParams.get("date");
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
 
-    // Calculate date range
     let datePreset = "yesterday";
     let sinceDate: string | null = null;
     let untilDate: string | null = null;
@@ -150,7 +195,6 @@ Deno.serve(async (req) => {
       datePreset = "";
     }
 
-    // Fetch all meta_apps with stats enabled
     const { data: metaApps, error: metaAppsError } = await supabase
       .from("meta_apps")
       .select("id, brand_id, access_token, ad_account_id, stats_enabled")
@@ -173,7 +217,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const results: Array<{ brand_id: string; account_id: string; success: boolean; campaigns: number; error?: string }> = [];
+    const results: Array<{ brand_id: string; account_id: string; success: boolean; campaigns: number; ads?: number; error?: string }> = [];
 
     for (const metaApp of metaApps as MetaApp[]) {
       if (!metaApp.ad_account_id) continue;
@@ -183,30 +227,25 @@ Deno.serve(async (req) => {
         : `act_${metaApp.ad_account_id}`;
 
       try {
-        // Fetch all insights with pagination
+        // ---- CAMPAIGN-LEVEL INSIGHTS ----
         let allInsights: MetaInsight[] = [];
-        let nextUrl: string | null = null;
         
-        // Build initial Meta Insights API URL
         let insightsUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
         insightsUrl += `fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,actions`;
-        insightsUrl += `&level=campaign`;
-        insightsUrl += `&time_increment=1`;
+        insightsUrl += `&level=campaign&time_increment=1`;
         
         if (datePreset) {
           insightsUrl += `&date_preset=${datePreset}`;
         } else if (sinceDate && untilDate) {
           insightsUrl += `&time_range={"since":"${sinceDate}","until":"${untilDate}"}`;
         }
-        
         insightsUrl += `&access_token=${metaApp.access_token}`;
 
-        console.log(`Fetching insights for account ${accountId}...`);
+        console.log(`Fetching campaign insights for account ${accountId}...`);
 
-        // Paginate through all results
         let currentUrl: string | null = insightsUrl;
         let pageCount = 0;
-        const maxPages = 100; // Safety limit
+        const maxPages = 100;
         
         while (currentUrl && pageCount < maxPages) {
           const response = await fetch(currentUrl);
@@ -214,43 +253,58 @@ Deno.serve(async (req) => {
 
           if (data.error) {
             console.error(`[ads-stats-meta] Meta API error:`, {
-              account_id: accountId,
-              brand_id: metaApp.brand_id,
-              error_code: data.error.code,
-              error_message: data.error.message,
-              date_range: datePreset || `${sinceDate}-${untilDate}`,
+              account_id: accountId, brand_id: metaApp.brand_id,
+              error_code: data.error.code, error_message: data.error.message,
             });
-            results.push({
-              brand_id: metaApp.brand_id,
-              account_id: accountId,
-              success: false,
-              campaigns: 0,
-              error: data.error.message,
-            });
+            results.push({ brand_id: metaApp.brand_id, account_id: accountId, success: false, campaigns: 0, error: data.error.message });
             currentUrl = null;
             break;
           }
 
-          if (data.data && data.data.length > 0) {
-            allInsights = allInsights.concat(data.data);
-          }
-          
-          // Check for next page
+          if (data.data?.length) allInsights = allInsights.concat(data.data);
           currentUrl = data.paging?.next || null;
           pageCount++;
         }
 
-        if (allInsights.length === 0) {
-          results.push({
-            brand_id: metaApp.brand_id,
-            account_id: accountId,
-            success: true,
-            campaigns: 0,
-          });
-          continue;
+        // ---- AD-LEVEL INSIGHTS ----
+        let allAdInsights: MetaAdInsight[] = [];
+
+        let adInsightsUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
+        adInsightsUrl += `fields=campaign_id,campaign_name,ad_id,ad_name,spend,impressions,clicks,reach,frequency`;
+        adInsightsUrl += `&level=ad&time_increment=1`;
+        
+        if (datePreset) {
+          adInsightsUrl += `&date_preset=${datePreset}`;
+        } else if (sinceDate && untilDate) {
+          adInsightsUrl += `&time_range={"since":"${sinceDate}","until":"${untilDate}"}`;
+        }
+        adInsightsUrl += `&access_token=${metaApp.access_token}`;
+
+        console.log(`Fetching ad-level insights for account ${accountId}...`);
+
+        let adCurrentUrl: string | null = adInsightsUrl;
+        let adPageCount = 0;
+
+        while (adCurrentUrl && adPageCount < maxPages) {
+          const response = await fetch(adCurrentUrl);
+          const data: MetaAdInsightsResponse = await response.json();
+
+          if (data.error) {
+            console.warn(`[ads-stats-meta] Ad-level API error for ${accountId}:`, data.error.message);
+            adCurrentUrl = null;
+            break;
+          }
+
+          if (data.data?.length) allAdInsights = allAdInsights.concat(data.data);
+          adCurrentUrl = data.paging?.next || null;
+          adPageCount++;
         }
 
-        // BATCH CAMPAIGN MATCHING: Fetch all campaigns for this brand at once
+        // Fetch thumbnails for unique ad IDs
+        const uniqueAdIds = [...new Set(allAdInsights.map(a => a.ad_id))];
+        const thumbnails = await fetchAdThumbnails(uniqueAdIds, metaApp.access_token);
+
+        // ---- CAMPAIGN MATCHING (shared) ----
         const externalIds = allInsights.map(i => `meta:${i.campaign_id}`);
         const campaignNames = allInsights.map(i => i.campaign_name);
         
@@ -260,14 +314,11 @@ Deno.serve(async (req) => {
           .eq("brand_id", metaApp.brand_id)
           .or(`external_id.in.(${externalIds.map(e => `"${e}"`).join(',')}),and(allow_name_fallback.eq.true,name.in.(${campaignNames.map(n => `"${n.replace(/"/g, '\\"')}"`).join(',')}))`);
         
-        // Build lookup maps
         const campaignByExternalId = new Map<string, string>();
         const campaignsByName = new Map<string, CampaignMatch[]>();
         
         for (const camp of (matchingCampaigns || []) as CampaignMatch[]) {
-          if (camp.external_id) {
-            campaignByExternalId.set(camp.external_id, camp.id);
-          }
+          if (camp.external_id) campaignByExternalId.set(camp.external_id, camp.id);
           if (camp.allow_name_fallback) {
             const existing = campaignsByName.get(camp.name) || [];
             existing.push(camp);
@@ -275,75 +326,42 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Process each insight row using the pre-fetched maps
-        const statsToUpsert: Array<{
-          brand_id: string;
-          campaign_id: string | null;
-          platform: string;
-          account_id: string;
-          external_campaign_id: string;
-          external_campaign_name: string;
-          stat_date: string;
-          currency: string;
-          spend: number;
-          impressions: number;
-          clicks: number;
-          reach: number;
-          frequency: number;
-          conversions: number | null;
-          conversions_value: number | null;
-          raw_data: Record<string, unknown>;
-          imported_at: string;
-        }> = [];
+        // ---- UPSERT CAMPAIGN STATS ----
+        const statsToUpsert: any[] = [];
 
         for (const insight of allInsights) {
-          // Try to find matching campaign by external_id first
           const externalId = `meta:${insight.campaign_id}`;
           let campaignId: string | null = campaignByExternalId.get(externalId) ?? null;
-
-          // Fallback to name matching if allowed and no external_id match
           if (!campaignId) {
             const nameMatches = campaignsByName.get(insight.campaign_name);
-            // Only use name fallback if exactly one match (univocal)
-            if (nameMatches && nameMatches.length === 1) {
-              campaignId = nameMatches[0].id;
-            }
+            if (nameMatches?.length === 1) campaignId = nameMatches[0].id;
           }
 
-          // Extract conversions from actions array
           let conversions: number | null = null;
           if (insight.actions) {
             const leadAction = insight.actions.find(a => 
-              a.action_type === "lead" || 
-              a.action_type === "onsite_conversion.lead_grouped"
+              a.action_type === "lead" || a.action_type === "onsite_conversion.lead_grouped"
             );
-            if (leadAction) {
-              conversions = parseFloat(leadAction.value);
-            }
+            if (leadAction) conversions = parseFloat(leadAction.value);
           }
 
           statsToUpsert.push({
-            brand_id: metaApp.brand_id,
-            campaign_id: campaignId,
-            platform: "meta",
-            account_id: accountId,
+            brand_id: metaApp.brand_id, campaign_id: campaignId,
+            platform: "meta", account_id: accountId,
             external_campaign_id: insight.campaign_id,
             external_campaign_name: insight.campaign_name,
-            stat_date: insight.date_start,
-            currency: "EUR",
+            stat_date: insight.date_start, currency: "EUR",
             spend: parseFloat(insight.spend) || 0,
             impressions: parseInt(insight.impressions) || 0,
             clicks: parseInt(insight.clicks) || 0,
             reach: parseInt(insight.reach || "0") || 0,
             frequency: parseFloat(insight.frequency || "0") || 0,
-            conversions,
-            conversions_value: null,
+            conversions, conversions_value: null,
             raw_data: insight as unknown as Record<string, unknown>,
             imported_at: new Date().toISOString(),
           });
         }
 
-        // Upsert all stats for this account
         if (statsToUpsert.length > 0) {
           const { error: upsertError } = await supabase
             .from("ad_platform_stats")
@@ -351,34 +369,57 @@ Deno.serve(async (req) => {
               onConflict: "brand_id,platform,account_id,external_campaign_id,stat_date",
               ignoreDuplicates: false,
             });
-
           if (upsertError) {
-            console.error(`Upsert error for ${accountId}:`, upsertError);
-            results.push({
-              brand_id: metaApp.brand_id,
-              account_id: accountId,
-              success: false,
-              campaigns: 0,
-              error: upsertError.message,
+            console.error(`Campaign upsert error for ${accountId}:`, upsertError);
+          }
+        }
+
+        // ---- UPSERT AD CREATIVE STATS ----
+        let adsUpserted = 0;
+        if (allAdInsights.length > 0) {
+          const adStatsToUpsert = allAdInsights.map(ad => ({
+            brand_id: metaApp.brand_id,
+            platform: "meta",
+            account_id: accountId,
+            external_campaign_id: ad.campaign_id,
+            external_campaign_name: ad.campaign_name,
+            external_ad_id: ad.ad_id,
+            external_ad_name: ad.ad_name,
+            thumbnail_url: thumbnails.get(ad.ad_id) || null,
+            stat_date: ad.date_start,
+            currency: "EUR",
+            spend: parseFloat(ad.spend) || 0,
+            impressions: parseInt(ad.impressions) || 0,
+            clicks: parseInt(ad.clicks) || 0,
+            reach: parseInt(ad.reach || "0") || 0,
+            frequency: parseFloat(ad.frequency || "0") || 0,
+            imported_at: new Date().toISOString(),
+          }));
+
+          const { error: adUpsertError } = await supabase
+            .from("ad_creative_stats")
+            .upsert(adStatsToUpsert, {
+              onConflict: "brand_id,platform,account_id,external_ad_id,stat_date",
+              ignoreDuplicates: false,
             });
-            continue;
+
+          if (adUpsertError) {
+            console.error(`Ad creative upsert error for ${accountId}:`, adUpsertError);
+          } else {
+            adsUpserted = adStatsToUpsert.length;
           }
         }
 
         results.push({
-          brand_id: metaApp.brand_id,
-          account_id: accountId,
-          success: true,
-          campaigns: statsToUpsert.length,
+          brand_id: metaApp.brand_id, account_id: accountId,
+          success: true, campaigns: statsToUpsert.length, ads: adsUpserted,
         });
 
       } catch (err) {
         console.error(`Error processing ${accountId}:`, err);
         results.push({
-          brand_id: metaApp.brand_id,
-          account_id: accountId,
-          success: false,
-          campaigns: 0,
+          brand_id: metaApp.brand_id, account_id: accountId,
+          success: false, campaigns: 0,
           error: err instanceof Error ? err.message : "Unknown error",
         });
       }
@@ -386,10 +427,11 @@ Deno.serve(async (req) => {
 
     const successCount = results.filter(r => r.success).length;
     const totalCampaigns = results.reduce((sum, r) => sum + r.campaigns, 0);
+    const totalAds = results.reduce((sum, r) => sum + (r.ads || 0), 0);
 
     return new Response(
       JSON.stringify({
-        message: `Processed ${successCount}/${results.length} accounts, ${totalCampaigns} campaign-days imported`,
+        message: `Processed ${successCount}/${results.length} accounts, ${totalCampaigns} campaign-days, ${totalAds} ad-days imported`,
         results,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

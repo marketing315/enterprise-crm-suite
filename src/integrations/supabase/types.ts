@@ -103,6 +103,80 @@ export type Database = {
           },
         ]
       }
+      ad_creative_stats: {
+        Row: {
+          account_id: string
+          brand_id: string
+          clicks: number
+          conversions: number | null
+          created_at: string
+          currency: string
+          external_ad_id: string
+          external_ad_name: string | null
+          external_campaign_id: string
+          external_campaign_name: string | null
+          frequency: number | null
+          id: string
+          imported_at: string
+          impressions: number
+          platform: Database["public"]["Enums"]["ad_platform"]
+          reach: number | null
+          spend: number
+          stat_date: string
+          thumbnail_url: string | null
+        }
+        Insert: {
+          account_id: string
+          brand_id: string
+          clicks?: number
+          conversions?: number | null
+          created_at?: string
+          currency?: string
+          external_ad_id: string
+          external_ad_name?: string | null
+          external_campaign_id: string
+          external_campaign_name?: string | null
+          frequency?: number | null
+          id?: string
+          imported_at?: string
+          impressions?: number
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          reach?: number | null
+          spend?: number
+          stat_date: string
+          thumbnail_url?: string | null
+        }
+        Update: {
+          account_id?: string
+          brand_id?: string
+          clicks?: number
+          conversions?: number | null
+          created_at?: string
+          currency?: string
+          external_ad_id?: string
+          external_ad_name?: string | null
+          external_campaign_id?: string
+          external_campaign_name?: string | null
+          frequency?: number | null
+          id?: string
+          imported_at?: string
+          impressions?: number
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          reach?: number | null
+          spend?: number
+          stat_date?: string
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_creative_stats_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_platform_stats: {
         Row: {
           account_id: string
@@ -5680,6 +5754,33 @@ export type Database = {
       get_accessible_brand_ids: {
         Args: { p_user_id: string }
         Returns: string[]
+      }
+      get_ad_creative_stats: {
+        Args: {
+          p_brand_ids: string[]
+          p_campaign_id?: string
+          p_from_date: string
+          p_platform?: string
+          p_to_date: string
+        }
+        Returns: {
+          avg_frequency: number
+          brand_id: string
+          cpc: number
+          cpm: number
+          ctr: number
+          days_count: number
+          external_ad_id: string
+          external_ad_name: string
+          external_campaign_id: string
+          external_campaign_name: string
+          platform: string
+          thumbnail_url: string
+          total_clicks: number
+          total_impressions: number
+          total_reach: number
+          total_spend: number
+        }[]
       }
       get_ad_platform_stats: {
         Args: {
