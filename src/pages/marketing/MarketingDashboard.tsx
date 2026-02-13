@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, ChevronLeft, ChevronRight, Megaphone, BarChart3, Image as ImageIcon } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Megaphone, BarChart3, Image as ImageIcon, Users2 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
 import { useMarketingSummaryKpis, useMarketingChannelKpis } from "@/hooks/useMarketingKpis";
 import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
 import { AdStatsTab } from "@/components/marketing/AdStatsTab";
 import { AdCreativesTab } from "@/components/marketing/AdCreativesTab";
+import { AdDemographicsTab } from "@/components/marketing/AdDemographicsTab";
 import { formatPercent, getPercentColorClass } from "@/lib/formatKpi";
 import {
   BarChart,
@@ -122,6 +123,10 @@ export default function MarketingDashboard() {
           <TabsTrigger value="creatives" className="flex items-center gap-2">
             <ImageIcon className="h-4 w-4" />
             Creatives
+          </TabsTrigger>
+          <TabsTrigger value="demographics" className="flex items-center gap-2">
+            <Users2 className="h-4 w-4" />
+            Demographics
           </TabsTrigger>
         </TabsList>
 
@@ -273,6 +278,10 @@ export default function MarketingDashboard() {
 
         <TabsContent value="creatives" className="mt-6">
           <AdCreativesTab />
+        </TabsContent>
+
+        <TabsContent value="demographics" className="mt-6">
+          <AdDemographicsTab />
         </TabsContent>
       </Tabs>
     </div>

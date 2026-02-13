@@ -40,6 +40,18 @@ interface MetaAdInsight {
   date_stop: string;
 }
 
+interface MetaDemoInsight {
+  campaign_id: string;
+  spend: string;
+  impressions: string;
+  clicks: string;
+  reach?: string;
+  age?: string;
+  gender?: string;
+  date_start: string;
+  date_stop: string;
+}
+
 interface MetaInsightsResponse {
   data: MetaInsight[];
   paging?: { next?: string };
@@ -217,7 +229,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const results: Array<{ brand_id: string; account_id: string; success: boolean; campaigns: number; ads?: number; error?: string }> = [];
+    const results: Array<{ brand_id: string; account_id: string; success: boolean; campaigns: number; ads?: number; demographics?: number; error?: string }> = [];
 
     for (const metaApp of metaApps as MetaApp[]) {
       if (!metaApp.ad_account_id) continue;
@@ -410,9 +422,75 @@ Deno.serve(async (req) => {
           }
         }
 
+        // ---- DEMOGRAPHIC BREAKDOWN ----
+        let allDemoInsights: MetaDemoInsight[] = [];
+
+        let demoUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
+        demoUrl += `fields=campaign_id,spend,impressions,clicks,reach`;
+        demoUrl += `&level=campaign&time_increment=1`;
+        demoUrl += `&breakdowns=age,gender`;
+
+        if (datePreset) {
+          demoUrl += `&date_preset=${datePreset}`;
+        } else if (sinceDate && untilDate) {
+          demoUrl += `&time_range={"since":"${sinceDate}","until":"${untilDate}"}`;
+        }
+        demoUrl += `&access_token=${metaApp.access_token}`;
+
+        console.log(`Fetching demographic breakdown for account ${accountId}...`);
+
+        let demoCurrentUrl: string | null = demoUrl;
+        let demoPageCount = 0;
+
+        while (demoCurrentUrl && demoPageCount < maxPages) {
+          const response = await fetch(demoCurrentUrl);
+          const data = await response.json();
+
+          if (data.error) {
+            console.warn(`[ads-stats-meta] Demographics API error for ${accountId}:`, data.error.message);
+            demoCurrentUrl = null;
+            break;
+          }
+
+          if (data.data?.length) allDemoInsights = allDemoInsights.concat(data.data);
+          demoCurrentUrl = data.paging?.next || null;
+          demoPageCount++;
+        }
+
+        let demosUpserted = 0;
+        if (allDemoInsights.length > 0) {
+          const demoStatsToUpsert = allDemoInsights.map((d: MetaDemoInsight) => ({
+            brand_id: metaApp.brand_id,
+            platform: "meta",
+            account_id: accountId,
+            external_campaign_id: d.campaign_id,
+            stat_date: d.date_start,
+            age_range: d.age || "unknown",
+            gender: d.gender || "unknown",
+            spend: parseFloat(d.spend) || 0,
+            impressions: parseInt(d.impressions) || 0,
+            clicks: parseInt(d.clicks) || 0,
+            reach: parseInt(d.reach || "0") || 0,
+            imported_at: new Date().toISOString(),
+          }));
+
+          const { error: demoUpsertError } = await supabase
+            .from("ad_demographic_stats")
+            .upsert(demoStatsToUpsert, {
+              onConflict: "brand_id,platform,account_id,external_campaign_id,stat_date,age_range,gender",
+              ignoreDuplicates: false,
+            });
+
+          if (demoUpsertError) {
+            console.error(`Demographics upsert error for ${accountId}:`, demoUpsertError);
+          } else {
+            demosUpserted = demoStatsToUpsert.length;
+          }
+        }
+
         results.push({
           brand_id: metaApp.brand_id, account_id: accountId,
-          success: true, campaigns: statsToUpsert.length, ads: adsUpserted,
+          success: true, campaigns: statsToUpsert.length, ads: adsUpserted, demographics: demosUpserted,
         });
 
       } catch (err) {
