@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, subYears } from "date-fns";
 import { it } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, RefreshCw, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Clock, Download } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,12 +19,15 @@ import {
 import { AdStatsKpiCards } from "./AdStatsKpiCards";
 import { AdStatsTrendChart } from "./AdStatsTrendChart";
 import { AdStatsTable } from "./AdStatsTable";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { AdPlatform } from "@/types/adPlatform";
 
 export function AdStatsTab() {
   const { currentBrand } = useBrand();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [platformFilter, setPlatformFilter] = useState<AdPlatform | "all">("all");
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const dateRange = useMemo(() => ({
     from: format(startOfMonth(selectedMonth), "yyyy-MM-dd"),
@@ -39,13 +42,13 @@ export function AdStatsTab() {
     platform,
   });
 
-  const { data: trend, isLoading: trendLoading } = useAdPlatformStatsTrend({
+  const { data: trend, isLoading: trendLoading, refetch: refetchTrend } = useAdPlatformStatsTrend({
     fromDate: dateRange.from,
     toDate: dateRange.to,
     platform,
   });
 
-  const { data: summary, isLoading: summaryLoading } = useAdPlatformStatsSummary({
+  const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useAdPlatformStatsSummary({
     fromDate: dateRange.from,
     toDate: dateRange.to,
     platform,
@@ -62,6 +65,49 @@ export function AdStatsTab() {
 
   const handleRefresh = () => {
     refetchStats();
+    refetchTrend();
+    refetchSummary();
+  };
+
+  const handleHistoricalSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error("Sessione non trovata");
+        return;
+      }
+
+      const fromDate = format(subYears(new Date(), 2), "yyyy-MM-dd");
+      const toDate = format(new Date(), "yyyy-MM-dd");
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/ads-stats-meta?from=${fromDate}&to=${toDate}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.session.access_token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Errore nella sincronizzazione");
+      }
+
+      const successCount = result.results?.filter((r: any) => r.success).length ?? 0;
+      const totalCampaigns = result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
+      toast.success(`Sync completata: ${successCount} account, ${totalCampaigns} campagne-giorno importate`);
+      handleRefresh();
+    } catch (err: any) {
+      console.error("Historical sync error:", err);
+      toast.error(err.message || "Errore nella sincronizzazione storica");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const lastImport = summary?.last_import 
@@ -104,6 +150,16 @@ export function AdStatsTab() {
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Aggiorna
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleHistoricalSync}
+            disabled={isSyncing}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isSyncing ? "Sincronizzazione..." : "Sync Storica"}
           </Button>
         </div>
       </div>
