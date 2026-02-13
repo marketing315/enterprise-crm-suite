@@ -6004,6 +6004,7 @@ export type Database = {
           p_to: string
         }
         Returns: {
+          leads_count: number
           stat_date: string
           total_clicks: number
           total_impressions: number

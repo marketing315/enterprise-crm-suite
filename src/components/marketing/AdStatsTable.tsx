@@ -44,7 +44,7 @@ export function AdStatsTable({ data, isLoading, showBrand }: AdStatsTableProps) 
               <TableHeader>
                 <TableRow>
                   <TableHead>Campagna</TableHead>
-                  <TableHead>Stato</TableHead>
+                  <TableHead>Piattaforma</TableHead>
                   <TableHead className="text-right">Spesa</TableHead>
                   <TableHead className="text-right">Impression</TableHead>
                   <TableHead className="text-right">Reach</TableHead>
@@ -69,15 +69,9 @@ export function AdStatsTable({ data, isLoading, showBrand }: AdStatsTableProps) 
                       </div>
                     </TableCell>
                     <TableCell>
-                      {row.campaign_id ? (
-                        <Badge variant="default" className="bg-primary/10 text-primary hover:bg-primary/20">
-                          Collegata
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          Non collegata
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="capitalize">
+                        {row.platform}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(row.total_spend)}
