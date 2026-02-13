@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,51 +10,64 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
-import SelectBrand from "@/pages/SelectBrand";
 import DashboardRedirect from "@/pages/DashboardRedirect";
-import Dashboard from "@/pages/Dashboard";
-import Contacts from "@/pages/Contacts";
-import Pipeline from "@/pages/Pipeline";
-import Events from "@/pages/Events";
-import Appointments from "@/pages/Appointments";
-import Tickets from "@/pages/Tickets";
-import Settings from "@/pages/Settings";
-import AdminAIMetrics from "@/pages/AdminAIMetrics";
-import AdminAI from "@/pages/AdminAI";
-import AdminCallcenterKpi from "@/pages/AdminCallcenterKpi";
-import AdminTicketTrend from "@/pages/AdminTicketTrend";
-import AdminWebhooksDashboard from "@/pages/AdminWebhooksDashboard";
-import AdminDlqDashboard from "@/pages/AdminDlqDashboard";
-import AdminAnalytics from "@/pages/AdminAnalytics";
-import AdminCapiMonitor from "@/pages/AdminCapiMonitor";
-import Chat from "@/pages/Chat";
-import Notifications from "@/pages/Notifications";
-import Team from "@/pages/Team";
-import SalespersonKpi from "@/pages/SalespersonKpi";
-import Sales from "@/pages/Sales";
-import Products from "@/pages/Products";
 import NotFound from "@/pages/NotFound";
-import CompanyOverview from "@/pages/company/CompanyOverview";
-import CompanyExpenses from "@/pages/company/CompanyExpenses";
-import CompanyBudget from "@/pages/company/CompanyBudget";
-import CompanyReports from "@/pages/company/CompanyReports";
-import MarketingDashboard from "@/pages/marketing/MarketingDashboard";
-import MarketingCampaigns from "@/pages/marketing/MarketingCampaigns";
-import MarketingCosts from "@/pages/marketing/MarketingCosts";
-import MarketingReports from "@/pages/marketing/MarketingReports";
-import MarketingLeads from "@/pages/marketing/MarketingLeads";
-import CeoDashboard from "@/pages/CeoDashboard";
-import Install from "@/pages/Install";
 
-// Role-based dashboard pages (lazy would be better, but keeping sync for now)
-import AdminDashboard from "@/pages/dashboard/AdminDashboard";
-import CeoDashboardView from "@/pages/dashboard/CeoDashboardView";
-import CallcenterManagerDashboard from "@/pages/dashboard/CallcenterManagerDashboard";
-import SalesManagerDashboard from "@/pages/dashboard/SalesManagerDashboard";
-import CallcenterOperatorDashboard from "@/pages/dashboard/CallcenterOperatorDashboard";
-import SalespersonDashboard from "@/pages/dashboard/SalespersonDashboard";
+// Lazy: all other pages
+const SelectBrand = lazy(() => import("@/pages/SelectBrand"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Contacts = lazy(() => import("@/pages/Contacts"));
+const Pipeline = lazy(() => import("@/pages/Pipeline"));
+const Events = lazy(() => import("@/pages/Events"));
+const Appointments = lazy(() => import("@/pages/Appointments"));
+const Tickets = lazy(() => import("@/pages/Tickets"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const AdminAIMetrics = lazy(() => import("@/pages/AdminAIMetrics"));
+const AdminAI = lazy(() => import("@/pages/AdminAI"));
+const AdminCallcenterKpi = lazy(() => import("@/pages/AdminCallcenterKpi"));
+const AdminTicketTrend = lazy(() => import("@/pages/AdminTicketTrend"));
+const AdminWebhooksDashboard = lazy(() => import("@/pages/AdminWebhooksDashboard"));
+const AdminDlqDashboard = lazy(() => import("@/pages/AdminDlqDashboard"));
+const AdminAnalytics = lazy(() => import("@/pages/AdminAnalytics"));
+const AdminCapiMonitor = lazy(() => import("@/pages/AdminCapiMonitor"));
+const Chat = lazy(() => import("@/pages/Chat"));
+const Notifications = lazy(() => import("@/pages/Notifications"));
+const Team = lazy(() => import("@/pages/Team"));
+const SalespersonKpi = lazy(() => import("@/pages/SalespersonKpi"));
+const Sales = lazy(() => import("@/pages/Sales"));
+const Products = lazy(() => import("@/pages/Products"));
+const CompanyOverview = lazy(() => import("@/pages/company/CompanyOverview"));
+const CompanyExpenses = lazy(() => import("@/pages/company/CompanyExpenses"));
+const CompanyBudget = lazy(() => import("@/pages/company/CompanyBudget"));
+const CompanyReports = lazy(() => import("@/pages/company/CompanyReports"));
+const MarketingDashboard = lazy(() => import("@/pages/marketing/MarketingDashboard"));
+const MarketingCampaigns = lazy(() => import("@/pages/marketing/MarketingCampaigns"));
+const MarketingCosts = lazy(() => import("@/pages/marketing/MarketingCosts"));
+const MarketingReports = lazy(() => import("@/pages/marketing/MarketingReports"));
+const MarketingLeads = lazy(() => import("@/pages/marketing/MarketingLeads"));
+const CeoDashboard = lazy(() => import("@/pages/CeoDashboard"));
+const Install = lazy(() => import("@/pages/Install"));
+const AdminDashboard = lazy(() => import("@/pages/dashboard/AdminDashboard"));
+const CeoDashboardView = lazy(() => import("@/pages/dashboard/CeoDashboardView"));
+const CallcenterManagerDashboard = lazy(() => import("@/pages/dashboard/CallcenterManagerDashboard"));
+const SalesManagerDashboard = lazy(() => import("@/pages/dashboard/SalesManagerDashboard"));
+const CallcenterOperatorDashboard = lazy(() => import("@/pages/dashboard/CallcenterOperatorDashboard"));
+const SalespersonDashboard = lazy(() => import("@/pages/dashboard/SalespersonDashboard"));
+
+/** Minimal loading fallback */
+function PageLoader() {
+  return (
+    <div className="flex flex-col gap-4 p-6">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,7 +83,7 @@ const queryClient = new QueryClient({
 const persistOptions = {
   persister: localStoragePersister,
   maxAge: 1000 * 60 * 60 * 4, // 4 hours
-  buster: 'v1', // bump to invalidate all persisted caches
+  buster: 'v1',
 };
 
 const App = () => (
@@ -80,78 +94,80 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <BrandProvider>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/install" element={<Install />} />
-              <Route path="/installa" element={<Navigate to="/install" replace />} />
-              
-              {/* Brand selection (requires auth) */}
-              <Route
-                path="/select-brand"
-                element={
-                  <ProtectedRoute>
-                    <SelectBrand />
-                  </ProtectedRoute>
-                }
-              />
-              
-              {/* Protected routes with layout */}
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <MainLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/dashboard" element={<DashboardRedirect />} />
-                <Route path="/dashboard/overview" element={<Dashboard />} />
-                <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                <Route path="/dashboard/ceo" element={<CeoDashboardView />} />
-                <Route path="/dashboard/responsabile-callcenter" element={<CallcenterManagerDashboard />} />
-                <Route path="/dashboard/responsabile-venditori" element={<SalesManagerDashboard />} />
-                <Route path="/dashboard/callcenter" element={<CallcenterOperatorDashboard />} />
-                <Route path="/dashboard/venditore" element={<SalespersonDashboard />} />
-                <Route path="/contacts" element={<Contacts />} />
-                <Route path="/pipeline" element={<Pipeline />} />
-                <Route path="/sales" element={<Sales />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/appointments" element={<Appointments />} />
-                <Route path="/tickets" element={<Tickets />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/azienda" element={<CompanyOverview />} />
-                <Route path="/azienda/costi" element={<CompanyExpenses />} />
-                <Route path="/azienda/budget" element={<CompanyBudget />} />
-                <Route path="/azienda/report" element={<CompanyReports />} />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/install" element={<Install />} />
+                <Route path="/installa" element={<Navigate to="/install" replace />} />
                 
-                <Route path="/marketing" element={<MarketingDashboard />} />
-                <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
-                <Route path="/marketing/costi" element={<MarketingCosts />} />
-                <Route path="/marketing/report" element={<MarketingReports />} />
-                <Route path="/marketing/leads" element={<MarketingLeads />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/team" element={<Team />} />
-                <Route path="/team/salespersons" element={<SalespersonKpi />} />
-                <Route path="/admin/ai" element={<AdminAI />} />
-                <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
-                <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
-                <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
-                <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
-                <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
-                <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                <Route path="/admin/capi" element={<AdminCapiMonitor />} />
-                <Route path="/ceo-dashboard" element={<CeoDashboard />} />
-              </Route>
-              
-              {/* Redirects */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                {/* Brand selection (requires auth) */}
+                <Route
+                  path="/select-brand"
+                  element={
+                    <ProtectedRoute>
+                      <SelectBrand />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                {/* Protected routes with layout */}
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/dashboard" element={<DashboardRedirect />} />
+                  <Route path="/dashboard/overview" element={<Dashboard />} />
+                  <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                  <Route path="/dashboard/ceo" element={<CeoDashboardView />} />
+                  <Route path="/dashboard/responsabile-callcenter" element={<CallcenterManagerDashboard />} />
+                  <Route path="/dashboard/responsabile-venditori" element={<SalesManagerDashboard />} />
+                  <Route path="/dashboard/callcenter" element={<CallcenterOperatorDashboard />} />
+                  <Route path="/dashboard/venditore" element={<SalespersonDashboard />} />
+                  <Route path="/contacts" element={<Contacts />} />
+                  <Route path="/pipeline" element={<Pipeline />} />
+                  <Route path="/sales" element={<Sales />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/events" element={<Events />} />
+                  <Route path="/appointments" element={<Appointments />} />
+                  <Route path="/tickets" element={<Tickets />} />
+                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/azienda" element={<CompanyOverview />} />
+                  <Route path="/azienda/costi" element={<CompanyExpenses />} />
+                  <Route path="/azienda/budget" element={<CompanyBudget />} />
+                  <Route path="/azienda/report" element={<CompanyReports />} />
+                  
+                  <Route path="/marketing" element={<MarketingDashboard />} />
+                  <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
+                  <Route path="/marketing/costi" element={<MarketingCosts />} />
+                  <Route path="/marketing/report" element={<MarketingReports />} />
+                  <Route path="/marketing/leads" element={<MarketingLeads />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/team" element={<Team />} />
+                  <Route path="/team/salespersons" element={<SalespersonKpi />} />
+                  <Route path="/admin/ai" element={<AdminAI />} />
+                  <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
+                  <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
+                  <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
+                  <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
+                  <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
+                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                  <Route path="/admin/capi" element={<AdminCapiMonitor />} />
+                  <Route path="/ceo-dashboard" element={<CeoDashboard />} />
+                </Route>
+                
+                {/* Redirects */}
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrandProvider>
         </AuthProvider>
       </BrowserRouter>
