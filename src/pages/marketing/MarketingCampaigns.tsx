@@ -1,30 +1,22 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
-import { it } from "date-fns/locale";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { AlertCircle, Plus, MoreVertical, Pencil, Trash2, Play, Pause } from "lucide-react";
+import { AlertCircle, Plus, Search } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useHasMarketingAccess, useCanEditCampaigns } from "@/hooks/useMarketingAccess";
-import { useMarketingCampaigns, useUpdateMarketingCampaign, useDeleteMarketingCampaign } from "@/hooks/useMarketingCampaigns";
+import {
+  useMarketingCampaigns,
+  useUpdateMarketingCampaign,
+  useDeleteMarketingCampaign,
+  useCreateMarketingCampaign,
+} from "@/hooks/useMarketingCampaigns";
 import { useMarketingCampaignKpis } from "@/hooks/useMarketingKpis";
 import { CampaignFormDrawer } from "@/components/marketing/CampaignFormDrawer";
-import { CampaignStatusBadge } from "@/components/marketing/CampaignStatusBadge";
+import { CampaignKpiCards } from "@/components/marketing/CampaignKpiCards";
+import { CampaignsTable } from "@/components/marketing/CampaignsTable";
 import { ChannelSelect } from "@/components/marketing/ChannelSelect";
 import { toast } from "sonner";
 import type { MarketingCampaign, MarketingCampaignStatus } from "@/types/marketing";
@@ -33,33 +25,41 @@ export default function MarketingCampaigns() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const hasAccess = useHasMarketingAccess();
   const canEdit = useCanEditCampaigns();
-  
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<MarketingCampaign | null>(null);
   const [statusFilter, setStatusFilter] = useState<MarketingCampaignStatus | undefined>();
   const [channelFilter, setChannelFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => format(startOfMonth(subMonths(new Date(), 2)), "yyyy-MM-dd"));
+  const [dateTo, setDateTo] = useState(() => format(endOfMonth(new Date()), "yyyy-MM-dd"));
 
   const { data: campaigns, isLoading } = useMarketingCampaigns({
     status: statusFilter,
     channelId: channelFilter || undefined,
   });
 
-  const dateRange = useMemo(() => ({
-    from: format(startOfMonth(new Date()), "yyyy-MM-dd"),
-    to: format(endOfMonth(new Date()), "yyyy-MM-dd"),
-  }), []);
-
-  const { data: kpis } = useMarketingCampaignKpis({
-    fromDate: dateRange.from,
-    toDate: dateRange.to,
+  const { data: kpis, isLoading: kpisLoading } = useMarketingCampaignKpis({
+    fromDate: dateFrom,
+    toDate: dateTo,
   });
 
   const updateCampaign = useUpdateMarketingCampaign();
   const deleteCampaign = useDeleteMarketingCampaign();
+  const createCampaign = useCreateMarketingCampaign();
 
-  const getKpiForCampaign = (campaignId: string) => {
-    return kpis?.find((k) => k.campaign_id === campaignId);
-  };
+  // Client-side search filter
+  const filteredCampaigns = useMemo(() => {
+    if (!campaigns) return [];
+    if (!searchQuery.trim()) return campaigns;
+    const q = searchQuery.toLowerCase();
+    return campaigns.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.external_id?.toLowerCase().includes(q) ||
+        c.marketing_channels?.name?.toLowerCase().includes(q)
+    );
+  }, [campaigns, searchQuery]);
 
   const handleEdit = (campaign: MarketingCampaign) => {
     setSelectedCampaign(campaign);
@@ -71,10 +71,11 @@ export default function MarketingCampaigns() {
     setDrawerOpen(true);
   };
 
-  const handleStatusChange = async (campaign: MarketingCampaign, newStatus: MarketingCampaignStatus) => {
+  const handleToggleActive = async (campaign: MarketingCampaign, active: boolean) => {
+    const newStatus: MarketingCampaignStatus = active ? "active" : "paused";
     try {
       await updateCampaign.mutateAsync({ id: campaign.id, status: newStatus });
-      toast.success(`Campagna ${newStatus === "active" ? "attivata" : newStatus === "paused" ? "messa in pausa" : "aggiornata"}`);
+      toast.success(active ? "Campagna attivata" : "Campagna messa in pausa");
     } catch {
       toast.error("Errore nell'aggiornamento");
     }
@@ -90,14 +91,29 @@ export default function MarketingCampaigns() {
     }
   };
 
+  const handleDuplicate = async (campaign: MarketingCampaign) => {
+    try {
+      await createCampaign.mutateAsync({
+        name: `${campaign.name} (copia)`,
+        channel_id: campaign.channel_id,
+        external_id: null,
+        start_date: format(new Date(), "yyyy-MM-dd"),
+        end_date: null,
+        planned_budget: campaign.planned_budget,
+        status: "planned",
+      });
+      toast.success("Campagna duplicata");
+    } catch {
+      toast.error("Errore nella duplicazione");
+    }
+  };
+
   if (!hasBrandSelected) {
     return (
       <div className="p-6">
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Seleziona un brand dalla sidebar.
-          </AlertDescription>
+          <AlertDescription>Seleziona un brand dalla sidebar.</AlertDescription>
         </Alert>
       </div>
     );
@@ -108,9 +124,7 @@ export default function MarketingCampaigns() {
       <div className="p-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Non hai i permessi per accedere a questa sezione.
-          </AlertDescription>
+          <AlertDescription>Non hai i permessi per accedere a questa sezione.</AlertDescription>
         </Alert>
       </div>
     );
@@ -118,6 +132,7 @@ export default function MarketingCampaigns() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Campagne Marketing</h1>
@@ -125,19 +140,32 @@ export default function MarketingCampaigns() {
             Gestisci le campagne per {currentBrand?.name}
           </p>
         </div>
-
         {canEdit && (
           <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuova Campagna
+            <Plus className="h-4 w-4 mr-2" /> Nuova Campagna
           </Button>
         )}
       </div>
 
+      {/* KPI Summary Cards */}
+      <CampaignKpiCards kpis={kpis} isLoading={kpisLoading} />
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 items-end">
+            {/* Search */}
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cerca campagna..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {/* Channel filter */}
             <div className="w-48">
               <ChannelSelect
                 value={channelFilter}
@@ -146,166 +174,58 @@ export default function MarketingCampaigns() {
                 allowEmpty
               />
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant={statusFilter === undefined ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter(undefined)}
-              >
-                Tutte
-              </Button>
-              <Button
-                variant={statusFilter === "active" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("active")}
-              >
-                Attive
-              </Button>
-              <Button
-                variant={statusFilter === "planned" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("planned")}
-              >
-                Pianificate
-              </Button>
-              <Button
-                variant={statusFilter === "paused" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("paused")}
-              >
-                In Pausa
-              </Button>
-              <Button
-                variant={statusFilter === "closed" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("closed")}
-              >
-                Chiuse
-              </Button>
+
+            {/* Date range */}
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-36"
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-36"
+              />
+            </div>
+
+            {/* Status filter */}
+            <div className="flex gap-1.5">
+              {([
+                [undefined, "Tutte"],
+                ["active", "Attive"],
+                ["planned", "Pianificate"],
+                ["paused", "In Pausa"],
+                ["closed", "Chiuse"],
+              ] as const).map(([val, label]) => (
+                <Button
+                  key={label}
+                  variant={statusFilter === val ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatusFilter(val as MarketingCampaignStatus | undefined)}
+                >
+                  {label}
+                </Button>
+              ))}
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Campaigns Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista Campagne</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
-          ) : !campaigns?.length ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nessuna campagna trovata.
-              {canEdit && " Crea la prima campagna per iniziare."}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Campagna</TableHead>
-                    <TableHead>Canale</TableHead>
-                    <TableHead>Stato</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Budget</TableHead>
-                    <TableHead className="text-right">Lead</TableHead>
-                    <TableHead className="text-right">Deal Vinti</TableHead>
-                    <TableHead className="text-right">ROI</TableHead>
-                    {canEdit && <TableHead className="w-10" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {campaigns.map((campaign) => {
-                    const kpi = getKpiForCampaign(campaign.id);
-                    return (
-                      <TableRow key={campaign.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{campaign.name}</div>
-                            {campaign.external_id && (
-                              <div className="text-xs text-muted-foreground">
-                                ID: {campaign.external_id}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {campaign.marketing_channels?.name || "—"}
-                        </TableCell>
-                        <TableCell>
-                          <CampaignStatusBadge status={campaign.status} />
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {format(new Date(campaign.start_date), "dd/MM/yyyy", { locale: it })}
-                            {campaign.end_date && (
-                              <> - {format(new Date(campaign.end_date), "dd/MM/yyyy", { locale: it })}</>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {campaign.planned_budget
-                            ? `€${campaign.planned_budget.toLocaleString("it-IT")}`
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {kpi?.leads_count ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {kpi?.deals_won ?? "—"}
-                        </TableCell>
-                        <TableCell className={`text-right font-medium ${
-                          kpi && kpi.roi != null && kpi.roi >= 0 ? "text-green-600" : kpi && kpi.roi != null ? "text-red-600" : ""
-                        }`}>
-                          {kpi && kpi.roi != null ? `${kpi.roi.toFixed(1)}%` : "—"}
-                        </TableCell>
-                        {canEdit && (
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEdit(campaign)}>
-                                  <Pencil className="h-4 w-4 mr-2" />
-                                  Modifica
-                                </DropdownMenuItem>
-                                {campaign.status !== "active" && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(campaign, "active")}>
-                                    <Play className="h-4 w-4 mr-2" />
-                                    Attiva
-                                  </DropdownMenuItem>
-                                )}
-                                {campaign.status === "active" && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(campaign, "paused")}>
-                                    <Pause className="h-4 w-4 mr-2" />
-                                    Metti in Pausa
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(campaign)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Elimina
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <CampaignsTable
+        campaigns={filteredCampaigns}
+        kpis={kpis}
+        isLoading={isLoading}
+        canEdit={canEdit}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onDuplicate={handleDuplicate}
+        onToggleActive={handleToggleActive}
+      />
 
       <CampaignFormDrawer
         open={drawerOpen}
