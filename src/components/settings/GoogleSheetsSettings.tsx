@@ -33,7 +33,7 @@ import { format, subDays } from "date-fns";
 import { it } from "date-fns/locale";
 import { toast } from "sonner";
 
-type ExportType = "full" | "sales" | "deals" | "kpi";
+type ExportType = "full" | "sales" | "deals" | "kpi" | "leads";
 
 export function GoogleSheetsSettings() {
   const { currentBrand } = useBrand();
@@ -91,13 +91,13 @@ export function GoogleSheetsSettings() {
           break;
       }
 
-      const { data, error } = await supabase.functions.invoke("sheets-advanced-export", {
-        body: {
-          export_type: exportType,
-          brand_id: currentBrand?.id,
-          date_from: dateFrom,
-          date_to: dateTo,
-        },
+      const functionName = exportType === "leads" ? "sheets-leads-export" : "sheets-advanced-export";
+      const bodyPayload = exportType === "leads"
+        ? { date_from: dateFrom, date_to: dateTo }
+        : { export_type: exportType, brand_id: currentBrand?.id, date_from: dateFrom, date_to: dateTo };
+
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: bodyPayload,
       });
 
       if (error) throw error;
@@ -241,6 +241,11 @@ export function GoogleSheetsSettings() {
                   <SelectItem value="kpi">
                     <span className="flex items-center gap-2">
                       📊 Solo KPI (formule)
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="leads">
+                    <span className="flex items-center gap-2">
+                      📋 Tutti i Lead (tutti i brand)
                     </span>
                   </SelectItem>
                 </SelectContent>

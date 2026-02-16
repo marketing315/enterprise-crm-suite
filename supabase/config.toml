@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.send-n8n-webhook]
 verify_jwt = false
+
+[functions.sheets-leads-export]
+verify_jwt = false
