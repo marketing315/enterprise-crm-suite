@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
     try {
       const customersResp = await fetch(
-        "https://googleads.googleapis.com/v18/customers:listAccessibleCustomers",
+        "https://googleads.googleapis.com/v19/customers:listAccessibleCustomers",
         {
           headers: {
             Authorization: `Bearer ${access_token}`,
@@ -92,12 +92,22 @@ Deno.serve(async (req) => {
           },
         }
       );
-      const customersData = await customersResp.json();
-      console.log("Accessible customers:", JSON.stringify(customersData));
 
-      if (customersData.resourceNames?.length > 0) {
-        // Use first customer ID (e.g., "customers/3903638374" → "3903638374")
-        accountId = customersData.resourceNames[0].replace("customers/", "");
+      if (!customersResp.ok) {
+        const errText = await customersResp.text();
+        console.warn("listAccessibleCustomers failed:", customersResp.status, errText);
+      } else {
+        const customersData = await customersResp.json();
+        console.log("Accessible customers:", JSON.stringify(customersData));
+
+        if (customersData.resourceNames?.length > 0) {
+          // Use the known customer ID if available, otherwise first one
+          const knownCustomerId = "3903638374";
+          const match = customersData.resourceNames.find((r: string) => r.includes(knownCustomerId));
+          accountId = match
+            ? match.replace("customers/", "")
+            : customersData.resourceNames[0].replace("customers/", "");
+        }
       }
     } catch (err) {
       console.warn("Could not list accessible customers:", err);
