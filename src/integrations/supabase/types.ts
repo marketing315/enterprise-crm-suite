@@ -6021,27 +6021,50 @@ export type Database = {
           total_spend: number
         }[]
       }
-      get_ad_platform_stats_summary: {
-        Args: {
-          p_brand_id: string
-          p_campaign_id?: string
-          p_from: string
-          p_platform?: Database["public"]["Enums"]["ad_platform"]
-          p_to: string
-        }
-        Returns: {
-          avg_cpc: number
-          avg_cpm: number
-          avg_ctr: number
-          avg_frequency: number
-          last_import: string
-          total_clicks: number
-          total_conversions: number
-          total_impressions: number
-          total_reach: number
-          total_spend: number
-        }[]
-      }
+      get_ad_platform_stats_summary:
+        | {
+            Args: {
+              p_brand_id: string
+              p_campaign_id?: string
+              p_from: string
+              p_platform?: Database["public"]["Enums"]["ad_platform"]
+              p_to: string
+            }
+            Returns: {
+              avg_cpc: number
+              avg_cpm: number
+              avg_ctr: number
+              avg_frequency: number
+              last_import: string
+              total_clicks: number
+              total_conversions: number
+              total_impressions: number
+              total_reach: number
+              total_spend: number
+            }[]
+          }
+        | {
+            Args: {
+              p_brand_id: string
+              p_campaign_id?: string
+              p_from: string
+              p_platform?: string
+              p_to: string
+            }
+            Returns: {
+              avg_cpc: number
+              avg_cpm: number
+              avg_ctr: number
+              avg_frequency: number
+              last_import: string
+              total_clicks: number
+              total_conversions: number
+              total_impressions: number
+              total_leads: number
+              total_reach: number
+              total_spend: number
+            }[]
+          }
       get_ad_platform_stats_trend: {
         Args: {
           p_brand_id: string
