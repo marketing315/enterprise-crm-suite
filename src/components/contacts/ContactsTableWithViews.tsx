@@ -508,8 +508,8 @@ export function ContactsTableWithViews({
       </div>
 
       {/* Table with horizontal and vertical scroll */}
-      <div className="rounded-md border max-h-[calc(100vh-280px)] overflow-auto">
-          <Table className="min-w-[900px]">
+      <div className="rounded-md border max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-scroll -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
+          <Table className="min-w-[900px] table-fixed">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[40px]">
