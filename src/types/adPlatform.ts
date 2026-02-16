@@ -59,10 +59,12 @@ export interface AdPlatformStatSummary {
   total_clicks: number;
   total_conversions: number;
   total_reach: number;
+  total_leads: number;
   avg_frequency: number | null;
   avg_ctr: number | null;
   avg_cpm: number | null;
   avg_cpc: number | null;
+  avg_cpl: number | null;
   last_import: string | null;
 }
 

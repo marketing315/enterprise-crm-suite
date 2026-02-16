@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Eye, MousePointer, Percent, DollarSign, Users, Repeat } from "lucide-react";
+import { TrendingUp, Eye, MousePointer, Percent, DollarSign, Users, Repeat, Target } from "lucide-react";
 import type { AdPlatformStatSummary } from "@/types/adPlatform";
 
 interface AdStatsKpiCardsProps {
@@ -18,6 +18,21 @@ export function AdStatsKpiCards({ summary, isLoading }: AdStatsKpiCardsProps) {
       color: "text-red-500",
     },
     {
+      label: "Lead",
+      value: summary?.total_leads ?? 0,
+      format: (v: number) => v.toLocaleString("it-IT"),
+      icon: Users,
+      color: "text-emerald-500",
+    },
+    {
+      label: "CPL",
+      value: summary?.avg_cpl ?? null,
+      format: (v: number | null) => v !== null ? `€${v.toFixed(2)}` : "—",
+      icon: Target,
+      color: "text-amber-500",
+      highlight: true,
+    },
+    {
       label: "Impression",
       value: summary?.total_impressions ?? 0,
       format: (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toString(),
@@ -30,13 +45,6 @@ export function AdStatsKpiCards({ summary, isLoading }: AdStatsKpiCardsProps) {
       format: (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toString(),
       icon: Users,
       color: "text-indigo-500",
-    },
-    {
-      label: "Frequenza",
-      value: summary?.avg_frequency ?? null,
-      format: (v: number | null) => v !== null ? v.toFixed(2) : "—",
-      icon: Repeat,
-      color: "text-teal-500",
     },
     {
       label: "Click",
@@ -62,9 +70,9 @@ export function AdStatsKpiCards({ summary, isLoading }: AdStatsKpiCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
       {kpis.map((kpi) => (
-        <Card key={kpi.label}>
+        <Card key={kpi.label} className={(kpi as any).highlight ? "border-amber-500/50 bg-amber-500/5" : ""}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
@@ -73,7 +81,7 @@ export function AdStatsKpiCards({ summary, isLoading }: AdStatsKpiCardsProps) {
             {isLoading ? (
               <Skeleton className="h-7 w-16" />
             ) : (
-              <div className="text-xl font-bold">
+              <div className={`text-xl font-bold ${(kpi as any).highlight ? "text-amber-600 dark:text-amber-400" : ""}`}>
                 {kpi.format(kpi.value as number)}
               </div>
             )}

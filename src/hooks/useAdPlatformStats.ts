@@ -82,7 +82,14 @@ export function useAdPlatformStatsSummary({ fromDate, toDate, platform, campaign
 
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
-      return row as AdPlatformStatSummary | null;
+      if (row) {
+        const r = row as AdPlatformStatSummary;
+        r.avg_cpl = (r.total_leads && r.total_leads > 0 && r.total_spend > 0)
+          ? Math.round((r.total_spend / r.total_leads) * 100) / 100
+          : null;
+        return r;
+      }
+      return null;
     },
     enabled: !!brandId && !!fromDate && !!toDate,
   });
