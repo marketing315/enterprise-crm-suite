@@ -286,7 +286,7 @@ function tryExtractContactFields(payload: Record<string, unknown>): Partial<Extr
   }
   
   // City
-  const cityFields = ["city", "citta", "città", "City", "Citta"];
+  const cityFields = ["city", "citta", "città", "City", "Citta", "locality", "Locality", "ort"];
   for (const field of cityFields) {
     const value = payload[field];
     if (value && typeof value === "string" && value.trim()) {
@@ -313,6 +313,15 @@ function tryExtractContactFields(payload: Record<string, unknown>): Partial<Extr
       result.notes = value.trim();
       break;
     }
+  }
+
+  // Quiz data (e.g. fibromialgia.ch) → append to notes
+  if (payload.quiz_score !== undefined || payload.quiz_percentage !== undefined) {
+    const quizParts: string[] = [];
+    if (payload.quiz_score !== undefined) quizParts.push(`Punteggio: ${payload.quiz_score}/${payload.quiz_max_score || "?"}`);
+    if (payload.quiz_percentage !== undefined) quizParts.push(`${payload.quiz_percentage}%`);
+    const quizSummary = `Quiz: ${quizParts.join(" – ")}`;
+    result.notes = result.notes ? `${result.notes}\n${quizSummary}` : quizSummary;
   }
   
   return result;
