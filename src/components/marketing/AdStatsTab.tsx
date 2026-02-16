@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, subMonths, subYears } from "date-fns";
 import { it } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, RefreshCw, Clock, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Clock, Download, Link2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -29,6 +29,8 @@ export function AdStatsTab() {
   const [platformFilter, setPlatformFilter] = useState<AdPlatform | "all">("all");
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
+  const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
 
   const dateRange = useMemo(() => ({
     from: format(startOfMonth(selectedMonth), "yyyy-MM-dd"),
@@ -123,13 +125,96 @@ export function AdStatsTab() {
 
       const successCount = result.results?.filter((r: any) => r.success).length ?? 0;
       const totalCampaigns = result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
-      toast.success(`Sync completata: ${successCount} account, ${totalCampaigns} campagne-giorno importate`);
+      toast.success(`Sync Meta completata: ${successCount} account, ${totalCampaigns} campagne-giorno importate`);
       handleRefresh();
     } catch (err: any) {
       console.error("Historical sync error:", err);
       toast.error(err.message || "Errore nella sincronizzazione storica");
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleConnectGoogleAds = async () => {
+    setIsConnectingGoogle(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error("Sessione non trovata");
+        return;
+      }
+
+      const brandId = currentBrand?.id;
+      if (!brandId) {
+        toast.error("Seleziona un brand");
+        return;
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/google-oauth-start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+        body: JSON.stringify({ brand_id: brandId }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Errore nell'avvio OAuth");
+      }
+
+      if (result.auth_url) {
+        window.open(result.auth_url, "_blank", "width=600,height=700");
+        toast.info("Completa l'autorizzazione nella finestra aperta");
+      }
+    } catch (err: any) {
+      console.error("Google OAuth start error:", err);
+      toast.error(err.message || "Errore nel collegamento Google Ads");
+    } finally {
+      setIsConnectingGoogle(false);
+    }
+  };
+
+  const handleGoogleAdsSync = async () => {
+    setIsSyncingGoogle(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error("Sessione non trovata");
+        return;
+      }
+
+      const fromDate = format(subYears(new Date(), 2), "yyyy-MM-dd");
+      const toDate = format(new Date(), "yyyy-MM-dd");
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/google-ads-sync?from=${fromDate}&to=${toDate}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.session.access_token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Errore nella sincronizzazione Google Ads");
+      }
+
+      const successCount = result.results?.filter((r: any) => r.success).length ?? 0;
+      const totalCampaigns = result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
+      toast.success(`Sync Google Ads completata: ${successCount} account, ${totalCampaigns} campagne-giorno importate`);
+      handleRefresh();
+    } catch (err: any) {
+      console.error("Google Ads sync error:", err);
+      toast.error(err.message || "Errore nella sincronizzazione Google Ads");
+    } finally {
+      setIsSyncingGoogle(false);
     }
   };
 
@@ -164,9 +249,7 @@ export function AdStatsTab() {
             <SelectContent>
               <SelectItem value="all">Tutte</SelectItem>
               <SelectItem value="meta">Meta Ads</SelectItem>
-              <SelectItem value="google" disabled className="opacity-50">
-                Google Ads (coming soon)
-              </SelectItem>
+              <SelectItem value="google">Google Ads</SelectItem>
             </SelectContent>
           </Select>
 
@@ -201,7 +284,27 @@ export function AdStatsTab() {
             disabled={isSyncing}
           >
             <Download className="h-4 w-4 mr-2" />
-            {isSyncing ? "Sincronizzazione..." : "Sync Storica"}
+            {isSyncing ? "Sincronizzazione..." : "Sync Meta"}
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleGoogleAdsSync}
+            disabled={isSyncingGoogle}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isSyncingGoogle ? "Sincronizzazione..." : "Sync Google"}
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleConnectGoogleAds}
+            disabled={isConnectingGoogle || isAllBrandsSelected}
+          >
+            <Link2 className="h-4 w-4 mr-2" />
+            {isConnectingGoogle ? "Collegamento..." : "Collega Google Ads"}
           </Button>
         </div>
       </div>
