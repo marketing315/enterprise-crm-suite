@@ -83,3 +83,12 @@ verify_jwt = false
 
 [functions.sheets-leads-export]
 verify_jwt = false
+
+[functions.google-oauth-start]
+verify_jwt = false
+
+[functions.google-oauth-callback]
+verify_jwt = false
+
+[functions.google-ads-sync]
+verify_jwt = false

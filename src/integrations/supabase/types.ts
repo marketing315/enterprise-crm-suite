@@ -3764,6 +3764,53 @@ export type Database = {
           },
         ]
       }
+      oauth_tokens: {
+        Row: {
+          access_token_encrypted: string
+          account_id: string
+          brand_id: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          provider: string
+          refresh_token_encrypted: string
+          scopes: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token_encrypted: string
+          account_id: string
+          brand_id: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          provider: string
+          refresh_token_encrypted: string
+          scopes?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token_encrypted?: string
+          account_id?: string
+          brand_id?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          provider?: string
+          refresh_token_encrypted?: string
+          scopes?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_tokens_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbound_webhook_deliveries: {
         Row: {
           attempt_count: number
