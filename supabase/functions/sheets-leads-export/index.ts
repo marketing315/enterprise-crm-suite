@@ -9,7 +9,14 @@ const corsHeaders = {
 // ============ Google Sheets API Helpers ============
 
 async function getAccessToken(serviceAccountKey: string): Promise<string> {
-  const key = JSON.parse(serviceAccountKey);
+  // Support both raw JSON and base64-encoded JSON
+  let rawJson = serviceAccountKey;
+  try {
+    JSON.parse(rawJson);
+  } catch {
+    rawJson = new TextDecoder().decode(Uint8Array.from(atob(serviceAccountKey), c => c.charCodeAt(0)));
+  }
+  const key = JSON.parse(rawJson);
   const header = { alg: "RS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
@@ -364,19 +371,48 @@ Deno.serve(async (req: Request) => {
     const accessToken = await getAccessToken(serviceAccountKey);
     const sheetInfo = await getSheetInfo(accessToken, spreadsheetId);
 
-    // Ensure LEADS tab exists
-    const existing = sheetInfo.sheets?.find((s: any) => s.properties.title === TAB_NAME);
+    // Ensure LEADS tab exists, delete all other tabs
+    const allSheets = sheetInfo.sheets || [];
+    const existing = allSheets.find((s: any) => s.properties.title === TAB_NAME);
     let sheetId: number;
 
     if (existing) {
       sheetId = existing.properties.sheetId;
+      // Delete all other tabs
+      const deleteRequests = allSheets
+        .filter((s: any) => s.properties.sheetId !== sheetId)
+        .map((s: any) => ({ deleteSheet: { sheetId: s.properties.sheetId } }));
+      if (deleteRequests.length > 0) {
+        await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ requests: deleteRequests }),
+          }
+        );
+      }
       await clearSheet(accessToken, spreadsheetId, TAB_NAME);
-      await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
     } else {
+      // Create LEADS tab first, then delete all others
       sheetId = await createTab(accessToken, spreadsheetId, TAB_NAME);
-      await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
-      await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
+      const deleteRequests = allSheets
+        .map((s: any) => ({ deleteSheet: { sheetId: s.properties.sheetId } }));
+      if (deleteRequests.length > 0) {
+        await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ requests: deleteRequests }),
+          }
+        );
+      }
     }
+
+    // Write headers and format
+    await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
+    await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
 
     // Fetch data
     const rows = await fetchLeadsData(supabaseAdmin, date_from || null, date_to || null);
