@@ -318,7 +318,16 @@ async function fetchAllLeadsRows(
     if (!apptMap.has(a.contact_id)) apptMap.set(a.contact_id, a);
   });
 
-  return events.map(event => {
+  // Deduplicate: keep only the first event per contact_id
+  const seenContacts = new Set<string>();
+  const dedupedEvents = events.filter(event => {
+    const cid = event.contact_id as string;
+    if (!cid || seenContacts.has(cid)) return false;
+    seenContacts.add(cid);
+    return true;
+  });
+
+  return dedupedEvents.map(event => {
     const c = event.contacts as any;
     const contactId = event.contact_id as string;
     return buildRow(
@@ -391,13 +400,39 @@ Deno.serve(async (req: Request) => {
 
     // ---- APPEND MODE: single lead ----
     if (lead_event_id) {
-      await ensureLeadsTab(accessToken, spreadsheetId);
-      const row = await fetchSingleLeadRow(supabaseAdmin, lead_event_id);
-      if (row) {
-        await appendRows(accessToken, spreadsheetId, TAB_NAME, [row]);
+      // Check if this contact already has an earlier exported event (dedup)
+      const { data: eventInfo } = await supabaseAdmin
+        .from("lead_events")
+        .select("contact_id, received_at")
+        .eq("id", lead_event_id)
+        .single();
+
+      let shouldAppend = true;
+      if (eventInfo?.contact_id) {
+        const { count } = await supabaseAdmin
+          .from("lead_events")
+          .select("id", { count: "exact", head: true })
+          .eq("contact_id", eventInfo.contact_id)
+          .lt("received_at", eventInfo.received_at);
+        if ((count ?? 0) > 0) {
+          shouldAppend = false; // contact already exported via an earlier event
+        }
       }
+
+      if (shouldAppend) {
+        await ensureLeadsTab(accessToken, spreadsheetId);
+        const row = await fetchSingleLeadRow(supabaseAdmin, lead_event_id);
+        if (row) {
+          await appendRows(accessToken, spreadsheetId, TAB_NAME, [row]);
+        }
+        return new Response(
+          JSON.stringify({ success: true, rows_exported: row ? 1 : 0, mode: "append" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ success: true, rows_exported: row ? 1 : 0, mode: "append" }),
+        JSON.stringify({ success: true, rows_exported: 0, mode: "append", skipped: "duplicate_contact" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
