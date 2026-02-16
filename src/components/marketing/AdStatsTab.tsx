@@ -10,6 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import {
   useAdPlatformStats,
@@ -31,6 +40,10 @@ export function AdStatsTab() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [syncLabel, setSyncLabel] = useState("");
+  const [syncFromDate, setSyncFromDate] = useState<Date>(subYears(new Date(), 2));
+  const [syncToDate, setSyncToDate] = useState<Date>(new Date());
 
   const dateRange = useMemo(() => ({
     from: format(startOfMonth(selectedMonth), "yyyy-MM-dd"),
@@ -96,6 +109,8 @@ export function AdStatsTab() {
 
   const handleHistoricalSync = async () => {
     setIsSyncing(true);
+    setSyncProgress(0);
+    setSyncLabel("Preparazione...");
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
@@ -104,21 +119,20 @@ export function AdStatsTab() {
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const now = new Date();
-      const twoYearsAgo = subYears(now, 2);
 
-      // Break into 2-month chunks to avoid edge function timeout
+      // Break into 2-month chunks
       const chunks: Array<{ from: string; to: string }> = [];
-      let cursor = new Date(twoYearsAgo);
-      while (cursor < now) {
+      let cursor = new Date(syncFromDate);
+      const end = new Date(syncToDate);
+      while (cursor < end) {
         const chunkEnd = new Date(cursor);
         chunkEnd.setMonth(chunkEnd.getMonth() + 2);
-        const end = chunkEnd > now ? now : chunkEnd;
+        const ce = chunkEnd > end ? end : chunkEnd;
         chunks.push({
           from: format(cursor, "yyyy-MM-dd"),
-          to: format(end, "yyyy-MM-dd"),
+          to: format(ce, "yyyy-MM-dd"),
         });
-        cursor = new Date(end);
+        cursor = new Date(ce);
         cursor.setDate(cursor.getDate() + 1);
       }
 
@@ -127,9 +141,10 @@ export function AdStatsTab() {
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        toast.info(`Sync Meta ${i + 1}/${chunks.length}: ${chunk.from} → ${chunk.to}`);
+        const pct = Math.round(((i + 1) / chunks.length) * 100);
+        setSyncProgress(pct);
+        setSyncLabel(`${i + 1}/${chunks.length} — ${chunk.from} → ${chunk.to}`);
 
-        // Wait 3s between chunks to avoid Meta rate limiting
         if (i > 0) {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
@@ -155,6 +170,8 @@ export function AdStatsTab() {
         totalCampaigns += result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
       }
 
+      setSyncProgress(100);
+      setSyncLabel("Completato!");
       toast.success(`Sync Meta completata: ${totalSuccess} account-chunk, ${totalCampaigns} campagne-giorno importate`);
       handleRefresh();
     } catch (err: any) {
@@ -162,6 +179,7 @@ export function AdStatsTab() {
       toast.error(err.message || "Errore nella sincronizzazione storica");
     } finally {
       setIsSyncing(false);
+      setTimeout(() => { setSyncProgress(0); setSyncLabel(""); }, 3000);
     }
   };
 
@@ -308,15 +326,53 @@ export function AdStatsTab() {
             Aggiorna
           </Button>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleHistoricalSync}
-            disabled={isSyncing}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            {isSyncing ? "Sincronizzazione..." : "Sync Meta"}
-          </Button>
+          {/* Sync Meta with date pickers */}
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-[120px] justify-start text-left font-normal text-xs">
+                  <CalendarIcon className="h-3 w-3 mr-1" />
+                  {format(syncFromDate, "dd/MM/yy")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={syncFromDate}
+                  onSelect={(d) => d && setSyncFromDate(d)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-xs text-muted-foreground">→</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-[120px] justify-start text-left font-normal text-xs">
+                  <CalendarIcon className="h-3 w-3 mr-1" />
+                  {format(syncToDate, "dd/MM/yy")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={syncToDate}
+                  onSelect={(d) => d && setSyncToDate(d)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleHistoricalSync}
+              disabled={isSyncing}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isSyncing ? "Sync..." : "Sync Meta"}
+            </Button>
+          </div>
 
           <Button 
             variant="outline" 
@@ -341,6 +397,17 @@ export function AdStatsTab() {
       </div>
 
       {/* Brand info for multi-brand */}
+      {/* Sync progress bar */}
+      {(isSyncing || syncProgress > 0) && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Sincronizzazione Meta: {syncLabel}</span>
+            <span>{syncProgress}%</span>
+          </div>
+          <Progress value={syncProgress} className="h-2" />
+        </div>
+      )}
+
       {isAllBrandsSelected && (
         <div className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
           📊 Visualizzazione aggregata di tutti i brand
