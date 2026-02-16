@@ -166,8 +166,9 @@ export function AdStatsTab() {
       }
 
       if (result.auth_url) {
-        window.open(result.auth_url, "_blank", "width=600,height=700");
-        toast.info("Completa l'autorizzazione nella finestra aperta");
+        // Use top-level window to avoid iframe restrictions from Google
+        const w = window.top || window;
+        w.location.href = result.auth_url;
       }
     } catch (err: any) {
       console.error("Google OAuth start error:", err);
