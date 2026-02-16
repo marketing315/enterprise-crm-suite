@@ -168,7 +168,7 @@ async function applyFormatting(accessToken: string, spreadsheetId: string, sheet
 // ============ Constants ============
 
 const LEADS_HEADERS = [
-  "Data", "Brand", "Nome", "Cognome", "Numero", "Email",
+  "Data e Ora", "Brand", "Nome", "Cognome", "Numero", "Email",
   "Campagna", "Fonte", "AdSet",
   "Motivo", "Messaggio",
   "CAP", "Città", "Provincia",
@@ -201,15 +201,15 @@ function buildRow(event: any, contact: any, brandName: string, phone: string, ta
   }
 
   return [
-    event.received_at ? new Date(event.received_at).toISOString().split("T")[0] : "",
+    event.received_at ? new Date(event.received_at).toISOString().replace("T", " ").substring(0, 16) : "",
     brandName,
     contact?.first_name || "",
     contact?.last_name || "",
     phone,
     contact?.email || "",
-    payload.campaign_name || "",
+    payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || "",
     event.source_name || "",
-    payload.adset_name || "",
+    payload.adset || payload.adset_name || payload.meta_adset_name || "",
     contact?.lead_reason || "",
     contact?.lead_message || "",
     contact?.cap || "",
