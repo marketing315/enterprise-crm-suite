@@ -14,9 +14,9 @@ export function useLeadSourceNames() {
     queryFn: async (): Promise<string[]> => {
       let query = supabase
         .from("lead_events")
-        .select("source_name")
+        .select("source_name, contact_id")
         .not("source_name", "is", null)
-        .order("source_name", { ascending: true });
+        .not("contact_id", "is", null);
 
       if (isAllBrandsSelected) {
         query = query.in("brand_id", allBrandIds);
