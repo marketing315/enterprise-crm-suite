@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLeadSourceNames } from '@/hooks/useLeadSourceNames';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -51,6 +52,8 @@ export default function Contacts() {
   const [brandFilter, setBrandFilter] = useState<string>('all');
   const [createdFromDate, setCreatedFromDate] = useState<Date | undefined>();
   const [createdToDate, setCreatedToDate] = useState<Date | undefined>();
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const { data: sourceNames = [] } = useLeadSourceNames();
 
   // Handle URL param to open contact detail
   useEffect(() => {
@@ -71,6 +74,7 @@ export default function Contacts() {
       status: statusFilter === 'all' ? undefined : statusFilter,
       createdFrom: createdFromDate,
       createdTo: createdToDate,
+      sourceName: sourceFilter === 'all' ? undefined : sourceFilter,
     }
   );
   const handleContactCreated = (contactId: string) => {
@@ -107,7 +111,7 @@ export default function Contacts() {
       };
     });
 
-  const activeFiltersCount = (statusFilter !== 'all' ? 1 : 0) + (selectedTagIds.length > 0 ? 1 : 0) + (createdFromDate || createdToDate ? 1 : 0);
+  const activeFiltersCount = (statusFilter !== 'all' ? 1 : 0) + (selectedTagIds.length > 0 ? 1 : 0) + (createdFromDate || createdToDate ? 1 : 0) + (sourceFilter !== 'all' ? 1 : 0);
 
   const FiltersContent = () => (
     <div className="space-y-4">
@@ -156,6 +160,23 @@ export default function Contacts() {
           onTagsChange={setSelectedTagIds}
           scope="contact"
         />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Fonte lead</label>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Filtra per fonte" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tutte le fonti</SelectItem>
+            {sourceNames.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
@@ -254,6 +275,19 @@ export default function Contacts() {
                 onFromDateChange={setCreatedFromDate}
                 onToDateChange={setCreatedToDate}
               />
+              <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Fonte lead" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutte le fonti</SelectItem>
+                  {sourceNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>
