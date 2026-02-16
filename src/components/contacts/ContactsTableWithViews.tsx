@@ -508,8 +508,7 @@ export function ContactsTableWithViews({
       </div>
 
       {/* Table with horizontal and vertical scroll */}
-      <div className="rounded-md border max-h-[calc(100vh-280px)] overflow-y-auto">
-        <div className="overflow-x-auto">
+      <div className="rounded-md border max-h-[calc(100vh-280px)] overflow-auto">
           <Table className="min-w-[900px]">
           <TableHeader>
             <TableRow>
@@ -580,7 +579,6 @@ export function ContactsTableWithViews({
             ))}
           </TableBody>
         </Table>
-        </div>
       </div>
 
       {/* Bulk actions bar */}
