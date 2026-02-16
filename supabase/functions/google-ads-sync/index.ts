@@ -194,13 +194,26 @@ Deno.serve(async (req) => {
         }
 
         const gaqlResp = await fetch(
-          `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:searchStream`,
+          `https://googleads.googleapis.com/v19/customers/${customerId}/googleAds:searchStream`,
           {
             method: "POST",
             headers,
             body: JSON.stringify({ query }),
           }
         );
+
+        if (!gaqlResp.ok) {
+          const errText = await gaqlResp.text();
+          console.error(`Google Ads API HTTP ${gaqlResp.status} for ${customerId}:`, errText);
+          results.push({
+            brand_id: oauthToken.brand_id,
+            account_id: customerId,
+            success: false,
+            campaigns: 0,
+            error: `HTTP ${gaqlResp.status}: ${errText.substring(0, 200)}`,
+          });
+          continue;
+        }
 
         const gaqlData = await gaqlResp.json();
 
