@@ -129,6 +129,11 @@ export function AdStatsTab() {
         const chunk = chunks[i];
         toast.info(`Sync Meta ${i + 1}/${chunks.length}: ${chunk.from} → ${chunk.to}`);
 
+        // Wait 3s between chunks to avoid Meta rate limiting
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
         const response = await fetch(
           `${supabaseUrl}/functions/v1/ads-stats-meta?from=${chunk.from}&to=${chunk.to}`,
           {
