@@ -9,7 +9,6 @@ const corsHeaders = {
 // ============ Google Sheets API Helpers ============
 
 async function getAccessToken(serviceAccountKey: string): Promise<string> {
-  // Support both raw JSON and base64-encoded JSON
   let rawJson = serviceAccountKey;
   try {
     JSON.parse(rawJson);
@@ -17,6 +16,7 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
     rawJson = new TextDecoder().decode(Uint8Array.from(atob(serviceAccountKey), c => c.charCodeAt(0)));
   }
   const key = JSON.parse(rawJson);
+
   const header = { alg: "RS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
@@ -109,6 +109,19 @@ async function writeRange(
   );
 }
 
+async function appendRows(
+  accessToken: string, spreadsheetId: string, tabName: string, values: string[][]
+): Promise<void> {
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName + "!A:W")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ values }),
+    }
+  );
+}
+
 async function applyFormatting(accessToken: string, spreadsheetId: string, sheetId: number, columnCount: number): Promise<void> {
   const requests = [
     {
@@ -166,138 +179,264 @@ const LEADS_HEADERS = [
 
 const TAB_NAME = "LEADS";
 
-// ============ Data Fetching ============
+// ============ Data Helpers ============
 
 function extractStreetNumber(address: string | null): { street: string; number: string } {
   if (!address) return { street: "", number: "" };
-  // Try patterns like "Via Roma 42", "Via Roma, 42", "Via Roma n. 42"
   const match = address.match(/^(.+?)[,\s]+(?:n\.?\s*)?(\d+\s*\/?[a-zA-Z]?)$/);
   if (match) return { street: match[1].trim(), number: match[2].trim() };
   return { street: address, number: "" };
 }
 
-async function fetchLeadsData(
+function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any): string[] {
+  const payload = (event.raw_payload || {}) as Record<string, any>;
+  const { street, number: civico } = extractStreetNumber(appt?.address || null);
+
+  let apptDate = "";
+  let apptTime = "";
+  if (appt?.scheduled_at) {
+    const d = new Date(appt.scheduled_at);
+    apptDate = d.toISOString().split("T")[0];
+    apptTime = d.toISOString().split("T")[1]?.substring(0, 5) || "";
+  }
+
+  return [
+    event.received_at ? new Date(event.received_at).toISOString().split("T")[0] : "",
+    brandName,
+    contact?.first_name || "",
+    contact?.last_name || "",
+    phone,
+    contact?.email || "",
+    payload.campaign_name || "",
+    event.source_name || "",
+    payload.adset_name || "",
+    contact?.lead_reason || "",
+    contact?.lead_message || "",
+    contact?.cap || "",
+    contact?.city || "",
+    contact?.province || "",
+    tags,
+    contact?.notes || "",
+    appt?.status || "",
+    apptDate,
+    apptTime,
+    street,
+    civico,
+    appt?.city || "",
+    appt?.cap || "",
+  ];
+}
+
+// ============ Fetch single lead ============
+
+async function fetchSingleLeadRow(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  leadEventId: string,
+): Promise<string[] | null> {
+  const { data: event, error } = await supabaseAdmin
+    .from("lead_events")
+    .select(`
+      id, received_at, source_name, raw_payload, contact_id, brand_id,
+      contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, cap, city, province, notes),
+      brands(name)
+    `)
+    .eq("id", leadEventId)
+    .single();
+
+  if (error || !event) {
+    console.error("Error fetching lead_event:", error);
+    return null;
+  }
+
+  const contactId = event.contact_id as string;
+  const contact = event.contacts as any;
+  const brandName = (event.brands as any)?.name || "";
+
+  // Fetch phone, tags, appointment in parallel
+  const [phonesRes, tagsRes, apptsRes] = await Promise.all([
+    contactId
+      ? supabaseAdmin.from("contact_phones").select("phone_normalized").eq("contact_id", contactId).eq("is_primary", true).limit(1)
+      : Promise.resolve({ data: [] }),
+    contactId
+      ? supabaseAdmin.from("tag_assignments").select("tags(name)").eq("entity_type", "contact").eq("entity_id", contactId)
+      : Promise.resolve({ data: [] }),
+    contactId
+      ? supabaseAdmin.from("appointments").select("status, scheduled_at, address, city, cap").eq("contact_id", contactId).order("scheduled_at", { ascending: false }).limit(1)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const phone = (phonesRes.data as any)?.[0]?.phone_normalized || contact?.phone_normalized || "";
+  const tags = (tagsRes.data as any[] || []).map((t: any) => t.tags?.name).filter(Boolean).join(", ");
+  const appt = (apptsRes.data as any[])?.[0] || null;
+
+  return buildRow(event, contact, brandName, phone, tags, appt);
+}
+
+// ============ Fetch all leads (full export) ============
+
+async function fetchAllLeadsRows(
   supabaseAdmin: ReturnType<typeof createClient>,
   dateFrom: string | null,
   dateTo: string | null,
 ): Promise<string[][]> {
-  // Step 1: Fetch lead_events with contacts and brands
   let query = supabaseAdmin
     .from("lead_events")
     .select(`
-      id,
-      received_at,
-      source_name,
-      raw_payload,
-      contact_id,
-      brand_id,
-      contacts(
-        first_name, last_name, email, phone_normalized,
-        lead_reason, lead_message, cap, city, province, notes
-      ),
+      id, received_at, source_name, raw_payload, contact_id, brand_id,
+      contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, cap, city, province, notes),
       brands(name)
     `)
-    .order("received_at", { ascending: false })
+    .order("received_at", { ascending: true })
     .limit(5000);
 
   if (dateFrom) query = query.gte("received_at", dateFrom);
   if (dateTo) query = query.lte("received_at", dateTo + "T23:59:59");
 
   const { data: events, error } = await query;
-  if (error) {
-    console.error("Error fetching lead_events:", error);
-    return [];
-  }
-  if (!events || events.length === 0) return [];
+  if (error || !events?.length) return [];
 
-  // Step 2: Collect unique contact IDs for phones, tags, appointments
   const contactIds = [...new Set(events.map(e => e.contact_id).filter(Boolean))] as string[];
 
-  // Fetch primary phones
-  const { data: phones } = await supabaseAdmin
-    .from("contact_phones")
-    .select("contact_id, phone_normalized")
-    .in("contact_id", contactIds)
-    .eq("is_primary", true);
+  const [phonesRes, tagsRes, apptsRes] = await Promise.all([
+    supabaseAdmin.from("contact_phones").select("contact_id, phone_normalized").in("contact_id", contactIds).eq("is_primary", true),
+    supabaseAdmin.from("tag_assignments").select("entity_id, tags(name)").eq("entity_type", "contact").in("entity_id", contactIds),
+    supabaseAdmin.from("appointments").select("contact_id, status, scheduled_at, address, city, cap").in("contact_id", contactIds).order("scheduled_at", { ascending: false }),
+  ]);
 
   const phoneMap = new Map<string, string>();
-  (phones || []).forEach(p => phoneMap.set(p.contact_id, p.phone_normalized));
-
-  // Fetch tags
-  const { data: tagAssignments } = await supabaseAdmin
-    .from("tag_assignments")
-    .select("entity_id, tags(name)")
-    .eq("entity_type", "contact")
-    .in("entity_id", contactIds);
+  (phonesRes.data || []).forEach((p: any) => phoneMap.set(p.contact_id, p.phone_normalized));
 
   const tagMap = new Map<string, string[]>();
-  (tagAssignments || []).forEach((ta: any) => {
+  (tagsRes.data || []).forEach((ta: any) => {
     const list = tagMap.get(ta.entity_id) || [];
     if (ta.tags?.name) list.push(ta.tags.name);
     tagMap.set(ta.entity_id, list);
   });
 
-  // Fetch latest appointments per contact
-  const { data: appointments } = await supabaseAdmin
-    .from("appointments")
-    .select("contact_id, status, scheduled_at, address, city, cap")
-    .in("contact_id", contactIds)
-    .order("scheduled_at", { ascending: false });
-
-  // Keep only the latest appointment per contact
   const apptMap = new Map<string, any>();
-  (appointments || []).forEach(a => {
+  (apptsRes.data || []).forEach((a: any) => {
     if (!apptMap.has(a.contact_id)) apptMap.set(a.contact_id, a);
   });
 
-  // Step 3: Build rows
   return events.map(event => {
     const c = event.contacts as any;
-    const b = event.brands as any;
-    const payload = (event.raw_payload || {}) as Record<string, any>;
     const contactId = event.contact_id as string;
-
-    const phone = phoneMap.get(contactId) || c?.phone_normalized || "";
-    const tags = tagMap.get(contactId)?.join(", ") || "";
-    const appt = apptMap.get(contactId);
-
-    const { street, number: civico } = extractStreetNumber(appt?.address || null);
-
-    let apptDate = "";
-    let apptTime = "";
-    if (appt?.scheduled_at) {
-      const d = new Date(appt.scheduled_at);
-      apptDate = d.toISOString().split("T")[0];
-      apptTime = d.toISOString().split("T")[1]?.substring(0, 5) || "";
-    }
-
-    return [
-      event.received_at ? new Date(event.received_at).toISOString().split("T")[0] : "",
-      b?.name || "",
-      c?.first_name || "",
-      c?.last_name || "",
-      phone,
-      c?.email || "",
-      payload.campaign_name || "",
-      event.source_name || "",
-      payload.adset_name || "",
-      c?.lead_reason || "",
-      c?.lead_message || "",
-      c?.cap || "",
-      c?.city || "",
-      c?.province || "",
-      tags,
-      c?.notes || "",
-      appt?.status || "",
-      apptDate,
-      apptTime,
-      street,
-      civico,
-      appt?.city || "",
-      appt?.cap || "",
-    ];
+    return buildRow(
+      event, c, (event.brands as any)?.name || "",
+      phoneMap.get(contactId) || c?.phone_normalized || "",
+      tagMap.get(contactId)?.join(", ") || "",
+      apptMap.get(contactId) || null,
+    );
   });
 }
+
+// ============ Ensure sheet setup ============
+
+async function ensureLeadsTab(accessToken: string, spreadsheetId: string): Promise<number> {
+  const sheetInfo = await getSheetInfo(accessToken, spreadsheetId);
+  const allSheets = sheetInfo.sheets || [];
+  const existing = allSheets.find((s: any) => s.properties.title === TAB_NAME);
+
+  if (existing) return existing.properties.sheetId;
+
+  // Create LEADS tab, delete others
+  const sheetId = await createTab(accessToken, spreadsheetId, TAB_NAME);
+  const deleteRequests = allSheets.map((s: any) => ({ deleteSheet: { sheetId: s.properties.sheetId } }));
+  if (deleteRequests.length > 0) {
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ requests: deleteRequests }),
+      }
+    );
+  }
+  await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
+  await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
+  return sheetId;
+}
+
+// ============ Main Handler ============
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const body = await req.json().catch(() => ({}));
+    const { date_from, date_to, lead_event_id } = body as {
+      date_from?: string;
+      date_to?: string;
+      lead_event_id?: string;
+    };
+
+    const spreadsheetId = Deno.env.get("GOOGLE_SHEETS_FILE_ID");
+    const serviceAccountKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
+
+    if (!spreadsheetId || !serviceAccountKey) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Google Sheets not configured" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const accessToken = await getAccessToken(serviceAccountKey);
+
+    // ---- APPEND MODE: single lead ----
+    if (lead_event_id) {
+      await ensureLeadsTab(accessToken, spreadsheetId);
+      const row = await fetchSingleLeadRow(supabaseAdmin, lead_event_id);
+      if (row) {
+        await appendRows(accessToken, spreadsheetId, TAB_NAME, [row]);
+      }
+      return new Response(
+        JSON.stringify({ success: true, rows_exported: row ? 1 : 0, mode: "append" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ---- FULL MODE: rewrite everything in chronological order ----
+    const logBrandId = "00000000-0000-0000-0000-000000000000";
+    const logId = await logExport(supabaseAdmin, logBrandId, "processing", 0);
+
+    const sheetId = await ensureLeadsTab(accessToken, spreadsheetId);
+    await clearSheet(accessToken, spreadsheetId, TAB_NAME);
+    await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
+    await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
+
+    const rows = await fetchAllLeadsRows(supabaseAdmin, date_from || null, date_to || null);
+
+    if (rows.length > 0) {
+      const BATCH_SIZE = 1000;
+      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        const batch = rows.slice(i, i + BATCH_SIZE);
+        const startRow = i + 2;
+        const endRow = startRow + batch.length - 1;
+        await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A${startRow}:W${endRow}`, batch);
+      }
+    }
+
+    await updateLog(supabaseAdmin, logId, "success", rows.length);
+
+    return new Response(
+      JSON.stringify({ success: true, rows_exported: rows.length, mode: "full" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("sheets-leads-export error:", err);
+    return new Response(
+      JSON.stringify({ success: false, error: err.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
 
 // ============ Logging ============
 
@@ -310,13 +449,7 @@ async function logExport(
 ): Promise<string> {
   const { data } = await supabaseAdmin
     .from("sheets_export_logs")
-    .insert({
-      brand_id: brandId,
-      tab_name: "LEADS",
-      status,
-      rows_exported: rowsExported,
-      error: error || null,
-    })
+    .insert({ brand_id: brandId, tab_name: "LEADS", status, rows_exported: rowsExported, error: error || null })
     .select("id")
     .single();
   return data?.id || "";
@@ -334,117 +467,3 @@ async function updateLog(
     .update({ status, rows_exported: rowsExported, error: error || null })
     .eq("id", logId);
 }
-
-// ============ Main Handler ============
-
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    const body = await req.json().catch(() => ({}));
-    const { date_from, date_to } = body as { date_from?: string; date_to?: string };
-
-    // Use a system brand ID for the log entry
-    const logBrandId = "00000000-0000-0000-0000-000000000000";
-
-    const spreadsheetId = Deno.env.get("GOOGLE_SHEETS_FILE_ID");
-    const serviceAccountKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
-
-    if (!spreadsheetId || !serviceAccountKey) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Google Sheets not configured" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Create processing log
-    const logId = await logExport(supabaseAdmin, logBrandId, "processing", 0);
-
-    // Get access token
-    const accessToken = await getAccessToken(serviceAccountKey);
-    const sheetInfo = await getSheetInfo(accessToken, spreadsheetId);
-
-    // Ensure LEADS tab exists, delete all other tabs
-    const allSheets = sheetInfo.sheets || [];
-    const existing = allSheets.find((s: any) => s.properties.title === TAB_NAME);
-    let sheetId: number;
-
-    if (existing) {
-      sheetId = existing.properties.sheetId;
-      // Delete all other tabs
-      const deleteRequests = allSheets
-        .filter((s: any) => s.properties.sheetId !== sheetId)
-        .map((s: any) => ({ deleteSheet: { sheetId: s.properties.sheetId } }));
-      if (deleteRequests.length > 0) {
-        await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ requests: deleteRequests }),
-          }
-        );
-      }
-      await clearSheet(accessToken, spreadsheetId, TAB_NAME);
-    } else {
-      // Create LEADS tab first, then delete all others
-      sheetId = await createTab(accessToken, spreadsheetId, TAB_NAME);
-      const deleteRequests = allSheets
-        .map((s: any) => ({ deleteSheet: { sheetId: s.properties.sheetId } }));
-      if (deleteRequests.length > 0) {
-        await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ requests: deleteRequests }),
-          }
-        );
-      }
-    }
-
-    // Write headers and format
-    await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
-    await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
-
-    // Fetch data
-    const rows = await fetchLeadsData(supabaseAdmin, date_from || null, date_to || null);
-
-    if (rows.length > 0) {
-      // Write in batches of 1000
-      const BATCH_SIZE = 1000;
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
-        const startRow = i + 2; // row 1 is header
-        const endRow = startRow + batch.length - 1;
-        await writeRange(
-          accessToken, spreadsheetId,
-          `${TAB_NAME}!A${startRow}:W${endRow}`,
-          batch
-        );
-      }
-    }
-
-    // Update log
-    await updateLog(supabaseAdmin, logId, "success", rows.length);
-
-    return new Response(
-      JSON.stringify({ success: true, rows_exported: rows.length }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err) {
-    console.error("sheets-leads-export error:", err);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
-
