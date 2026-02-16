@@ -103,29 +103,54 @@ export function AdStatsTab() {
         return;
       }
 
-      const fromDate = format(subYears(new Date(), 2), "yyyy-MM-dd");
-      const toDate = format(new Date(), "yyyy-MM-dd");
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const now = new Date();
+      const twoYearsAgo = subYears(now, 2);
 
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/ads-stats-meta?from=${fromDate}&to=${toDate}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.session.access_token}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Errore nella sincronizzazione");
+      // Break into 2-month chunks to avoid edge function timeout
+      const chunks: Array<{ from: string; to: string }> = [];
+      let cursor = new Date(twoYearsAgo);
+      while (cursor < now) {
+        const chunkEnd = new Date(cursor);
+        chunkEnd.setMonth(chunkEnd.getMonth() + 2);
+        const end = chunkEnd > now ? now : chunkEnd;
+        chunks.push({
+          from: format(cursor, "yyyy-MM-dd"),
+          to: format(end, "yyyy-MM-dd"),
+        });
+        cursor = new Date(end);
+        cursor.setDate(cursor.getDate() + 1);
       }
 
-      const successCount = result.results?.filter((r: any) => r.success).length ?? 0;
-      const totalCampaigns = result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
-      toast.success(`Sync Meta completata: ${successCount} account, ${totalCampaigns} campagne-giorno importate`);
+      let totalSuccess = 0;
+      let totalCampaigns = 0;
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        toast.info(`Sync Meta ${i + 1}/${chunks.length}: ${chunk.from} → ${chunk.to}`);
+
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/ads-stats-meta?from=${chunk.from}&to=${chunk.to}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.session.access_token}`,
+            },
+          }
+        );
+
+        const result = await response.json();
+        if (!response.ok) {
+          console.warn(`Chunk ${chunk.from}-${chunk.to} failed:`, result.error);
+          continue;
+        }
+
+        totalSuccess += result.results?.filter((r: any) => r.success).length ?? 0;
+        totalCampaigns += result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
+      }
+
+      toast.success(`Sync Meta completata: ${totalSuccess} account-chunk, ${totalCampaigns} campagne-giorno importate`);
       handleRefresh();
     } catch (err: any) {
       console.error("Historical sync error:", err);
