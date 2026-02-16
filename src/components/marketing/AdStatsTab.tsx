@@ -141,9 +141,10 @@ export function AdStatsTab() {
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        const pct = Math.round(((i + 1) / chunks.length) * 100);
-        setSyncProgress(pct);
-        setSyncLabel(`${i + 1}/${chunks.length} — ${chunk.from} → ${chunk.to}`);
+        // Show progress before fetch starts (use i, not i+1, so it shows "in corso")
+        const pctStart = Math.round((i / chunks.length) * 100);
+        setSyncProgress(pctStart);
+        setSyncLabel(`${i + 1}/${chunks.length} in corso — ${chunk.from} → ${chunk.to}`);
 
         if (i > 0) {
           await new Promise(resolve => setTimeout(resolve, 3000));
@@ -163,11 +164,19 @@ export function AdStatsTab() {
         const result = await response.json();
         if (!response.ok) {
           console.warn(`Chunk ${chunk.from}-${chunk.to} failed:`, result.error);
+          const pctFail = Math.round(((i + 1) / chunks.length) * 100);
+          setSyncProgress(pctFail);
+          setSyncLabel(`${i + 1}/${chunks.length} fallito — prossimo...`);
           continue;
         }
 
         totalSuccess += result.results?.filter((r: any) => r.success).length ?? 0;
         totalCampaigns += result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
+        
+        // Update progress after chunk completes
+        const pctDone = Math.round(((i + 1) / chunks.length) * 100);
+        setSyncProgress(pctDone);
+        setSyncLabel(`${i + 1}/${chunks.length} completato`);
       }
 
       setSyncProgress(100);
