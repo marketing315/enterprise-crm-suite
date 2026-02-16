@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     const state = btoa(JSON.stringify({ brand_id: brandId, token }));
 
     const scopes = [
-      "https://www.googleapis.com/auth/adwords.readonly",
+      "https://www.googleapis.com/auth/adwords",
     ].join(" ");
 
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
