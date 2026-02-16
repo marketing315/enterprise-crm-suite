@@ -23,6 +23,7 @@ export interface ContactSearchFilters {
   status?: ContactStatus;
   createdFrom?: Date;
   createdTo?: Date;
+  sourceName?: string;
 }
 
 export function useContactSearch(
@@ -32,16 +33,17 @@ export function useContactSearch(
   offset = 0
 ) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
-  const { status, createdFrom, createdTo } = filters;
+  const { status, createdFrom, createdTo, sourceName } = filters;
 
   return useQuery({
-    queryKey: [
+     queryKey: [
       "contact-search", 
       isAllBrandsSelected ? "all" : currentBrand?.id, 
       query, 
       status, 
       createdFrom?.toISOString(), 
       createdTo?.toISOString(),
+      sourceName,
       limit, 
       offset
     ],
@@ -49,6 +51,26 @@ export function useContactSearch(
       // Check if we have valid brand selection
       const hasValidBrands = isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand;
       if (!hasValidBrands) return [];
+
+      // If source filter is active, get matching contact_ids first
+      let sourceContactIds: string[] | null = null;
+      if (sourceName) {
+        let sourceQuery = supabase
+          .from("lead_events")
+          .select("contact_id")
+          .eq("source_name", sourceName);
+
+        if (isAllBrandsSelected) {
+          sourceQuery = sourceQuery.in("brand_id", allBrandIds);
+        } else if (currentBrand) {
+          sourceQuery = sourceQuery.eq("brand_id", currentBrand.id);
+        }
+
+        const { data: sourceData, error: sourceError } = await sourceQuery;
+        if (sourceError) throw sourceError;
+        sourceContactIds = [...new Set((sourceData || []).map(d => d.contact_id).filter(Boolean) as string[])];
+        if (sourceContactIds.length === 0) return [];
+      }
 
       // If no query, fall back to regular listing
       if (!query.trim()) {
@@ -66,6 +88,11 @@ export function useContactSearch(
           queryBuilder = queryBuilder.in("brand_id", allBrandIds);
         } else if (currentBrand) {
           queryBuilder = queryBuilder.eq("brand_id", currentBrand.id);
+        }
+
+        // Apply source filter
+        if (sourceContactIds) {
+          queryBuilder = queryBuilder.in("id", sourceContactIds);
         }
 
         if (status) {
@@ -134,8 +161,14 @@ export function useContactSearch(
         phones: Array<{ id: string; phone_normalized: string; is_primary: boolean }> | null;
       }> } | null;
 
-      // Apply client-side date filtering for RPC results
+      // Apply client-side filtering for RPC results
       let contacts = result?.contacts || [];
+
+      // Filter by source (contact_ids)
+      if (sourceContactIds) {
+        const idSet = new Set(sourceContactIds);
+        contacts = contacts.filter((c) => idSet.has(c.id));
+      }
       
       if (createdFrom || createdTo) {
         contacts = contacts.filter((c) => {
