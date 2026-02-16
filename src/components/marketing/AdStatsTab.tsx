@@ -110,7 +110,7 @@ export function AdStatsTab() {
   const handleHistoricalSync = async () => {
     setIsSyncing(true);
     setSyncProgress(0);
-    setSyncLabel("Preparazione...");
+    setSyncLabel("Calcolo periodi da sincronizzare...");
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
@@ -120,7 +120,7 @@ export function AdStatsTab() {
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-      // Break into 2-month chunks
+      // Build 2-month chunks
       const chunks: Array<{ from: string; to: string }> = [];
       let cursor = new Date(syncFromDate);
       const end = new Date(syncToDate);
@@ -136,15 +136,17 @@ export function AdStatsTab() {
         cursor.setDate(cursor.getDate() + 1);
       }
 
+      // Show summary before starting
+      setSyncLabel(`${chunks.length} blocchi da sincronizzare (${format(syncFromDate, "dd/MM/yy")} → ${format(syncToDate, "dd/MM/yy")}). Avvio...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       let totalSuccess = 0;
       let totalCampaigns = 0;
+      let failedChunks = 0;
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        // Show progress before fetch starts (use i, not i+1, so it shows "in corso")
-        const pctStart = Math.round((i / chunks.length) * 100);
-        setSyncProgress(pctStart);
-        setSyncLabel(`${i + 1}/${chunks.length} in corso — ${chunk.from} → ${chunk.to}`);
+        setSyncLabel(`Blocco ${i + 1} di ${chunks.length}: ${chunk.from} → ${chunk.to}`);
 
         if (i > 0) {
           await new Promise(resolve => setTimeout(resolve, 3000));
@@ -164,31 +166,26 @@ export function AdStatsTab() {
         const result = await response.json();
         if (!response.ok) {
           console.warn(`Chunk ${chunk.from}-${chunk.to} failed:`, result.error);
-          const pctFail = Math.round(((i + 1) / chunks.length) * 100);
-          setSyncProgress(pctFail);
-          setSyncLabel(`${i + 1}/${chunks.length} fallito — prossimo...`);
-          continue;
+          failedChunks++;
+        } else {
+          totalSuccess += result.results?.filter((r: any) => r.success).length ?? 0;
+          totalCampaigns += result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
         }
 
-        totalSuccess += result.results?.filter((r: any) => r.success).length ?? 0;
-        totalCampaigns += result.results?.reduce((sum: number, r: any) => sum + r.campaigns, 0) ?? 0;
-        
-        // Update progress after chunk completes
-        const pctDone = Math.round(((i + 1) / chunks.length) * 100);
-        setSyncProgress(pctDone);
-        setSyncLabel(`${i + 1}/${chunks.length} completato`);
+        // Update progress AFTER each chunk completes
+        const pct = Math.round(((i + 1) / chunks.length) * 100);
+        setSyncProgress(pct);
       }
 
-      setSyncProgress(100);
-      setSyncLabel("Completato!");
-      toast.success(`Sync Meta completata: ${totalSuccess} account-chunk, ${totalCampaigns} campagne-giorno importate`);
+      setSyncLabel(`✅ Completato — ${totalCampaigns} campagne-giorno importate${failedChunks ? `, ${failedChunks} blocchi falliti` : ""}`);
+      toast.success(`Sync Meta completata: ${totalSuccess} account-chunk, ${totalCampaigns} campagne-giorno`);
       handleRefresh();
     } catch (err: any) {
       console.error("Historical sync error:", err);
       toast.error(err.message || "Errore nella sincronizzazione storica");
     } finally {
       setIsSyncing(false);
-      setTimeout(() => { setSyncProgress(0); setSyncLabel(""); }, 3000);
+      setTimeout(() => { setSyncProgress(0); setSyncLabel(""); }, 5000);
     }
   };
 
