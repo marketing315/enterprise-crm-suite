@@ -182,16 +182,13 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // Fallback to default brand if not found
+  // No fallback: reject if brand cannot be resolved (prevent misrouting)
   if (!brandId) {
-    const { data: defaultBrand } = await supabaseAdmin
-      .from("brands")
-      .select("id")
-      .eq("is_system", false)
-      .limit(1)
-      .single();
-    
-    brandId = defaultBrand?.id || null;
+    console.error("[Keplero] Could not resolve brand from payload, no fallback");
+    return new Response(JSON.stringify({ error: "Brand not resolved from payload" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   if (!brandId) {

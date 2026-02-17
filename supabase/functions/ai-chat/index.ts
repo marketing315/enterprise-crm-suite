@@ -292,6 +292,23 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Verify thread belongs to the requested brand (prevent cross-tenant access)
+    if (threadId) {
+      const { data: threadCheck } = await supabase
+        .from("chat_threads")
+        .select("id")
+        .eq("id", threadId)
+        .eq("brand_id", brandId)
+        .maybeSingle();
+
+      if (!threadCheck) {
+        return new Response(
+          JSON.stringify({ error: "Thread not found in this brand" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Fetch entity context if available
     let entityContext: EntityContext | null = null;
     if (entityType && entityId) {

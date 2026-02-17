@@ -772,6 +772,30 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // AUTH: Verify user JWT
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: authError } = await anonClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { message, threadId, brandId, conversationHistory = [] } = await req.json();
 
     if (!message || !brandId) {
@@ -781,15 +805,39 @@ Deno.serve(async (req) => {
       });
     }
 
+    // AUTH: Verify user belongs to the requested brand
+    const { data: crmUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("supabase_auth_id", user.id)
+      .single();
+
+    if (!crmUser) {
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: userBrandRole } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", crmUser.id)
+      .eq("brand_id", brandId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!userBrandRole) {
+      return new Response(JSON.stringify({ error: "Access denied to this brand" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
-
-    // Create Supabase client for tool execution
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Build messages array
     const messages = [
