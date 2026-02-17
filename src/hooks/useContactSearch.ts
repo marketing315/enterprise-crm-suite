@@ -175,7 +175,8 @@ export function useContactSearch(
       // We always fetch from offset 0 with a larger limit to avoid page misalignment.
       const hasClientFilters = !!(status || sourceContactIds || (tagIds && tagIds.length > 0) || createdFrom || createdTo);
       const fetchOffset = hasClientFilters ? 0 : offset;
-      const fetchLimit = hasClientFilters ? offset + limit * 3 : limit;
+      // Cap over-fetch to avoid unbounded growth on high pages
+      const fetchLimit = hasClientFilters ? Math.min(offset + limit * 3, 1000) : limit;
 
       const { data, error } = await supabase.rpc("search_contacts", {
         p_brand_id: isAllBrandsSelected ? null : currentBrand!.id,

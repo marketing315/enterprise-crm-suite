@@ -39,9 +39,9 @@ export function useForecastHistory(forecastType: "revenue" | "deals" | "margin" 
         .order("period_start", { ascending: false })
         .limit(12);
 
-      if (isAllBrandsSelected) {
+      if (isAllBrandsSelected && allBrandIds.length > 0) {
         query = query.in("brand_id", allBrandIds);
-      } else {
+      } else if (currentBrand) {
         query = query.eq("brand_id", currentBrand.id);
       }
 
@@ -55,7 +55,7 @@ export function useForecastHistory(forecastType: "revenue" | "deals" | "margin" 
         factors: (f.factors as unknown as ForecastFactor[]) || [],
       }));
     },
-    enabled: !!currentBrand,
+    enabled: !!currentBrand || (isAllBrandsSelected && allBrandIds.length > 0),
   });
 }
 

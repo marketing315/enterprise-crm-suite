@@ -191,7 +191,7 @@ export function useChatThreads() {
         .select("*")
         .order("updated_at", { ascending: false });
 
-      if (isAllBrandsSelected) {
+      if (isAllBrandsSelected && allBrandIds.length > 0) {
         query = query.in("brand_id", allBrandIds);
       } else if (currentBrand) {
         query = query.eq("brand_id", currentBrand.id);
@@ -201,7 +201,7 @@ export function useChatThreads() {
       if (error) throw error;
       return (data || []) as ChatThread[];
     },
-    enabled: !!currentBrand || isAllBrandsSelected,
+    enabled: (!!currentBrand || (isAllBrandsSelected && allBrandIds.length > 0)),
   });
 }
 
