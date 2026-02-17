@@ -84,9 +84,8 @@ interface Tracking {
   client_user_agent: string | null;
 }
 
-// H06 FIX: Validate cron secret (dual-secret for zero-downtime rotation) or known project JWT
-// Returns the auth method used for audit logging, or null if unauthorized
-function getAuthMethod(req: Request): string | null {
+// H04 FIX: Validate cron secret or verify JWT server-side (not just decode)
+async function getAuthMethod(req: Request): Promise<string | null> {
   // 1. Primary: x-cron-secret header — accepts CRON_SECRET or CRON_SECRET_PREVIOUS
   const cronSecret = req.headers.get("x-cron-secret");
   if (cronSecret && cronSecret.length > 0) {
@@ -100,28 +99,24 @@ function getAuthMethod(req: Request): string | null {
     }
   }
 
-  // 2. Bearer token: only service_role JWT from this project is accepted
+  // 2. Bearer token: verify server-side via getClaims, only service_role accepted
   const authHeader = req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
     try {
-      const parts = token.split(".");
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-        const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-        const projectRef = supabaseUrl.replace("https://", "").split(".")[0];
-
-        const isProjectJwt =
-          (payload.iss === "supabase" && payload.ref === projectRef) ||
-          (payload.iss && projectRef && payload.iss.includes(projectRef));
-
-        // ONLY service_role is authorized — anon and authenticated are rejected
-        if (isProjectJwt && payload.role === "service_role") {
+      const verifyClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+      if (!claimsErr && claimsData?.claims) {
+        if (claimsData.claims.role === "service_role") {
           return "jwt_service_role";
         }
       }
     } catch {
-      // Invalid JWT format — fall through
+      // Invalid JWT — fall through
     }
   }
 
@@ -133,8 +128,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // H06 FIX: Strict auth validation
-  const authMethod = getAuthMethod(req);
+  // H04 FIX: Strict auth validation (now async)
+  const authMethod = await getAuthMethod(req);
   if (!authMethod) {
     console.error("[CAPI] Unauthorized: no valid cron secret or service role key");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {

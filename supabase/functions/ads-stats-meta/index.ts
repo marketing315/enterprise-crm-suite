@@ -120,20 +120,19 @@ Deno.serve(async (req) => {
     
     const isCronCall = cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
     
+    // H03 FIX: Verify JWT server-side instead of trusting decoded payload
     let isJwtCronCall = false;
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
-      try {
-        const payloadB64 = token.split(".")[1];
-        const payload = JSON.parse(atob(payloadB64));
-        if (
-          payload.iss?.includes("supabase") &&
-          (payload.role === "anon" || payload.role === "service_role")
-        ) {
+      const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+      if (!claimsErr && claimsData?.claims) {
+        const role = claimsData.claims.role;
+        if (role === "service_role" || role === "anon") {
           isJwtCronCall = true;
         }
-      } catch {
-        // Not a valid JWT
       }
     }
 
