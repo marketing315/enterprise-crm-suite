@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -6,6 +6,7 @@ import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { GoogleSheetsSettings } from "@/components/settings/GoogleSheetsSettings";
 import { AdminManagement } from "@/components/settings/AdminManagement";
 import { MetaAppsSettings } from "@/components/settings/meta/MetaAppsSettings";
+import { OAuthChannelsSettings } from "@/components/settings/OAuthChannelsSettings";
 import { PipelineStagesSettings } from "@/components/settings/pipeline/PipelineStagesSettings";
 import { CustomFieldsSettings } from "@/components/settings/CustomFieldsSettings";
 import { NotificationPreferencesSettings } from "@/components/settings/NotificationPreferencesSettings";
@@ -109,6 +110,12 @@ export default function Settings() {
                 <span>Meta Ads</span>
               </TabsTrigger>
             )}
+            {isBrandAdmin && (
+              <TabsTrigger value="oauth" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Plug className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>OAuth</span>
+              </TabsTrigger>
+            )}
             {isAdmin && (
               <TabsTrigger value="admin" className="gap-1.5 px-3 text-xs md:text-sm">
                 <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -170,6 +177,12 @@ export default function Settings() {
         {isBrandAdmin && (
           <TabsContent value="meta" className="space-y-4">
             <MetaAppsSettings />
+          </TabsContent>
+        )}
+
+        {isBrandAdmin && (
+          <TabsContent value="oauth" className="space-y-4">
+            <OAuthChannelsSettings />
           </TabsContent>
         )}
 
