@@ -19,6 +19,7 @@ export function usePaginatedContactSearch(
     filters.createdFrom?.toISOString(),
     filters.createdTo?.toISOString(),
     filters.sourceName,
+    filters.tagIds,
   ]);
 
   // Reset when filters/query change
@@ -33,7 +34,7 @@ export function usePaginatedContactSearch(
 
   const offset = page * PAGE_SIZE;
 
-  const { data: pageData = [], isLoading, isFetching } = useContactSearch(
+  const { data: pageData = [], isLoading, isFetching, isError } = useContactSearch(
     query,
     filters,
     PAGE_SIZE,
@@ -49,14 +50,22 @@ export function usePaginatedContactSearch(
         const newItems = pageData.filter((r) => !existingIds.has(r.id));
         return [...prev, ...newItems];
       });
-      // Allow the next load only when data actually arrives
       loadTriggeredRef.current = false;
     } else if (page === 0) {
       setAllResults([]);
       loadTriggeredRef.current = false;
+    } else if (!isFetching) {
+      // R04: Reset guard when fetch finished with empty data (end of list or error)
+      loadTriggeredRef.current = false;
     }
-    // Do NOT reset loadTriggeredRef for page > 0 with empty data (still loading)
-  }, [pageData, page]);
+  }, [pageData, page, isFetching]);
+
+  // R04: Also reset guard on query error so "load more" doesn't stay stuck
+  useEffect(() => {
+    if (isError) {
+      loadTriggeredRef.current = false;
+    }
+  }, [isError]);
 
   const loadMore = useCallback(() => {
     // Prevent multiple rapid increments before isFetching kicks in

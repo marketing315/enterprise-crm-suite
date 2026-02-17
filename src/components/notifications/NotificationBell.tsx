@@ -176,9 +176,10 @@ function NotificationItem({
   const hasDeepLink = notification.entity_type && notification.entity_id;
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        "p-3 hover:bg-muted/50 cursor-pointer transition-colors",
+        "w-full text-left p-3 hover:bg-muted/50 cursor-pointer transition-colors border-0 bg-transparent",
         isUnread && "bg-muted/30"
       )}
       onClick={onClick}
@@ -211,6 +212,6 @@ function NotificationItem({
           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
         )}
       </div>
-    </div>
+    </button>
   );
 }

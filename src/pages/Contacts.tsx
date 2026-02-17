@@ -75,6 +75,7 @@ export default function Contacts() {
       createdFrom: createdFromDate,
       createdTo: createdToDate,
       sourceName: sourceFilter === 'all' ? undefined : sourceFilter,
+      tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
     }
   );
   const handleContactCreated = (contactId: string) => {
@@ -111,6 +112,7 @@ export default function Contacts() {
       };
     });
 
+  // Only count filters that are actually applied to the query
   const activeFiltersCount = (statusFilter !== 'all' ? 1 : 0) + (selectedTagIds.length > 0 ? 1 : 0) + (createdFromDate || createdToDate ? 1 : 0) + (sourceFilter !== 'all' ? 1 : 0);
 
   const FiltersContent = () => (

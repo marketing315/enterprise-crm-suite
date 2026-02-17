@@ -11,16 +11,21 @@ interface BeforeInstallPromptEvent extends Event {
 
 // Global storage for the install prompt so it persists across component mounts
 let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
+// R09: Track whether the global listener has been registered to prevent HMR duplicates
+let globalListenerRegistered = false;
 
-// Set up global listener immediately when module loads
-if (typeof window !== "undefined") {
+function ensureGlobalListener() {
+  if (globalListenerRegistered || typeof window === "undefined") return;
+  globalListenerRegistered = true;
   window.addEventListener("beforeinstallprompt", (e: Event) => {
     e.preventDefault();
     globalDeferredPrompt = e as BeforeInstallPromptEvent;
-    // Dispatch custom event so any mounted hooks can react
     window.dispatchEvent(new CustomEvent("pwa-prompt-available"));
   });
 }
+
+// Register once on module load
+ensureGlobalListener();
 
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(globalDeferredPrompt);
@@ -45,21 +50,12 @@ export function usePWAInstall() {
       setIsInstallable(true);
     }
 
-    // Listen for prompt becoming available
+    // R09: Only listen for the custom event and appinstalled — no duplicate beforeinstallprompt listener
     const handlePromptAvailable = () => {
       setDeferredPrompt(globalDeferredPrompt);
       setIsInstallable(true);
     };
 
-    // Listen for new install prompt (backup for component-level)
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      globalDeferredPrompt = e as BeforeInstallPromptEvent;
-      setDeferredPrompt(globalDeferredPrompt);
-      setIsInstallable(true);
-    };
-
-    // Listen for app installed
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setIsInstallable(false);
@@ -68,12 +64,10 @@ export function usePWAInstall() {
     };
 
     window.addEventListener("pwa-prompt-available", handlePromptAvailable);
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener("pwa-prompt-available", handlePromptAvailable);
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);

@@ -38,7 +38,7 @@ export function useNotifications(limit: number = 50) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ["notifications", currentBrand?.id, isAllBrandsSelected],
+    queryKey: ["notifications", currentBrand?.id, isAllBrandsSelected, limit, isAllBrandsSelected ? allBrandIds : null],
     queryFn: async (): Promise<Notification[]> => {
       let query = supabase
         .from("notifications")
@@ -56,7 +56,7 @@ export function useNotifications(limit: number = 50) {
       if (error) throw error;
       return (data || []) as Notification[];
     },
-    enabled: !!currentBrand || isAllBrandsSelected,
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand,
     staleTime: 60000, // Realtime handles instant updates, no polling needed
   });
 }

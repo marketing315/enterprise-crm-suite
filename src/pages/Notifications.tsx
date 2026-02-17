@@ -248,9 +248,10 @@ function NotificationRow({
   const hasDeepLink = notification.entity_type && notification.entity_id;
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        "p-4 hover:bg-muted/50 cursor-pointer transition-colors flex items-start gap-3",
+        "w-full text-left p-4 hover:bg-muted/50 cursor-pointer transition-colors flex items-start gap-3 border-0 bg-transparent",
         isUnread && "bg-muted/30"
       )}
       onClick={onClick}
@@ -283,6 +284,6 @@ function NotificationRow({
       {hasDeepLink && (
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
       )}
-    </div>
+    </button>
   );
 }

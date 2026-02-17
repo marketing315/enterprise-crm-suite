@@ -64,15 +64,23 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
           
           // Try to restore previously selected brand
           const storedBrandId = localStorage.getItem(BRAND_STORAGE_KEY);
+          let restored = false;
           if (storedBrandId && data) {
             if (storedBrandId === SYSTEM_BRAND_ID && system && (isAdmin || isCeo)) {
               setCurrentBrandState(system);
+              restored = true;
             } else {
               const storedBrand = regularBrands.find(b => b.id === storedBrandId);
               if (storedBrand) {
                 setCurrentBrandState(storedBrand);
+                restored = true;
               }
             }
+          }
+          // R08: If stored brand is no longer valid/accessible, reset selection
+          if (!restored) {
+            setCurrentBrandState(null);
+            localStorage.removeItem(BRAND_STORAGE_KEY);
           }
         }
       } catch (error) {
