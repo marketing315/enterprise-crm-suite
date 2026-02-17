@@ -59,10 +59,13 @@ jobs:
           echo "Mock webhook receiver started on https://127.0.0.1:$MOCK_WEBHOOK_PORT"
           sleep 2
 
-      - name: Run unit tests
+      - name: Run unit tests (includes smoke)
         run: npx vitest run
 
-      - name: Run E2E tests
+      - name: Run E2E smoke tests (PR gate)
+        run: npx playwright test e2e/smoke.spec.ts
+
+      - name: Run E2E feature tests
         run: npx playwright test e2e/tickets.gate.spec.ts e2e/webhooks.e2e.spec.ts e2e/webhooks-dashboard.e2e.spec.ts e2e/inbound-webhooks.e2e.spec.ts
 
       - name: Upload test results
