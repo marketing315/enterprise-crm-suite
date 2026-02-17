@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import { Mail, Eye, Building2, Settings2, Save, Trash2, ShoppingCart } from "lucide-react";
@@ -197,6 +197,26 @@ export function ContactsTableWithViews({
   const allSelected = processedContacts.length > 0 && selectedIds.size === processedContacts.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < processedContacts.length;
   
+  // Infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !isLoadingMore) {
+          onLoadMore?.();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, onLoadMore]);
+
   const { isAllBrandsSelected } = useBrand();
   const {
     activeViewId,
@@ -587,17 +607,11 @@ export function ContactsTableWithViews({
         </Table>
       </div>
 
-      {/* Load more */}
-      {hasMore && (
-        <div className="flex justify-center py-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onLoadMore}
-            disabled={isLoadingMore}
-          >
-            {isLoadingMore ? "Caricamento..." : "Carica altri contatti"}
-          </Button>
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="h-1" />
+      {isLoadingMore && (
+        <div className="flex justify-center py-3 text-sm text-muted-foreground">
+          Caricamento...
         </div>
       )}
 
