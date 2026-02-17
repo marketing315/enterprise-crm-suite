@@ -27,8 +27,13 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install deps
-        run: npm ci
+      - name: Install deps (deterministic)
+        run: npm ci --ignore-scripts=false
+        env:
+          NODE_ENV: development
+
+      - name: Build check
+        run: npx tsc --noEmit || echo "::warning::TypeScript errors found (non-blocking for now)"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
