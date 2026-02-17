@@ -817,6 +817,9 @@ Deno.serve(async (req: Request) => {
     const hasAnyTracking = Object.values(trackingParams).some(v => v !== null);
     if (hasAnyTracking) {
       try {
+        const now = new Date().toISOString();
+        // B05 fix: insert first-touch only on creation (ignoreDuplicates),
+        // then always update last-touch fields separately
         await supabaseAdmin
           .from("contact_tracking")
           .upsert({
@@ -826,9 +829,20 @@ Deno.serve(async (req: Request) => {
             client_ip: ipAddress !== "unknown" ? ipAddress : null,
             client_user_agent: userAgent,
             first_touch_source: "webhook-ingest",
-            first_touch_at: new Date().toISOString(),
-            last_touch_at: new Date().toISOString(),
-          }, { onConflict: "contact_id" });
+            first_touch_at: now,
+            last_touch_at: now,
+          }, { onConflict: "contact_id", ignoreDuplicates: true });
+
+        // Update last-touch fields on every hit (including first)
+        await supabaseAdmin
+          .from("contact_tracking")
+          .update({
+            last_touch_at: now,
+            client_ip: ipAddress !== "unknown" ? ipAddress : null,
+            client_user_agent: userAgent,
+            ...trackingParams,
+          })
+          .eq("contact_id", contactId);
       } catch (trackingErr) {
         console.error("Failed to save tracking params (non-blocking):", trackingErr);
       }
