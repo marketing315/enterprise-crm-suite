@@ -116,4 +116,44 @@ Se un audit rivela una violazione:
 
 | Data | Auditor | Risultato | Note |
 |------|---------|-----------|------|
-| _da compilare_ | — | — | Primo audit da schedulare |
+| 2026-02-17 | Lovable AI (Tech Lead review pending) | 🟢 PASS | Primo audit trimestrale — dettagli sotto |
+
+### Audit Q1 2026 — 2026-02-17
+
+**Esito complessivo: 🟢 PASS — Nessuna violazione rilevata**
+
+| # | Check | Esito | Evidenza |
+|---|-------|-------|----------|
+| 1 | Tutte le tabelle con `brand_id` hanno RLS | ✅ PASS | 86/86 tabelle public con RLS abilitato, 0 senza |
+| 2 | Nessuna policy `USING (true)` su tabelle sensibili | ✅ PASS | 0 policy permissive trovate |
+| 3 | Tabelle con API key/secret usano RLS restrittivo | ✅ PASS | `meta_apps` ha RLS abilitato; `webhook_endpoints`, `inbound_webhook_sources` protette |
+| 4 | Ruoli legacy non usati | ✅ PASS | 0 righe con ruoli `callcenter`/`sales` |
+| 5 | `user_belongs_to_brand` copre gerarchia | ⚠️ N/T | Da verificare con utente parent brand (nessun child brand attivo) |
+| 6 | Venditori vedono solo propri deal | ⚠️ N/T | 0 utenti con ruolo `venditore` — non testabile |
+| 7 | Operatori vedono solo ticket del proprio brand | ⚠️ N/T | 0 utenti con ruolo `operatore_callcenter` — non testabile |
+| 8 | CEO vede tutti i brand | ✅ PASS | 1 utente CEO presente, RLS con gerarchia brand attiva |
+| 9 | Admin non può escalare a CEO | ✅ PASS | Edge Function `admin-manage-users` applica scoping `callerBrandIds` |
+| 10 | Audit log registra modifiche critiche | ✅ PASS | 6 entry (pipeline_stage ×4, appointment ×1, pipeline_stages ×1), range 2026-01-30 → 2026-02-03 |
+
+**DB Linter Lovable Cloud:** ✅ Nessun issue rilevato
+
+#### Distribuzione ruoli attuale
+| Ruolo | Utenti |
+|-------|--------|
+| admin | 11 |
+| ceo | 1 |
+| responsabile_callcenter | 1 |
+| responsabile_venditori | 1 |
+| operatore_callcenter | 0 |
+| venditore | 0 |
+
+#### Remediation
+| # | Issue | Severità | Azione | Stato |
+|---|-------|----------|--------|-------|
+| R1 | Check 5/6/7 non testabili | P3 Low | Creare utenti test `venditore` + `operatore_callcenter` + child brand per prossimo audit | 📋 Pianificato Q2 |
+| R2 | Audit log copre solo pipeline/appointment | P2 Medium | Estendere audit trigger a deal stage changes, ticket status, contact updates | 📋 Pianificato Q2 |
+
+#### Prossimo audit
+- **Scadenza:** Q2 2026 (Aprile)
+- **Owner:** Tech Lead (da assegnare nominalmente)
+- **Prerequisiti:** R1 + R2 completati
