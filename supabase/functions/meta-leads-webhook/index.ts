@@ -157,7 +157,8 @@ async function processLeadChange(
       console.log(`[META-EVENT] Graph API OK for ${leadgenId}`);
     } else {
       const errText = await graphRes.text();
-      console.error(`[META-EVENT] Graph API error for ${leadgenId}:`, errText);
+      // Redact access_token from error logs
+      console.error(`[META-EVENT] Graph API error for ${leadgenId}: status=${graphRes.status}`);
     }
   } catch (graphErr) {
     console.error(`[META-EVENT] Graph API fetch error:`, graphErr);
