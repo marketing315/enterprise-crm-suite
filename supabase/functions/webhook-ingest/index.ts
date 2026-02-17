@@ -346,11 +346,13 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Extract common request info immediately (before any validation)
-  const ipAddress =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("cf-connecting-ip") ||
-    "unknown";
+  // B04 fix: prefer platform-injected headers over client-controlled ones
+  // Priority: cf-connecting-ip (Cloudflare edge) > x-real-ip (reverse proxy) > x-forwarded-for (spoofable)
+  const cfIp = req.headers.get("cf-connecting-ip");
+  const realIp = req.headers.get("x-real-ip");
+  const xffFirst = req.headers.get("x-forwarded-for")?.split(",").pop()?.trim(); // rightmost = closest trusted proxy
+  const ipAddress = cfIp || realIp || xffFirst || "unknown";
+  const ipSource = cfIp ? "cf-connecting-ip" : realIp ? "x-real-ip" : xffFirst ? "x-forwarded-for" : "none";
   const userAgent = req.headers.get("user-agent") || null;
   const filteredHeaders = filterHeaders(req.headers);
 
@@ -394,7 +396,7 @@ Deno.serve(async (req: Request) => {
 
   // Generate request ID for structured logging
   const requestId = crypto.randomUUID();
-  const logContext = { request_id: requestId, source_id: sourceId };
+  const logContext = { request_id: requestId, source_id: sourceId, ip: ipAddress, ip_source: ipSource };
 
   // Validate UUID format
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
