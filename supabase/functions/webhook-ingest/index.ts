@@ -594,10 +594,9 @@ Deno.serve(async (req: Request) => {
   // If HMAC is enabled, API key is optional - authentication will be done via HMAC signature below
 
   // 6. HMAC Signature verification (if enabled for this source)
-  // Note: hmac_enabled + missing secret is already rejected above (single check, B06 fix)
-
-  // Standard HMAC: caller sends X-Signature and X-Timestamp, server verifies using stored secret
-  if (source.hmac_enabled && source.hmac_secret) {
+  // hmac_enabled + missing secret is already rejected above (early return at line ~560)
+  // so here hmac_secret is guaranteed to be non-null
+  if (source.hmac_enabled) {
     const signatureHeader = req.headers.get("x-signature");
     const timestampHeader = req.headers.get("x-timestamp");
 
@@ -830,11 +829,11 @@ Deno.serve(async (req: Request) => {
     if (hasAnyTracking) {
       try {
         const now = new Date().toISOString();
-        // B05 fix: insert first-touch only on creation (ignoreDuplicates),
-        // then always update last-touch fields separately
-        await supabaseAdmin
+        // B04 fix: insert first-touch row only if none exists (DO NOTHING on conflict).
+        // first_touch_at is set ONLY here and never overwritten.
+        const { error: insertErr } = await supabaseAdmin
           .from("contact_tracking")
-          .upsert({
+          .insert({
             brand_id: brandId,
             contact_id: contactId,
             ...trackingParams,
@@ -843,7 +842,14 @@ Deno.serve(async (req: Request) => {
             first_touch_source: "webhook-ingest",
             first_touch_at: now,
             last_touch_at: now,
-          }, { onConflict: "contact_id", ignoreDuplicates: true });
+          })
+          .select("contact_id")
+          .maybeSingle();
+
+        // 23505 = unique_violation → row already exists, first_touch preserved
+        if (insertErr && !insertErr.code?.startsWith("23505")) {
+          console.error("contact_tracking insert error:", insertErr.message);
+        }
 
         // Update last-touch fields on every hit (including first)
         await supabaseAdmin
