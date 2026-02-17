@@ -67,12 +67,23 @@ export function useTicketUrlState() {
 
   // Parse current state from URL
   const state: TicketUrlState = useMemo(() => {
-    const tab = (searchParams.get("tab") as QueueTab) || DEFAULTS.tab;
+    // N02: Validate tab/direction from URL with runtime checks
+    const VALID_TABS: QueueTab[] = ["all", "my_queue", "unassigned", "sla_breached"];
+    const rawTab = searchParams.get("tab");
+    const tab: QueueTab = rawTab && VALID_TABS.includes(rawTab as QueueTab) ? (rawTab as QueueTab) : DEFAULTS.tab;
+
     const searchQuery = searchParams.get("q") || DEFAULTS.searchQuery;
     const tagIds = searchParams.get("tags")?.split(",").filter(Boolean) || DEFAULTS.tagIds;
-    const assignmentType = (searchParams.get("assign") as AssignmentTypeFilter) || DEFAULTS.assignmentType;
+
+    const VALID_ASSIGN: AssignmentTypeFilter[] = ["all", "auto", "manual"];
+    const rawAssign = searchParams.get("assign");
+    const assignmentType: AssignmentTypeFilter = rawAssign && VALID_ASSIGN.includes(rawAssign as AssignmentTypeFilter) ? (rawAssign as AssignmentTypeFilter) : DEFAULTS.assignmentType;
+
     const cursor = decodeCursor(searchParams.get("cursor") || "");
-    const direction = (searchParams.get("dir") as "next" | "prev") || DEFAULTS.direction;
+
+    const rawDir = searchParams.get("dir");
+    const direction: "next" | "prev" = rawDir === "prev" ? "prev" : "next";
+
     const pageStack = decodeStack(searchParams.get("stack") || "");
 
     return { tab, searchQuery, tagIds, assignmentType, cursor, direction, pageStack };
