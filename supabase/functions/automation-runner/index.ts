@@ -633,9 +633,10 @@ async function buildKepleroPayload(
     },
     tracking: {
       first_touch_at: contact?.created_at || null,
+      // B15 FIX: Use correct schema field names (client_ip, client_user_agent)
       client: {
-        ip: tracking?.ip_address || null,
-        user_agent: tracking?.user_agent || null,
+        ip: tracking?.client_ip || null,
+        user_agent: tracking?.client_user_agent || null,
       },
       meta: {
         fbp: tracking?.fbp || null,
@@ -820,10 +821,19 @@ async function processEvent(
   const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
   
   for (const rule of sortedRules) {
-    // Check if rule matches event
-    if (rule.trigger_event_type !== event.event_type && 
-        !rule.trigger_event_type.endsWith(".*") &&
-        !event.event_type.startsWith(rule.trigger_event_type.replace(".*", ""))) {
+    // B14 FIX: Explicit wildcard vs exact match to prevent false positives
+    const triggerType = rule.trigger_event_type;
+    let matches = false;
+    if (triggerType.endsWith(".*")) {
+      // Prefix match: "keplero.*" matches "keplero.lead", "keplero.ricontatto", etc.
+      const prefix = triggerType.slice(0, -2); // Remove ".*"
+      matches = event.event_type === prefix || event.event_type.startsWith(prefix + ".");
+    } else {
+      // Exact match only
+      matches = triggerType === event.event_type;
+    }
+    
+    if (!matches) {
       continue;
     }
     
@@ -919,12 +929,35 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
   
-  // Verify cron secret or JWT
+  // B01 FIX: Validate cron secret OR verify JWT signature server-side
   const cronSecret = req.headers.get("x-cron-secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
+  const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
   const authHeader = req.headers.get("authorization");
   
-  if (cronSecret !== expectedSecret && !authHeader?.startsWith("Bearer ")) {
+  const hasValidCronSecret = expectedSecret && cronSecret && 
+    (cronSecret === expectedSecret || (cronSecretPrev && cronSecret === cronSecretPrev));
+  
+  let hasValidJwt = false;
+  if (!hasValidCronSecret && authHeader?.startsWith("Bearer ")) {
+    // Verify JWT server-side using Supabase Auth
+    const token = authHeader.replace("Bearer ", "");
+    const verifyClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+    if (!claimsErr && claimsData?.claims) {
+      // Only allow service_role or anon (pg_cron) tokens issued by this project
+      const role = claimsData.claims.role;
+      if (role === "service_role" || role === "anon") {
+        hasValidJwt = true;
+      }
+    }
+  }
+  
+  if (!hasValidCronSecret && !hasValidJwt) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

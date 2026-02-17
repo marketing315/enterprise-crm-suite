@@ -506,6 +506,16 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // B06 FIX: If HMAC is enabled but hmac_secret is missing, reject as misconfigured
+  if (source.hmac_enabled && !source.hmac_secret) {
+    console.log(JSON.stringify({ ...logContext, outcome: "hmac_misconfigured", status: 500 }));
+    await createAuditRecord("rejected", "hmac_enabled_without_secret", sourceId, brandId);
+    return new Response(
+      JSON.stringify({ error: "Webhook source HMAC is misconfigured (missing secret)" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   // 5. Authentication: API Key is ONLY required if HMAC is NOT enabled
   //    If HMAC is enabled, authentication is done via signature verification
   const apiKey = req.headers.get("x-api-key");

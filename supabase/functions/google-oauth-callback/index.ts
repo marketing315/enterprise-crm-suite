@@ -33,15 +33,62 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Decode state
+    // B10 FIX: Decode state and validate brand ownership
     let brandId: string;
+    let stateToken: string | null = null;
     try {
       const state = JSON.parse(atob(stateParam));
       brandId = state.brand_id;
+      stateToken = state.token || null;
     } catch {
       return new Response(renderHtml("Errore", "State non valido"), {
         status: 400, headers: { "Content-Type": "text/html" },
       });
+    }
+
+    if (!brandId) {
+      return new Response(renderHtml("Errore", "brand_id mancante nello state"), {
+        status: 400, headers: { "Content-Type": "text/html" },
+      });
+    }
+
+    // B10 FIX: Verify the user token from state is valid and user has admin/ceo role on brand
+    const supabaseForAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+    if (stateToken) {
+      const { data: claimsData, error: claimsErr } = await supabaseForAuth.auth.getClaims(stateToken);
+      if (claimsErr || !claimsData?.claims) {
+        return new Response(renderHtml("Errore", "Token utente scaduto o non valido. Riprova il collegamento."), {
+          status: 401, headers: { "Content-Type": "text/html" },
+        });
+      }
+      
+      const supabaseService = createClient(supabaseUrl, serviceKey);
+      const { data: crmUser } = await supabaseService
+        .from("users")
+        .select("id")
+        .eq("supabase_auth_id", claimsData.claims.sub)
+        .single();
+      
+      if (crmUser) {
+        const { data: adminRole } = await supabaseService
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", crmUser.id)
+          .eq("brand_id", brandId)
+          .in("role", ["admin", "ceo"])
+          .limit(1)
+          .maybeSingle();
+        
+        if (!adminRole) {
+          return new Response(renderHtml("Errore", "Non hai i permessi per collegare questo brand."), {
+            status: 403, headers: { "Content-Type": "text/html" },
+          });
+        }
+      } else {
+        return new Response(renderHtml("Errore", "Utente non trovato."), {
+          status: 404, headers: { "Content-Type": "text/html" },
+        });
+      }
     }
 
     // Exchange code for tokens
