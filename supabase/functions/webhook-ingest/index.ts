@@ -478,7 +478,8 @@ Deno.serve(async (req: Request) => {
   ) {
     const dlqReason = mapErrorToDlqReason(errorMessage);
     
-    await supabaseAdmin
+    // B09 fix: check update result and log failures explicitly
+    const { error: updateError } = await supabaseAdmin
       .from("incoming_requests")
       .update({
         status,
@@ -488,6 +489,16 @@ Deno.serve(async (req: Request) => {
         dlq_reason: dlqReason,
       })
       .eq("id", auditId);
+
+    if (updateError) {
+      console.error(JSON.stringify({
+        ...logContext,
+        audit_update_failed: true,
+        audit_id: auditId,
+        target_status: status,
+        db_error: updateError.message,
+      }));
+    }
   }
 
   // === VALIDATION PHASE (with audit) ===
