@@ -281,20 +281,31 @@ Deno.serve(async (req) => {
   const runStartTime = Date.now();
 
   try {
-    // SECURITY: Validate cron secret OR internal service call with anon key
+    // SECURITY: Validate cron secret OR verify JWT server-side (service_role only)
     const cronSecret = Deno.env.get("CRON_SECRET");
+    const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
     const providedSecret = req.headers.get("x-cron-secret");
     const authHeader = req.headers.get("authorization") || "";
     
-    // Internal cron calls from pg_cron use the anon key Bearer token
-    // Check for valid JWT structure (starts with eyJ which is base64 for {"alg")
-    const hasValidJwt = authHeader.startsWith("Bearer eyJ");
+    const hasValidSecret = cronSecret && providedSecret && 
+      (providedSecret === cronSecret || (cronSecretPrev && providedSecret === cronSecretPrev));
     
-    // Allow if: valid cron secret OR valid JWT bearer token (from pg_cron)
-    const hasValidSecret = cronSecret && providedSecret && providedSecret === cronSecret;
+    let hasValidJwt = false;
+    if (!hasValidSecret && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const verifyClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+      if (!claimsErr && claimsData?.claims?.role === "service_role") {
+        hasValidJwt = true;
+      }
+    }
     
     if (!hasValidSecret && !hasValidJwt) {
-      console.error("[AUTH] Invalid or missing x-cron-secret");
+      console.error("[AUTH] Invalid or missing authentication");
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

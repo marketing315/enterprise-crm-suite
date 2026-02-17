@@ -177,6 +177,10 @@ Deno.serve(async (req: Request) => {
           );
           if (authUpdateError) {
             console.error("Error updating auth email:", authUpdateError);
+            return new Response(JSON.stringify({ error: `Auth sync failed: ${authUpdateError.message}` }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           }
         }
 
@@ -230,6 +234,10 @@ Deno.serve(async (req: Request) => {
 
         if (authDeleteError) {
           console.error("Error deleting auth user:", authDeleteError);
+          return new Response(JSON.stringify({ error: `Auth sync failed: ${authDeleteError.message}` }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
 
         return new Response(JSON.stringify({ success: true }), {
