@@ -139,7 +139,7 @@ PW_BASE_URL=https://id-preview--08e518ba-ca82-4402-9a5d-7fc159333e6d.lovable.app
 
 ### Checklist manuale (pre-deploy critico)
 
-- [ ] Nessun secret hardcoded nel codebase
+- [x] Nessun secret hardcoded nel codebase — **enforced via CI** ([`.github/workflows/secrets-scan.yml`](../.github/workflows/secrets-scan.yml), blocca PR/push con pattern sensibili)
 - [ ] RLS linter pulito (`supabase--linter`)
 - [ ] Nessuna migrazione pending non reviewata
 - [ ] Changelog aggiornato
