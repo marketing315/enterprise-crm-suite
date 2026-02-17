@@ -199,10 +199,12 @@ export function ContactsTableWithViews({
   
   // Infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el || !hasMore || isLoadingMore) return;
+    const root = scrollContainerRef.current;
+    if (!el || !root || !hasMore || isLoadingMore) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -210,7 +212,7 @@ export function ContactsTableWithViews({
           onLoadMore?.();
         }
       },
-      { rootMargin: "200px" }
+      { root, rootMargin: "200px" }
     );
 
     observer.observe(el);
@@ -534,7 +536,7 @@ export function ContactsTableWithViews({
       </div>
 
       {/* Table with horizontal and vertical scroll */}
-      <div className="rounded-md border max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-scroll -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
+      <div ref={scrollContainerRef} className="rounded-md border max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-scroll -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
           <Table className="min-w-[900px] table-fixed">
           <TableHeader>
             <TableRow>
@@ -605,15 +607,15 @@ export function ContactsTableWithViews({
             ))}
           </TableBody>
         </Table>
-      </div>
 
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="h-1" />
-      {isLoadingMore && (
-        <div className="flex justify-center py-3 text-sm text-muted-foreground">
-          Caricamento...
-        </div>
-      )}
+        {/* Infinite scroll sentinel - inside scrollable container */}
+        <div ref={sentinelRef} className="h-1" />
+        {isLoadingMore && (
+          <div className="flex justify-center py-3 text-sm text-muted-foreground">
+            Caricamento...
+          </div>
+        )}
+      </div>
 
       {/* Bulk actions bar */}
       <ContactsBulkActionsBar
