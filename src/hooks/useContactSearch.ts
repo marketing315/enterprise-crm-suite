@@ -101,23 +101,21 @@ export function useContactSearch(
           queryBuilder = queryBuilder.eq("status", status);
         }
 
-        // Apply tag filter: only return contacts that have ALL selected tags
+        // N03: Apply tag filter server-side using a pre-filtered ID list
         if (tagIds && tagIds.length > 0) {
+          // Single query: get contact_ids that have ALL selected tags
           const { data: tagData, error: tagError } = await supabase
             .from("tag_assignments")
-            .select("contact_id, tag_id")
+            .select("contact_id")
             .in("tag_id", tagIds)
             .not("contact_id", "is", null);
           if (tagError) throw tagError;
-          // Group by contact and keep only those with all tags
-          const contactTagCount = new Map<string, number>();
-          for (const row of tagData || []) {
-            if (row.contact_id) {
-              contactTagCount.set(row.contact_id, (contactTagCount.get(row.contact_id) || 0) + 1);
-            }
+          const counts = new Map<string, number>();
+          for (const r of tagData || []) {
+            if (r.contact_id) counts.set(r.contact_id, (counts.get(r.contact_id) || 0) + 1);
           }
-          const matchingContactIds = [...contactTagCount.entries()]
-            .filter(([, count]) => count >= tagIds.length)
+          const matchingContactIds = [...counts.entries()]
+            .filter(([, n]) => n >= tagIds.length)
             .map(([id]) => id);
           if (matchingContactIds.length === 0) return [];
           queryBuilder = queryBuilder.in("id", matchingContactIds);
@@ -161,11 +159,15 @@ export function useContactSearch(
         });
       }
 
-      // Use search RPC - pass null for p_brand_id when all brands selected
+      // N01+N03: For RPC branch with client-side filters, over-fetch to compensate for post-filter reduction.
+      // We fetch up to 3x the requested limit and slice after filtering.
+      const hasClientFilters = !!(status || sourceContactIds || (tagIds && tagIds.length > 0) || createdFrom || createdTo);
+      const fetchLimit = hasClientFilters ? limit * 3 : limit;
+
       const { data, error } = await supabase.rpc("search_contacts", {
         p_brand_id: isAllBrandsSelected ? null : currentBrand!.id,
         p_query: query.trim(),
-        p_limit: limit,
+        p_limit: fetchLimit,
         p_offset: offset,
       });
 
@@ -185,10 +187,9 @@ export function useContactSearch(
         phones: Array<{ id: string; phone_normalized: string; is_primary: boolean }> | null;
       }> } | null;
 
-      // Apply client-side filtering for RPC results
       let contacts = result?.contacts || [];
 
-      // Filter by status (R02: status was not applied in RPC branch)
+      // Filter by status
       if (status) {
         contacts = contacts.filter((c) => c.status === status);
       }
@@ -199,26 +200,23 @@ export function useContactSearch(
         contacts = contacts.filter((c) => idSet.has(c.id));
       }
 
-      // Filter by tags
+      // N03: Filter by tags — single aggregated query instead of per-contact
       if (tagIds && tagIds.length > 0 && contacts.length > 0) {
         const contactIds = contacts.map(c => c.id);
         const { data: tagData } = await supabase
           .from("tag_assignments")
-          .select("contact_id, tag_id")
+          .select("contact_id")
           .in("tag_id", tagIds)
           .in("contact_id", contactIds);
-        const contactTagCount = new Map<string, number>();
-        for (const row of tagData || []) {
-          if (row.contact_id) {
-            contactTagCount.set(row.contact_id, (contactTagCount.get(row.contact_id) || 0) + 1);
-          }
+        // Count tags per contact, keep only those matching ALL
+        const counts = new Map<string, number>();
+        for (const r of tagData || []) {
+          if (r.contact_id) counts.set(r.contact_id, (counts.get(r.contact_id) || 0) + 1);
         }
-        const matchingIds = new Set(
-          [...contactTagCount.entries()]
-            .filter(([, count]) => count >= tagIds.length)
-            .map(([id]) => id)
+        const matchSet = new Set(
+          [...counts.entries()].filter(([, n]) => n >= tagIds.length).map(([id]) => id)
         );
-        contacts = contacts.filter(c => matchingIds.has(c.id));
+        contacts = contacts.filter(c => matchSet.has(c.id));
       }
       
       if (createdFrom || createdTo) {
@@ -233,6 +231,9 @@ export function useContactSearch(
           return true;
         });
       }
+
+      // N01: Slice to requested limit after all filters
+      contacts = contacts.slice(0, limit);
 
       return contacts.map((c) => ({
         id: c.id,
