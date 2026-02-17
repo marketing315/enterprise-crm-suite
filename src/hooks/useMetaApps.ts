@@ -38,7 +38,7 @@ export function useMetaApps() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (isAllBrandsSelected) {
+      if (isAllBrandsSelected && allBrandIds.length > 0) {
         query = query.in("brand_id", allBrandIds);
       } else if (currentBrand) {
         query = query.eq("brand_id", currentBrand.id);
@@ -48,7 +48,7 @@ export function useMetaApps() {
       if (error) throw error;
       return data as MetaApp[];
     },
-    enabled: !!currentBrand,
+    enabled: !!currentBrand || (isAllBrandsSelected && allBrandIds.length > 0),
   });
 
   const createMetaApp = useMutation({

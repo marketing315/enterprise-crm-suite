@@ -62,8 +62,9 @@ export default function Contacts() {
       setSelectedContactId(openContactId);
       setSheetOpen(true);
       // Clean up the URL param
-      searchParams.delete('open');
-      setSearchParams(searchParams, { replace: true });
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('open');
+      setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
   
