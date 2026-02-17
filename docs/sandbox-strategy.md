@@ -108,8 +108,8 @@ PW_BASE_URL=https://id-preview--08e518ba-ca82-4402-9a5d-7fc159333e6d.lovable.app
 
 | # | Metrica | Soglia | Fonte |
 |---|---------|--------|-------|
-| 1 | **Install success** | 100% | `bun install` exit code |
-| 2 | **Build success** | 100% | `bun run build` exit code |
+| 1 | **Install success** | 100% | `npm ci` exit code |
+| 2 | **Build success** | 100% | `npm run build` exit code |
 | 3 | **Smoke test pass rate** | ≥ 95% | `e2e/smoke.spec.ts` |
 | 4 | **P1 bug count** | 0 | Issue tracker / test results |
 | 5 | **Regressioni RBAC** | 0 | `e2e/tickets.gate.spec.ts` + unit RBAC |
