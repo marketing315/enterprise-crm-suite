@@ -23,7 +23,7 @@ import { ContactSearch } from '@/components/contacts/ContactSearch';
 import { ContactDetailSheet } from '@/components/contacts/ContactDetailSheet';
 import { TagFilter } from '@/components/tags/TagFilter';
 import { DateRangeFilter } from '@/components/contacts/DateRangeFilter';
-import { useContactSearch } from '@/hooks/useContactSearch';
+import { usePaginatedContactSearch } from '@/hooks/usePaginatedContactSearch';
 import { useBrand } from '@/contexts/BrandContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useContactsRealtime } from '@/hooks/useContactsRealtime';
@@ -68,7 +68,7 @@ export default function Contacts() {
   }, [searchParams, setSearchParams]);
   
   
-  const { data: contacts = [], isLoading } = useContactSearch(
+  const { contacts, isLoading, isLoadingMore, hasMore, loadMore, totalLoaded } = usePaginatedContactSearch(
     searchQuery,
     {
       status: statusFilter === 'all' ? undefined : statusFilter,
@@ -205,8 +205,8 @@ export default function Contacts() {
             </div>
             <div>
               <h1 className="text-lg md:text-2xl font-semibold">Contatti</h1>
-              <p className="text-xs md:text-sm text-muted-foreground">
-                {contacts.length} {searchQuery ? 'trovati' : 'totali'}
+          <p className="text-xs md:text-sm text-muted-foreground">
+                {totalLoaded} {searchQuery ? 'trovati' : 'caricati'}
               </p>
             </div>
           </div>
@@ -298,6 +298,9 @@ export default function Contacts() {
         contacts={contactsForTable} 
         isLoading={isLoading} 
         showBrandColumn={isAllBrandsSelected}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMore}
       />
 
       {/* Contact Detail Sheet */}
