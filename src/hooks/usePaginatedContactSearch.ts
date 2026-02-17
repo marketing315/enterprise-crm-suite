@@ -49,11 +49,13 @@ export function usePaginatedContactSearch(
         const newItems = pageData.filter((r) => !existingIds.has(r.id));
         return [...prev, ...newItems];
       });
+      // Allow the next load only when data actually arrives
+      loadTriggeredRef.current = false;
     } else if (page === 0) {
       setAllResults([]);
+      loadTriggeredRef.current = false;
     }
-    // Allow the next load once data has arrived
-    loadTriggeredRef.current = false;
+    // Do NOT reset loadTriggeredRef for page > 0 with empty data (still loading)
   }, [pageData, page]);
 
   const loadMore = useCallback(() => {

@@ -208,6 +208,16 @@ export function ContactsTableWithViews({
   isLoadingMoreRef.current = isLoadingMore;
   onLoadMoreRef.current = onLoadMore;
 
+  const handleScrollRef = useRef((_e?: Event) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (isLoadingMoreRef.current || !hasMoreRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      onLoadMoreRef.current?.();
+    }
+  });
+
   // Attach scroll listener via callback ref to handle late mounting
   const scrollContainerCallbackRef = useCallback((node: HTMLDivElement | null) => {
     // Detach from previous node
@@ -221,16 +231,6 @@ export function ContactsTableWithViews({
       scrollListenerAttached.current = true;
     }
   }, []);
-
-  const handleScrollRef = useRef((_e?: Event) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    if (isLoadingMoreRef.current || !hasMoreRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    if (scrollHeight - scrollTop - clientHeight < 300) {
-      onLoadMoreRef.current?.();
-    }
-  });
 
   // Cleanup on unmount
   useEffect(() => {
