@@ -82,14 +82,16 @@ Arricchiscono l'offerta, ma il ROI marginale è basso. Candidati a freeze/simpli
 
 ## Raccomandazioni
 
-### 🚀 Invest (aumentare qualità + feature)
+### 🚀 Invest (aumentare qualità + feature) — UNICA priorità attiva
 
-| Modulo | Azione | Rationale |
-|--------|--------|-----------|
-| Pipeline & Deals | Scoring avanzato, automazioni stage | Core revenue engine |
-| AI Classification | Ridurre override rate (<10%), più modelli | ROI operatore diretto |
-| Inbound Webhooks | Idempotency, validation layer, monitoring | Affidabilità = fiducia cliente |
-| Ticketing + SLA | Escalation automatica, reporting SLA | Retention + contratti enterprise |
+| Modulo | Azione | KPI di successo | Stato |
+|--------|--------|-----------------|-------|
+| Pipeline & Deals | Scoring avanzato, automazioni stage | Win rate ≥ 30%, velocity < 15gg | 🔧 In corso |
+| AI Classification | Ridurre override rate (<10%), più modelli | Override rate < 10%, confidence > 0.85 | 🔧 In corso |
+| Inbound Webhooks | Idempotency, validation layer, monitoring | Ingest P95 ≤ 500ms, availability ≥ 99.5% | 🔧 In corso |
+| Ticketing + SLA | Escalation automatica, reporting SLA | SLA compliance ≥ 95% | 🔧 In corso |
+
+> ⚠️ **Regola operativa:** nessun effort su moduli non-Invest finché i 4 KPI sopra non sono stabili per 2 sprint consecutivi.
 
 ### ⏸️ Maintain (no new features, solo bug fix)
 
@@ -111,17 +113,33 @@ Arricchiscono l'offerta, ma il ROI marginale è basso. Candidati a freeze/simpli
 | Company Finance | Utenti attivi/mese | < 5 → remove |
 | Forecast | Accessi/mese | < 5 → remove |
 
-### ❄️ Freeze Candidates (stop development)
+### ❄️ Freeze (sviluppo interrotto) — Zero effort allocato
 
-| Modulo | Motivo | Alternativa |
-|--------|--------|-------------|
-| Chat Team | Duplica Slack/Teams | Link a tool esterno |
-| Ad Stats Sync | Duplica Meta/Google dashboard | Deep link a piattaforme |
-| VOIspeed | 1 vendor, nicchia | Webhook generico |
-| Keplero | 1 cliente | Inbound webhook generico |
-| PWA Install | Adoption bassissima | Responsive web |
-| Callcenter KPI | 1 ruolo | Merge in admin dashboard |
-| CAPI Monitor | Debug-only | Log viewer generico |
+| Modulo | Motivo | Alternativa | Edge Functions da disabilitare |
+|--------|--------|-------------|-------------------------------|
+| Chat Team | Duplica Slack/Teams | Link a tool esterno | — |
+| Ad Stats Sync | Duplica Meta/Google dashboard | Deep link a piattaforme | `google-ads-sync`, `ads-stats-meta` (cron) |
+| VOIspeed | 1 vendor, nicchia | Webhook generico | `voispeed-*` (solo webhook passivo, OK) |
+| Keplero | 1 cliente | Inbound webhook generico | `keplero-webhook` (solo webhook passivo, OK) |
+| PWA Install | Adoption bassissima | Responsive web | — |
+| Callcenter KPI | 1 ruolo | Merge in admin dashboard | — |
+| CAPI Monitor | Debug-only | Log viewer generico | — |
+| AI Chat | OPEX alto, ROI incerto | Valutare Q3 se adoption cresce | `ai-chat` (LLM cost) |
+
+---
+
+## Gate: Stabilità KPI Core
+
+Prima di riallocare effort su moduli Evaluate o Freeze, i seguenti gate devono essere verdi per **2 sprint consecutivi**:
+
+| # | KPI | Soglia | Misurazione |
+|---|-----|--------|-------------|
+| 1 | Ingest availability | ≥ 99.5% | `slo-sla.md` query |
+| 2 | Ingest P95 latency | ≤ 500ms | `slo-sla.md` query |
+| 3 | SLA compliance tickets | ≥ 95% | `sla-breach-checker` |
+| 4 | AI override rate | < 10% | `ai_decision_logs` |
+| 5 | Pipeline win rate | ≥ 30% | `deals` closed_won/total |
+| 6 | CI gate pass rate | 100% | `e2e-gate.yml` |
 
 ---
 
