@@ -24,6 +24,7 @@ export interface ContactSearchFilters {
   createdFrom?: Date;
   createdTo?: Date;
   sourceName?: string;
+  tagIds?: string[];
 }
 
 export function useContactSearch(
@@ -33,7 +34,7 @@ export function useContactSearch(
   offset = 0
 ) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
-  const { status, createdFrom, createdTo, sourceName } = filters;
+  const { status, createdFrom, createdTo, sourceName, tagIds } = filters;
 
   return useQuery({
      queryKey: [
@@ -44,6 +45,7 @@ export function useContactSearch(
       createdFrom?.toISOString(), 
       createdTo?.toISOString(),
       sourceName,
+      tagIds,
       limit, 
       offset
     ],
@@ -97,6 +99,28 @@ export function useContactSearch(
 
         if (status) {
           queryBuilder = queryBuilder.eq("status", status);
+        }
+
+        // Apply tag filter: only return contacts that have ALL selected tags
+        if (tagIds && tagIds.length > 0) {
+          const { data: tagData, error: tagError } = await supabase
+            .from("tag_assignments")
+            .select("contact_id, tag_id")
+            .in("tag_id", tagIds)
+            .not("contact_id", "is", null);
+          if (tagError) throw tagError;
+          // Group by contact and keep only those with all tags
+          const contactTagCount = new Map<string, number>();
+          for (const row of tagData || []) {
+            if (row.contact_id) {
+              contactTagCount.set(row.contact_id, (contactTagCount.get(row.contact_id) || 0) + 1);
+            }
+          }
+          const matchingContactIds = [...contactTagCount.entries()]
+            .filter(([, count]) => count >= tagIds.length)
+            .map(([id]) => id);
+          if (matchingContactIds.length === 0) return [];
+          queryBuilder = queryBuilder.in("id", matchingContactIds);
         }
 
         // Apply date filters
@@ -164,10 +188,37 @@ export function useContactSearch(
       // Apply client-side filtering for RPC results
       let contacts = result?.contacts || [];
 
+      // Filter by status (R02: status was not applied in RPC branch)
+      if (status) {
+        contacts = contacts.filter((c) => c.status === status);
+      }
+
       // Filter by source (contact_ids)
       if (sourceContactIds) {
         const idSet = new Set(sourceContactIds);
         contacts = contacts.filter((c) => idSet.has(c.id));
+      }
+
+      // Filter by tags
+      if (tagIds && tagIds.length > 0 && contacts.length > 0) {
+        const contactIds = contacts.map(c => c.id);
+        const { data: tagData } = await supabase
+          .from("tag_assignments")
+          .select("contact_id, tag_id")
+          .in("tag_id", tagIds)
+          .in("contact_id", contactIds);
+        const contactTagCount = new Map<string, number>();
+        for (const row of tagData || []) {
+          if (row.contact_id) {
+            contactTagCount.set(row.contact_id, (contactTagCount.get(row.contact_id) || 0) + 1);
+          }
+        }
+        const matchingIds = new Set(
+          [...contactTagCount.entries()]
+            .filter(([, count]) => count >= tagIds.length)
+            .map(([id]) => id)
+        );
+        contacts = contacts.filter(c => matchingIds.has(c.id));
       }
       
       if (createdFrom || createdTo) {

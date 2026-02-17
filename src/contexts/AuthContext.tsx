@@ -45,28 +45,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (userError) {
         console.error('Error fetching user:', userError);
+        // R07: Reset state on error to prevent stale privileges
+        setUser(null);
+        setUserRoles([]);
         return;
       }
 
       // Re-check: user might have logged out while we were fetching
       if (currentAuthIdRef.current !== authUserId) return;
 
-      if (userData) {
-        setUser(userData as User);
+      if (!userData) {
+        // R07: No user record found — reset to prevent stale state
+        setUser(null);
+        setUserRoles([]);
+        return;
+      }
 
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', userData.id);
+      setUser(userData as User);
 
-        // Final stale check before setting roles
-        if (currentAuthIdRef.current !== authUserId) return;
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', userData.id);
 
-        if (rolesError) {
-          console.error('Error fetching roles:', rolesError);
-        } else {
-          setUserRoles((rolesData || []) as UserRole[]);
-        }
+      // Final stale check before setting roles
+      if (currentAuthIdRef.current !== authUserId) return;
+
+      if (rolesError) {
+        console.error('Error fetching roles:', rolesError);
+        // R07: Reset roles on error
+        setUserRoles([]);
+      } else {
+        setUserRoles((rolesData || []) as UserRole[]);
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error);
