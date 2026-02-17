@@ -515,7 +515,9 @@ Deno.serve(async (req: Request) => {
 
   // 2. Early auth gate — reject requests with NO credentials before source lookup
   //    This prevents source enumeration via 404 responses (B01 fix)
-  const hasApiKey = !!req.headers.get("x-api-key");
+  //    Also accept api_key as query parameter for platforms that don't support custom headers (e.g. systeme.io)
+  const apiKeyFromQuery = url.searchParams.get("api_key");
+  const hasApiKey = !!(req.headers.get("x-api-key") || apiKeyFromQuery);
   const hasSignature = !!req.headers.get("x-signature");
   if (!hasApiKey && !hasSignature) {
     console.log(JSON.stringify({ ...logContext, outcome: "missing_credentials", status: 401 }));
@@ -568,7 +570,8 @@ Deno.serve(async (req: Request) => {
 
   // 5. Authentication: API Key is ONLY required if HMAC is NOT enabled
   //    If HMAC is enabled, authentication is done via signature verification
-  const apiKey = req.headers.get("x-api-key");
+  //    Accept API key from header OR query parameter (for platforms without custom header support)
+  const apiKey = req.headers.get("x-api-key") || apiKeyFromQuery;
   
   if (!source.hmac_enabled) {
     // HMAC disabled: require API key
