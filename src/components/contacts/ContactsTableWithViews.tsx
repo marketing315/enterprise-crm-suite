@@ -58,6 +58,9 @@ interface ContactsTableProps {
   isLoading: boolean;
   showBrandColumn?: boolean;
   filters?: TableFilters;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export function ContactsTableWithViews({
@@ -65,6 +68,9 @@ export function ContactsTableWithViews({
   isLoading,
   showBrandColumn,
   filters = {},
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
 }: ContactsTableProps) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -580,6 +586,20 @@ export function ContactsTableWithViews({
           </TableBody>
         </Table>
       </div>
+
+      {/* Load more */}
+      {hasMore && (
+        <div className="flex justify-center py-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onLoadMore}
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore ? "Caricamento..." : "Carica altri contatti"}
+          </Button>
+        </div>
+      )}
 
       {/* Bulk actions bar */}
       <ContactsBulkActionsBar
