@@ -5,6 +5,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// H06 FIX: HTML-escape to prevent XSS
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,7 +32,7 @@ Deno.serve(async (req) => {
     const error = url.searchParams.get("error");
 
     if (error) {
-      return new Response(renderHtml("Errore", `Autorizzazione negata: ${error}`), {
+      return new Response(renderHtml("Errore", `Autorizzazione negata: ${escapeHtml(error)}`), {
         status: 400, headers: { "Content-Type": "text/html" },
       });
     }
@@ -33,62 +43,62 @@ Deno.serve(async (req) => {
       });
     }
 
-    // B10 FIX: Decode state and validate brand ownership
+    // H05 FIX: Parse and verify HMAC-signed state
     let brandId: string;
-    let stateToken: string | null = null;
+    let stateUserId: string;
     try {
-      const state = JSON.parse(atob(stateParam));
-      brandId = state.brand_id;
-      stateToken = state.token || null;
+      const stateObj = JSON.parse(atob(stateParam));
+      brandId = stateObj.brand_id;
+      stateUserId = stateObj.user_id;
+      const stateSig = stateObj.sig;
+      const stateExp = stateObj.exp;
+
+      if (!brandId || !stateUserId || !stateSig || !stateExp) {
+        return new Response(renderHtml("Errore", "State incompleto"), {
+          status: 400, headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      // Check expiry (10 min)
+      if (Date.now() > stateExp) {
+        return new Response(renderHtml("Errore", "Link scaduto. Riprova il collegamento."), {
+          status: 400, headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      // Verify HMAC signature
+      const payloadToVerify = JSON.stringify({ brand_id: brandId, user_id: stateUserId, exp: stateExp });
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey("raw", encoder.encode(serviceKey), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+      const sigBytes = new Uint8Array(stateSig.match(/.{2}/g).map((b: string) => parseInt(b, 16)));
+      const valid = await crypto.subtle.verify("HMAC", key, sigBytes, encoder.encode(payloadToVerify));
+
+      if (!valid) {
+        return new Response(renderHtml("Errore", "Firma state non valida. Possibile manomissione."), {
+          status: 403, headers: { "Content-Type": "text/html" },
+        });
+      }
     } catch {
       return new Response(renderHtml("Errore", "State non valido"), {
         status: 400, headers: { "Content-Type": "text/html" },
       });
     }
 
-    if (!brandId) {
-      return new Response(renderHtml("Errore", "brand_id mancante nello state"), {
-        status: 400, headers: { "Content-Type": "text/html" },
-      });
-    }
+    // H05 FIX: Verify the user from state has admin/ceo role on the brand
+    const supabaseService = createClient(supabaseUrl, serviceKey);
+    const { data: adminRole } = await supabaseService
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", stateUserId)
+      .eq("brand_id", brandId)
+      .in("role", ["admin", "ceo"])
+      .limit(1)
+      .maybeSingle();
 
-    // B10 FIX: Verify the user token from state is valid and user has admin/ceo role on brand
-    const supabaseForAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
-    if (stateToken) {
-      const { data: claimsData, error: claimsErr } = await supabaseForAuth.auth.getClaims(stateToken);
-      if (claimsErr || !claimsData?.claims) {
-        return new Response(renderHtml("Errore", "Token utente scaduto o non valido. Riprova il collegamento."), {
-          status: 401, headers: { "Content-Type": "text/html" },
-        });
-      }
-      
-      const supabaseService = createClient(supabaseUrl, serviceKey);
-      const { data: crmUser } = await supabaseService
-        .from("users")
-        .select("id")
-        .eq("supabase_auth_id", claimsData.claims.sub)
-        .single();
-      
-      if (crmUser) {
-        const { data: adminRole } = await supabaseService
-          .from("user_roles")
-          .select("id")
-          .eq("user_id", crmUser.id)
-          .eq("brand_id", brandId)
-          .in("role", ["admin", "ceo"])
-          .limit(1)
-          .maybeSingle();
-        
-        if (!adminRole) {
-          return new Response(renderHtml("Errore", "Non hai i permessi per collegare questo brand."), {
-            status: 403, headers: { "Content-Type": "text/html" },
-          });
-        }
-      } else {
-        return new Response(renderHtml("Errore", "Utente non trovato."), {
-          status: 404, headers: { "Content-Type": "text/html" },
-        });
-      }
+    if (!adminRole) {
+      return new Response(renderHtml("Errore", "Non hai i permessi per collegare questo brand."), {
+        status: 403, headers: { "Content-Type": "text/html" },
+      });
     }
 
     // Exchange code for tokens
@@ -110,7 +120,7 @@ Deno.serve(async (req) => {
     if (tokenData.error) {
       console.error("Google token exchange error:", tokenData);
       return new Response(
-        renderHtml("Errore", `Token exchange fallito: ${tokenData.error_description || tokenData.error}`),
+        renderHtml("Errore", `Token exchange fallito: ${escapeHtml(tokenData.error_description || tokenData.error)}`),
         { status: 400, headers: { "Content-Type": "text/html" } }
       );
     }
@@ -148,7 +158,6 @@ Deno.serve(async (req) => {
         console.log("Accessible customers:", JSON.stringify(customersData));
 
         if (customersData.resourceNames?.length > 0) {
-          // Use the known customer ID if available, otherwise first one
           const knownCustomerId = "3903638374";
           const match = customersData.resourceNames.find((r: string) => r.includes(knownCustomerId));
           accountId = match
@@ -161,9 +170,7 @@ Deno.serve(async (req) => {
     }
 
     // Store in oauth_tokens using service role
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await supabaseService
       .from("oauth_tokens")
       .upsert(
         {
@@ -173,7 +180,7 @@ Deno.serve(async (req) => {
           access_token_encrypted: access_token,
           refresh_token_encrypted: refresh_token,
           expires_at: expiresAt,
-          scopes: ["https://www.googleapis.com/auth/adwords.readonly"],
+          scopes: ["https://www.googleapis.com/auth/adwords"],
           updated_at: new Date().toISOString(),
         },
         { onConflict: "brand_id,provider,account_id" }
@@ -182,7 +189,7 @@ Deno.serve(async (req) => {
     if (upsertError) {
       console.error("Failed to save OAuth token:", upsertError);
       return new Response(
-        renderHtml("Errore", `Salvataggio token fallito: ${upsertError.message}`),
+        renderHtml("Errore", `Salvataggio token fallito: ${escapeHtml(upsertError.message)}`),
         { status: 500, headers: { "Content-Type": "text/html" } }
       );
     }
@@ -190,14 +197,14 @@ Deno.serve(async (req) => {
     return new Response(
       renderHtml(
         "Collegamento Riuscito! ✅",
-        `Account Google Ads <strong>${accountId}</strong> collegato con successo.<br>Puoi chiudere questa finestra.`
+        `Account Google Ads <strong>${escapeHtml(accountId)}</strong> collegato con successo.<br>Puoi chiudere questa finestra.`
       ),
       { status: 200, headers: { "Content-Type": "text/html" } }
     );
   } catch (err) {
     console.error("google-oauth-callback error:", err);
     return new Response(
-      renderHtml("Errore", err instanceof Error ? err.message : "Errore sconosciuto"),
+      renderHtml("Errore", "Si è verificato un errore interno. Riprova."),
       { status: 500, headers: { "Content-Type": "text/html" } }
     );
   }
@@ -207,13 +214,13 @@ function renderHtml(title: string, body: string): string {
   return `<!DOCTYPE html>
 <html lang="it">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title>
+<title>${escapeHtml(title)}</title>
 <style>
   body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}
   .card{background:#fff;border-radius:12px;padding:2rem;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px;text-align:center}
   h1{font-size:1.4rem;margin:0 0 .5rem}
   p{color:#6b7280;line-height:1.5}
 </style></head>
-<body><div class="card"><h1>${title}</h1><p>${body}</p></div></body>
+<body><div class="card"><h1>${escapeHtml(title)}</h1><p>${body}</p></div></body>
 </html>`;
 }

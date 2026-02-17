@@ -110,23 +110,34 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Create user in public.users table
-    const { data: publicUser, error: publicUserError } = await adminClient
-      .from("users")
-      .insert({
-        supabase_auth_id: authUser.user.id,
-        email,
-        full_name,
-      })
-      .select()
-      .single();
+    // H07 FIX: Wait for trigger on_auth_user_created to insert into public.users,
+    // then fetch the row instead of doing a duplicate insert
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    if (publicUserError) {
-      console.error("Error creating public user:", publicUserError);
+    let publicUser: { id: string; email: string; full_name: string } | null = null;
+    // Retry up to 3 times waiting for trigger
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data, error: fetchErr } = await adminClient
+        .from("users")
+        .select("id, email, full_name")
+        .eq("supabase_auth_id", authUser.user.id)
+        .maybeSingle();
+      
+      if (data) {
+        publicUser = data;
+        break;
+      }
+      if (attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    if (!publicUser) {
+      console.error("Trigger did not create public.users row for auth user:", authUser.user.id);
       // Rollback: delete auth user
       await adminClient.auth.admin.deleteUser(authUser.user.id);
-      return new Response(JSON.stringify({ error: publicUserError.message }), {
-        status: 400,
+      return new Response(JSON.stringify({ error: "User record was not created by trigger" }), {
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

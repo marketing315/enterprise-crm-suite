@@ -359,11 +359,23 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // Check if user already exists in auth
-        const { data: existingUsers } = await adminClient.auth.admin.listUsers();
-        const existingAuthUser = existingUsers?.users.find(
-          u => u.email?.toLowerCase() === email.toLowerCase()
-        );
+        // H09 FIX: Use paginated search to find existing auth user
+        let existingAuthUser: any = null;
+        let page = 1;
+        const perPage = 50;
+        while (true) {
+          const { data: pageData } = await adminClient.auth.admin.listUsers({ page, perPage });
+          if (!pageData?.users?.length) break;
+          const found = pageData.users.find(
+            (u: any) => u.email?.toLowerCase() === email.toLowerCase()
+          );
+          if (found) {
+            existingAuthUser = found;
+            break;
+          }
+          if (pageData.users.length < perPage) break;
+          page++;
+        }
 
         let authUserId: string;
         let isNewUser = false;

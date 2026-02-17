@@ -93,21 +93,22 @@ export function ContactsBulkActionsBar({
       const contactIds = selectedContacts.map(c => c.id);
       const tagIds = Array.from(selectedTagIds);
       
-      // Create tag assignments for all contacts
+      // H08 FIX: Use correct schema columns (contact_id, not entity_type/entity_id)
+      // and correct unique constraint (unique_contact_tag = tag_id, contact_id)
       const assignments = contactIds.flatMap(contactId =>
         tagIds.map(tagId => ({
           brand_id: currentBrand!.id,
-          entity_type: "contact" as const,
-          entity_id: contactId,
+          contact_id: contactId,
           tag_id: tagId,
+          assigned_by: "user" as const,
         }))
       );
 
-      // Use upsert to avoid duplicates
+      // Use upsert with the actual unique constraint
       const { error } = await supabase
         .from("tag_assignments")
         .upsert(assignments, { 
-          onConflict: "entity_type,entity_id,tag_id",
+          onConflict: "tag_id,contact_id",
           ignoreDuplicates: true 
         });
       

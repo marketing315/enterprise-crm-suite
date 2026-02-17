@@ -11,11 +11,17 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // B05 FIX: Use CRON_SECRET only (remove hardcoded backdoor token)
+    // H01 FIX: Use CRON_SECRET with dual-secret rotation support only
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedSecret = Deno.env.get("CRON_SECRET");
+    const previousSecret = Deno.env.get("CRON_SECRET_PREVIOUS");
     
-    if (!expectedSecret || !cronSecret || cronSecret !== expectedSecret) {
+    const isValidSecret = cronSecret && cronSecret.length > 0 && (
+      (expectedSecret && cronSecret === expectedSecret) ||
+      (previousSecret && cronSecret === previousSecret)
+    );
+
+    if (!isValidSecret) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -26,14 +32,21 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Read test user config from request body
+    // Read test user config from request body (required)
     const body = await req.json().catch(() => ({}));
-    const testEmail = body.email || "qa.admin@example.com";
-    const testFullName = body.full_name || "QA Admin Test";
-    const testBrandId = body.brand_id || "2dc052de-26b5-48ef-8dee-917ea591a681";
+    const testEmail = body.email;
+    const testFullName = body.full_name;
+    const testBrandId = body.brand_id;
     const testRole = body.role || "admin";
 
-    // Generate a random password (never returned in response)
+    if (!testEmail || !testFullName || !testBrandId) {
+      return new Response(JSON.stringify({ error: "email, full_name, and brand_id are required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // H01 FIX: Generate a random password (never returned in response)
     const randomPassword = crypto.randomUUID() + "!Aa1";
 
     // Check if user already exists in public.users
@@ -63,31 +76,17 @@ Deno.serve(async (req: Request) => {
           });
       }
 
-      // B05 FIX: Never return password in response
+      // H01 FIX: Never return password or sensitive data
       return new Response(
         JSON.stringify({
           success: true,
-          message: "User already exists",
-          user: { email: testEmail },
+          message: "User already exists, role ensured",
         }),
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
-    }
-
-    // Cleanup any existing auth users with this email
-    const { data: authUsers } = await adminClient.auth.admin.listUsers();
-    const existingAuthUsers = authUsers?.users?.filter(u => u.email === testEmail) || [];
-    
-    for (const user of existingAuthUsers) {
-      console.log("Deleting existing auth user:", user.id);
-      await adminClient.auth.admin.deleteUser(user.id);
-    }
-
-    if (existingAuthUsers.length > 0) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     const { data: newAuthUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -106,19 +105,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const authUserId = newAuthUser.user.id;
-    console.log("Created auth user with ID:", authUserId);
 
+    // H07 FIX: Wait for trigger to create public.users row, then fetch it
     await new Promise(resolve => setTimeout(resolve, 500));
 
     const { data: publicUser, error: fetchError } = await adminClient
       .from("users")
-      .select("id, email, full_name")
+      .select("id")
       .eq("supabase_auth_id", authUserId)
       .single();
 
     if (fetchError || !publicUser) {
       console.error("Error fetching public user created by trigger:", fetchError);
-      return new Response(JSON.stringify({ error: fetchError?.message || "User was not created by trigger" }), {
+      return new Response(JSON.stringify({ error: "User was not created by trigger" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -140,18 +139,11 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // B05 FIX: Never return password in response
+    // H01 FIX: Never return password
     return new Response(
       JSON.stringify({
         success: true,
         message: "Test user created successfully",
-        user: {
-          id: publicUser.id,
-          email: testEmail,
-          full_name: testFullName,
-          role: testRole,
-          brand_id: testBrandId,
-        },
       }),
       {
         status: 200,

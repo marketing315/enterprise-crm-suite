@@ -81,8 +81,15 @@ Deno.serve(async (req) => {
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
 
-    // State contains brand_id + user auth token for the callback
-    const state = btoa(JSON.stringify({ brand_id: brandId, token }));
+    // H05 FIX: Sign state with HMAC to prevent tampering; don't include raw token
+    const statePayload = { brand_id: brandId, user_id: crmUser.id, exp: Date.now() + 600_000 };
+    const stateJson = JSON.stringify(statePayload);
+    const hmacSecret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", encoder.encode(hmacSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(stateJson));
+    const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+    const state = btoa(JSON.stringify({ ...statePayload, sig: sigHex }));
 
     const scopes = [
       "https://www.googleapis.com/auth/adwords",
