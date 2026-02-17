@@ -10,6 +10,7 @@ export function usePaginatedContactSearch(
   const [allResults, setAllResults] = useState<SearchResult[]>([]);
   const [page, setPage] = useState(0);
   const prevKeyRef = useRef("");
+  const loadTriggeredRef = useRef(false);
 
   // Build a stable key to detect filter/query changes
   const filterKey = JSON.stringify([
@@ -26,6 +27,7 @@ export function usePaginatedContactSearch(
       prevKeyRef.current = filterKey;
       setPage(0);
       setAllResults([]);
+      loadTriggeredRef.current = false;
     }
   }, [filterKey]);
 
@@ -38,12 +40,11 @@ export function usePaginatedContactSearch(
     offset
   );
 
-  // Append new page data when it arrives
+  // Append new page data when it arrives and reset the load guard
   useEffect(() => {
     if (pageData.length > 0) {
       setAllResults((prev) => {
         if (page === 0) return pageData;
-        // Deduplicate by id
         const existingIds = new Set(prev.map((r) => r.id));
         const newItems = pageData.filter((r) => !existingIds.has(r.id));
         return [...prev, ...newItems];
@@ -51,9 +52,14 @@ export function usePaginatedContactSearch(
     } else if (page === 0) {
       setAllResults([]);
     }
+    // Allow the next load once data has arrived
+    loadTriggeredRef.current = false;
   }, [pageData, page]);
 
   const loadMore = useCallback(() => {
+    // Prevent multiple rapid increments before isFetching kicks in
+    if (loadTriggeredRef.current) return;
+    loadTriggeredRef.current = true;
     setPage((p) => p + 1);
   }, []);
 
