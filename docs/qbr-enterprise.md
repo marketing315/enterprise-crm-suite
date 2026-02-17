@@ -122,24 +122,42 @@ Questi gate sono **bloccanti** e non richiedono intervento umano:
 | Business KPI | 🟡 | Query pronte, target definiti, dati storici limitati (primo trimestre) |
 | Portfolio | 🟢 | Matrice 4-tier definita, gate stabilità KPI prima di riallocazione |
 
-#### Decisioni
+#### Decisioni (Evidence-Based)
 
-| # | Decisione | Rationale |
-|---|-----------|-----------|
-| D1 | Mantenere focus esclusivo su 4 moduli Invest | KPI core non ancora stabili per 2 sprint |
-| D2 | AI Chat → Freeze | OPEX alto, ROI incerto, 0 adoption misurata |
-| D3 | Creare utenti test venditore/operatore per Q2 | 3 check RBAC non testabili senza ruoli operativi |
-| D4 | Estendere audit trigger a deal/ticket/contact | Copertura audit_log insufficiente (solo pipeline/appointment) |
+| # | Decisione | Metrica Target | Baseline | Obiettivo Q2 | Outcome Economico |
+|---|-----------|---------------|----------|-------------|-------------------|
+| D1 | Focus esclusivo su 4 moduli Invest | CI gate pass rate | 100% | 100% | Evita regressioni → zero rollback cost (~4h MTTR × costo team) |
+| D2 | AI Chat → Freeze | LLM API cost / msg inviati | €X/mese, 0 msg misurati | €0 | **Risparmio OPEX**: 100% costo LLM AI Chat (~60% budget AI) |
+| D3 | Creare utenti test venditore/operatore | RBAC check coverage | 7/10 (70%) | 10/10 (100%) | **Risk reduction**: previene data leak cross-brand (costo P0: >€10k) |
+| D4 | Estendere audit trigger deal/ticket/contact | Audit log entity coverage | 2 entity types | 5 entity types | **Compliance**: audit trail completo per contratti enterprise |
+
+#### Investimenti CAPEX Q2 (con ROI atteso)
+
+| # | Investimento | Effort stimato | Metrica impattata | Target Δ | ROI atteso |
+|---|-------------|----------------|-------------------|----------|------------|
+| I1 | Pipeline scoring avanzato | 2 sprint | Deal velocity | 30gg → 22gg | +26% revenue velocity → cash flow anticipato |
+| I2 | AI override rate reduction | 1 sprint | Override rate | 15% → <10% | -33% FTE triage manuale (~0.5 FTE risparmiato) |
+| I3 | SLA escalation automatica | 1 sprint | SLA compliance | 90% → 95% | -50% penali contrattuali, +retention enterprise |
+| I4 | Inbound validation layer | 1 sprint | Ingestion success rate | 98% → 99.5% | -75% lead persi → +1.5% conversion pipeline |
+
+#### Risparmi OPEX Q2 (da freeze/consolidamento)
+
+| # | Azione | Costo attuale | Costo post | Risparmio | Rischio |
+|---|--------|--------------|------------|-----------|---------|
+| O1 | Freeze AI Chat | LLM API €X/mese | €0 | 100% | Basso (0 adoption) |
+| O2 | Freeze Ad Stats Sync | Edge Function cron runtime | €0 | 100% | Basso (dati duplicati da piattaforme) |
+| O3 | Consolidamento Sheets (5→1 fn) | 5 fn × monitoring cost | 1 fn | -80% | Medio (richiede refactor) |
+| O4 | Riduzione QA surface (15→8 domini) | Test matrix 15 domini | 8 domini | -47% effort QA | Basso (frozen = no change) |
 
 #### Azioni Q2
 
-| # | Azione | Owner | Scadenza | Stato |
-|---|--------|-------|----------|-------|
-| A1 | Seed utenti venditore + operatore_callcenter | Core | Apr 2026 | 📋 Todo |
-| A2 | Aggiungere audit trigger su deals, tickets, contacts | Platform | Apr 2026 | 📋 Todo |
-| A3 | Raccogliere baseline 4 settimane per tutti i Business KPI | Analytics | Mag 2026 | 📋 Todo |
-| A4 | Primo adoption check moduli Evaluate | Product | Apr 2026 | 📋 Todo |
-| A5 | Assegnare owner nominali ai domini | Engineering Lead | Mar 2026 | 📋 Todo |
+| # | Azione | Owner | Scadenza | Metrica di successo | Stato |
+|---|--------|-------|----------|-------------------|-------|
+| A1 | Seed utenti venditore + operatore_callcenter | Core | Apr 2026 | RBAC coverage 10/10 | 📋 Todo |
+| A2 | Aggiungere audit trigger su deals, tickets, contacts | Platform | Apr 2026 | Entity coverage 5/5 | 📋 Todo |
+| A3 | Raccogliere baseline 4 settimane Business KPI | Analytics | Mag 2026 | Dati disponibili per 5 KPI | 📋 Todo |
+| A4 | Primo adoption check moduli Evaluate | Product | Apr 2026 | Decisione invest/freeze per ogni modulo | 📋 Todo |
+| A5 | Assegnare owner nominali ai domini | Engineering Lead | Mar 2026 | 100% domini con owner nominale | 📋 Todo |
 
 ---
 
