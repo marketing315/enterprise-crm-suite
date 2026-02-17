@@ -1,73 +1,140 @@
-# Welcome to your Lovable project
+# CRM Lead Management Platform
 
-## Project info
+> Piattaforma CRM enterprise multi-brand per la gestione completa del ciclo lead-to-deal.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+| Live | Preview |
+|------|---------|
+| [ralph-hub.lovable.app](https://ralph-hub.lovable.app) | [Preview](https://id-preview--08e518ba-ca82-4402-9a5d-7fc159333e6d.lovable.app) |
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Quick Start (sviluppo locale)
 
-**Use Lovable**
+```bash
+# 1. Clona e installa (toolchain: npm)
+git clone <REPO_URL> && cd <PROJECT>
+npm ci
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 2. Avvia dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+> Le variabili `.env` (solo chiavi pubbliche) sono già versionate.  
+> I secret privati risiedono in **Cloud secrets** — mai nel repo.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Layer | Tecnologia |
+|-------|-----------|
+| Frontend | React 18 · Vite · TypeScript · Tailwind CSS · shadcn/ui |
+| Backend | Lovable Cloud (Edge Functions · PostgreSQL · Storage) |
+| AI | Classificazione lead, tagging, chat assistito |
+| CI | GitHub Actions (`e2e-gate`, `secrets-scan`) |
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## Architettura
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Frontend (React + Vite)                       │
+│   Dashboard │ Pipeline │ Contacts │ Tickets │ Marketing │ CEO  │
+├─────────────────────────────────────────────────────────────────┤
+│                      Lovable Cloud Backend                      │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────┐ │
+│  │  Edge Functions   │  │   PostgreSQL     │  │   Storage     │ │
+│  │ • webhook-ingest  │  │ • contacts       │  │ (file upload) │ │
+│  │ • ai-classify     │  │ • deals          │  └───────────────┘ │
+│  │ • meta-webhook    │  │ • lead_events    │                    │
+│  │ • sheets-export   │  │ • tickets        │                    │
+│  │ • automation-*    │  │ • appointments   │                    │
+│  └──────────────────┘  └──────────────────┘                    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Features (Milestones)
 
-## Can I connect a custom domain to my Lovable project?
+| # | Feature | Stato |
+|---|---------|-------|
+| M1 | Inbound Webhooks (HMAC, dedup, rate limit) | ✅ |
+| M2 | Deal & Pipeline (Kanban, stage per brand) | ✅ |
+| M3 | Lead Events Timeline (append-only audit) | ✅ |
+| M4 | AI Classification (priorità, rationale) | ✅ |
+| M5 | Ticketing + SLA (breach alerts, queue tabs) | ✅ |
+| M6 | Appuntamenti (scheduling, assegnazione) | ✅ |
+| M7 | Tag & Filtri (gerarchici, avanzati) | ✅ |
+| M8 | Outbound Webhooks (retry, DLQ, HMAC) | ✅ |
+| M9 | Google Sheets Export (real-time sync) | ✅ |
+| M10 | Meta Lead Ads (FB/IG integration) | ✅ |
+| M11 | Analytics Avanzati (funnel, velocity) | ✅ |
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Ruoli (RBAC)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| Ruolo | Scope |
+|-------|-------|
+| CEO | Tutti i brand, tutti i dati |
+| Admin | Brand assegnati, configurazione |
+| Resp. Venditori | Coordina venditori |
+| Resp. Call Center | Coordina operatori |
+| Venditore | Deal, appuntamenti |
+| Operatore CC | Contatti iniziali |
+
+---
+
+## Testing
+
+```bash
+# Unit tests
+npx vitest run
+
+# E2E (richiede setup — vedi docs/e2e-checklist.md)
+cp .env.e2e.example .env.e2e   # compilare credenziali test
+npx playwright install --with-deps chromium
+npx playwright test
+```
+
+> ⚠️ **Mai testare su dati di produzione.** Usare brand/credenziali dedicati.
+
+---
+
+## Security
+
+- **RLS** su tutte le tabelle (filtro per brand + ruolo)
+- **HMAC** per webhook inbound/outbound
+- **API Key** hashate SHA-256, mostrate una volta sola
+- **Secret scan CI** — blocca merge se trova credenziali nel repo
+- **Cron auth** — JWT verification + `x-cron-secret` con rotazione
+
+---
+
+## Documentazione approfondita
+
+| Doc | Contenuto |
+|-----|-----------|
+| [docs/inbound-webhooks.md](docs/inbound-webhooks.md) | Configurazione sorgenti inbound |
+| [docs/meta-lead-ads.md](docs/meta-lead-ads.md) | Integrazione Meta Lead Ads |
+| [docs/google-sheets.md](docs/google-sheets.md) | Export Google Sheets |
+| [docs/analytics.md](docs/analytics.md) | Dashboard analytics |
+| [docs/voispeed-integration.md](docs/voispeed-integration.md) | Integrazione VOIspeed |
+| [docs/keplero-integration.md](docs/keplero-integration.md) | Integrazione Keplero |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Guida troubleshooting |
+| [docs/e2e-checklist.md](docs/e2e-checklist.md) | Checklist pre-run E2E |
+| [docs/decisions.md](docs/decisions.md) | Decision log architetturali |
+
+---
+
+## Runbook operativo
+
+| Scenario | Azione |
+|----------|--------|
+| Lead non arrivano | Verificare webhook source attiva, controllare `incoming_requests` per errori |
+| SLA breach non notificato | Controllare cron `sla-breach-checker`, verificare soglie in Settings |
+| Sheets export fallisce | Verificare secret `GOOGLE_SERVICE_ACCOUNT_KEY`, controllare `sheets_export_logs` |
+| Webhook outbound in DLQ | Admin → DLQ Dashboard → replay manuale |
+| AI classification lenta | Admin → AI Metrics → controllare latenza e job queue |
