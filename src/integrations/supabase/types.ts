@@ -2814,6 +2814,50 @@ export type Database = {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          brand_id: string
+          frozen_message: string | null
+          frozen_redirect: string | null
+          id: string
+          module_key: string
+          module_label: string
+          status: Database["public"]["Enums"]["module_status"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          brand_id: string
+          frozen_message?: string | null
+          frozen_redirect?: string | null
+          id?: string
+          module_key: string
+          module_label: string
+          status?: Database["public"]["Enums"]["module_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          brand_id?: string
+          frozen_message?: string | null
+          frozen_redirect?: string | null
+          id?: string
+          module_key?: string
+          module_label?: string
+          status?: Database["public"]["Enums"]["module_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flags_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forecasts: {
         Row: {
           brand_id: string
@@ -3673,6 +3717,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "meta_lead_sources_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_usage_events: {
+        Row: {
+          brand_id: string
+          created_at: string
+          event_type: string
+          id: string
+          module_key: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          module_key: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          module_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_usage_events_brand_id_fkey"
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
@@ -6349,6 +6428,10 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_module_adoption_stats: {
+        Args: { p_brand_id: string; p_days?: number }
+        Returns: Json
+      }
       get_my_permissions: { Args: { p_brand_id: string }; Returns: Json }
       get_notification_preferences: {
         Args: { p_brand_id: string }
@@ -7091,6 +7174,7 @@ export type Database = {
         | "ingested"
         | "duplicate"
         | "error"
+      module_status: "active" | "maintain" | "evaluate" | "frozen" | "sunset"
       notification_type:
         | "lead_event_created"
         | "pipeline_stage_changed"
@@ -7396,6 +7480,7 @@ export const Constants = {
         "duplicate",
         "error",
       ],
+      module_status: ["active", "maintain", "evaluate", "frozen", "sunset"],
       notification_type: [
         "lead_event_created",
         "pipeline_stage_changed",

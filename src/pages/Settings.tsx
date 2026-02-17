@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -13,6 +13,7 @@ import { NotificationPreferencesSettings } from "@/components/settings/Notificat
 import { VoIPSettings } from "@/components/settings/VoIPSettings";
 import { VOIspeedSettings } from "@/components/settings/VOIspeedSettings";
 import { AutomationSettings } from "@/components/settings/automation/AutomationSettings";
+import { ModuleGovernanceSettings } from "@/components/settings/ModuleGovernanceSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -117,6 +118,12 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isAdmin && (
+              <TabsTrigger value="modules" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Layers className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Moduli</span>
+              </TabsTrigger>
+            )}
+            {isAdmin && (
               <TabsTrigger value="admin" className="gap-1.5 px-3 text-xs md:text-sm">
                 <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Admin</span>
@@ -183,6 +190,12 @@ export default function Settings() {
         {isBrandAdmin && (
           <TabsContent value="oauth" className="space-y-4">
             <OAuthChannelsSettings />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="modules" className="space-y-4">
+            <ModuleGovernanceSettings />
           </TabsContent>
         )}
 

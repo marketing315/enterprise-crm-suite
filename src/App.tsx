@@ -11,6 +11,7 @@ import { BrandProvider } from "@/contexts/BrandContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { withModuleGuard } from "@/components/layout/withModuleGuard";
 
 // Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
@@ -59,6 +60,18 @@ const SalesManagerDashboard = lazy(() => import("@/pages/dashboard/SalesManagerD
 const CallcenterOperatorDashboard = lazy(() => import("@/pages/dashboard/CallcenterOperatorDashboard"));
 const SalespersonDashboard = lazy(() => import("@/pages/dashboard/SalespersonDashboard"));
 
+// Module-guarded pages (Nice-to-Have / Evaluate / Frozen)
+const GuardedChat = withModuleGuard("chat_team", Chat);
+const GuardedCeoDashboard = withModuleGuard("ceo_dashboard", CeoDashboard);
+const GuardedCompanyOverview = withModuleGuard("company_finance", CompanyOverview);
+const GuardedCompanyExpenses = withModuleGuard("company_finance", CompanyExpenses);
+const GuardedCompanyBudget = withModuleGuard("company_finance", CompanyBudget);
+const GuardedCompanyReports = withModuleGuard("company_finance", CompanyReports);
+const GuardedAdminCallcenterKpi = withModuleGuard("callcenter_kpi", AdminCallcenterKpi);
+const GuardedAdminAnalytics = withModuleGuard("analytics_advanced", AdminAnalytics);
+const GuardedAdminCapiMonitor = withModuleGuard("capi_monitor", AdminCapiMonitor);
+const GuardedInstall = withModuleGuard("pwa_install", Install);
+
 /** Minimal loading fallback */
 function PageLoader() {
   return (
@@ -99,7 +112,7 @@ const App = () => (
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/install" element={<Install />} />
+                <Route path="/install" element={<GuardedInstall />} />
                 <Route path="/installa" element={<Navigate to="/install" replace />} />
                 
                 {/* Brand selection (requires auth) */}
@@ -135,12 +148,12 @@ const App = () => (
                   <Route path="/events" element={<Events />} />
                   <Route path="/appointments" element={<Appointments />} />
                   <Route path="/tickets" element={<Tickets />} />
-                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/chat" element={<GuardedChat />} />
                   <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/azienda" element={<CompanyOverview />} />
-                  <Route path="/azienda/costi" element={<CompanyExpenses />} />
-                  <Route path="/azienda/budget" element={<CompanyBudget />} />
-                  <Route path="/azienda/report" element={<CompanyReports />} />
+                  <Route path="/azienda" element={<GuardedCompanyOverview />} />
+                  <Route path="/azienda/costi" element={<GuardedCompanyExpenses />} />
+                  <Route path="/azienda/budget" element={<GuardedCompanyBudget />} />
+                  <Route path="/azienda/report" element={<GuardedCompanyReports />} />
                   
                   <Route path="/marketing" element={<MarketingDashboard />} />
                   <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
@@ -152,13 +165,13 @@ const App = () => (
                   <Route path="/team/salespersons" element={<SalespersonKpi />} />
                   <Route path="/admin/ai" element={<AdminAI />} />
                   <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
-                  <Route path="/admin/callcenter-kpi" element={<AdminCallcenterKpi />} />
+                  <Route path="/admin/callcenter-kpi" element={<GuardedAdminCallcenterKpi />} />
                   <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
                   <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
                   <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
-                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                  <Route path="/admin/capi" element={<AdminCapiMonitor />} />
-                  <Route path="/ceo-dashboard" element={<CeoDashboard />} />
+                  <Route path="/admin/analytics" element={<GuardedAdminAnalytics />} />
+                  <Route path="/admin/capi" element={<GuardedAdminCapiMonitor />} />
+                  <Route path="/ceo-dashboard" element={<GuardedCeoDashboard />} />
                 </Route>
                 
                 {/* Redirects */}
