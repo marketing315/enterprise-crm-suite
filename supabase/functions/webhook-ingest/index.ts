@@ -677,7 +677,18 @@ Deno.serve(async (req: Request) => {
     console.log(JSON.stringify({ ...logContext, hmac_verified: true, timestamp }));
   }
 
-  // 8. Rate limit - full audit
+  // B08 fix: validate JSON BEFORE consuming rate-limit token
+  // This prevents malformed requests from exhausting the source's quota
+  if (jsonParseError || !rawBody) {
+    console.log(JSON.stringify({ ...logContext, outcome: "invalid_json", status: 400 }));
+    await createAuditRecord("rejected", "invalid_json", sourceId, brandId);
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // 8. Rate limit - full audit (only well-formed requests consume tokens)
   const { data: hasToken, error: rateLimitError } = await supabaseAdmin.rpc(
     "consume_rate_limit_token",
     { p_source_id: source.id }
@@ -697,16 +708,6 @@ Deno.serve(async (req: Request) => {
         },
       }
     );
-  }
-
-  // 9. Invalid JSON body - full audit (raw_body will be null)
-  if (jsonParseError || !rawBody) {
-    console.log(JSON.stringify({ ...logContext, outcome: "invalid_json", status: 400 }));
-    await createAuditRecord("rejected", "invalid_json", sourceId, brandId);
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   }
 
   // === PROCESSING PHASE ===
