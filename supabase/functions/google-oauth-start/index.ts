@@ -44,6 +44,35 @@ Deno.serve(async (req) => {
     // Parse body for brand_id
     const body = await req.json().catch(() => ({}));
     const brandId = body.brand_id;
+
+    // B16 FIX: Verify user has admin/ceo role on this brand
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: crmUser } = await serviceClient
+      .from("users")
+      .select("id")
+      .eq("supabase_auth_id", claims.claims.sub)
+      .single();
+
+    if (!crmUser) {
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: adminRole } = await serviceClient
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", crmUser.id)
+      .eq("brand_id", brandId || "")
+      .in("role", ["admin", "ceo"])
+      .limit(1)
+      .maybeSingle();
+
+    if (!adminRole) {
+      return new Response(JSON.stringify({ error: "Forbidden: admin or ceo role required" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!brandId) {
       return new Response(JSON.stringify({ error: "brand_id is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

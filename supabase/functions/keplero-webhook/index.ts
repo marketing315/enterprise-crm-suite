@@ -132,17 +132,22 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Optional: verify shared secret
+  // B12 FIX: Secret is REQUIRED in production - reject if not configured
   const expectedSecret = Deno.env.get("KEPLERO_WEBHOOK_SECRET");
-  if (expectedSecret) {
-    const providedSecret = req.headers.get("x-keplero-secret");
-    if (providedSecret !== expectedSecret) {
-      console.error("Invalid Keplero secret");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  if (!expectedSecret) {
+    console.error("[Keplero] KEPLERO_WEBHOOK_SECRET not configured - rejecting request");
+    return new Response(JSON.stringify({ error: "Webhook secret not configured" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const providedSecret = req.headers.get("x-keplero-secret");
+  if (providedSecret !== expectedSecret) {
+    console.error("[Keplero] Invalid secret");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   let payload: Record<string, unknown>;

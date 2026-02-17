@@ -233,6 +233,35 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // B09 FIX: Verify user belongs to the requested brand
+    const { data: crmUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("supabase_auth_id", user.id)
+      .single();
+
+    if (!crmUser) {
+      return new Response(
+        JSON.stringify({ error: "User not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: userBrandRole } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", crmUser.id)
+      .eq("brand_id", brandId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!userBrandRole) {
+      return new Response(
+        JSON.stringify({ error: "Access denied to this brand" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // --- Input validation ---
     if (typeof message !== "string") {
       return new Response(

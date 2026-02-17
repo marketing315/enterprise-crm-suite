@@ -30,6 +30,39 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // B08 FIX: Require cron secret or verified JWT
+  const cronSecret = req.headers.get("x-cron-secret");
+  const expectedSecret = Deno.env.get("CRON_SECRET");
+  const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
+  const authHeader = req.headers.get("authorization") || "";
+  
+  const hasValidCronSecret = expectedSecret && cronSecret && 
+    (cronSecret === expectedSecret || (cronSecretPrev && cronSecret === cronSecretPrev));
+  
+  let hasValidJwt = false;
+  if (!hasValidCronSecret && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.replace("Bearer ", "");
+    const verifyClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+    if (!claimsErr && claimsData?.claims) {
+      const role = claimsData.claims.role;
+      if (role === "service_role" || role === "anon") {
+        hasValidJwt = true;
+      }
+    }
+  }
+  
+  if (!hasValidCronSecret && !hasValidJwt) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -37,14 +70,9 @@ Deno.serve(async (req: Request) => {
 
   console.log("[automation-jobs-dispatcher] Starting dispatch cycle");
 
-  // Fetch jobs ready to run (max 50 per cycle)
+  // B07 FIX: Atomic claim via RPC (FOR UPDATE SKIP LOCKED)
   const { data: jobs, error: fetchError } = await supabaseAdmin
-    .from("automation_jobs")
-    .select("*")
-    .eq("status", "scheduled")
-    .lte("run_at", new Date().toISOString())
-    .order("run_at", { ascending: true })
-    .limit(50);
+    .rpc("claim_automation_jobs", { p_limit: 50 });
 
   if (fetchError) {
     console.error("[automation-jobs-dispatcher] Fetch error:", fetchError);
@@ -62,22 +90,17 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  console.log(`[automation-jobs-dispatcher] Found ${jobs.length} jobs to dispatch`);
+  console.log(`[automation-jobs-dispatcher] Claimed ${jobs.length} jobs`);
 
   const results: { id: string; status: string; error?: string }[] = [];
 
   // Process jobs with parallelism limit of 10
+  // Jobs are already marked as 'running' by claim_automation_jobs RPC
   const PARALLELISM = 10;
   for (let i = 0; i < jobs.length; i += PARALLELISM) {
     const batch = jobs.slice(i, i + PARALLELISM);
     
     await Promise.all(batch.map(async (job: AutomationJob) => {
-      // Mark as running
-      await supabaseAdmin
-        .from("automation_jobs")
-        .update({ status: "running", updated_at: new Date().toISOString() })
-        .eq("id", job.id);
-
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout

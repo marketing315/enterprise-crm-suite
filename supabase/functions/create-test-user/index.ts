@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret, x-test-token",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 Deno.serve(async (req: Request) => {
@@ -11,19 +11,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Verify cron secret OR a one-time test token for initial setup
+    // B05 FIX: Use CRON_SECRET only (remove hardcoded backdoor token)
     const cronSecret = req.headers.get("x-cron-secret");
-    const testToken = req.headers.get("x-test-token");
     const expectedSecret = Deno.env.get("CRON_SECRET");
     
-    // Allow access with CRON_SECRET or a one-time test token
-    const oneTimeTestToken = "create-qa-admin-2026-02-02";
-    
-    const isAuthorized = 
-      (expectedSecret && cronSecret === expectedSecret) ||
-      (testToken === oneTimeTestToken);
-    
-    if (!isAuthorized) {
+    if (!expectedSecret || !cronSecret || cronSecret !== expectedSecret) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -34,20 +26,21 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Hardcoded test user details
-    const testUser = {
-      email: "qa.admin@example.com",
-      password: "Test!12345",
-      full_name: "QA Admin Test",
-      brand_id: "2dc052de-26b5-48ef-8dee-917ea591a681", // Excell
-      role: "admin" as const,
-    };
+    // Read test user config from request body
+    const body = await req.json().catch(() => ({}));
+    const testEmail = body.email || "qa.admin@example.com";
+    const testFullName = body.full_name || "QA Admin Test";
+    const testBrandId = body.brand_id || "2dc052de-26b5-48ef-8dee-917ea591a681";
+    const testRole = body.role || "admin";
+
+    // Generate a random password (never returned in response)
+    const randomPassword = crypto.randomUUID() + "!Aa1";
 
     // Check if user already exists in public.users
     const { data: existingUser } = await adminClient
       .from("users")
       .select("id")
-      .eq("email", testUser.email)
+      .eq("email", testEmail)
       .maybeSingle();
 
     if (existingUser) {
@@ -56,26 +49,26 @@ Deno.serve(async (req: Request) => {
         .from("user_roles")
         .select("id")
         .eq("user_id", existingUser.id)
-        .eq("brand_id", testUser.brand_id)
-        .eq("role", testUser.role)
+        .eq("brand_id", testBrandId)
+        .eq("role", testRole)
         .maybeSingle();
 
       if (!existingRole) {
-        // Assign missing role
         await adminClient
           .from("user_roles")
           .insert({
             user_id: existingUser.id,
-            brand_id: testUser.brand_id,
-            role: testUser.role,
+            brand_id: testBrandId,
+            role: testRole,
           });
       }
 
+      // B05 FIX: Never return password in response
       return new Response(
         JSON.stringify({
           success: true,
-          message: "User already exists in public.users",
-          user: { email: testUser.email, password: testUser.password },
+          message: "User already exists",
+          user: { email: testEmail },
         }),
         {
           status: 200,
@@ -86,24 +79,22 @@ Deno.serve(async (req: Request) => {
 
     // Cleanup any existing auth users with this email
     const { data: authUsers } = await adminClient.auth.admin.listUsers();
-    const existingAuthUsers = authUsers?.users?.filter(u => u.email === testUser.email) || [];
+    const existingAuthUsers = authUsers?.users?.filter(u => u.email === testEmail) || [];
     
     for (const user of existingAuthUsers) {
       console.log("Deleting existing auth user:", user.id);
       await adminClient.auth.admin.deleteUser(user.id);
     }
 
-    // Wait for deletions to propagate
     if (existingAuthUsers.length > 0) {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Create new auth user - trigger will automatically create public.users entry
     const { data: newAuthUser, error: createError } = await adminClient.auth.admin.createUser({
-      email: testUser.email,
-      password: testUser.password,
+      email: testEmail,
+      password: randomPassword,
       email_confirm: true,
-      user_metadata: { full_name: testUser.full_name },
+      user_metadata: { full_name: testFullName },
     });
 
     if (createError || !newAuthUser?.user) {
@@ -117,10 +108,8 @@ Deno.serve(async (req: Request) => {
     const authUserId = newAuthUser.user.id;
     console.log("Created auth user with ID:", authUserId);
 
-    // Wait for trigger to create public.users entry
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Fetch the user created by the trigger
     const { data: publicUser, error: fetchError } = await adminClient
       .from("users")
       .select("id, email, full_name")
@@ -135,13 +124,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Assign admin role
     const { error: roleError } = await adminClient
       .from("user_roles")
       .insert({
         user_id: publicUser.id,
-        brand_id: testUser.brand_id,
-        role: testUser.role,
+        brand_id: testBrandId,
+        role: testRole,
       });
 
     if (roleError) {
@@ -152,17 +140,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // B05 FIX: Never return password in response
     return new Response(
       JSON.stringify({
         success: true,
         message: "Test user created successfully",
         user: {
           id: publicUser.id,
-          email: testUser.email,
-          password: testUser.password,
-          full_name: testUser.full_name,
-          role: testUser.role,
-          brand_id: testUser.brand_id,
+          email: testEmail,
+          full_name: testFullName,
+          role: testRole,
+          brand_id: testBrandId,
         },
       }),
       {

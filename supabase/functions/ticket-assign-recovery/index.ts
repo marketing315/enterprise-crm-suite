@@ -19,6 +19,38 @@ Deno.serve(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // B03 FIX: Validate cron secret OR verify JWT signature server-side
+    const cronSecret = req.headers.get("x-cron-secret");
+    const expectedSecret = Deno.env.get("CRON_SECRET");
+    const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
+    const authHeader = req.headers.get("authorization") || "";
+    
+    const hasValidCronSecret = expectedSecret && cronSecret && 
+      (cronSecret === expectedSecret || (cronSecretPrev && cronSecret === cronSecretPrev));
+    
+    let hasValidJwt = false;
+    if (!hasValidCronSecret && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const verifyClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+      if (!claimsErr && claimsData?.claims) {
+        const role = claimsData.claims.role;
+        if (role === "service_role" || role === "anon") {
+          hasValidJwt = true;
+        }
+      }
+    }
+    
+    if (!hasValidCronSecret && !hasValidJwt) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 

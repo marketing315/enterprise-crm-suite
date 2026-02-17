@@ -83,6 +83,37 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // B11 FIX: Verify user belongs to the requested brand
+    const { data: userBrandRole } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", crmUser.id)
+      .eq("brand_id", brand_id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!userBrandRole) {
+      return new Response(
+        JSON.stringify({ error: "Access denied to this brand" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // B11 FIX: Verify contact belongs to the same brand
+    const { data: contactCheck } = await supabase
+      .from("contacts")
+      .select("id")
+      .eq("id", contact_id)
+      .eq("brand_id", brand_id)
+      .maybeSingle();
+
+    if (!contactCheck) {
+      return new Response(
+        JSON.stringify({ error: "Contact not found in this brand" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!crmUser.voispeed_ext) {
       return new Response(
         JSON.stringify({ 

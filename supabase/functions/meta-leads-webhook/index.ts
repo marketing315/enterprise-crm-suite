@@ -393,7 +393,8 @@ Deno.serve(async (req) => {
     const hubVerifyToken = url.searchParams.get("hub.verify_token");
     const hubChallenge = url.searchParams.get("hub.challenge");
 
-    console.log(`[META-VERIFY] mode=${hubMode}, token=${hubVerifyToken}, challenge=${hubChallenge}`);
+    // B13 FIX: Redact verify_token from logs
+    console.log(`[META-VERIFY] mode=${hubMode}, token=***REDACTED***, challenge=${hubChallenge}`);
 
     if (hubMode === "subscribe" && hubVerifyToken === metaApp.verify_token) {
       console.log(`[META-VERIFY] Success for ${brandSlug}`);

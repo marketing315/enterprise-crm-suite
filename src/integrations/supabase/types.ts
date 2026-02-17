@@ -5642,6 +5642,34 @@ export type Database = {
         }[]
       }
       check_report_rate_limit: { Args: { p_user_id: string }; Returns: boolean }
+      claim_automation_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          brand_id: string
+          contact_id: string | null
+          created_at: string
+          endpoint: string
+          headers: Json
+          id: string
+          job_type: string
+          last_error: string | null
+          max_attempts: number
+          method: string
+          payload: Json
+          run_at: string
+          sent_at: string | null
+          source_event_id: string | null
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "automation_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_capi_events: {
         Args: { p_limit: number; p_processing_by?: string }
         Returns: {
