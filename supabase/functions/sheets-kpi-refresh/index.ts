@@ -113,15 +113,32 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Allow service role or anon key (for cron jobs)
-  const authHeader = req.headers.get("Authorization");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  
-  const isServiceRole = authHeader === `Bearer ${serviceRoleKey}`;
-  const isAnonKey = authHeader === `Bearer ${anonKey}`;
-  
-  if (!isServiceRole && !isAnonKey) {
+  // R01 FIX: Require cron secret or service_role JWT (reject anon)
+  const cronSecret = req.headers.get("x-cron-secret");
+  const expectedSecret = Deno.env.get("CRON_SECRET");
+  const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
+  const authHeader = req.headers.get("Authorization") || "";
+
+  const hasValidCronSecret = expectedSecret && cronSecret &&
+    (cronSecret === expectedSecret || (cronSecretPrev && cronSecret === cronSecretPrev));
+
+  let hasValidJwt = false;
+  if (!hasValidCronSecret && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.replace("Bearer ", "");
+    const verifyClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+    if (!claimsErr && claimsData?.claims) {
+      if (claimsData.claims.role === "service_role") {
+        hasValidJwt = true;
+      }
+    }
+  }
+
+  if (!hasValidCronSecret && !hasValidJwt) {
     return new Response(
       JSON.stringify({ error: "Unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }

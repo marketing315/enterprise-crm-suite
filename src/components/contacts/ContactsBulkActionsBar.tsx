@@ -93,11 +93,12 @@ export function ContactsBulkActionsBar({
       const contactIds = selectedContacts.map(c => c.id);
       const tagIds = Array.from(selectedTagIds);
       
-      // H08 FIX: Use correct schema columns (contact_id, not entity_type/entity_id)
-      // and correct unique constraint (unique_contact_tag = tag_id, contact_id)
+      // R03 FIX: Use each contact's own brand_id instead of currentBrand.id
+      // to avoid writing system brand or wrong brand in all-brands view
+      const contactBrandMap = new Map(selectedContacts.map(c => [c.id, c.brand_id]));
       const assignments = contactIds.flatMap(contactId =>
         tagIds.map(tagId => ({
-          brand_id: currentBrand!.id,
+          brand_id: contactBrandMap.get(contactId) || currentBrand!.id,
           contact_id: contactId,
           tag_id: tagId,
           assigned_by: "user" as const,

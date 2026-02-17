@@ -37,7 +37,8 @@ Deno.serve(async (req: Request) => {
     const testEmail = body.email;
     const testFullName = body.full_name;
     const testBrandId = body.brand_id;
-    const testRole = body.role || "admin";
+    const ALLOWED_ROLES = ["admin", "ceo", "callcenter", "sales", "responsabile_callcenter", "responsabile_vendite", "operatore_callcenter", "venditore"];
+    const testRole = ALLOWED_ROLES.includes(body.role) ? body.role : "admin";
 
     if (!testEmail || !testFullName || !testBrandId) {
       return new Response(JSON.stringify({ error: "email, full_name, and brand_id are required" }), {
