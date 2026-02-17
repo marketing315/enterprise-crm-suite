@@ -198,31 +198,48 @@ export function ContactsTableWithViews({
   const someSelected = selectedIds.size > 0 && selectedIds.size < processedContacts.length;
   
   // Infinite scroll using refs to avoid stale closures
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasMoreRef = useRef(hasMore);
   const isLoadingMoreRef = useRef(isLoadingMore);
   const onLoadMoreRef = useRef(onLoadMore);
+  const scrollListenerAttached = useRef(false);
 
   hasMoreRef.current = hasMore;
   isLoadingMoreRef.current = isLoadingMore;
   onLoadMoreRef.current = onLoadMore;
 
-  useEffect(() => {
+  // Attach scroll listener via callback ref to handle late mounting
+  const scrollContainerCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    // Detach from previous node
+    if (scrollContainerRef.current && scrollContainerRef.current !== node) {
+      scrollContainerRef.current.removeEventListener("scroll", handleScrollRef.current);
+      scrollListenerAttached.current = false;
+    }
+    scrollContainerRef.current = node;
+    if (node && !scrollListenerAttached.current) {
+      node.addEventListener("scroll", handleScrollRef.current, { passive: true });
+      scrollListenerAttached.current = true;
+    }
+  }, []);
+
+  const handleScrollRef = useRef((_e?: Event) => {
     const container = scrollContainerRef.current;
     if (!container) return;
+    if (isLoadingMoreRef.current || !hasMoreRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      onLoadMoreRef.current?.();
+    }
+  });
 
-    const handleScroll = () => {
-      if (isLoadingMoreRef.current || !hasMoreRef.current) return;
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      if (scrollHeight - scrollTop - clientHeight < 300) {
-        onLoadMoreRef.current?.();
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.removeEventListener("scroll", handleScrollRef.current);
       }
     };
-
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, []); // stable — reads from refs
+  }, []);
 
   const { isAllBrandsSelected } = useBrand();
   const {
@@ -541,7 +558,7 @@ export function ContactsTableWithViews({
       </div>
 
       {/* Table with horizontal and vertical scroll */}
-      <div ref={scrollContainerRef} className="rounded-md border max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-scroll -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
+      <div ref={scrollContainerCallbackRef} className="rounded-md border max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-scroll -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
           <Table className="min-w-[900px] table-fixed">
           <TableHeader>
             <TableRow>
