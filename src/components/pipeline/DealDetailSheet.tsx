@@ -489,6 +489,8 @@ export function DealDetailSheet({
           contactId={deal.contact_id}
           contactName={getContactName()}
           dealId={deal.id}
+          dealTitle={getContactName()}
+          sourceContext="deal_sheet"
         />
       </SheetContent>
     </Sheet>

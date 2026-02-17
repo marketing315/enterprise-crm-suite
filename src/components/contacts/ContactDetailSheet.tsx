@@ -592,6 +592,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
             onOpenChange={setTicketDialogOpen}
             contactId={contact.id}
             contactName={getFullName()}
+            sourceContext="contact_sheet"
           />
         )}
       </SheetContent>

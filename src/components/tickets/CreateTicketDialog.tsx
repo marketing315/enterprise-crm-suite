@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Ticket } from "lucide-react";
 import {
   Dialog,
@@ -18,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateTicket } from "@/hooks/useTickets";
+import { useCreateTicket, type TicketSourceContext } from "@/hooks/useTickets";
 import { toast } from "sonner";
 
 interface CreateTicketDialogProps {
@@ -27,6 +28,8 @@ interface CreateTicketDialogProps {
   contactId: string;
   contactName?: string;
   dealId?: string | null;
+  dealTitle?: string | null;
+  sourceContext?: TicketSourceContext;
   onSuccess?: (ticketId: string) => void;
 }
 
@@ -36,13 +39,23 @@ export function CreateTicketDialog({
   contactId,
   contactName,
   dealId,
+  dealTitle,
+  sourceContext,
   onSuccess,
 }: CreateTicketDialogProps) {
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("3");
   
   const createTicket = useCreateTicket();
+
+  // Pre-populate title when opening from a deal
+  useEffect(() => {
+    if (open && dealTitle && !title) {
+      setTitle(`[${dealTitle}] Richiesta supporto`);
+    }
+  }, [open, dealTitle]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +72,7 @@ export function CreateTicketDialog({
         title: title.trim(),
         description: description.trim() || undefined,
         priority: parseInt(priority, 10),
+        sourceContext,
       });
 
       toast.success("Ticket creato con successo");
@@ -66,7 +80,13 @@ export function CreateTicketDialog({
       setDescription("");
       setPriority("3");
       onOpenChange(false);
-      onSuccess?.(ticketId);
+
+      if (onSuccess) {
+        onSuccess(ticketId);
+      } else {
+        // Default: deep-link to the new ticket
+        navigate(`/tickets?open=${ticketId}`);
+      }
     } catch (error) {
       toast.error("Errore nella creazione del ticket");
     }

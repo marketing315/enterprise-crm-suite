@@ -395,12 +395,15 @@ export function useAssignTicket() {
   });
 }
 
+export type TicketSourceContext = 'contact_sheet' | 'deal_sheet' | 'pipeline' | 'ticket_list' | 'automation' | 'api';
+
 export interface CreateTicketInput {
   contactId: string;
   dealId?: string | null;
   title: string;
   description?: string;
   priority?: number;
+  sourceContext?: TicketSourceContext;
 }
 
 export function useCreateTicket() {
@@ -426,7 +429,8 @@ export function useCreateTicket() {
           status: "open",
           created_by: "user",
           opened_at: new Date().toISOString(),
-        })
+          source_context: input.sourceContext || null,
+        } as any)
         .select("id")
         .single();
 

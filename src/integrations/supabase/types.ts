@@ -4975,6 +4975,7 @@ export type Database = {
           priority: number
           resolved_at: string | null
           sla_breached_at: string | null
+          source_context: string | null
           source_event_id: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           title: string
@@ -5000,6 +5001,7 @@ export type Database = {
           priority?: number
           resolved_at?: string | null
           sla_breached_at?: string | null
+          source_context?: string | null
           source_event_id?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           title: string
@@ -5025,6 +5027,7 @@ export type Database = {
           priority?: number
           resolved_at?: string | null
           sla_breached_at?: string | null
+          source_context?: string | null
           source_event_id?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           title?: string
