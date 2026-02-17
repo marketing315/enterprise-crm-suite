@@ -3,7 +3,7 @@ import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
-import type { Payment, RecordPaymentInput } from "@/types/sales";
+import type { Payment, RecordPaymentInput, RevenueByMethod } from "@/types/sales";
 import { untypedClient } from "@/integrations/supabase/untypedClient";
 
 export function useOrderPayments(orderId: string | null) {
@@ -49,6 +49,7 @@ export function useRecordPayment() {
           status: "completed",
           paid_at: input.paid_at || new Date().toISOString(),
           recorded_by_user_id: user?.id,
+          plan_details: input.plan_details || null,
         })
         .select()
         .single();
@@ -132,5 +133,24 @@ export function useDeletePayment() {
     onError: () => {
       toast.error("Errore nell'eliminazione del pagamento");
     },
+  });
+}
+
+export function useRevenueByPaymentMethod(from?: Date, to?: Date) {
+  const { currentBrand } = useBrand();
+
+  return useQuery({
+    queryKey: ["revenue-by-method", currentBrand?.id, from?.toISOString(), to?.toISOString()],
+    queryFn: async (): Promise<RevenueByMethod[]> => {
+      if (!currentBrand) return [];
+      const { data, error } = await untypedClient.rpc("get_revenue_by_payment_method", {
+        p_brand_id: currentBrand.id,
+        p_from: from?.toISOString() || null,
+        p_to: to?.toISOString() || null,
+      });
+      if (error) throw error;
+      return (data || []) as RevenueByMethod[];
+    },
+    enabled: !!currentBrand,
   });
 }

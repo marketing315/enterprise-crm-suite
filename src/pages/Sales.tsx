@@ -15,6 +15,7 @@ import {
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSalesOrders, useSalesKpis } from "@/hooks/useSalesOrders";
+import { useRevenueByPaymentMethod } from "@/hooks/usePayments";
 import { useTeamMembers } from "@/hooks/useTeam";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { SalesOrderDetailSheet } from "@/components/sales/SalesOrderDetailSheet";
 import { QuickSaleDialog } from "@/components/sales/QuickSaleDialog";
-import { ORDER_STATUS_CONFIG, type SalesOrderStatus } from "@/types/sales";
+import { ORDER_STATUS_CONFIG, PAYMENT_METHOD_LABELS, type SalesOrderStatus } from "@/types/sales";
 import { cn } from "@/lib/utils";
 
 type DatePreset = "all" | "today" | "week" | "month" | "custom";
@@ -99,7 +100,7 @@ export default function Sales() {
   });
 
   const { data: kpis } = useSalesKpis(kpiFrom, kpiTo);
-
+  const { data: revenueByMethod = [] } = useRevenueByPaymentMethod(kpiFrom, kpiTo);
   if (!hasBrandSelected) {
     return (
       <div className="p-6">
@@ -207,7 +208,33 @@ export default function Sales() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Revenue by Payment Method */}
+      {revenueByMethod.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Ricavi per metodo di pagamento (30gg)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {revenueByMethod.map((item) => (
+                <div
+                  key={item.method}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                >
+                  <div>
+                    <p className="text-sm font-medium">
+                      {PAYMENT_METHOD_LABELS[item.method as keyof typeof PAYMENT_METHOD_LABELS] || item.method}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{item.order_count} ordini</p>
+                  </div>
+                  <p className="text-sm font-bold">{formatCurrency(item.total_revenue)}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
