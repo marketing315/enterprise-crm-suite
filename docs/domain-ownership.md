@@ -107,3 +107,43 @@ domain:finance, domain:ai, domain:platform, domain:analytics, domain:operations
 ```
 
 PR che toccano più domini: applicare tutti i label pertinenti → review richiesta da ogni owner coinvolto.
+
+---
+
+## PR Review Checklist (Obbligatoria)
+
+> Ogni reviewer deve verificare questi punti prima di approvare. Blocca merge se non rispettati.
+
+### Boundary Check
+
+- [ ] **Nessun import cross-domain non autorizzato** — un componente `pipeline/*` NON importa da `tickets/*`, `marketing/*`, etc.
+  - ✅ Consentito: importare da `ui/*`, `lib/*`, `contexts/*`, `hooks/use-mobile`, `hooks/use-toast`
+  - ❌ Vietato: importare componenti/hook di un altro dominio direttamente
+  - 🔄 Se serve: estrarre in `lib/` o `ui/` e fare review Core
+- [ ] **Hook ownership rispettata** — hook usato solo dal dominio proprietario o tramite API pubblica esplicita
+- [ ] **Nessuna rotta aggiunta senza aggiornamento `domain-ownership.md`** — nuove route → aggiornare la tabella domini
+- [ ] **Edge Function nuove/modificate dichiarate** — aggiornare colonna Edge Functions nella tabella
+
+### Cross-Cutting Safety
+
+- [ ] **Modifiche a file cross-cutting → review Core obbligatoria** (vedi tabella §Cross-Cutting Concerns)
+- [ ] **Design tokens usati** — nessun colore hardcoded (`text-white`, `bg-blue-500`), solo semantic tokens (`text-foreground`, `bg-primary`)
+- [ ] **RLS verificata** — se la PR tocca query DB, verificare che RLS sia applicata e coerente con la matrice accesso RBAC
+
+### Quality Gate
+
+- [ ] **CI verde** — tutti i gate (tsc, build, unit, smoke, E2E, secret-scan) passano
+- [ ] **Nessun `// @ts-ignore` o `as any` aggiunto** senza commento giustificativo
+- [ ] **Nessuna dipendenza aggiunta** senza giustificazione nel PR body
+- [ ] **Changeset documentato** — se modifica user-facing, entry in `docs/changelog.md`
+
+### Dominio-Specifico
+
+| Dominio | Check aggiuntivo |
+|---------|-----------------|
+| Core | Nessun breaking change a AuthContext/BrandContext senza migrazione |
+| Sales | Deal mutation verifica `assigned_user_id` ownership |
+| Support | Ticket query usa cursor-based pagination, no offset |
+| Platform | Webhook endpoint valida HMAC signature |
+| AI | Override rate monitorata, nuovo prompt versionato in `ai_prompts` |
+| Marketing | Nessuna API key Meta/Google in codice, solo Cloud secrets |
