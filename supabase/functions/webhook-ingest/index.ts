@@ -767,7 +767,7 @@ Deno.serve(async (req: Request) => {
         await updateAuditRecord(auditId, "rejected", "missing_phone");
       }
       return new Response(
-        JSON.stringify({ error: "Phone number is required and could not be extracted from payload" }),
+        JSON.stringify({ error: "Phone number is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
