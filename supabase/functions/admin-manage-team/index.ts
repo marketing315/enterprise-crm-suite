@@ -612,7 +612,19 @@ Deno.serve(async (req: Request) => {
           }
         });
 
-        await Promise.all(upsertPromises);
+        const results = await Promise.all(upsertPromises);
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+          console.error("[assign_to_all_brands] Partial failures:", errors.map(e => e.error?.message));
+          return new Response(JSON.stringify({ 
+            error: `Assegnazione parziale: ${errors.length}/${allBrands?.length || 0} brand falliti`,
+            failed_count: errors.length,
+            total_count: allBrands?.length || 0,
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
         return new Response(JSON.stringify({ 
           success: true, 
