@@ -1,6 +1,7 @@
 # SLO / SLA Operativi
 
-> Service Level Objectives per i flussi critici della piattaforma CRM.
+> Service Level Objectives collegati a KPI di business.  
+> Ogni SLO risponde alla domanda: **"se questo degrada, quale risultato di business ne risente?"**
 
 ---
 
@@ -8,50 +9,78 @@
 
 ### 1.1 API Ingest (webhook-ingest, meta-leads-webhook, keplero-webhook)
 
-| Metric | SLO | Measurement |
-|--------|-----|-------------|
-| **Availability** | ≥ 99.5% (month) | `1 - (5xx responses / total requests)` |
-| **Latency P95** | ≤ 500ms | Edge function execution time |
-| **Latency P99** | ≤ 2000ms | Edge function execution time |
-| **Ingestion Success Rate** | ≥ 98% | `lead_events created / valid requests received` |
-| **Deduplication Accuracy** | 100% | Zero duplicate `lead_events` per `leadgen_id` or idempotency key |
+**Business Link:** Ogni minuto di downtime = lead persi → pipeline vuota → revenue a zero.
+
+| Metric | SLO | Business Impact se violato |
+|--------|-----|---------------------------|
+| **Availability** | ≥ 99.5% (month) | Lead drop → calo Lead→Deal conversion |
+| **Latency P95** | ≤ 500ms | UX degradata per partner che inviano lead |
+| **Latency P99** | ≤ 2000ms | Timeout partner → lead persi silenziosamente |
+| **Ingestion Success Rate** | ≥ 98% | Lead non registrati → pipeline incompleta |
+| **Deduplication Accuracy** | 100% | Duplicati → spreco FTE operatore + metriche falsate |
 
 **Error Budget**: 0.5% = ~3.6h downtime/month or ~2,160 failed requests per 432,000.
 
 ### 1.2 Ticket SLA Breach Processing (sla-breach-checker)
 
-| Metric | SLO | Measurement |
-|--------|-----|-------------|
-| **Detection Latency** | ≤ 5 min from breach | `sla_breached_at - (created_at + threshold_minutes)` |
-| **Cron Reliability** | ≥ 99% executions/month | Successful cron runs / expected runs |
-| **False Positive Rate** | ≤ 1% | Breached tickets where `sla_breached_at` was set incorrectly |
-| **Recovery Assignment** | ≤ 4 min | `ticket-assign-recovery` cron cycle time |
+**Business Link:** SLA breach = penali contrattuali + churn cliente enterprise.
+
+| Metric | SLO | Business Impact se violato |
+|--------|-----|---------------------------|
+| **Detection Latency** | ≤ 5 min from breach | Ritardo escalation → cliente insoddisfatto |
+| **Cron Reliability** | ≥ 99% executions/month | Breach non rilevati → SLA compliance falsata |
+| **False Positive Rate** | ≤ 1% | Alert fatigue → team ignora breach reali |
+| **Recovery Assignment** | ≤ 4 min | Ticket orfani → aumento MTTR |
 
 ### 1.3 Dashboard & UI
 
-| Metric | SLO | Measurement |
-|--------|-----|-------------|
-| **Initial Load (LCP)** | ≤ 3s | Largest Contentful Paint on dashboard |
-| **API Response (RPC)** | P95 ≤ 800ms | Supabase RPC calls from frontend |
-| **Real-time Latency** | ≤ 2s | Time from DB write to UI update via Realtime |
-| **Error Rate (client)** | ≤ 0.5% | Unhandled JS errors / page views |
+**Business Link:** Dashboard lenta = adozione bassa → utenti tornano a Excel → churn.
+
+| Metric | SLO | Business Impact se violato |
+|--------|-----|---------------------------|
+| **Initial Load (LCP)** | ≤ 3s | Abbandono pagina, percezione prodotto lento |
+| **API Response (RPC)** | P95 ≤ 800ms | Workflow operatore rallentato → meno lead gestiti/giorno |
+| **Real-time Latency** | ≤ 2s | Decisioni su dati stale → errori operativi |
+| **Error Rate (client)** | ≤ 0.5% | Fiducia utente erosa → escalation a supporto |
 
 ### 1.4 Outbound Webhooks (webhook-dispatcher)
 
-| Metric | SLO | Measurement |
-|--------|-----|-------------|
-| **First Attempt Latency** | ≤ 60s from trigger | `first_attempted_at - created_at` |
-| **Delivery Success Rate** | ≥ 95% (within retry window) | Delivered / total deliveries |
-| **DLQ Overflow Rate** | ≤ 2% | DLQ entries / total deliveries |
-| **P95 Delivery Latency** | ≤ 500ms | Response time from target endpoint |
+**Business Link:** Webhook falliti = automazioni partner interrotte → integrazione percepita come inaffidabile.
+
+| Metric | SLO | Business Impact se violato |
+|--------|-----|---------------------------|
+| **First Attempt Latency** | ≤ 60s from trigger | Partner riceve dati in ritardo → workflow asincroni falliscono |
+| **Delivery Success Rate** | ≥ 95% (within retry window) | Dati non consegnati → partner perde lead |
+| **DLQ Overflow Rate** | ≤ 2% | Troppi eventi persi → fiducia integrazione compromessa |
+| **P95 Delivery Latency** | ≤ 500ms | Lentezza percepita dal partner |
 
 ### 1.5 AI Classification (ai-classify)
 
-| Metric | SLO | Measurement |
-|--------|-----|-------------|
-| **Processing Latency** | P95 ≤ 10s | `ai_jobs.completed_at - created_at` |
-| **Success Rate** | ≥ 95% | Completed jobs / total jobs |
-| **Override Rate** | ≤ 15% | `was_overridden = true` / total decisions |
+**Business Link:** AI inaccurata = operatori override manuale → spreco FTE = ROI AI negativo.
+
+| Metric | SLO | Business Impact se violato |
+|--------|-----|---------------------------|
+| **Processing Latency** | P95 ≤ 10s | Lead in coda → ritardo lavorazione → speed-to-lead peggiore |
+| **Success Rate** | ≥ 95% | Job falliti → lead non classificati → triage manuale |
+| **Override Rate** | ≤ 15% | Ogni override = costo FTE + sfiducia nel sistema AI |
+
+---
+
+## 1.6 SLO → Business KPI Mapping
+
+> Mappa diretta: quale SLO protegge quale KPI di business.
+
+| SLO Domain | KPI Business Protetto | Target KPI | Conseguenza se SLO violato |
+|------------|----------------------|------------|---------------------------|
+| Ingest Availability ≥ 99.5% | **Lead → Deal Conversion** | ≥ 15% | Lead persi → conversion rate crolla |
+| Ingest Success Rate ≥ 98% | **Pipeline Volume** | Crescita MoM | Lead non registrati → pipeline vuota |
+| SLA Detection ≤ 5min | **Ticket SLA Compliance** | ≥ 90% | Breach non rilevati → penali contrattuali |
+| SLA Cron Reliability ≥ 99% | **Customer Retention** | Churn ≤ 3%/mese | SLA violati = churn enterprise |
+| Dashboard LCP ≤ 3s | **User Adoption** | DAU stabile | UX lenta → ritorno a Excel |
+| AI Success Rate ≥ 95% | **AI Classification Accuracy** | ≥ 85% | Triage manuale → costo FTE aumenta |
+| AI Override Rate ≤ 15% | **CAC Payback** | ≤ 6 mesi | ROI AI negativo → costo acquisizione sale |
+| Webhook Delivery ≥ 95% | **Partner Retention** | Zero escalation/mese | Integrazione rotta → partner churn |
+| Deal Velocity (§4.2.4) | **Revenue Velocity** | ≤ 30gg | Ciclo lungo → cash flow ritardato |
 
 ---
 
