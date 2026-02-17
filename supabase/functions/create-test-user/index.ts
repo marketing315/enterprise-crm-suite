@@ -68,13 +68,21 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (!existingRole) {
-        await adminClient
+        const { error: roleInsertError } = await adminClient
           .from("user_roles")
           .insert({
             user_id: existingUser.id,
             brand_id: testBrandId,
             role: testRole,
           });
+
+        if (roleInsertError) {
+          console.error("Error assigning role to existing user:", roleInsertError);
+          return new Response(JSON.stringify({ error: roleInsertError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
 
       // H01 FIX: Never return password or sensitive data
