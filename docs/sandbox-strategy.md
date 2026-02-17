@@ -107,13 +107,16 @@ PW_BASE_URL=https://id-preview--08e518ba-ca82-4402-9a5d-7fc159333e6d.lovable.app
 
 ### Metriche minime pre-deploy
 
-| # | Metrica | Soglia | Fonte |
-|---|---------|--------|-------|
-| 1 | **Install success** | 100% | `npm ci` exit code |
-| 2 | **Build success** | 100% | `npm run build` exit code |
-| 3 | **Smoke test pass rate** | ≥ 95% | `e2e/smoke.spec.ts` |
-| 4 | **P1 bug count** | 0 | Issue tracker / test results |
-| 5 | **Regressioni RBAC** | 0 | `e2e/tickets.gate.spec.ts` + unit RBAC |
+| # | Metrica | Soglia | Enforcement |
+|---|---------|--------|-------------|
+| 1 | **Install success** | 100% | 🔒 CI hard gate (`npm ci` exit code) |
+| 2 | **TypeScript build** | 100% | 🔒 CI hard gate (`tsc --noEmit`) |
+| 3 | **Production build** | 100% | 🔒 CI hard gate (`npm run build`) |
+| 4 | **Unit tests** | 100% | 🔒 CI hard gate (`vitest run`) |
+| 5 | **Smoke E2E** | 100% | 🔒 CI hard gate (`e2e/smoke.spec.ts`) |
+| 6 | **RBAC + feature E2E** | 100% | 🔒 CI hard gate (`tickets.gate` + webhooks) |
+| 7 | **Secret scan** | clean | 🔒 CI hard gate (`secrets-scan.yml`) |
+| 8 | **P1 bug count** | 0 | Manuale pre-merge (reviewer) |
 
 ### Processo decisionale
 
