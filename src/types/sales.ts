@@ -105,6 +105,25 @@ export interface SalesOrderItem {
   product?: Product | null;
 }
 
+// Installment plan details
+export interface InstallmentPlanDetails {
+  num_installments: number;
+  installment_amount: number;
+  first_due_date?: string;
+  frequency_months?: number; // default 1
+}
+
+// Rental plan details
+export interface RentalPlanDetails {
+  monthly_fee: number;
+  duration_months: number;
+  start_date: string;
+  end_date?: string;
+  auto_renew?: boolean;
+}
+
+export type PlanDetails = InstallmentPlanDetails | RentalPlanDetails;
+
 // Payment
 export interface Payment {
   id: string;
@@ -117,6 +136,7 @@ export interface Payment {
   notes: string | null;
   paid_at: string | null;
   recorded_by_user_id: string | null;
+  plan_details: PlanDetails | null;
   created_at: string;
   recorded_by?: {
     id: string;
@@ -209,6 +229,14 @@ export interface RecordPaymentInput {
   reference?: string;
   notes?: string;
   paid_at?: string;
+  plan_details?: PlanDetails | null;
+}
+
+// Revenue by payment method (from RPC)
+export interface RevenueByMethod {
+  method: string;
+  total_revenue: number;
+  order_count: number;
 }
 
 // Status labels and colors for UI

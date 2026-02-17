@@ -3956,6 +3956,7 @@ export type Database = {
           notes: string | null
           order_id: string
           paid_at: string | null
+          plan_details: Json | null
           recorded_by_user_id: string | null
           reference: string | null
           status: Database["public"]["Enums"]["payment_status"]
@@ -3969,6 +3970,7 @@ export type Database = {
           notes?: string | null
           order_id: string
           paid_at?: string | null
+          plan_details?: Json | null
           recorded_by_user_id?: string | null
           reference?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
@@ -3982,6 +3984,7 @@ export type Database = {
           notes?: string | null
           order_id?: string
           paid_at?: string | null
+          plan_details?: Json | null
           recorded_by_user_id?: string | null
           reference?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
@@ -6387,6 +6390,14 @@ export type Database = {
       get_pipeline_funnel_analytics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
+      }
+      get_revenue_by_payment_method: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: {
+          method: string
+          order_count: number
+          total_revenue: number
+        }[]
       }
       get_revenue_forecast: {
         Args: { p_brand_id: string; p_period?: string }
