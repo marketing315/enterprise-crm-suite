@@ -12,12 +12,26 @@ interface OverrideResult {
   };
 }
 
+export const OVERRIDE_REASON_CATEGORIES = [
+  { value: 'wrong_priority', label: 'Priorità errata' },
+  { value: 'wrong_lead_type', label: 'Tipo lead errato' },
+  { value: 'wrong_ticket_decision', label: 'Decisione ticket errata' },
+  { value: 'wrong_tags', label: 'Tag errati' },
+  { value: 'wrong_stage', label: 'Stage errato' },
+  { value: 'false_positive', label: 'Falso positivo' },
+  { value: 'false_negative', label: 'Falso negativo' },
+  { value: 'other', label: 'Altro' },
+] as const;
+
+export type OverrideReasonCategory = typeof OVERRIDE_REASON_CATEGORIES[number]['value'];
+
 interface OverrideParams {
   leadEventId: string;
   newPriority?: number;
   newLeadType?: string;
   newShouldCreateTicket?: boolean;
   overrideReason?: string;
+  overrideCategory?: OverrideReasonCategory;
 }
 
 export function useOverrideAIDecision() {
@@ -31,6 +45,7 @@ export function useOverrideAIDecision() {
         p_new_lead_type: params.newLeadType ?? null,
         p_new_should_create_ticket: params.newShouldCreateTicket ?? null,
         p_override_reason: params.overrideReason ?? null,
+        p_override_category: params.overrideCategory ?? null,
       }) as { data: OverrideResult | null; error: Error | null };
 
       if (error) throw error;

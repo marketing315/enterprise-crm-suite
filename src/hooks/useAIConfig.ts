@@ -11,6 +11,7 @@ export interface AIConfig {
   mode: AIMode;
   active_prompt_version: string | null;
   rules_json: Record<string, unknown>;
+  confidence_threshold: number;
   updated_by: string | null;
   updated_at: string;
   created_at: string;
@@ -335,6 +336,71 @@ export function useAIQualityMetrics(period: "today" | "7d" | "30d" = "7d") {
       };
     },
     enabled: !!currentBrand?.id,
+  });
+}
+
+export interface AIQualityDetailed {
+  override_by_category: Array<{ category: string; count: number }>;
+  confidence_distribution: Array<{ bucket: string; count: number; override_count: number }>;
+  avg_triage_time_minutes: number;
+  low_confidence_count: number;
+  precision_proxy: number | null;
+  weekly_override_trend: Array<{ week: string; total: number; overridden: number; rate: number }>;
+}
+
+export function useAIQualityDetailed(period: "today" | "7d" | "30d" = "30d") {
+  const { currentBrand } = useBrand();
+
+  const getPeriodDates = () => {
+    const to = new Date();
+    to.setHours(23, 59, 59, 999);
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    switch (period) {
+      case "today": break;
+      case "7d": from.setDate(from.getDate() - 7); break;
+      case "30d": from.setDate(from.getDate() - 30); break;
+    }
+    return { from, to };
+  };
+
+  return useQuery({
+    queryKey: ["ai-quality-detailed", currentBrand?.id, period],
+    queryFn: async () => {
+      if (!currentBrand?.id) return null;
+      const { from, to } = getPeriodDates();
+      const { data, error } = await supabase.rpc("get_ai_quality_detailed", {
+        p_brand_id: currentBrand.id,
+        p_from: from.toISOString(),
+        p_to: to.toISOString(),
+      });
+      if (error) throw error;
+      return data as unknown as AIQualityDetailed;
+    },
+    enabled: !!currentBrand?.id,
+    staleTime: 2 * 60_000,
+  });
+}
+
+export function useUpdateConfidenceThreshold() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: { id: string; threshold: number }) => {
+      const { error } = await supabase
+        .from("ai_configs")
+        .update({ confidence_threshold: params.threshold, updated_at: new Date().toISOString() } as Record<string, unknown>)
+        .eq("id", params.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai-config"] });
+      toast({ title: "Soglia di confidenza aggiornata" });
+    },
+    onError: (error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
   });
 }
 
