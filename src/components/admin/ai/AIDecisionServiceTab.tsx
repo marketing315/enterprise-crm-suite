@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAIConfig, useUpdateAIConfig, useAIPrompts, useCreateAIPrompt, useActivateAIPrompt } from "@/hooks/useAIConfig";
+import { useAIConfig, useUpdateAIConfig, useAIPrompts, useCreateAIPrompt, useActivateAIPrompt, useUpdateConfidenceThreshold } from "@/hooks/useAIConfig";
 import { useBrand } from "@/contexts/BrandContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -36,15 +37,7 @@ import {
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import {
-  Zap,
-  Play,
-  Pause,
-  Power,
-  Plus,
-  Check,
-  Copy,
-  RotateCcw,
-  FileText,
+  Zap, Play, Pause, Power, Plus, Check, Copy, RotateCcw, FileText, ShieldAlert,
 } from "lucide-react";
 
 export function AIDecisionServiceTab() {
@@ -54,6 +47,7 @@ export function AIDecisionServiceTab() {
   const updateConfig = useUpdateAIConfig();
   const createPrompt = useCreateAIPrompt();
   const activatePrompt = useActivateAIPrompt();
+  const updateThreshold = useUpdateConfidenceThreshold();
 
   const [showNewPromptDialog, setShowNewPromptDialog] = useState(false);
   const [newPromptVersion, setNewPromptVersion] = useState("");
@@ -259,6 +253,46 @@ export function AIDecisionServiceTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Confidence Threshold */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5" />
+            Soglia di confidenza
+          </CardTitle>
+          <CardDescription>
+            Decisioni sotto questa soglia vanno in coda umana (fallback rule-based)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingConfig ? (
+            <Skeleton className="h-16 w-full" />
+          ) : config ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Soglia attuale</span>
+                <Badge variant="outline" className="text-lg font-mono">
+                  {Math.round((config.confidence_threshold ?? 0.6) * 100)}%
+                </Badge>
+              </div>
+              <Slider
+                defaultValue={[(config.confidence_threshold ?? 0.6) * 100]}
+                min={10}
+                max={95}
+                step={5}
+                onValueCommit={(v) => {
+                  updateThreshold.mutate({ id: config.id, threshold: v[0] / 100 });
+                }}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>10% (permissivo)</span>
+                <span>95% (restrittivo)</span>
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {/* Deterministic Rules */}
       <Card>

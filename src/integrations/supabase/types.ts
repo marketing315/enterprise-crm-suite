@@ -495,6 +495,7 @@ export type Database = {
         Row: {
           active_prompt_version: string | null
           brand_id: string
+          confidence_threshold: number | null
           created_at: string
           id: string
           mode: Database["public"]["Enums"]["ai_mode"]
@@ -505,6 +506,7 @@ export type Database = {
         Insert: {
           active_prompt_version?: string | null
           brand_id: string
+          confidence_threshold?: number | null
           created_at?: string
           id?: string
           mode?: Database["public"]["Enums"]["ai_mode"]
@@ -515,6 +517,7 @@ export type Database = {
         Update: {
           active_prompt_version?: string | null
           brand_id?: string
+          confidence_threshold?: number | null
           created_at?: string
           id?: string
           mode?: Database["public"]["Enums"]["ai_mode"]
@@ -555,6 +558,9 @@ export type Database = {
           overridden_at: string | null
           overridden_by_user_id: string | null
           override_reason: string | null
+          override_reason_category:
+            | Database["public"]["Enums"]["override_reason_category"]
+            | null
           priority: number
           prompt_version: string
           rationale: string
@@ -580,6 +586,9 @@ export type Database = {
           overridden_at?: string | null
           overridden_by_user_id?: string | null
           override_reason?: string | null
+          override_reason_category?:
+            | Database["public"]["Enums"]["override_reason_category"]
+            | null
           priority: number
           prompt_version?: string
           rationale: string
@@ -605,6 +614,9 @@ export type Database = {
           overridden_at?: string | null
           overridden_by_user_id?: string | null
           override_reason?: string | null
+          override_reason_category?:
+            | Database["public"]["Enums"]["override_reason_category"]
+            | null
           priority?: number
           prompt_version?: string
           rationale?: string
@@ -6143,6 +6155,10 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_ai_quality_detailed: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       get_ai_quality_metrics: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
@@ -6350,6 +6366,7 @@ export type Database = {
         Returns: {
           active_prompt_version: string | null
           brand_id: string
+          confidence_threshold: number | null
           created_at: string
           id: string
           mode: Database["public"]["Enums"]["ai_mode"]
@@ -6630,16 +6647,28 @@ export type Database = {
       }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
       normalize_topic_text: { Args: { p_text: string }; Returns: string }
-      override_ai_decision: {
-        Args: {
-          p_lead_event_id: string
-          p_new_lead_type?: string
-          p_new_priority?: number
-          p_new_should_create_ticket?: boolean
-          p_override_reason?: string
-        }
-        Returns: Json
-      }
+      override_ai_decision:
+        | {
+            Args: {
+              p_lead_event_id: string
+              p_new_lead_type?: string
+              p_new_priority?: number
+              p_new_should_create_ticket?: boolean
+              p_override_reason?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_lead_event_id: string
+              p_new_lead_type?: string
+              p_new_priority?: number
+              p_new_should_create_ticket?: boolean
+              p_override_category?: string
+              p_override_reason?: string
+            }
+            Returns: Json
+          }
       reactivate_pipeline_stage: { Args: { p_stage_id: string }; Returns: Json }
       rebuild_contact_search_index: { Args: never; Returns: number }
       reclaim_stale_capi_events: { Args: never; Returns: number }
@@ -7075,6 +7104,15 @@ export type Database = {
         | "ai_decision_ready"
         | "chat_message"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
+      override_reason_category:
+        | "wrong_priority"
+        | "wrong_lead_type"
+        | "wrong_ticket_decision"
+        | "wrong_tags"
+        | "wrong_stage"
+        | "false_positive"
+        | "false_negative"
+        | "other"
       pacemaker_status: "assente" | "presente" | "non_chiaro"
       payment_method: "cash" | "card" | "bank_transfer" | "stripe" | "other"
       payment_status: "pending" | "completed" | "failed" | "refunded"
@@ -7372,6 +7410,16 @@ export const Constants = {
         "chat_message",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
+      override_reason_category: [
+        "wrong_priority",
+        "wrong_lead_type",
+        "wrong_ticket_decision",
+        "wrong_tags",
+        "wrong_stage",
+        "false_positive",
+        "false_negative",
+        "other",
+      ],
       pacemaker_status: ["assente", "presente", "non_chiaro"],
       payment_method: ["cash", "card", "bank_transfer", "stripe", "other"],
       payment_status: ["pending", "completed", "failed", "refunded"],
