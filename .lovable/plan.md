@@ -1,29 +1,70 @@
 
-## Fix: Infinite Scroll per i Contatti
 
-L'infinite scroll non funziona per due motivi tecnici che vanno corretti insieme.
+# Scansione Debug Completa - Contatti Infinite Scroll
 
-### Problema 1 — La query ignora l'offset
+## Bug Identificati
 
-Il hook `useContactSearch` accetta un parametro `offset` ma non lo usa nella query senza testo di ricerca (il caso piu comune). Il risultato: ogni "pagina" restituisce sempre gli stessi primi 50 contatti, e il hook `usePaginatedContactSearch` non accumula mai nuovi dati.
+### Bug 1 (CRITICO): `loadTriggeredRef` viene resettato prematuramente
+In `usePaginatedContactSearch.ts`, linea 56, `loadTriggeredRef.current = false` viene eseguito **incondizionatamente** alla fine dell'`useEffect`. Quando `page` cambia (es. da 0 a 1), React Query crea una nuova query e temporaneamente `pageData` diventa `[]`. L'effetto scatta, nessun branch viene eseguito, ma la guardia viene comunque resettata. Questo permette a `loadMore` di scattare di nuovo prima che i dati della pagina corrente arrivino, saltando pagine.
 
-**Correzione in `src/hooks/useContactSearch.ts`:**
-- Aggiungere `.range(offset, offset + limit - 1)` alla query Supabase nella modalita "no search query" (riga 76-84), sostituendo il semplice `.limit(limit)`.
+### Bug 2 (MEDIO): Ordine di dichiarazione `handleScrollRef` / `scrollContainerCallbackRef`
+In `ContactsTableWithViews.tsx`, `scrollContainerCallbackRef` (linea 212) fa riferimento a `handleScrollRef.current` (linea 225) che e' dichiarato DOPO. Funziona per via delle closure JS, ma e' fragile e puo' causare problemi con HMR.
 
-### Problema 2 — La sentinella e fuori dal container scrollabile
+### Bug 3 (MINORE): Warning `forwardRef` su AlertDialog
+Il console log mostra warning di `Function components cannot be given refs` su AlertDialog. Non blocca il funzionamento ma indica un componente non aggiornato.
 
-La sentinella (`<div ref={sentinelRef}>`) e posizionata **dopo** il `<div>` con `overflow-y-auto`. Siccome il container della tabella ha una altezza massima e scroll interno, la sentinella si trova nello spazio della pagina sempre visibile, e non viene raggiunta dallo scroll della tabella.
+---
 
-**Correzione in `src/components/contacts/ContactsTableWithViews.tsx`:**
-- Spostare la sentinella **dentro** il container scrollabile, dopo il `</Table>` ma prima della chiusura del `<div>` con `overflow-y-auto`.
-- In questo modo l'IntersectionObserver si attiva correttamente quando l'utente scrolla la tabella fino in fondo.
-- Aggiungere `root` all'observer per usare il container scrollabile come viewport di riferimento.
+## Piano di Fix
 
-### Dettagli tecnici
+### Step 1: Fix `usePaginatedContactSearch.ts`
+- Spostare `loadTriggeredRef.current = false` DENTRO il branch `if (pageData.length > 0)` o dopo la conferma che i dati sono effettivamente arrivati per la pagina corrente
+- Aggiungere un `pageRef` per tracciare quale pagina ha triggerato il load e resettare la guardia solo quando arrivano i dati per quella specifica pagina
 
-**File: `src/hooks/useContactSearch.ts`**
-- Alla riga 84, sostituire `.limit(limit)` con `.range(offset, offset + limit - 1)` per supportare la paginazione con offset.
+```text
+Logica corretta:
+1. loadMore() -> loadTriggeredRef = true, setPage(p+1)
+2. Query parte con nuovo offset
+3. pageData arriva (length > 0) -> appende a allResults -> loadTriggeredRef = false
+4. pageData vuoto (fine lista) -> hasMore = false -> scroll handler bloccato
+```
 
-**File: `src/components/contacts/ContactsTableWithViews.tsx`**
-- Spostare `<div ref={sentinelRef} className="h-1" />` e il messaggio "Caricamento..." dentro il div scrollabile (quello con classe `rounded-md border max-h-[...]`), subito dopo `</Table>`.
-- Aggiungere un `ref` al container scrollabile e passarlo come opzione `root` all'`IntersectionObserver`, cosi l'observer rileva la sentinella rispetto al container anziche alla finestra.
+### Step 2: Riordinare dichiarazioni in `ContactsTableWithViews.tsx`
+- Spostare `handleScrollRef` PRIMA di `scrollContainerCallbackRef` per eliminare la dipendenza da hoisting delle closure
+- Nessun cambiamento di logica, solo ordine piu' sicuro
+
+### Step 3: (Opzionale) Fix warning AlertDialog
+- Verificare se `AlertDialogContent` nel file `alert-dialog.tsx` necessita di `React.forwardRef`
+
+---
+
+## Dettaglio Tecnico - Fix Principale
+
+Il fix chiave in `usePaginatedContactSearch.ts`:
+
+```text
+// PRIMA (buggy):
+useEffect(() => {
+  if (pageData.length > 0) {
+    // append...
+  } else if (page === 0) {
+    setAllResults([]);
+  }
+  loadTriggeredRef.current = false;  // <-- SEMPRE resettato
+}, [pageData, page]);
+
+// DOPO (corretto):
+useEffect(() => {
+  if (pageData.length > 0) {
+    // append...
+    loadTriggeredRef.current = false;  // <-- solo quando dati arrivano
+  } else if (page === 0) {
+    setAllResults([]);
+    loadTriggeredRef.current = false;  // <-- reset iniziale OK
+  }
+  // NON resettare qui per pagine > 0 senza dati (ancora in caricamento)
+}, [pageData, page]);
+```
+
+Questo impedisce che il guard venga rimosso durante il transitorio di caricamento, prevenendo il salto di pagine.
+
