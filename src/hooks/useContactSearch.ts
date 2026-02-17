@@ -81,7 +81,7 @@ export function useContactSearch(
             contact_phones(phone_normalized, is_primary, is_active)
           `)
           .order("updated_at", { ascending: false })
-          .limit(limit);
+          .range(offset, offset + limit - 1);
 
         // Apply brand filter based on selection mode
         if (isAllBrandsSelected) {
