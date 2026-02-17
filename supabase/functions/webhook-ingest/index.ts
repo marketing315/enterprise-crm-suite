@@ -354,10 +354,26 @@ Deno.serve(async (req: Request) => {
   const userAgent = req.headers.get("user-agent") || null;
   const filteredHeaders = filterHeaders(req.headers);
 
+  // B03 fix: enforce max body size (256 KB) to prevent DoS via oversized payloads
+  const MAX_BODY_BYTES = 256 * 1024;
+  const contentLength = req.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+    return new Response(
+      JSON.stringify({ error: "Payload too large", max_bytes: MAX_BODY_BYTES }),
+      { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   // Read body as text first (allows audit even if JSON is invalid)
   let bodyText: string;
   try {
     bodyText = await req.text();
+    if (bodyText.length > MAX_BODY_BYTES) {
+      return new Response(
+        JSON.stringify({ error: "Payload too large", max_bytes: MAX_BODY_BYTES }),
+        { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   } catch {
     bodyText = "";
   }
