@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
     const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
     if (!claimsErr && claimsData?.claims) {
       const role = claimsData.claims.role;
-      if (role === "service_role" || role === "anon") {
+      if (role === "service_role") {
         hasValidJwt = true;
       }
     }
