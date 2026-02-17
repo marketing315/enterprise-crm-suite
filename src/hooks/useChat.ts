@@ -44,9 +44,19 @@ export interface ChatThreadMember {
   id: string;
   thread_id: string;
   user_id: string;
-  role: "member" | "admin";
+  role: "owner" | "moderator" | "member";
   joined_at: string;
   left_at: string | null;
+  user?: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export interface UnreadCount {
+  thread_id: string;
+  unread_count: number;
 }
 
 // Get or create entity thread
@@ -63,13 +73,11 @@ export function useGetOrCreateEntityThread() {
       entityId: string;
     }) => {
       const brandId = getWriteBrandId();
-
       const { data, error } = await supabase.rpc("get_or_create_entity_thread", {
         p_brand_id: brandId,
         p_entity_type: entityType,
         p_entity_id: entityId,
       });
-
       if (error) throw error;
       return data as string;
     },
@@ -89,7 +97,6 @@ export function useChatMessages(threadId: string | null) {
     queryKey: ["chat-messages", threadId],
     queryFn: async (): Promise<ChatMessageWithSender[]> => {
       if (!threadId) return [];
-
       const { data, error } = await supabase
         .from("chat_messages")
         .select(`
@@ -99,7 +106,6 @@ export function useChatMessages(threadId: string | null) {
         .eq("thread_id", threadId)
         .is("deleted_at", null)
         .order("created_at", { ascending: true });
-
       if (error) throw error;
       return (data || []) as unknown as ChatMessageWithSender[];
     },
@@ -126,13 +132,13 @@ export function useSendChatMessage() {
         p_message_text: messageText,
         p_attachments: JSON.stringify(attachments),
       });
-
       if (error) throw error;
       return data as string;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["chat-messages", variables.threadId] });
       queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-counts"] });
     },
     onError: (error: Error) => {
       console.error("Error sending message:", error);
@@ -160,10 +166,8 @@ export function useChatRealtime(threadId: string | null, onNewMessage?: (message
         },
         (payload) => {
           const message = payload.new as ChatMessage;
-          
-          // Invalidate to refresh
           queryClient.invalidateQueries({ queryKey: ["chat-messages", threadId] });
-          
+          queryClient.invalidateQueries({ queryKey: ["unread-counts"] });
           if (onNewMessage) {
             onNewMessage(message);
           }
@@ -219,13 +223,11 @@ export function useCreateGroupChat() {
       memberIds: string[];
     }) => {
       const brandId = getWriteBrandId();
-
       const { data, error } = await untypedClient.rpc("create_group_chat", {
         p_brand_id: brandId,
         p_title: title,
         p_member_ids: memberIds,
       });
-
       if (error) throw error;
       return data as string;
     },
@@ -261,7 +263,6 @@ export function useSendAIMessage() {
       const { data, error } = await supabase.functions.invoke("ai-chat", {
         body: { threadId, message, entityType, entityId, brandId },
       });
-
       if (error) throw error;
       return data as { message: string; messageId: string };
     },
@@ -272,6 +273,145 @@ export function useSendAIMessage() {
     onError: (error: Error) => {
       console.error("Error sending AI message:", error);
       toast.error("Errore nella risposta AI");
+    },
+  });
+}
+
+// ─── Group management hooks ───
+
+// Fetch thread members
+export function useThreadMembers(threadId: string | null) {
+  return useQuery({
+    queryKey: ["thread-members", threadId],
+    queryFn: async (): Promise<ChatThreadMember[]> => {
+      if (!threadId) return [];
+      const { data, error } = await supabase
+        .from("chat_thread_members")
+        .select(`
+          *,
+          user:users!chat_thread_members_user_id_fkey(id, full_name, avatar_url)
+        `)
+        .eq("thread_id", threadId)
+        .is("left_at", null)
+        .order("role", { ascending: true });
+      if (error) throw error;
+      return (data || []) as unknown as ChatThreadMember[];
+    },
+    enabled: !!threadId,
+  });
+}
+
+// Rename group
+export function useRenameGroupThread() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ threadId, newTitle }: { threadId: string; newTitle: string }) => {
+      const { error } = await untypedClient.rpc("rename_group_thread", {
+        p_thread_id: threadId,
+        p_new_title: newTitle,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      toast.success("Nome gruppo aggiornato");
+    },
+    onError: (error: Error) => {
+      console.error("Error renaming group:", error);
+      toast.error("Errore nel rinominare il gruppo");
+    },
+  });
+}
+
+// Add member
+export function useAddGroupMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      threadId,
+      newUserId,
+      role = "member",
+    }: {
+      threadId: string;
+      newUserId: string;
+      role?: string;
+    }) => {
+      const { error } = await untypedClient.rpc("add_group_member", {
+        p_thread_id: threadId,
+        p_new_user_id: newUserId,
+        p_role: role,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["thread-members", vars.threadId] });
+      toast.success("Membro aggiunto");
+    },
+    onError: (error: Error) => {
+      console.error("Error adding member:", error);
+      toast.error("Errore nell'aggiungere il membro");
+    },
+  });
+}
+
+// Remove member
+export function useRemoveGroupMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      threadId,
+      targetUserId,
+    }: {
+      threadId: string;
+      targetUserId: string;
+    }) => {
+      const { error } = await untypedClient.rpc("remove_group_member", {
+        p_thread_id: threadId,
+        p_target_user_id: targetUserId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["thread-members", vars.threadId] });
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      toast.success("Membro rimosso");
+    },
+    onError: (error: Error) => {
+      console.error("Error removing member:", error);
+      toast.error("Errore nella rimozione del membro");
+    },
+  });
+}
+
+// ─── Unread counts ───
+
+export function useUnreadCounts() {
+  return useQuery({
+    queryKey: ["unread-counts"],
+    queryFn: async (): Promise<UnreadCount[]> => {
+      const { data, error } = await untypedClient.rpc("get_unread_counts");
+      if (error) throw error;
+      return (data || []) as UnreadCount[];
+    },
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMarkThreadRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      const { error } = await untypedClient.rpc("mark_thread_read", {
+        p_thread_id: threadId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unread-counts"] });
     },
   });
 }

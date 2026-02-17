@@ -18,6 +18,7 @@ import {
   Bot,
   Loader2,
   Sparkles,
+  Settings,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -28,6 +29,8 @@ import {
   useSendAIMessage,
   useChatRealtime,
   useCreateGroupChat,
+  useUnreadCounts,
+  useMarkThreadRead,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
@@ -37,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AgentChatPanel } from "@/components/chat/AgentChatPanel";
 import { CreateGroupChatDialog } from "@/components/chat/CreateGroupChatDialog";
+import { GroupSettingsDrawer } from "@/components/chat/GroupSettingsDrawer";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -46,6 +50,7 @@ export default function Chat() {
   const [askAI, setAskAI] = useState(false);
   const [activeTab, setActiveTab] = useState<"threads" | "agent">("agent");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: threads = [], isLoading: threadsLoading } = useChatThreads();
@@ -56,14 +61,26 @@ export default function Chat() {
   const sendAIMessage = useSendAIMessage();
   const createGroupChat = useCreateGroupChat();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
+  const { data: unreadCounts = [] } = useUnreadCounts();
+  const markRead = useMarkThreadRead();
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
+
+  // Build unread map
+  const unreadMap = new Map(unreadCounts.map((u) => [u.thread_id, u.unread_count]));
 
   const handleCreateGroup = async (title: string, memberIds: string[]) => {
     const threadId = await createGroupChat.mutateAsync({ title, memberIds });
     setCreateGroupOpen(false);
     setSelectedThreadId(threadId);
   };
+
+  // Mark thread as read when selected
+  useEffect(() => {
+    if (selectedThreadId) {
+      markRead.mutate(selectedThreadId);
+    }
+  }, [selectedThreadId]);
 
   // Subscribe to realtime messages
   useEffect(() => {
@@ -84,13 +101,10 @@ export default function Chat() {
     setMessageInput("");
 
     if (askAI) {
-      // First send user message to thread
       await sendMessage.mutateAsync({
         threadId: selectedThreadId,
         messageText: text,
       });
-
-      // Then get AI response
       try {
         await sendAIMessage.mutateAsync({
           threadId: selectedThreadId,
@@ -114,7 +128,6 @@ export default function Chat() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Tab Selector */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "threads" | "agent")} className="flex-1 flex flex-col min-h-0">
         <div className="pb-4">
           <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -125,16 +138,19 @@ export default function Chat() {
             <TabsTrigger value="threads" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               Conversazioni
+              {unreadCounts.length > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] px-1 text-[10px]">
+                  {unreadCounts.reduce((sum, u) => sum + u.unread_count, 0)}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
         </div>
 
-        {/* Agent Tab */}
         <TabsContent value="agent" className="flex-1 min-h-0 mt-0">
           <AgentChatPanel />
         </TabsContent>
 
-        {/* Threads Tab */}
         <TabsContent value="threads" className="flex-1 min-h-0 mt-0">
           <div className="h-full flex gap-4">
             {/* Thread List */}
@@ -151,7 +167,6 @@ export default function Chat() {
                 </div>
               </CardHeader>
 
-              {/* Create Group Button for empty state */}
               {!threadsLoading && threads.length === 0 && (
                 <div className="px-3 pb-2">
                   <Button 
@@ -184,6 +199,7 @@ export default function Chat() {
                           key={thread.id}
                           thread={thread}
                           isSelected={thread.id === selectedThreadId}
+                          unreadCount={unreadMap.get(thread.id) || 0}
                           onClick={() => setSelectedThreadId(thread.id)}
                         />
                       ))}
@@ -200,7 +216,7 @@ export default function Chat() {
                   <CardHeader className="pb-3 border-b">
                     <div className="flex items-center gap-3">
                       <ThreadIcon type={selectedThread?.type || "direct"} />
-                      <div>
+                      <div className="flex-1">
                         <CardTitle className="text-base">
                           {selectedThread?.title || "Conversazione"}
                         </CardTitle>
@@ -210,6 +226,16 @@ export default function Chat() {
                           </Badge>
                         )}
                       </div>
+                      {selectedThread?.type === "group" && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setGroupSettingsOpen(true)}
+                          title="Impostazioni gruppo"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
@@ -240,19 +266,11 @@ export default function Chat() {
                     </ScrollArea>
                     <Separator />
                     <form onSubmit={handleSendMessage} className="p-4 space-y-3">
-                      {/* AI Toggle for entity threads */}
                       {selectedThread?.type === "entity" && (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Switch
-                              id="ai-mode"
-                              checked={askAI}
-                              onCheckedChange={setAskAI}
-                            />
-                            <Label
-                              htmlFor="ai-mode"
-                              className="text-sm flex items-center gap-1.5 cursor-pointer"
-                            >
+                            <Switch id="ai-mode" checked={askAI} onCheckedChange={setAskAI} />
+                            <Label htmlFor="ai-mode" className="text-sm flex items-center gap-1.5 cursor-pointer">
                               <Sparkles className={cn("h-4 w-4", askAI && "text-primary")} />
                               Chiedi all'AI
                             </Label>
@@ -271,12 +289,7 @@ export default function Chat() {
                           placeholder={askAI ? "Chiedi all'assistente AI..." : "Scrivi un messaggio..."}
                           disabled={isPending}
                         />
-                        <Button
-                          type="submit"
-                          size="icon"
-                          disabled={!messageInput.trim() || isPending}
-                          className={askAI ? "bg-primary" : ""}
-                        >
+                        <Button type="submit" size="icon" disabled={!messageInput.trim() || isPending} className={askAI ? "bg-primary" : ""}>
                           {isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : askAI ? (
@@ -305,13 +318,21 @@ export default function Chat() {
         </TabsContent>
       </Tabs>
 
-      {/* Create Group Dialog */}
       <CreateGroupChatDialog
         open={createGroupOpen}
         onOpenChange={setCreateGroupOpen}
         onCreateGroup={handleCreateGroup}
         isPending={createGroupChat.isPending}
       />
+
+      {selectedThread?.type === "group" && selectedThreadId && (
+        <GroupSettingsDrawer
+          open={groupSettingsOpen}
+          onOpenChange={setGroupSettingsOpen}
+          threadId={selectedThreadId}
+          threadTitle={selectedThread.title || "Gruppo"}
+        />
+      )}
     </div>
   );
 }
@@ -319,10 +340,12 @@ export default function Chat() {
 function ThreadItem({
   thread,
   isSelected,
+  unreadCount,
   onClick,
 }: {
   thread: ChatThread;
   isSelected: boolean;
+  unreadCount: number;
   onClick: () => void;
 }) {
   return (
@@ -335,9 +358,16 @@ function ThreadItem({
     >
       <ThreadIcon type={thread.type} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">
-          {thread.title || "Conversazione"}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className={cn("text-sm truncate", unreadCount > 0 && "font-semibold")}>
+            {thread.title || "Conversazione"}
+          </p>
+          {unreadCount > 0 && (
+            <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1 text-[10px] shrink-0">
+              {unreadCount}
+            </Badge>
+          )}
+        </div>
         {thread.entity_type && (
           <p className="text-xs text-muted-foreground">
             {thread.entity_type}
@@ -377,21 +407,10 @@ function MessageBubble({
   const isAI = message.sender_type === "ai";
 
   return (
-    <div
-      className={cn(
-        "flex gap-2",
-        isOwn ? "flex-row-reverse" : "flex-row"
-      )}
-    >
+    <div className={cn("flex gap-2", isOwn ? "flex-row-reverse" : "flex-row")}>
       <Avatar className="h-8 w-8 shrink-0">
         <AvatarFallback>
-          {isAI ? (
-            <Bot className="h-4 w-4" />
-          ) : isOwn ? (
-            "Tu"
-          ) : (
-            "U"
-          )}
+          {isAI ? <Bot className="h-4 w-4" /> : isOwn ? "Tu" : "U"}
         </AvatarFallback>
       </Avatar>
       <div

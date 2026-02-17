@@ -4798,6 +4798,39 @@ export type Database = {
           },
         ]
       }
+      thread_read_state: {
+        Row: {
+          last_read_at: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          last_read_at?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          last_read_at?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_read_state_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_read_state_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_audit_logs: {
         Row: {
           action_type: Database["public"]["Enums"]["ticket_audit_action"]
@@ -5546,6 +5579,10 @@ export type Database = {
           p_phone_raw: string
         }
         Returns: string
+      }
+      add_group_member: {
+        Args: { p_new_user_id: string; p_role?: string; p_thread_id: string }
+        Returns: undefined
       }
       apply_ai_deal_tags: {
         Args: { p_confidence?: number; p_deal_id: string; p_tag_ids: string[] }
@@ -6423,6 +6460,13 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_unread_counts: {
+        Args: never
+        Returns: {
+          thread_id: string
+          unread_count: number
+        }[]
+      }
       get_unread_notification_count: {
         Args: { p_brand_id?: string }
         Returns: number
@@ -6573,6 +6617,7 @@ export type Database = {
         Args: { p_notification_ids: string[] }
         Returns: number
       }
+      mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
       normalize_topic_text: { Args: { p_text: string }; Returns: string }
       override_ai_decision: {
         Args: {
@@ -6597,6 +6642,14 @@ export type Database = {
           p_success: boolean
         }
         Returns: Json
+      }
+      remove_group_member: {
+        Args: { p_target_user_id: string; p_thread_id: string }
+        Returns: undefined
+      }
+      rename_group_thread: {
+        Args: { p_new_title: string; p_thread_id: string }
+        Returns: undefined
       }
       reorder_pipeline_stages: {
         Args: { p_stage_ids: string[] }
