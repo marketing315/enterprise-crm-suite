@@ -59,6 +59,7 @@ DATABASE_URL=     # Connessione diretta per seed (CI only)
 |--------|-------|:------------:|
 | `seed-e2e-sla-breach.sql` | Ticket con SLA in breach per test alerting | ✅ |
 | `seed-e2e-inbound-source.sql` | Sorgente inbound + chiave HMAC per test webhook | ✅ |
+| `seed-e2e-audit-log.sql` | Entry audit_log per verifica sistema di audit | ✅ |
 | `seed-performance-test.sql` | Dataset volumetrico per stress test | ✅ |
 
 ### Requisiti seed
@@ -161,6 +162,7 @@ PW_BASE_URL=https://id-preview--08e518ba-ca82-4402-9a5d-7fc159333e6d.lovable.app
 ## Riferimenti
 
 - [`docs/e2e-checklist.md`](./e2e-checklist.md) — Checklist pre-run dettagliata
+- [`docs/changelog.md`](./changelog.md) — Registro rilasci con evidenze QA
 - [`docs/platform-qa-checklist.md`](./platform-qa-checklist.md) — QA funzionale
 - [`docs/rbac-assurance.md`](./rbac-assurance.md) — Audit RBAC
 - [`.env.e2e.example`](../.env.e2e.example) — Template variabili test
