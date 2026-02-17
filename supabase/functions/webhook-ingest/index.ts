@@ -340,11 +340,19 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // B07 fix: validate required env vars before use
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error("FATAL: Missing required env vars SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    return new Response(
+      JSON.stringify({ error: "Internal server configuration error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   // Create admin client early for audit logging
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
   // B04 fix: prefer platform-injected headers over client-controlled ones
   // Priority: cf-connecting-ip (Cloudflare edge) > x-real-ip (reverse proxy) > x-forwarded-for (spoofable)
