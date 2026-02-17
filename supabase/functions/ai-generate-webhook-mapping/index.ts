@@ -103,12 +103,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify user has access to brand
-    const { data: brandAccess, error: brandError } = await supabase
-      .from("user_brands")
-      .select("brand_id")
+    // Verify user has access to brand via user_roles
+    const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: crmUser } = await adminClient
+      .from("users")
+      .select("id")
+      .eq("supabase_auth_id", user.id)
+      .single();
+
+    if (!crmUser) {
+      return new Response(JSON.stringify({ error: "brand_access_denied" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: brandAccess, error: brandError } = await adminClient
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", crmUser.id)
       .eq("brand_id", brandId)
-      .eq("user_id", user.id)
+      .limit(1)
       .maybeSingle();
 
     if (brandError || !brandAccess) {
