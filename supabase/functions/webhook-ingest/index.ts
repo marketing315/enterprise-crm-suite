@@ -476,14 +476,27 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 2. Find webhook source first to check authentication mode
+  // 2. Early auth gate — reject requests with NO credentials before source lookup
+  //    This prevents source enumeration via 404 responses (B01 fix)
+  const hasApiKey = !!req.headers.get("x-api-key");
+  const hasSignature = !!req.headers.get("x-signature");
+  if (!hasApiKey && !hasSignature) {
+    console.log(JSON.stringify({ ...logContext, outcome: "missing_credentials", status: 401 }));
+    await createAuditRecord("rejected", "missing_credentials", sourceId, null);
+    return new Response(
+      JSON.stringify({ error: "Authentication required" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // 3. Find webhook source to check authentication mode
   const { data: source, error: sourceError } = await supabaseAdmin
     .from("webhook_sources")
     .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds")
     .eq("id", sourceId)
     .maybeSingle();
 
-  // 3. Source not found - audit with source_id but no brand_id
+  // 4. Source not found - audit with source_id but no brand_id
   if (sourceError || !source) {
     console.log(JSON.stringify({ ...logContext, outcome: "source_not_found", status: 404 }));
     await createAuditRecord("rejected", "source_not_found", sourceId, null);
