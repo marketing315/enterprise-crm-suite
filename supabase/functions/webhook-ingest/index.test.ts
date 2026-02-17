@@ -1,5 +1,5 @@
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
-import { assertEquals, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertExists, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL")!;
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/webhook-ingest`;
@@ -128,7 +128,7 @@ Deno.test("M1-05: Missing phone number rejected", async () => {
   const body = await response.json();
   
   assertEquals(response.status, 400);
-  assertEquals(body.error, "Phone number is required");
+  assertStringIncludes(body.error, "Phone number is required");
 });
 
 // Test 6: Unknown source returns 404

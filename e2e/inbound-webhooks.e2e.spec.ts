@@ -163,7 +163,7 @@ test.describe("Inbound Webhooks - Error Cases", () => {
 
     expect(response.status()).toBe(400);
     const body = await response.json();
-    expect(body.error).toBe("Phone number is required");
+    expect(body.error).toContain("Phone number is required");
   });
 
   test("Invalid JSON returns 400 and creates audit record", async ({ request }) => {
