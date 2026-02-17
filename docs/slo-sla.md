@@ -186,7 +186,172 @@ ORDER BY week DESC;
 
 ---
 
-## 4. Review Cadence
+## 4. KPI C-Level
+
+> Metriche raccomandate per il board esecutivo. Aggiornamento: settimanale.
+
+### 4.1 Engineering Velocity & Reliability
+
+| # | KPI | Target | Fonte | Cadenza |
+|---|-----|--------|-------|---------|
+| 1 | **Deployment Frequency** | ≥ 2/settimana | CI deploy pipeline | Settimanale |
+| 2 | **Change Failure Rate** | ≤ 5% | Rollback count / total deploys | Settimanale |
+| 3 | **MTTR (Mean Time To Restore)** | ≤ 4h (P1), ≤ 24h (P2) | Incident tracker | Settimanale |
+| 4 | **% PR con smoke test pass** | ≥ 98% | `e2e/smoke.spec.ts` gate CI | Per PR |
+| 5 | **Security Posture Score** | 100% clean | Secret scan + dependency audit | Settimanale |
+
+#### Dettaglio metriche
+
+**Deployment Frequency**
+- Conta i merge su `main` che generano un deploy effettivo
+- Target: almeno 2 rilasci/settimana = ciclo iterativo sano
+- Se < 1/settimana → indagare bottleneck (review, test, infra)
+
+**Change Failure Rate**
+- `(deploys con rollback o hotfix entro 24h) / total deploys × 100`
+- Target ≤ 5% indica buona copertura test e review process
+- Tracciare separatamente: config failure vs code failure
+
+**MTTR**
+- Tempo da incident detection a service restored (non root-cause found)
+- Query disponibile in §2.6 per ticket MTTR
+- Per infra: tracking manuale fino a implementazione incident log
+
+**Security Posture Score**
+- Composito di:
+  - Secret scan CI: 0 leak → ✅ (`.github/workflows/secrets-scan.yml`)
+  - Dependency audit: 0 critical/high CVE → ✅
+  - RLS linter: 0 warning → ✅ (`supabase--linter`)
+- Score = (check passati / check totali) × 100
+
+### 4.2 Business KPI
+
+| # | KPI | Target | Query / Fonte | Cadenza |
+|---|-----|--------|---------------|---------|
+| 6 | **Lead → Deal Conversion Rate** | ≥ 15% | Query §4.2.1 | Settimanale |
+| 7 | **Ticket SLA Compliance** | ≥ 90% | Query §4.2.2 | Settimanale |
+| 8 | **CAC Payback Period** | ≤ 6 mesi | Query §4.2.3 (se dati disponibili) | Mensile |
+| 9 | **Deal Velocity (giorni medi)** | ≤ 30gg | Query §4.2.4 | Settimanale |
+| 10 | **AI Classification Accuracy** | ≥ 85% (1 - override rate) | `ai_decision_logs` | Settimanale |
+
+#### 4.2.1 Lead → Deal Conversion Rate
+
+```sql
+WITH period AS (
+  SELECT NOW() - INTERVAL '30 days' AS start_date
+),
+leads AS (
+  SELECT COUNT(DISTINCT c.id) AS total_leads
+  FROM contacts c, period p
+  WHERE c.created_at >= p.start_date
+),
+converted AS (
+  SELECT COUNT(DISTINCT d.contact_id) AS total_deals
+  FROM deals d
+  JOIN contacts c ON d.contact_id = c.id
+  CROSS JOIN period p
+  WHERE c.created_at >= p.start_date
+    AND d.stage_name NOT IN ('lost', 'disqualified')
+)
+SELECT
+  l.total_leads,
+  c.total_deals,
+  ROUND(c.total_deals::numeric / NULLIF(l.total_leads, 0) * 100, 1) AS conversion_rate_pct
+FROM leads l, converted c;
+```
+
+#### 4.2.2 Ticket SLA Compliance
+
+```sql
+SELECT
+  DATE_TRUNC('week', created_at) AS week,
+  COUNT(*) AS total_tickets,
+  COUNT(*) FILTER (WHERE sla_breached_at IS NULL OR resolved_at < sla_breached_at) AS within_sla,
+  ROUND(
+    COUNT(*) FILTER (WHERE sla_breached_at IS NULL OR resolved_at < sla_breached_at)::numeric
+    / NULLIF(COUNT(*), 0) * 100, 1
+  ) AS compliance_pct
+FROM tickets
+WHERE created_at > NOW() - INTERVAL '90 days'
+GROUP BY week
+ORDER BY week DESC;
+```
+
+#### 4.2.3 CAC Payback Period (se disponibile)
+
+```sql
+-- Richiede dati di spesa marketing e revenue per deal
+WITH monthly_spend AS (
+  SELECT
+    DATE_TRUNC('month', period_start) AS month,
+    SUM(amount) AS total_spend
+  FROM marketing_costs
+  WHERE period_start > NOW() - INTERVAL '6 months'
+  GROUP BY month
+),
+monthly_revenue AS (
+  SELECT
+    DATE_TRUNC('month', closed_at) AS month,
+    COUNT(*) AS deals_closed,
+    SUM(value) AS total_revenue
+  FROM deals
+  WHERE stage_name = 'won'
+    AND closed_at > NOW() - INTERVAL '6 months'
+  GROUP BY month
+)
+SELECT
+  s.month,
+  s.total_spend,
+  r.deals_closed,
+  ROUND(s.total_spend / NULLIF(r.deals_closed, 0), 0) AS cac,
+  r.total_revenue,
+  ROUND(s.total_spend / NULLIF(r.total_revenue, 0) * 12, 1) AS payback_months
+FROM monthly_spend s
+LEFT JOIN monthly_revenue r ON s.month = r.month
+ORDER BY s.month DESC;
+```
+
+#### 4.2.4 Deal Velocity
+
+```sql
+SELECT
+  DATE_TRUNC('week', d.created_at) AS week,
+  COUNT(*) AS deals_closed,
+  ROUND(AVG(EXTRACT(EPOCH FROM (d.closed_at - d.created_at)) / 86400)::numeric, 1) AS avg_days,
+  PERCENTILE_CONT(0.5) WITHIN GROUP (
+    ORDER BY EXTRACT(EPOCH FROM (d.closed_at - d.created_at)) / 86400
+  ) AS median_days
+FROM deals d
+WHERE d.closed_at IS NOT NULL
+  AND d.stage_name = 'won'
+  AND d.created_at > NOW() - INTERVAL '90 days'
+GROUP BY week
+ORDER BY week DESC;
+```
+
+### 4.3 Executive Dashboard Summary
+
+```
+┌──────────────────────────────────────────────────────┐
+│                 C-LEVEL KPI BOARD                    │
+├────────────────────┬─────────────────────────────────┤
+│  ENGINEERING       │  BUSINESS                       │
+│                    │                                 │
+│  Deploy Freq: 3/w  │  Lead→Deal: 18.2%              │
+│  CFR: 2.1%        │  SLA Compliance: 93.4%          │
+│  MTTR: 2.8h       │  CAC Payback: 4.2 mesi          │
+│  Smoke: 99.1%     │  Deal Velocity: 22gg             │
+│  Security: 100%   │  AI Accuracy: 88.3%              │
+│                    │                                 │
+│  Status: 🟢       │  Status: 🟢                     │
+├────────────────────┴─────────────────────────────────┤
+│  ⚠️  Alerts: CFR > 5% → P1 | SLA < 85% → P1        │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. Review Cadence
 
 | Frequenza | Attività | Owner |
 |-----------|----------|-------|
