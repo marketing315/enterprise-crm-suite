@@ -197,27 +197,32 @@ export function ContactsTableWithViews({
   const allSelected = processedContacts.length > 0 && selectedIds.size === processedContacts.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < processedContacts.length;
   
-  // Infinite scroll
+  // Infinite scroll using refs to avoid stale closures
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  const onLoadMoreRef = useRef(onLoadMore);
+
+  hasMoreRef.current = hasMore;
+  isLoadingMoreRef.current = isLoadingMore;
+  onLoadMoreRef.current = onLoadMore;
 
   useEffect(() => {
-    const el = sentinelRef.current;
-    const root = scrollContainerRef.current;
-    if (!el || !root || !hasMore || isLoadingMore) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasMore && !isLoadingMore) {
-          onLoadMore?.();
-        }
-      },
-      { root, rootMargin: "200px" }
-    );
+    const handleScroll = () => {
+      if (isLoadingMoreRef.current || !hasMoreRef.current) return;
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      if (scrollHeight - scrollTop - clientHeight < 300) {
+        onLoadMoreRef.current?.();
+      }
+    };
 
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, onLoadMore]);
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []); // stable — reads from refs
 
   const { isAllBrandsSelected } = useBrand();
   const {
@@ -608,8 +613,7 @@ export function ContactsTableWithViews({
           </TableBody>
         </Table>
 
-        {/* Infinite scroll sentinel - inside scrollable container */}
-        <div ref={sentinelRef} className="h-1" />
+        {/* Infinite scroll loading indicator */}
         {isLoadingMore && (
           <div className="flex justify-center py-3 text-sm text-muted-foreground">
             Caricamento...
