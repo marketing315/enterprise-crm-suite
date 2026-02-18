@@ -88,13 +88,27 @@ export function useLeadDigestRuns(limit = 50) {
   });
 }
 
+export interface ManualDispatchArgs {
+  mode: "manual" | "manual_custom";
+  force_window_start?: string;
+  force_window_end?: string;
+}
+
 export function useManualLeadDigestDispatch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (): Promise<{ success: boolean; counts: { raw: number; unique: number } }> => {
+    mutationFn: async (args: ManualDispatchArgs = { mode: "manual" }): Promise<{ success: boolean; counts: { raw: number; unique: number } }> => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
+
+      const body: Record<string, unknown> = {
+        trigger_type: args.mode,
+      };
+      if (args.mode === "manual_custom") {
+        body.force_window_start = args.force_window_start;
+        body.force_window_end = args.force_window_end;
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lead-digest-dispatch`,
@@ -104,7 +118,7 @@ export function useManualLeadDigestDispatch() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ trigger_type: "manual" }),
+          body: JSON.stringify(body),
         }
       );
 
