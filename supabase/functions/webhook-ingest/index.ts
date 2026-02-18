@@ -907,12 +907,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // === DEDUPLICATION CHECK ===
-    // Prevent duplicate lead events from the same source for the same email within 60 seconds.
+    // Prevent duplicate lead events from the same source for the same contact within 60 seconds.
     // This handles systems like systeme.io that fire multiple webhooks per form submit.
+    // NOTE: We use contactId (not email) because email may be nested in complex payloads
+    // (e.g. systeme.io stores email at raw_payload.contact.email, not at root level).
     const DEDUP_WINDOW_SECONDS = 60;
     let isDuplicate = false;
 
-    if (email) {
+    if (contactId) {
       // Look for a recent lead_event for the same contact+source within the dedup window
       const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_SECONDS * 1000).toISOString();
       const { data: recentEvents } = await supabaseAdmin
@@ -921,6 +923,7 @@ Deno.serve(async (req: Request) => {
         .eq("contact_id", contactId)
         .eq("source_name", source.name)
         .gte("received_at", dedupCutoff)
+        .eq("archived", false) // Only count non-archived events as the "first" one
         .limit(1);
 
       if (recentEvents && recentEvents.length > 0) {
