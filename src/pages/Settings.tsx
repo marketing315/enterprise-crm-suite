@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -14,9 +14,12 @@ import { VoIPSettings } from "@/components/settings/VoIPSettings";
 import { VOIspeedSettings } from "@/components/settings/VOIspeedSettings";
 import { AutomationSettings } from "@/components/settings/automation/AutomationSettings";
 import { ModuleGovernanceSettings } from "@/components/settings/ModuleGovernanceSettings";
+import { LeadDigestSettings } from "@/components/settings/digest/LeadDigestSettings";
+import { LeadDigestRunsTable } from "@/components/settings/digest/LeadDigestRunsTable";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
 
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
@@ -124,6 +127,12 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isAdmin && (
+              <TabsTrigger value="digest" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Mailbox className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Digest</span>
+              </TabsTrigger>
+            )}
+            {isAdmin && (
               <TabsTrigger value="admin" className="gap-1.5 px-3 text-xs md:text-sm">
                 <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Admin</span>
@@ -196,6 +205,13 @@ export default function Settings() {
         {isAdmin && (
           <TabsContent value="modules" className="space-y-4">
             <ModuleGovernanceSettings />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="digest" className="space-y-4">
+            <LeadDigestSettings />
+            <LeadDigestRunsTable />
           </TabsContent>
         )}
 

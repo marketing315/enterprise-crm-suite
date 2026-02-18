@@ -3072,6 +3072,143 @@ export type Database = {
           },
         ]
       }
+      lead_digest_config: {
+        Row: {
+          cc_recipients: string[] | null
+          id: string
+          include_filtered_link: boolean
+          is_enabled: boolean
+          schedule_times: string[]
+          timezone: string
+          to_recipients: string[]
+          updated_at: string
+          updated_by: string | null
+          webhook_url_override: string | null
+        }
+        Insert: {
+          cc_recipients?: string[] | null
+          id?: string
+          include_filtered_link?: boolean
+          is_enabled?: boolean
+          schedule_times?: string[]
+          timezone?: string
+          to_recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+          webhook_url_override?: string | null
+        }
+        Update: {
+          cc_recipients?: string[] | null
+          id?: string
+          include_filtered_link?: boolean
+          is_enabled?: boolean
+          schedule_times?: string[]
+          timezone?: string
+          to_recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+          webhook_url_override?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_digest_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_digest_runs: {
+        Row: {
+          attempt_no: number
+          cc_recipients: string[] | null
+          created_at: string
+          created_by: string | null
+          dedupe_stats: Json | null
+          error_message: string | null
+          filtered_link: string | null
+          id: string
+          include_filtered_link: boolean
+          lead_count_raw: number
+          lead_count_unique: number
+          payload: Json | null
+          response_body: string | null
+          response_status: number | null
+          retry_of_run_id: string | null
+          scheduled_for_retry_at: string | null
+          sent_at: string | null
+          status: string
+          to_recipients: string[]
+          trigger_type: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          attempt_no?: number
+          cc_recipients?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          dedupe_stats?: Json | null
+          error_message?: string | null
+          filtered_link?: string | null
+          id?: string
+          include_filtered_link?: boolean
+          lead_count_raw?: number
+          lead_count_unique?: number
+          payload?: Json | null
+          response_body?: string | null
+          response_status?: number | null
+          retry_of_run_id?: string | null
+          scheduled_for_retry_at?: string | null
+          sent_at?: string | null
+          status?: string
+          to_recipients?: string[]
+          trigger_type: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          attempt_no?: number
+          cc_recipients?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          dedupe_stats?: Json | null
+          error_message?: string | null
+          filtered_link?: string | null
+          id?: string
+          include_filtered_link?: boolean
+          lead_count_raw?: number
+          lead_count_unique?: number
+          payload?: Json | null
+          response_body?: string | null
+          response_status?: number | null
+          retry_of_run_id?: string | null
+          scheduled_for_retry_at?: string | null
+          sent_at?: string | null
+          status?: string
+          to_recipients?: string[]
+          trigger_type?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_digest_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_digest_runs_retry_of_run_id_fkey"
+            columns: ["retry_of_run_id"]
+            isOneToOne: false
+            referencedRelation: "lead_digest_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_event_clinical_topics: {
         Row: {
           created_at: string

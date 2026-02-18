@@ -98,3 +98,9 @@ verify_jwt = false
 
 [functions.meta-oauth-callback]
 verify_jwt = false
+
+[functions.lead-digest-dispatch]
+verify_jwt = false
+
+[functions.lead-digest-retry-dispatcher]
+verify_jwt = false
