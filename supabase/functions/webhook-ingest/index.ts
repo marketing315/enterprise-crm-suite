@@ -405,7 +405,7 @@ Deno.serve(async (req: Request) => {
   // Priority: cf-connecting-ip (Cloudflare edge) > x-real-ip (reverse proxy) > x-forwarded-for (spoofable)
   const cfIp = req.headers.get("cf-connecting-ip");
   const realIp = req.headers.get("x-real-ip");
-  const xffFirst = req.headers.get("x-forwarded-for")?.split(",").pop()?.trim(); // rightmost = closest trusted proxy
+  const xffFirst = req.headers.get("x-forwarded-for")?.split(",").shift()?.trim(); // leftmost = original client IP
   const ipAddress = cfIp || realIp || xffFirst || "unknown";
   const ipSource = cfIp ? "cf-connecting-ip" : realIp ? "x-real-ip" : xffFirst ? "x-forwarded-for" : "none";
   const userAgent = req.headers.get("user-agent") || null;
@@ -884,17 +884,19 @@ Deno.serve(async (req: Request) => {
     // Notes are now passed to find_or_create_contact via p_lead_message
 
     // Extract and save tracking parameters for CAPI attribution
+    // Bug fix: use effectivePayload (post-flatten) not mappedPayload (pre-flatten)
+    // so UTM/fbp params embedded in systeme.io fields are also captured
     const trackingParams = {
-      fbp: (mappedPayload._fbp || mappedPayload.fbp || null) as string | null,
-      fbc: (mappedPayload._fbc || mappedPayload.fbc || null) as string | null,
-      gclid: (mappedPayload.gclid || null) as string | null,
-      wbraid: (mappedPayload.wbraid || null) as string | null,
-      gbraid: (mappedPayload.gbraid || null) as string | null,
-      utm_source: (mappedPayload.utm_source || null) as string | null,
-      utm_medium: (mappedPayload.utm_medium || null) as string | null,
-      utm_campaign: (mappedPayload.utm_campaign || null) as string | null,
-      utm_content: (mappedPayload.utm_content || null) as string | null,
-      utm_term: (mappedPayload.utm_term || null) as string | null,
+      fbp: (effectivePayload._fbp || effectivePayload.fbp || null) as string | null,
+      fbc: (effectivePayload._fbc || effectivePayload.fbc || null) as string | null,
+      gclid: (effectivePayload.gclid || null) as string | null,
+      wbraid: (effectivePayload.wbraid || null) as string | null,
+      gbraid: (effectivePayload.gbraid || null) as string | null,
+      utm_source: (effectivePayload.utm_source || null) as string | null,
+      utm_medium: (effectivePayload.utm_medium || null) as string | null,
+      utm_campaign: (effectivePayload.utm_campaign || null) as string | null,
+      utm_content: (effectivePayload.utm_content || null) as string | null,
+      utm_term: (effectivePayload.utm_term || null) as string | null,
     };
 
     const hasAnyTracking = Object.values(trackingParams).some(v => v !== null);
@@ -1060,11 +1062,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Update audit record to success
+    // Update audit record: duplicates are "rejected" (not success) so dashboards are accurate
     if (auditId) {
       await updateAuditRecord(
         auditId,
-        "success",
+        isDuplicate ? "rejected" : "success",
         isDuplicate ? "duplicate_suppressed" : null,
         leadEvent?.id
       );
