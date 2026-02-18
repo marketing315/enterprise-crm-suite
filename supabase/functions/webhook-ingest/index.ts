@@ -233,13 +233,60 @@ async function extractContactDataWithAI(
   }
 }
 
+// Detect and flatten Systeme.io nested payload structure:
+// { contact: { email, fields: [{slug, value}] }, tag: { name } }
+// Returns a flattened payload with extracted fields + tag info.
+function tryFlattenSystemeIoPayload(payload: Record<string, unknown>): Record<string, unknown> | null {
+  const contact = payload.contact;
+  if (!contact || typeof contact !== "object" || Array.isArray(contact)) return null;
+  const contactObj = contact as Record<string, unknown>;
+  
+  // Must have a fields array to be considered Systeme.io format
+  if (!Array.isArray(contactObj.fields)) return null;
+
+  const flat: Record<string, unknown> = {};
+  
+  // Top-level contact fields
+  if (contactObj.email) flat.email = contactObj.email;
+  
+  // Flatten fields array: [{slug: "phone_number", value: "..."}, ...]
+  for (const field of contactObj.fields) {
+    if (field && typeof field === "object" && !Array.isArray(field)) {
+      const f = field as Record<string, unknown>;
+      if (f.slug && f.value !== undefined) {
+        flat[String(f.slug)] = f.value;
+      }
+      if (f.fieldName && f.value !== undefined) {
+        flat[String(f.fieldName)] = f.value;
+      }
+    }
+  }
+  
+  // Preserve tag info (for notes)
+  if (payload.tag && typeof payload.tag === "object") {
+    const tag = payload.tag as Record<string, unknown>;
+    if (tag.name) flat._systeme_tag = tag.name;
+  }
+  
+  // Preserve tags array if present on contact
+  if (Array.isArray(contactObj.tags) && contactObj.tags.length > 0) {
+    flat._systeme_tags = contactObj.tags.map((t: unknown) => {
+      if (t && typeof t === "object") return (t as Record<string, unknown>).name;
+      return t;
+    }).filter(Boolean).join(", ");
+  }
+
+  return flat;
+}
+
 // Try to extract phone from payload using common field names
 function tryExtractPhone(payload: Record<string, unknown>): string | null {
   const phoneFields = [
     "phone", "telefono", "mobile", "cellulare", "tel", 
     "Phone", "Telefono", "Mobile", "Cellulare", "Tel",
     "phone_number", "phoneNumber", "numero_telefono", "numeroTelefono",
-    "contact_phone", "contactPhone"
+    "contact_phone", "contactPhone",
+    "Numero di telefono", // Systeme.io fieldName
   ];
   
   for (const field of phoneFields) {
@@ -741,14 +788,23 @@ Deno.serve(async (req: Request) => {
   const auditId = await createAuditRecord("pending", null, sourceId, brandId);
 
   try {
-    // Apply field mapping
+    // Apply field mapping (flat)
     const mappedPayload = source.mapping
       ? applyMapping(rawBody, source.mapping as Record<string, string>)
       : rawBody;
 
+    // Try to flatten Systeme.io nested payload BEFORE standard extraction
+    // This avoids falling back to AI for a well-known, parseable format
+    const systemeFlat = tryFlattenSystemeIoPayload(mappedPayload);
+    const effectivePayload = systemeFlat ?? mappedPayload;
+    const isSystemePayload = systemeFlat !== null;
+    if (isSystemePayload) {
+      console.log(JSON.stringify({ ...logContext, action: "systeme_io_payload_flattened" }));
+    }
+
     // Try to extract contact data from standard fields first
-    let phoneRaw = tryExtractPhone(mappedPayload);
-    let extractedFields = tryExtractContactFields(mappedPayload);
+    let phoneRaw = tryExtractPhone(effectivePayload);
+    let extractedFields = tryExtractContactFields(effectivePayload);
     let usedAI = false;
 
     // If no phone found in standard fields, use AI to extract
@@ -757,7 +813,7 @@ Deno.serve(async (req: Request) => {
       
       const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
       if (lovableApiKey) {
-        const aiResult = await extractContactDataWithAI(mappedPayload, lovableApiKey);
+        const aiResult = await extractContactDataWithAI(effectivePayload, lovableApiKey);
         if (aiResult) {
           usedAI = true;
           phoneRaw = aiResult.phone;
@@ -890,10 +946,72 @@ Deno.serve(async (req: Request) => {
       .single();
 
     const isOptedOut = contactData?.status === "archived";
-    
-    // Find or create deal (SKIP if opted out - no automatic deal operations)
+
+    // === DEDUPLICATION CHECK ===
+    // Moved BEFORE find_or_create_deal to avoid a useless DB call for duplicates.
+    // Window is 300s (5 min) to handle Systeme.io which sends tags one-by-one with up to ~2min gap.
+    // We use contactId (not email) because email may be nested in complex payloads.
+    const DEDUP_WINDOW_SECONDS = 300;
+    let isDuplicate = false;
+    let firstEventId: string | null = null;
+
+    if (contactId && !isOptedOut) {
+      const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_SECONDS * 1000).toISOString();
+      const { data: recentEvents } = await supabaseAdmin
+        .from("lead_events")
+        .select("id, raw_payload")
+        .eq("contact_id", contactId)
+        .eq("source_name", source.name)
+        .gte("received_at", dedupCutoff)
+        .eq("archived", false)
+        .order("received_at", { ascending: true })
+        .limit(1);
+
+      if (recentEvents && recentEvents.length > 0) {
+        isDuplicate = true;
+        firstEventId = recentEvents[0].id;
+
+        // === TAG AGGREGATION: Systeme.io sends tags as separate webhooks. 
+        // Instead of discarding duplicates, we append the tag to the first event's lead_message.
+        if (isSystemePayload && effectivePayload._systeme_tag) {
+          const newTag = String(effectivePayload._systeme_tag);
+          // Append tag to the contact's lead_message to preserve all tag info
+          const { data: currentContact } = await supabaseAdmin
+            .from("contacts")
+            .select("lead_message")
+            .eq("id", contactId)
+            .single();
+          
+          const currentMsg = currentContact?.lead_message || "";
+          const tagLabel = `Tags: ${newTag}`;
+          
+          // Only append if tag not already present
+          if (!currentMsg.includes(newTag)) {
+            const updatedMsg = currentMsg 
+              ? `${currentMsg}; ${tagLabel}` 
+              : tagLabel;
+            await supabaseAdmin
+              .from("contacts")
+              .update({ lead_message: updatedMsg })
+              .eq("id", contactId);
+            console.log(JSON.stringify({ ...logContext, action: "systeme_tag_appended", tag: newTag, first_event_id: firstEventId }));
+          }
+        }
+
+        console.log(JSON.stringify({
+          ...logContext,
+          outcome: "duplicate_suppressed",
+          contact_id: contactId,
+          source_name: source.name,
+          existing_event_id: firstEventId,
+          dedup_window_seconds: DEDUP_WINDOW_SECONDS,
+        }));
+      }
+    }
+
+    // Find or create deal (SKIP if opted out OR duplicate - no unnecessary DB calls)
     let dealId: string | null = null;
-    if (!isOptedOut) {
+    if (!isOptedOut && !isDuplicate) {
       const { data: dealResult, error: dealError } = await supabaseAdmin.rpc(
         "find_or_create_deal",
         { p_brand_id: brandId, p_contact_id: contactId }
@@ -904,39 +1022,14 @@ Deno.serve(async (req: Request) => {
       } else {
         dealId = dealResult;
       }
-    }
-
-    // === DEDUPLICATION CHECK ===
-    // Prevent duplicate lead events from the same source for the same contact within 60 seconds.
-    // This handles systems like systeme.io that fire multiple webhooks per form submit.
-    // NOTE: We use contactId (not email) because email may be nested in complex payloads
-    // (e.g. systeme.io stores email at raw_payload.contact.email, not at root level).
-    const DEDUP_WINDOW_SECONDS = 60;
-    let isDuplicate = false;
-
-    if (contactId) {
-      // Look for a recent lead_event for the same contact+source within the dedup window
-      const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_SECONDS * 1000).toISOString();
-      const { data: recentEvents } = await supabaseAdmin
+    } else if (!isOptedOut && isDuplicate) {
+      // Retrieve existing deal_id from the first event to keep the lead_event consistent
+      const { data: firstEvent } = await supabaseAdmin
         .from("lead_events")
-        .select("id")
-        .eq("contact_id", contactId)
-        .eq("source_name", source.name)
-        .gte("received_at", dedupCutoff)
-        .eq("archived", false) // Only count non-archived events as the "first" one
-        .limit(1);
-
-      if (recentEvents && recentEvents.length > 0) {
-        isDuplicate = true;
-        console.log(JSON.stringify({
-          ...logContext,
-          outcome: "duplicate_suppressed",
-          contact_id: contactId,
-          source_name: source.name,
-          existing_event_id: recentEvents[0].id,
-          dedup_window_seconds: DEDUP_WINDOW_SECONDS,
-        }));
-      }
+        .select("deal_id")
+        .eq("id", firstEventId)
+        .maybeSingle();
+      dealId = firstEvent?.deal_id || null;
     }
 
     // Create lead event (ALWAYS append-only, but mark archived if opt-out or duplicate)
