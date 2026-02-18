@@ -906,7 +906,37 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Create lead event (ALWAYS append-only, but mark archived if opt-out)
+    // === DEDUPLICATION CHECK ===
+    // Prevent duplicate lead events from the same source for the same email within 60 seconds.
+    // This handles systems like systeme.io that fire multiple webhooks per form submit.
+    const DEDUP_WINDOW_SECONDS = 60;
+    let isDuplicate = false;
+
+    if (email) {
+      // Look for a recent lead_event for the same contact+source within the dedup window
+      const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_SECONDS * 1000).toISOString();
+      const { data: recentEvents } = await supabaseAdmin
+        .from("lead_events")
+        .select("id")
+        .eq("contact_id", contactId)
+        .eq("source_name", source.name)
+        .gte("received_at", dedupCutoff)
+        .limit(1);
+
+      if (recentEvents && recentEvents.length > 0) {
+        isDuplicate = true;
+        console.log(JSON.stringify({
+          ...logContext,
+          outcome: "duplicate_suppressed",
+          contact_id: contactId,
+          source_name: source.name,
+          existing_event_id: recentEvents[0].id,
+          dedup_window_seconds: DEDUP_WINDOW_SECONDS,
+        }));
+      }
+    }
+
+    // Create lead event (ALWAYS append-only, but mark archived if opt-out or duplicate)
     const { data: leadEvent, error: leadEventError } = await supabaseAdmin
       .from("lead_events")
       .insert({
@@ -918,7 +948,7 @@ Deno.serve(async (req: Request) => {
         raw_payload: rawBody,
         occurred_at: new Date().toISOString(),
         received_at: new Date().toISOString(),
-        archived: isOptedOut, // Auto-archive if opted out
+        archived: isOptedOut || isDuplicate, // Auto-archive if opted out OR duplicate
       })
       .select("id")
       .single();
@@ -936,11 +966,17 @@ Deno.serve(async (req: Request) => {
 
     // Update audit record to success
     if (auditId) {
-      await updateAuditRecord(auditId, "success", null, leadEvent?.id);
+      await updateAuditRecord(
+        auditId,
+        "success",
+        isDuplicate ? "duplicate_suppressed" : null,
+        leadEvent?.id
+      );
     }
 
-    // Fire-and-forget: Call sheets-export
-    if (leadEvent?.id) {
+    // Fire-and-forget downstream integrations ONLY for non-duplicate, non-archived leads
+    if (leadEvent?.id && !isDuplicate && !isOptedOut) {
+      // Google Sheets export
       const sheetsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sheets-export`;
       try {
         const controller = new AbortController();
@@ -968,15 +1004,23 @@ Deno.serve(async (req: Request) => {
       } catch (err) {
         console.error("Sheets export setup error:", err);
       }
+    } else if (isDuplicate) {
+      console.log(JSON.stringify({
+        ...logContext,
+        outcome: "downstream_skipped",
+        reason: "duplicate",
+        lead_event_id: leadEvent?.id,
+      }));
     }
 
     console.log(JSON.stringify({
       ...logContext,
-      outcome: "success",
+      outcome: isDuplicate ? "duplicate_suppressed" : "success",
       status: 200,
       contact_id: contactId,
       lead_event_id: leadEvent?.id,
-      archived: isOptedOut,
+      archived: isOptedOut || isDuplicate,
+      is_duplicate: isDuplicate,
       hmac_enabled: source.hmac_enabled,
       used_ai_extraction: usedAI,
     }));
@@ -987,7 +1031,8 @@ Deno.serve(async (req: Request) => {
         contact_id: contactId,
         deal_id: dealId,
         lead_event_id: leadEvent?.id || null,
-        archived: isOptedOut,
+        archived: isOptedOut || isDuplicate,
+        duplicate: isDuplicate,
         contact_status: contactData?.status || "new",
         used_ai_extraction: usedAI,
       }),
