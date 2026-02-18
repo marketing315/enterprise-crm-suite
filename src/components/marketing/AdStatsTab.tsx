@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, subMonths, subYears } from "date-fns";
 import { it } from "date-fns/locale";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, RefreshCw, Clock, Download, Link2 } from "lucide-react";
 import {
@@ -34,6 +35,7 @@ import type { AdPlatform } from "@/types/adPlatform";
 
 export function AdStatsTab() {
   const { currentBrand, isAllBrandsSelected } = useBrand();
+  const queryClient = useQueryClient();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [platformFilter, setPlatformFilter] = useState<AdPlatform | "all">("all");
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
@@ -102,9 +104,10 @@ export function AdStatsTab() {
   };
 
   const handleRefresh = () => {
-    refetchStats();
-    refetchTrend();
-    refetchSummary();
+    // Invalidate queries to force re-fetch regardless of staleTime
+    queryClient.invalidateQueries({ queryKey: ["ad-platform-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["ad-platform-stats-trend"] });
+    queryClient.invalidateQueries({ queryKey: ["ad-platform-stats-summary"] });
   };
 
   const handleHistoricalSync = async () => {
