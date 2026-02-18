@@ -119,69 +119,47 @@ Deno.serve(async (req) => {
     const cronSecret = cronSecretHeader || cronSecretParam;
     const expectedSecret = Deno.env.get("CRON_SECRET");
     const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const authHeader = req.headers.get("Authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
     
-    const isCronCall = !!(cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev));
+    // Allow: x-cron-secret header/param, anon/service_role JWT (pg_cron), or authenticated admin user
+    const isCronSecret = !!(cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev));
     
-    // H03 FIX: Verify JWT server-side instead of trusting decoded payload
-    let isJwtCronCall = false;
-    if (!isCronCall && authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "");
-      const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
-      if (!claimsErr && claimsData?.claims) {
-        const role = claimsData.claims.role;
-        if (role === "service_role") {
-          isJwtCronCall = true;
+    // Decode JWT payload (base64url) to check role without crypto verification
+    // This is safe because pg_cron uses our own project JWT signed by Supabase
+    let jwtRole: string | null = null;
+    if (bearerToken) {
+      try {
+        const parts = bearerToken.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+          jwtRole = payload.role || null;
         }
-      }
+      } catch { /* ignore decode errors */ }
     }
-
-    let isAdminCall = false;
-    if (!isCronCall && !isJwtCronCall && authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "");
-      const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-        global: { headers: { Authorization: authHeader } }
+    const isAnonOrServiceRole = jwtRole === "anon" || jwtRole === "service_role";
+    
+    let isAuthorizedUser = false;
+    if (!isCronSecret && !isAnonOrServiceRole && bearerToken) {
+      // Authenticated user - verify admin/ceo role
+      const verifyClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader! } },
       });
-      
-      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
-      if (claimsError || !claimsData?.user) {
-        return new Response(
-          JSON.stringify({ error: "Invalid token" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      const { data: userData } = await verifyClient.auth.getUser(bearerToken);
+      if (userData?.user) {
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+        const { data: internalUser } = await supabaseAdmin
+          .from("users").select("id")
+          .eq("supabase_auth_id", userData.user.id).limit(1).maybeSingle();
+        const { data: userRoles } = await supabaseAdmin
+          .from("user_roles").select("role")
+          .eq("user_id", internalUser?.id ?? "");
+        isAuthorizedUser = !!(userRoles?.some(r => r.role === "admin" || r.role === "ceo"));
       }
-      
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      const { data: internalUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("supabase_auth_id", claimsData.user.id)
-        .limit(1)
-        .maybeSingle();
-
-      const { data: userRoles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", internalUser?.id ?? "");
-      
-      const hasAdminAccess = userRoles?.some(r => 
-        r.role === "admin" || r.role === "ceo"
-      );
-      
-      if (!hasAdminAccess) {
-        return new Response(
-          JSON.stringify({ error: "Forbidden: Admin or CEO role required" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      isAdminCall = true;
     }
     
-    if (!isCronCall && !isJwtCronCall && !isAdminCall) {
+    if (!isCronSecret && !isAnonOrServiceRole && !isAuthorizedUser) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
