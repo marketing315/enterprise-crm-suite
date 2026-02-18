@@ -372,16 +372,22 @@ Deno.serve(async (req) => {
     });
     const subject = `[CRM] Nuovi lead (${uniqueCount}) - ${windowEndLocal}`;
 
+    // ── HTML escaping helper ──
+    const esc = (s: string | null | undefined): string => {
+      if (!s) return "—";
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    };
+
     // ── Build HTML body ──
     const fmtLocal = (iso: string) =>
       new Date(iso).toLocaleString("it-IT", { timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
     const leadsTableRows = leadsPayload.map((l) => `
       <tr>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.full_name || "—"}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.phone || l.email || "—"}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.source || "—"}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.brand || "—"}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.full_name)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.phone || l.email)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.source)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.brand)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:11px;color:#888;">${fmtLocal(l.created_at)}</td>
       </tr>`).join("");
 
