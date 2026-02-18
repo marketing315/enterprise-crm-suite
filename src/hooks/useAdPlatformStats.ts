@@ -57,7 +57,15 @@ export function useAdPlatformStatsTrend({ fromDate, toDate, platform, campaignId
       });
 
       if (error) throw error;
-      return (data || []) as AdPlatformStatTrend[];
+      return ((data || []) as unknown[]).map((row: unknown) => {
+        const r = row as Record<string, unknown>;
+        return {
+          ...r,
+          total_reach: r.total_reach ?? 0,
+          leads_count: r.total_leads ?? 0,
+          total_leads: r.total_leads ?? 0,
+        } as AdPlatformStatTrend;
+      });
     },
     enabled: !!brandId && !!fromDate && !!toDate,
   });

@@ -49,8 +49,10 @@ export interface AdPlatformStatTrend {
   total_spend: number;
   total_impressions: number;
   total_clicks: number;
-  total_reach: number;
-  leads_count: number;
+  total_conversions: number;
+  total_reach?: number;
+  total_leads: number;
+  leads_count?: number;
 }
 
 export interface AdPlatformStatSummary {
