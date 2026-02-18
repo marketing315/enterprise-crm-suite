@@ -301,9 +301,6 @@ Deno.serve(async (req) => {
     if (toRecipients.length === 0) {
       const errMsg = "to_recipients empty: configure at least one recipient in digest settings";
       console.error("[lead-digest-dispatch]", errMsg);
-      if (runId) {
-        // We haven't created the run yet at this point, so handle below
-      }
       // Create a failed run record and return error
       await supabase.from("lead_digest_runs").insert({
         trigger_type: triggerType,
@@ -326,6 +323,7 @@ Deno.serve(async (req) => {
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
 
     // ── Build subject ──
     const tz = config.timezone || "Europe/Rome";
