@@ -126,7 +126,7 @@ export default function Settings() {
                 <span>Moduli</span>
               </TabsTrigger>
             )}
-            {isAdmin && (
+            {(isAdmin || isBrandAdmin) && (
               <TabsTrigger value="digest" className="gap-1.5 px-3 text-xs md:text-sm">
                 <Mailbox className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Digest</span>
@@ -208,7 +208,7 @@ export default function Settings() {
           </TabsContent>
         )}
 
-        {isAdmin && (
+        {(isAdmin || isBrandAdmin) && (
           <TabsContent value="digest" className="space-y-4">
             <LeadDigestSettings />
             <LeadDigestRunsTable />

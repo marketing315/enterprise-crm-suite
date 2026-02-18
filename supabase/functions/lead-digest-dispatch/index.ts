@@ -296,6 +296,104 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Validate TO recipients ──
+    const toRecipients: string[] = config.to_recipients || [];
+    if (toRecipients.length === 0) {
+      const errMsg = "to_recipients empty: configure at least one recipient in digest settings";
+      console.error("[lead-digest-dispatch]", errMsg);
+      if (runId) {
+        // We haven't created the run yet at this point, so handle below
+      }
+      // Create a failed run record and return error
+      await supabase.from("lead_digest_runs").insert({
+        trigger_type: triggerType,
+        status: "failed",
+        window_start: windowStart.toISOString(),
+        window_end: windowEnd.toISOString(),
+        lead_count_raw: rawCount,
+        lead_count_unique: uniqueCount,
+        dedupe_stats: dedupeStats,
+        to_recipients: [],
+        cc_recipients: config.cc_recipients || null,
+        include_filtered_link: config.include_filtered_link,
+        filtered_link: filteredLink,
+        payload: {},
+        error_message: errMsg,
+        created_by: userId,
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: errMsg }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Build subject ──
+    const tz = config.timezone || "Europe/Rome";
+    const windowEndLocal = new Date(windowEnd).toLocaleString("it-IT", {
+      timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+    });
+    const subject = `[CRM] Nuovi lead (${uniqueCount}) - ${windowEndLocal}`;
+
+    // ── Build HTML body ──
+    const fmtLocal = (iso: string) =>
+      new Date(iso).toLocaleString("it-IT", { timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+    const leadsTableRows = leadsPayload.map((l) => `
+      <tr>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.full_name || "—"}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.phone || l.email || "—"}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.source || "—"}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${l.brand || "—"}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:11px;color:#888;">${fmtLocal(l.created_at)}</td>
+      </tr>`).join("");
+
+    const leadsTableHtml = leadsPayload.length > 0 ? `
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f5f5f5;">
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Nome</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Telefono / Email</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Fonte</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Brand</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Ricevuto</th>
+          </tr>
+        </thead>
+        <tbody>${leadsTableRows}</tbody>
+      </table>` : `<p style="color:#888;font-style:italic;">Nessun lead nel periodo.</p>`;
+
+    const filteredLinkHtml = filteredLink
+      ? `<p style="margin-top:20px;"><a href="${filteredLink}" style="background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Vedi lead filtrati nel CRM</a></p>`
+      : "";
+
+    const html_body = `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:Arial,sans-serif;color:#222;max-width:700px;margin:0 auto;padding:20px;">
+  <h2 style="margin-top:0;color:#1e3a5f;">📋 Lead Digest Call Center</h2>
+  <p><strong>Periodo:</strong> ${fmtLocal(windowStart.toISOString())} → ${fmtLocal(windowEnd.toISOString())}</p>
+  <p><strong>Lead unici nuovi:</strong> <span style="font-size:18px;font-weight:bold;color:#2563eb;">${uniqueCount}</span>
+    <span style="color:#888;font-size:12px;">(grezzo: ${rawCount})</span></p>
+  ${leadsTableHtml}
+  ${filteredLinkHtml}
+  <hr style="margin-top:30px;border:none;border-top:1px solid #eee;">
+  <p style="font-size:11px;color:#aaa;">Inviato automaticamente da CRM Ralph Hub · ${new Date().toISOString()}</p>
+</body>
+</html>`;
+
+    const textLeads = leadsPayload.map((l, i) =>
+      `${i + 1}. ${l.full_name || "—"} | ${l.phone || l.email || "—"} | ${l.source || "—"} | ${l.brand || "—"}`
+    ).join("\n");
+
+    const text_body = `Lead Digest Call Center
+Periodo: ${fmtLocal(windowStart.toISOString())} → ${fmtLocal(windowEnd.toISOString())}
+Lead unici nuovi: ${uniqueCount} (grezzo: ${rawCount})
+
+${leadsPayload.length > 0 ? textLeads : "Nessun lead nel periodo."}
+${filteredLink ? `\nVedi lead filtrati: ${filteredLink}` : ""}
+
+---
+Inviato automaticamente da CRM Ralph Hub`;
+
     // ── Build payload ──
     const now = new Date();
     const payload = {
@@ -307,7 +405,7 @@ Deno.serve(async (req) => {
         end: windowEnd.toISOString(),
       },
       recipients: {
-        to: config.to_recipients || [],
+        to: toRecipients,
         cc: config.cc_recipients || [],
       },
       counts: {
@@ -316,6 +414,9 @@ Deno.serve(async (req) => {
       },
       include_filtered_link: config.include_filtered_link,
       filtered_link: filteredLink,
+      subject,
+      html_body,
+      text_body,
       leads: leadsPayload,
     };
 

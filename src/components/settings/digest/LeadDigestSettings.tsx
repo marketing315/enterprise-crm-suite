@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Send, Plus, X, Clock, Mail, RotateCcw } from "lucide-react";
+import { Send, Plus, X, Clock, Mail, AlertTriangle, Users } from "lucide-react";
 import {
   useLeadDigestConfig,
   useUpdateLeadDigestConfig,
@@ -189,6 +190,30 @@ export function LeadDigestSettings() {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Warning: TO vuoto */}
+        {(current.to_recipients ?? []).length === 0 && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Nessun destinatario TO configurato. Il digest non verrà inviato finché non aggiungi almeno un indirizzo email.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Preview destinatari */}
+        {(current.to_recipients ?? []).length > 0 && (
+          <div className="flex items-start gap-2 text-sm bg-muted/40 rounded-md p-3">
+            <Users className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+            <div>
+              <span className="font-medium">Invierà a: </span>
+              <span>{current.to_recipients?.join(", ")}</span>
+              {(current.cc_recipients ?? []).length > 0 && (
+                <span className="text-muted-foreground"> (CC: {current.cc_recipients?.join(", ")})</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Schedule times */}
         <ScheduleTimesInput
           value={current.schedule_times ?? ["12:00", "16:30"]}
@@ -199,7 +224,7 @@ export function LeadDigestSettings() {
 
         {/* Recipients */}
         <EmailListInput
-          label="Destinatari (TO)"
+          label="Destinatari (TO) *"
           value={current.to_recipients ?? []}
           onChange={(v) => setForm((f) => ({ ...f, to_recipients: v }))}
           placeholder="callcenter@azienda.it"
@@ -265,8 +290,9 @@ export function LeadDigestSettings() {
           <Button
             variant="outline"
             onClick={handleSendNow}
-            disabled={dispatchMutation.isPending}
+            disabled={dispatchMutation.isPending || (current.to_recipients ?? []).length === 0}
             className="ml-auto"
+            title={(current.to_recipients ?? []).length === 0 ? "Aggiungi almeno un destinatario TO" : undefined}
           >
             <Send className="h-4 w-4 mr-2" />
             {dispatchMutation.isPending ? "Invio..." : "Invia ora"}
