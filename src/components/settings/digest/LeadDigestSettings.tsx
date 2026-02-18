@@ -8,14 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Send, Plus, X, Clock, Mail, AlertTriangle, Users } from "lucide-react";
+import { Send, Plus, X, Clock, Mail, AlertTriangle, Users, CalendarIcon, CalendarRange } from "lucide-react";
+import { format, isAfter, isBefore, differenceInDays } from "date-fns";
+import { it } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   useLeadDigestConfig,
   useUpdateLeadDigestConfig,
   useManualLeadDigestDispatch,
   type LeadDigestConfig,
 } from "@/hooks/useLeadDigest";
+
+// ── Sub-components ─────────────────────────────────────────────────────────
 
 function EmailListInput({
   label,
@@ -117,6 +124,79 @@ function ScheduleTimesInput({
   );
 }
 
+function DateTimePicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: Date | undefined;
+  onChange: (d: Date) => void;
+}) {
+  const [timeStr, setTimeStr] = useState(() =>
+    value ? format(value, "HH:mm") : "00:00"
+  );
+
+  const handleDaySelect = (day: Date | undefined) => {
+    if (!day) return;
+    const [h, m] = timeStr.split(":").map(Number);
+    const combined = new Date(day);
+    combined.setHours(h, m, 0, 0);
+    onChange(combined);
+  };
+
+  const handleTimeChange = (t: string) => {
+    setTimeStr(t);
+    if (value) {
+      const [h, m] = t.split(":").map(Number);
+      const combined = new Date(value);
+      combined.setHours(h, m, 0, 0);
+      onChange(combined);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="flex gap-2 items-center">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn("w-40 justify-start text-left font-normal", !value && "text-muted-foreground")}
+            >
+              <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+              {value ? format(value, "dd/MM/yyyy", { locale: it }) : "Seleziona data"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={value}
+              onSelect={handleDaySelect}
+              initialFocus
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        <Input
+          type="time"
+          value={timeStr}
+          onChange={(e) => handleTimeChange(e.target.value)}
+          className="w-28"
+        />
+        {value && (
+          <span className="text-xs text-muted-foreground">
+            {format(value, "dd/MM HH:mm", { locale: it })} (Europe/Rome)
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+
 export function LeadDigestSettings() {
   const { data: config, isLoading } = useLeadDigestConfig();
   const updateMutation = useUpdateLeadDigestConfig();
@@ -124,29 +204,63 @@ export function LeadDigestSettings() {
 
   const [form, setForm] = useState<Partial<LeadDigestConfig>>({});
   const isDirty = Object.keys(form).length > 0;
-
   const current = { ...config, ...form } as LeadDigestConfig;
+
+  // Custom period state
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
+  const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
+
+  const customError = (() => {
+    if (!customFrom || !customTo) return null;
+    if (!isBefore(customFrom, customTo)) return "La data 'Da' deve essere precedente alla data 'A'";
+    if (differenceInDays(customTo, customFrom) > 31) return "Il range massimo consentito è 31 giorni";
+    return null;
+  })();
+
+  const canSendCustom =
+    (current.to_recipients ?? []).length > 0 &&
+    customFrom !== undefined &&
+    customTo !== undefined &&
+    customError === null;
 
   const handleSave = async () => {
     try {
       await updateMutation.mutateAsync(form);
       setForm({});
       toast.success("Configurazione salvata");
-    } catch (e) {
+    } catch {
       toast.error("Errore nel salvataggio");
     }
   };
 
   const handleSendNow = async () => {
     try {
-      const result = await dispatchMutation.mutateAsync();
+      const result = await dispatchMutation.mutateAsync({ mode: "manual" });
       toast.success(
         result.success
           ? `Digest inviato — ${result.counts?.unique ?? 0} lead unici`
           : "Invio fallito"
       );
-    } catch (e: any) {
-      toast.error(e.message || "Errore nell'invio");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Errore nell'invio");
+    }
+  };
+
+  const handleSendCustom = async () => {
+    if (!customFrom || !customTo) return;
+    try {
+      const result = await dispatchMutation.mutateAsync({
+        mode: "manual_custom",
+        force_window_start: customFrom.toISOString(),
+        force_window_end: customTo.toISOString(),
+      });
+      toast.success(
+        result.success
+          ? `Digest custom inviato — ${result.counts?.unique ?? 0} lead unici`
+          : "Invio fallito"
+      );
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Errore nell'invio");
     }
   };
 
@@ -275,28 +389,96 @@ export function LeadDigestSettings() {
 
         <Separator />
 
-        {/* Actions */}
-        <div className="flex items-center gap-3 flex-wrap">
+        {/* ── Actions ── */}
+        <div className="space-y-4">
+          {/* Save / cancel */}
           {isDirty && (
-            <Button onClick={handleSave} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Salvataggio..." : "Salva modifiche"}
-            </Button>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button onClick={handleSave} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Salvataggio..." : "Salva modifiche"}
+              </Button>
+              <Button variant="ghost" onClick={() => setForm({})}>
+                Annulla
+              </Button>
+            </div>
           )}
-          {isDirty && (
-            <Button variant="ghost" onClick={() => setForm({})}>
-              Annulla
+
+          {/* Invio rapido */}
+          <div className="rounded-md border p-4 space-y-2">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Send className="h-4 w-4" />
+              Invio rapido
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Invia i lead dall'ultimo digest riuscito fino ad adesso.
+            </p>
+            <Button
+              variant="outline"
+              onClick={handleSendNow}
+              disabled={dispatchMutation.isPending || (current.to_recipients ?? []).length === 0}
+              title={(current.to_recipients ?? []).length === 0 ? "Aggiungi almeno un destinatario TO" : undefined}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {dispatchMutation.isPending ? "Invio..." : "Invia ora"}
             </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={handleSendNow}
-            disabled={dispatchMutation.isPending || (current.to_recipients ?? []).length === 0}
-            className="ml-auto"
-            title={(current.to_recipients ?? []).length === 0 ? "Aggiungi almeno un destinatario TO" : undefined}
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {dispatchMutation.isPending ? "Invio..." : "Invia ora"}
-          </Button>
+          </div>
+
+          {/* Invio periodo custom */}
+          <div className="rounded-md border p-4 space-y-4">
+            <div>
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <CalendarRange className="h-4 w-4" />
+                Invio per periodo personalizzato
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Seleziona un range di date per inviare il digest con i lead di quel periodo.
+                Fuso orario: Europe/Rome — range massimo 31 giorni.
+              </p>
+            </div>
+
+            <DateTimePicker
+              label="Da"
+              value={customFrom}
+              onChange={setCustomFrom}
+            />
+            <DateTimePicker
+              label="A"
+              value={customTo}
+              onChange={setCustomTo}
+            />
+
+            {customError && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <AlertDescription className="text-xs">{customError}</AlertDescription>
+              </Alert>
+            )}
+
+            {customFrom && customTo && !customError && (
+              <p className="text-xs text-muted-foreground">
+                Periodo selezionato: <strong>{format(customFrom, "dd/MM/yyyy HH:mm", { locale: it })}</strong>
+                {" → "}
+                <strong>{format(customTo, "dd/MM/yyyy HH:mm", { locale: it })}</strong>
+                {" "}({differenceInDays(customTo, customFrom)} giorni)
+              </p>
+            )}
+
+            <Button
+              variant="outline"
+              onClick={handleSendCustom}
+              disabled={!canSendCustom || dispatchMutation.isPending}
+              title={
+                (current.to_recipients ?? []).length === 0
+                  ? "Aggiungi almeno un destinatario TO"
+                  : !customFrom || !customTo
+                  ? "Seleziona da e a"
+                  : customError || undefined
+              }
+            >
+              <CalendarRange className="h-4 w-4 mr-2" />
+              {dispatchMutation.isPending ? "Invio..." : "Invia periodo custom"}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

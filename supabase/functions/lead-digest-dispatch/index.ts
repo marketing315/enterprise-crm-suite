@@ -91,6 +91,7 @@ Deno.serve(async (req) => {
     } catch { /* no body */ }
 
     const forceWindowStart: string | null = (body.force_window_start as string) || null;
+    const forceWindowEnd: string | null = (body.force_window_end as string) || null;
     if (body.trigger_type) triggerType = body.trigger_type as string;
 
     // ── Load config ──
@@ -158,9 +159,48 @@ Deno.serve(async (req) => {
       }
     }
 
-    const windowEnd = new Date();
+    // ── Compute window boundaries ──
+    let windowEnd: Date;
+    let windowMode: "scheduled" | "manual_default" | "manual_custom";
 
-    // ── Compute window_start: last successful sent_at ──
+    if (triggerType === "manual_custom") {
+      // Both force fields required for manual_custom
+      if (!forceWindowStart || !forceWindowEnd) {
+        return new Response(JSON.stringify({ error: "manual_custom requires force_window_start and force_window_end" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const parsedStart = new Date(forceWindowStart);
+      const parsedEnd = new Date(forceWindowEnd);
+      if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+        return new Response(JSON.stringify({ error: "Invalid date format in force_window_start or force_window_end" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (parsedStart >= parsedEnd) {
+        return new Response(JSON.stringify({ error: "force_window_start must be before force_window_end" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const diffMs = parsedEnd.getTime() - parsedStart.getTime();
+      const maxMs = 31 * 24 * 60 * 60 * 1000; // 31 days
+      if (diffMs > maxMs) {
+        return new Response(JSON.stringify({ error: "Range too large: maximum 31 days" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      windowEnd = parsedEnd;
+      windowMode = "manual_custom";
+      // windowStart will be set below
+    } else {
+      windowEnd = forceWindowEnd ? new Date(forceWindowEnd) : new Date();
+      windowMode = triggerType === "scheduled" ? "scheduled" : "manual_default";
+    }
+
     let windowStart: Date;
     if (forceWindowStart) {
       windowStart = new Date(forceWindowStart);
@@ -398,6 +438,7 @@ Inviato automaticamente da CRM Ralph Hub`;
       event_type: "lead_digest_callcenter",
       generated_at: now.toISOString(),
       timezone: config.timezone || "Europe/Rome",
+      window_mode: windowMode,
       window: {
         start: windowStart.toISOString(),
         end: windowEnd.toISOString(),
