@@ -113,12 +113,15 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
     // Security: Check authorization
-    const cronSecret = req.headers.get("x-cron-secret");
+    const url = new URL(req.url);
+    const cronSecretHeader = req.headers.get("x-cron-secret");
+    const cronSecretParam = url.searchParams.get("cron_secret");
+    const cronSecret = cronSecretHeader || cronSecretParam;
     const expectedSecret = Deno.env.get("CRON_SECRET");
     const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
     const authHeader = req.headers.get("Authorization");
     
-    const isCronCall = cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
+    const isCronCall = !!(cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev));
     
     // H03 FIX: Verify JWT server-side instead of trusting decoded payload
     let isJwtCronCall = false;
@@ -187,7 +190,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const url = new URL(req.url);
     const dateParam = url.searchParams.get("date");
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
