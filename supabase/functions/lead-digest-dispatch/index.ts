@@ -211,14 +211,15 @@ Deno.serve(async (req) => {
     } else {
       const { data: lastRun } = await supabase
         .from("lead_digest_runs")
-        .select("sent_at, window_end")
+        .select("window_end")
         .eq("status", "sent")
-        .order("sent_at", { ascending: false })
+        .order("window_end", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (lastRun?.sent_at) {
-        windowStart = new Date(lastRun.sent_at);
+      if (lastRun?.window_end) {
+        // Use window_end of last successful run (not sent_at) to avoid gaps
+        windowStart = new Date(lastRun.window_end);
       } else {
         // Fallback: start of current day Europe/Rome
         const tz = config.timezone || "Europe/Rome";
@@ -255,12 +256,35 @@ Deno.serve(async (req) => {
 
     if (leadsErr) {
       console.error("[lead-digest-dispatch] Error fetching leads:", leadsErr);
+      // Create a failed run and return error — do not silently send empty digest
+      await supabase.from("lead_digest_runs").insert({
+        trigger_type: triggerType,
+        status: "failed",
+        window_start: windowStart.toISOString(),
+        window_end: windowEnd.toISOString(),
+        lead_count_raw: 0,
+        lead_count_unique: 0,
+        dedupe_stats: null,
+        to_recipients: config.to_recipients || [],
+        cc_recipients: config.cc_recipients || null,
+        include_filtered_link: config.include_filtered_link,
+        filtered_link: null,
+        payload: {},
+        error_message: `DB error fetching leads: ${leadsErr.message}`,
+        created_by: userId,
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: `DB error fetching leads: ${leadsErr.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const leads = rawLeads || [];
     const rawCount = leads.length;
 
     // ── Deduplication ──
+    // Priority: contact_id > phone_normalized > email
+    // A contact can have multiple lead_events → keep only the most recent one per unique identity
     const seenContactIds = new Set<string>();
     const seenPhones = new Set<string>();
     const seenEmails = new Set<string>();
@@ -283,15 +307,18 @@ Deno.serve(async (req) => {
       const phoneNorm = contact.phone_normalized?.trim() || null;
       const emailLower = contact.email?.trim().toLowerCase() || null;
 
+      // Dedup by contact_id first (most reliable)
       if (contactId && seenContactIds.has(contactId)) {
         byContact++;
         continue;
       }
-      if (!contactId && phoneNorm && seenPhones.has(phoneNorm)) {
+      // Then dedup by phone (catches contacts without id or with same phone)
+      if (phoneNorm && seenPhones.has(phoneNorm)) {
         byPhone++;
         continue;
       }
-      if (!contactId && !phoneNorm && emailLower && seenEmails.has(emailLower)) {
+      // Finally dedup by email
+      if (emailLower && seenEmails.has(emailLower)) {
         byEmail++;
         continue;
       }
