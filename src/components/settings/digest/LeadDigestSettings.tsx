@@ -39,7 +39,8 @@ function EmailListInput({
 
   const add = () => {
     const email = draft.trim().toLowerCase();
-    if (!email || value.includes(email)) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email) || value.includes(email)) return;
     onChange([...value, email]);
     setDraft("");
   };
