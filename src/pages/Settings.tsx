@@ -64,6 +64,12 @@ export default function Settings() {
               <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span>Ticketing</span>
             </TabsTrigger>
+            {(isAdmin || isBrandAdmin) && (
+              <TabsTrigger value="digest" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Mailbox className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Digest</span>
+              </TabsTrigger>
+            )}
             {isBrandAdmin && (
               <TabsTrigger value="pipeline" className="gap-1.5 px-3 text-xs md:text-sm">
                 <GitBranch className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -124,12 +130,6 @@ export default function Settings() {
               <TabsTrigger value="modules" className="gap-1.5 px-3 text-xs md:text-sm">
                 <Layers className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Moduli</span>
-              </TabsTrigger>
-            )}
-            {(isAdmin || isBrandAdmin) && (
-              <TabsTrigger value="digest" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Mailbox className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Digest</span>
               </TabsTrigger>
             )}
             {isAdmin && (
