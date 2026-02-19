@@ -24,10 +24,10 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
 
-    // Accept cron calls via: x-cron-secret header OR anon key Bearer (pg_cron pattern)
-    const isCronCall =
-      (cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev)) ||
-      (bearerToken === anonKey);
+    // Accept cron calls via: x-cron-secret header (non-null, non-empty) OR anon key Bearer (pg_cron pattern)
+    const cronSecretValid = cronSecret && cronSecret !== "null" && cronSecret !== "" &&
+      (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
+    const isCronCall = cronSecretValid || (bearerToken === anonKey);
 
     let isServiceCall = false;
     let isAdminCall = false;
@@ -39,18 +39,16 @@ Deno.serve(async (req) => {
       const verifyClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });
-      const { data: claimsData } = await verifyClient.auth.getClaims(token);
-      if (claimsData?.claims?.role === "service_role") {
-        isServiceCall = true;
+      // Check user identity (service role keys will have a valid user or fail gracefully)
+      const { data: userData } = await verifyClient.auth.getUser(token);
+      if (!userData?.user) {
+        // Could be a service role token — allow if it matches service key pattern
+        // For safety, reject unknown tokens
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       } else {
-        // Check user is admin/ceo
-        const { data: userData } = await verifyClient.auth.getUser(token);
-        if (!userData?.user) {
-          return new Response(JSON.stringify({ error: "Invalid token" }), {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
         const { data: internalUser } = await supabase
           .from("users")
           .select("id")
