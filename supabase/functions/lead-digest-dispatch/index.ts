@@ -15,63 +15,58 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    // ── Auth: cron secret OR service JWT OR admin/ceo user JWT ──
-    const cronSecret = req.headers.get("x-cron-secret");
-    const expectedSecret = Deno.env.get("CRON_SECRET");
-    const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
+    // ── Auth ──
     const authHeader = req.headers.get("Authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
+    // Decode JWT payload without verification to inspect role/iss
+    // (signature is verified by Supabase infra; we trust the token is valid if it reaches us)
+    function decodeJwtPayload(token: string): Record<string, unknown> | null {
+      try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const json = atob(padded.padEnd(padded.length + (4 - padded.length % 4) % 4, "="));
+        return JSON.parse(json);
+      } catch { return null; }
+    }
 
-    // Accept cron calls via: x-cron-secret header (non-null, non-empty) OR anon key Bearer (pg_cron pattern)
-    const cronSecretValid = cronSecret && cronSecret !== "null" && cronSecret !== "" &&
-      (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
-    const isCronCall = cronSecretValid || (bearerToken === anonKey);
-
-    let isServiceCall = false;
+    let isSystemCall = false; // cron or service role
     let isAdminCall = false;
     let userId: string | null = null;
     let triggerType: string = "scheduled";
 
-    if (!isCronCall && authHeader?.startsWith("Bearer ")) {
-      const token = bearerToken!;
-      const verifyClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      // Check user identity (service role keys will have a valid user or fail gracefully)
-      const { data: userData } = await verifyClient.auth.getUser(token);
-      if (!userData?.user) {
-        // Could be a service role token — allow if it matches service key pattern
-        // For safety, reject unknown tokens
-        return new Response(JSON.stringify({ error: "Invalid token" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      } else {
-        const { data: internalUser } = await supabase
-          .from("users")
-          .select("id")
-          .eq("supabase_auth_id", userData.user.id)
-          .maybeSingle();
+    if (bearerToken) {
+      const payload = decodeJwtPayload(bearerToken);
+      const role = payload?.role as string | undefined;
 
+      if (role === "anon" || role === "service_role") {
+        // pg_cron uses anon key; service role used by internal systems
+        isSystemCall = true;
+      } else if (role === "authenticated") {
+        // Human user: check if admin/ceo
+        const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || bearerToken, {
+          global: { headers: { Authorization: authHeader! } },
+        });
+        const { data: userData } = await verifyClient.auth.getUser(bearerToken);
+        if (!userData?.user) {
+          return new Response(JSON.stringify({ error: "Invalid token" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const { data: internalUser } = await supabase
+          .from("users").select("id")
+          .eq("supabase_auth_id", userData.user.id).maybeSingle();
         if (!internalUser?.id) {
           return new Response(JSON.stringify({ error: "User not found" }), {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         userId = internalUser.id;
-
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId);
-
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
         if (!roles?.some((r) => r.role === "admin" || r.role === "ceo")) {
           return new Response(JSON.stringify({ error: "Forbidden" }), {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         isAdminCall = true;
@@ -79,10 +74,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!isCronCall && !isServiceCall && !isAdminCall) {
+    if (!isSystemCall && !isAdminCall) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -121,15 +115,24 @@ Deno.serve(async (req) => {
     // ── Slot check for scheduled runs ──
     if (triggerType === "scheduled") {
       const tz = config.timezone || "Europe/Rome";
-      const nowInTz = new Date().toLocaleString("en-US", { timeZone: tz, hour12: false });
-      const [, timePart] = nowInTz.split(", ");
-      const [h, m] = timePart.split(":").map(Number);
+      // Robust timezone-aware time parsing using Intl.DateTimeFormat
+      const now = new Date();
+      const tzFormatter = new Intl.DateTimeFormat("en-GB", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      const parts = tzFormatter.formatToParts(now);
+      const h = parseInt(parts.find(p => p.type === "hour")?.value ?? "0", 10);
+      const m = parseInt(parts.find(p => p.type === "minute")?.value ?? "0", 10);
       const currentHHMM = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+
+      console.log(`[lead-digest-dispatch] Scheduled check at ${currentHHMM} (${tz}), slots: ${JSON.stringify(config.schedule_times)}`);
 
       const slots: string[] = config.schedule_times || ["12:00", "16:30"];
       const isInSlot = slots.some((slot: string) => {
         const [sh, sm] = slot.split(":").map(Number);
-        // Match within same minute window
         return h === sh && m === sm;
       });
 
@@ -573,7 +576,8 @@ Inviato automaticamente da CRM Ralph Hub`;
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[lead-digest-dispatch] Unhandled error:", err);
+    const errMsg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
+    console.error("[lead-digest-dispatch] Unhandled error:", errMsg);
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
