@@ -41,6 +41,36 @@ import {
   Wrench,
 } from "lucide-react";
 
+/** Complete registry of ALL platform modules */
+const ALL_MODULES: { key: string; label: string; category: "core" | "nice_to_have" }[] = [
+  { key: "dashboard", label: "Dashboard", category: "core" },
+  { key: "contacts", label: "Contatti", category: "core" },
+  { key: "events", label: "Eventi Lead", category: "core" },
+  { key: "pipeline", label: "Pipeline", category: "core" },
+  { key: "sales", label: "Vendite", category: "core" },
+  { key: "appointments", label: "Appuntamenti", category: "core" },
+  { key: "tickets", label: "Ticket", category: "core" },
+  { key: "notifications", label: "Notifiche", category: "core" },
+  { key: "team", label: "Team", category: "core" },
+  { key: "settings", label: "Impostazioni", category: "core" },
+  { key: "products", label: "Prodotti", category: "core" },
+  { key: "marketing", label: "Marketing", category: "core" },
+  { key: "ai_governance", label: "Gestione AI", category: "core" },
+  { key: "ai_metrics", label: "AI Metrics", category: "core" },
+  { key: "ticket_trend", label: "Trend Ticket", category: "core" },
+  { key: "webhooks_monitor", label: "Webhook Monitor", category: "core" },
+  { key: "dlq_monitor", label: "DLQ Monitor", category: "core" },
+  { key: "salesperson_kpi", label: "KPI Venditori", category: "core" },
+  // Nice-to-have / governable modules
+  { key: "chat_team", label: "Chat Team", category: "nice_to_have" },
+  { key: "ceo_dashboard", label: "Dashboard CEO", category: "nice_to_have" },
+  { key: "company_finance", label: "Azienda / Finanza", category: "nice_to_have" },
+  { key: "callcenter_kpi", label: "KPI Call Center", category: "nice_to_have" },
+  { key: "analytics_advanced", label: "Analytics Avanzate", category: "nice_to_have" },
+  { key: "capi_monitor", label: "CAPI Monitor", category: "nice_to_have" },
+  { key: "pwa_install", label: "Installazione PWA", category: "nice_to_have" },
+];
+
 const STATUS_OPTIONS: { value: ModuleStatus; label: string; icon: typeof Play }[] = [
   { value: "active", label: "Attivo", icon: Play },
   { value: "maintain", label: "Manutenzione", icon: Wrench },
@@ -69,20 +99,34 @@ export function ModuleGovernanceSettings() {
   const { data: adoption = [], isLoading: loadingAdoption } = useModuleAdoptionStats(adoptionPeriod);
   const updateFlag = useUpdateFeatureFlag();
 
-  const handleStatusChange = (flag: FeatureFlag, newStatus: ModuleStatus) => {
+  const handleStatusChange = (item: { id: string | null; module_label: string; flag: FeatureFlag | undefined }, newStatus: ModuleStatus) => {
+    if (!item.flag) {
+      toast.error("Questo modulo core non ha un flag configurabile nel database.");
+      return;
+    }
     updateFlag.mutate(
-      { id: flag.id, status: newStatus },
+      { id: item.flag.id, status: newStatus },
       {
-        onSuccess: () => toast.success(`${flag.module_label} → ${newStatus}`),
+        onSuccess: () => toast.success(`${item.module_label} → ${newStatus}`),
         onError: (err) => toast.error(`Errore: ${err.message}`),
       }
     );
   };
 
-  // Merge flags with adoption stats
-  const mergedData = flags.map((flag) => {
-    const stats = adoption.find((a) => a.module_key === flag.module_key);
-    return { ...flag, stats };
+  // Build complete module list: merge ALL_MODULES with DB flags and adoption stats
+  const mergedData = ALL_MODULES.map((mod) => {
+    const flag = flags.find((f) => f.module_key === mod.key);
+    const stats = adoption.find((a) => a.module_key === mod.key);
+    const status: ModuleStatus = flag?.status ?? "active";
+    return {
+      id: flag?.id ?? null,
+      module_key: mod.key,
+      module_label: mod.label,
+      category: mod.category,
+      status,
+      stats,
+      flag,
+    };
   });
 
   return (
@@ -127,74 +171,84 @@ export function ModuleGovernanceSettings() {
             <p className="text-center py-8 text-muted-foreground">Nessun modulo configurato</p>
           ) : (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Modulo</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead className="text-right">
-                    <span className="flex items-center justify-end gap-1">
-                      <BarChart3 className="h-3.5 w-3.5" /> Eventi
-                    </span>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <span className="flex items-center justify-end gap-1">
-                      <Users className="h-3.5 w-3.5" /> Utenti
-                    </span>
-                  </TableHead>
-                  <TableHead className="text-right">Media/g</TableHead>
-                  <TableHead>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" /> Ultimo uso
-                    </span>
-                  </TableHead>
-                  <TableHead>Azione</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mergedData.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.module_label}</TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANT[item.status]}>
-                        {STATUS_OPTIONS.find((o) => o.value === item.status)?.label ?? item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {loadingAdoption ? "…" : item.stats?.total_events ?? 0}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {loadingAdoption ? "…" : item.stats?.unique_users ?? 0}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {loadingAdoption ? "…" : item.stats?.avg_daily ?? 0}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {item.stats?.last_used
-                        ? format(new Date(item.stats.last_used), "dd MMM HH:mm", { locale: it })
-                        : "Mai"}
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={item.status}
-                        onValueChange={(v) => handleStatusChange(item, v as ModuleStatus)}
-                        disabled={updateFlag.isPending}
-                      >
-                        <SelectTrigger className="w-[140px] h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Modulo</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead className="text-right">
+                      <span className="flex items-center justify-end gap-1">
+                        <BarChart3 className="h-3.5 w-3.5" /> Eventi
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="flex items-center justify-end gap-1">
+                        <Users className="h-3.5 w-3.5" /> Utenti
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">Media/g</TableHead>
+                    <TableHead>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" /> Ultimo uso
+                      </span>
+                    </TableHead>
+                    <TableHead>Azione</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {mergedData.map((item) => (
+                    <TableRow key={item.module_key}>
+                      <TableCell className="font-medium">{item.module_label}</TableCell>
+                      <TableCell>
+                        <Badge variant={item.category === "core" ? "outline" : "secondary"}>
+                          {item.category === "core" ? "Core" : "Nice-to-Have"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={STATUS_VARIANT[item.status]}>
+                          {STATUS_OPTIONS.find((o) => o.value === item.status)?.label ?? item.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {loadingAdoption ? "…" : item.stats?.total_events ?? 0}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {loadingAdoption ? "…" : item.stats?.unique_users ?? 0}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {loadingAdoption ? "…" : item.stats?.avg_daily ?? 0}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {item.stats?.last_used
+                          ? format(new Date(item.stats.last_used), "dd MMM HH:mm", { locale: it })
+                          : "Mai"}
+                      </TableCell>
+                      <TableCell>
+                        {item.category === "core" ? (
+                          <span className="text-xs text-muted-foreground">Sempre attivo</span>
+                        ) : (
+                          <Select
+                            value={item.status}
+                            onValueChange={(v) => handleStatusChange(item, v as ModuleStatus)}
+                            disabled={updateFlag.isPending}
+                          >
+                            <SelectTrigger className="w-[140px] h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUS_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
           )}
         </CardContent>
       </Card>
