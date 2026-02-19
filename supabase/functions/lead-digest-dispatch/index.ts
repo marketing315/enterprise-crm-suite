@@ -21,9 +21,13 @@ Deno.serve(async (req) => {
     const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
     const authHeader = req.headers.get("Authorization");
 
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
+
+    // Accept cron calls via: x-cron-secret header OR anon key Bearer (pg_cron pattern)
     const isCronCall =
-      cronSecret &&
-      (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
+      (cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev)) ||
+      (bearerToken === anonKey);
 
     let isServiceCall = false;
     let isAdminCall = false;
@@ -31,8 +35,8 @@ Deno.serve(async (req) => {
     let triggerType: string = "scheduled";
 
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "");
-      const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      const token = bearerToken!;
+      const verifyClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });
       const { data: claimsData } = await verifyClient.auth.getClaims(token);
