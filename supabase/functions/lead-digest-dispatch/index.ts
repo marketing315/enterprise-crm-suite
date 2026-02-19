@@ -246,7 +246,9 @@ Deno.serve(async (req) => {
           first_name,
           last_name,
           phone_normalized,
+          phone,
           email,
+          cap,
           brands!inner(name)
         )
       `)
@@ -298,7 +300,9 @@ Deno.serve(async (req) => {
         first_name: string | null;
         last_name: string | null;
         phone_normalized: string | null;
+        phone: string | null;
         email: string | null;
+        cap: string | null;
         brands: { name: string } | null;
       };
 
@@ -340,16 +344,17 @@ Deno.serve(async (req) => {
         first_name: string | null;
         last_name: string | null;
         phone_normalized: string | null;
+        phone: string | null;
         email: string | null;
+        cap: string | null;
         brands: { name: string } | null;
       };
       return {
         full_name: [contact.first_name, contact.last_name].filter(Boolean).join(" ") || null,
-        phone: contact.phone_normalized || null,
-        email: contact.email || null,
-        source: lead.source_name || null,
+        phone: contact.phone || contact.phone_normalized || null,
+        cap: contact.cap || null,
         brand: contact.brands?.name || null,
-        created_at: lead.created_at,
+        source: lead.source_name || null,
       };
     });
 
@@ -417,10 +422,10 @@ Deno.serve(async (req) => {
     const leadsTableRows = leadsPayload.map((l) => `
       <tr>
         <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.full_name)}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.phone || l.email)}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.source)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.phone)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.cap)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.brand)}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:11px;color:#888;">${fmtLocal(l.created_at)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.source)}</td>
       </tr>`).join("");
 
     const leadsTableHtml = leadsPayload.length > 0 ? `
@@ -428,10 +433,10 @@ Deno.serve(async (req) => {
         <thead>
           <tr style="background:#f5f5f5;">
             <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Nome</th>
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Telefono / Email</th>
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Fonte</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Telefono</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">CAP</th>
             <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Brand</th>
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Ricevuto</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Fonte</th>
           </tr>
         </thead>
         <tbody>${leadsTableRows}</tbody>
@@ -457,7 +462,7 @@ Deno.serve(async (req) => {
 </html>`;
 
     const textLeads = leadsPayload.map((l, i) =>
-      `${i + 1}. ${l.full_name || "—"} | ${l.phone || l.email || "—"} | ${l.source || "—"} | ${l.brand || "—"}`
+      `${i + 1}. ${l.full_name || "—"} | ${l.phone || "—"} | ${l.cap || "—"} | ${l.brand || "—"} | ${l.source || "—"}`
     ).join("\n");
 
     const text_body = `Lead Digest Call Center
