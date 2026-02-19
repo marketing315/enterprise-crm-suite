@@ -115,6 +115,11 @@ async function getAuthMethod(req: Request): Promise<string | null> {
           return "jwt_service_role";
         }
       }
+      // Fallback: accept project anon key from pg_cron
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+      if (anonKey && token === anonKey) {
+        return "jwt_anon_key";
+      }
     } catch {
       // Invalid JWT — fall through
     }

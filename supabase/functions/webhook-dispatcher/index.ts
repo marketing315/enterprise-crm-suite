@@ -293,14 +293,22 @@ Deno.serve(async (req) => {
     let hasValidJwt = false;
     if (!hasValidSecret && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
-      const verifyClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-      const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
-      if (!claimsErr && claimsData?.claims?.role === "service_role") {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+      if (anonKey && token === anonKey) {
         hasValidJwt = true;
+      }
+      if (!hasValidJwt) {
+        try {
+          const verifyClient = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            anonKey!,
+            { global: { headers: { Authorization: authHeader } } }
+          );
+          const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+          if (!claimsErr && claimsData?.claims?.role === "service_role") {
+            hasValidJwt = true;
+          }
+        } catch { /* invalid JWT, fall through */ }
       }
     }
     
