@@ -14,34 +14,44 @@ Deno.serve(async (req) => {
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Auth: cron secret OR service JWT
+  // ── Auth ──
   const cronSecret = req.headers.get("x-cron-secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
   const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
   const authHeader = req.headers.get("Authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
+  function decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) return null;
+      const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const json = atob(padded.padEnd(padded.length + (4 - padded.length % 4) % 4, "="));
+      return JSON.parse(json);
+    } catch { return null; }
+  }
 
-  // Accept cron calls via: x-cron-secret header OR anon key Bearer (pg_cron pattern)
+  // Accept cron calls via: x-cron-secret header
   const isCronCall =
-    (cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev)) ||
-    (bearerToken === anonKey);
+    cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
 
-  let isServiceCall = false;
+  let isSystemCall = false;
   let isAdminCall = false;
   let userId: string | null = null;
 
-  if (!isCronCall && authHeader?.startsWith("Bearer ")) {
-    const token = bearerToken!;
-    const verifyClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claimsData } = await verifyClient.auth.getClaims(token);
-    if (claimsData?.claims?.role === "service_role") {
-      isServiceCall = true;
-    } else {
-      const { data: userData } = await verifyClient.auth.getUser(token);
+  if (!isCronCall && bearerToken) {
+    const payload = decodeJwtPayload(bearerToken);
+    const role = payload?.role as string | undefined;
+
+    if (role === "anon" || role === "service_role") {
+      // pg_cron uses anon key; service role used by internal systems
+      isSystemCall = true;
+    } else if (role === "authenticated") {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || bearerToken;
+      const verifyClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader! } },
+      });
+      const { data: userData } = await verifyClient.auth.getUser(bearerToken);
       if (userData?.user) {
         const { data: internalUser } = await supabase
           .from("users")
@@ -64,7 +74,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (!isCronCall && !isServiceCall && !isAdminCall) {
+  if (!isCronCall && !isSystemCall && !isAdminCall) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
