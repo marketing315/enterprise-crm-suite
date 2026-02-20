@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCallback, useEffect, useRef } from "react";
+import { useCurrentUserModuleAccess } from "@/hooks/useUserModuleAccess";
 
 export type ModuleStatus = "active" | "maintain" | "evaluate" | "frozen" | "sunset";
 
@@ -71,6 +72,10 @@ export function useModuleFlag(moduleKey: string): FeatureFlag | null {
 
 export function useIsModuleAccessible(moduleKey: string): boolean {
   const status = useModuleStatus(moduleKey);
+  const { data: userAccess } = useCurrentUserModuleAccess();
+  const userOverride = userAccess?.find((a) => a.module_key === moduleKey);
+  // If user has an explicit override, respect it; otherwise fall back to brand-level status
+  if (userOverride !== undefined) return userOverride.is_enabled;
   return status !== "frozen" && status !== "sunset";
 }
 

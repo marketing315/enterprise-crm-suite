@@ -5404,6 +5404,58 @@ export type Database = {
           },
         ]
       }
+      user_module_access: {
+        Row: {
+          brand_id: string
+          id: string
+          is_enabled: boolean
+          module_key: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          id?: string
+          is_enabled?: boolean
+          module_key: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          id?: string
+          is_enabled?: boolean
+          module_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_module_access_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_module_access_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_module_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_page_permissions: {
         Row: {
           brand_id: string

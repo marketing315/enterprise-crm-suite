@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { UserModuleAccessCard } from "@/components/settings/UserModuleAccessCard";
 import {
   useFeatureFlags,
   useUpdateFeatureFlag,
@@ -252,6 +253,9 @@ export function ModuleGovernanceSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* User Module Access */}
+      <UserModuleAccessCard />
 
       {/* Decision Guide */}
       <Card>
