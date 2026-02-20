@@ -1,5 +1,5 @@
 import { useState, forwardRef } from "react";
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -49,9 +49,8 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
       listeners,
       setNodeRef,
       transform,
-      transition,
       isDragging,
-    } = useSortable({ id: deal.id });
+    } = useDraggable({ id: deal.id });
 
     // Combine refs for both sortable and forwardRef
     const combinedRef = (node: HTMLDivElement | null) => {
@@ -64,8 +63,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
     };
 
     const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
+      transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
       opacity: isDragging ? 0.5 : 1,
     };
 
