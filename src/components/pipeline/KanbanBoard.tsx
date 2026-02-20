@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { usePipelineStages, useDeals, useUpdateDealStage, type DealWithBrand } from "@/hooks/usePipeline";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
+import { useBatchEntityTags, type TagAssignment } from "@/hooks/useTags";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCardPreview } from "./KanbanCardPreview";
 import { MobileKanbanView } from "./MobileKanbanView";
@@ -35,6 +36,8 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     "open",
     filterTagIds.length > 0 ? filterTagIds : undefined
   );
+  const dealIds = useMemo(() => (deals || []).map((d) => d.id), [deals]);
+  const { data: tagsMap } = useBatchEntityTags("deal", dealIds);
   const updateStage = useUpdateDealStage();
   const isMobile = useIsMobile();
   const canEditDeals = useCanEditDeals();
@@ -164,6 +167,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
         onDealClick={onDealClick}
         readOnly={isReadOnly}
         showBrand={isSystemBrand}
+        tagsMap={tagsMap}
       />
     );
   }
@@ -202,6 +206,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
               onDealClick={onDealClick}
               readOnly={isReadOnly}
               showBrand={isSystemBrand}
+              tagsMap={tagsMap}
             />
           ))}
         </div>

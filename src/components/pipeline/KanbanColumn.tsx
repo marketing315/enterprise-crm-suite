@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { KanbanCard } from "./KanbanCard";
 import type { PipelineStage } from "@/types/database";
 import type { DealWithBrand } from "@/hooks/usePipeline";
+import type { TagAssignment } from "@/hooks/useTags";
 
 export interface KanbanColumnProps {
   stage: PipelineStage;
@@ -12,9 +13,11 @@ export interface KanbanColumnProps {
   onDealClick?: (dealId: string) => void;
   readOnly?: boolean;
   showBrand?: boolean;
+  /** Pre-fetched tags map: dealId → TagAssignment[] */
+  tagsMap?: Record<string, TagAssignment[]>;
 }
 
-export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, showBrand = false }: KanbanColumnProps) {
+export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, showBrand = false, tagsMap }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
   });
@@ -53,6 +56,7 @@ export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, show
                 onClick={() => onDealClick?.(deal.id)}
                 readOnly={readOnly}
                 showBrand={showBrand}
+                preloadedTags={tagsMap !== undefined ? (tagsMap[deal.id] ?? []) : []}
               />
             ))}
             {deals.length === 0 && (
