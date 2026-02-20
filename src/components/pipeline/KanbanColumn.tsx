@@ -1,5 +1,4 @@
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { KanbanCard } from "./KanbanCard";
@@ -22,7 +21,6 @@ export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, show
     id: stage.id,
   });
 
-  const dealIds = deals.map((d) => d.id);
 
   return (
     <div
@@ -47,25 +45,23 @@ export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, show
 
       {/* Cards */}
       <ScrollArea className="flex-1 p-2">
-        <SortableContext items={dealIds} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2 min-h-[100px]">
-            {deals.map((deal) => (
-              <KanbanCard
-                key={deal.id}
-                deal={deal}
-                onClick={() => onDealClick?.(deal.id)}
-                readOnly={readOnly}
-                showBrand={showBrand}
-                preloadedTags={tagsMap !== undefined ? (tagsMap[deal.id] ?? []) : []}
-              />
-            ))}
-            {deals.length === 0 && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                Nessun deal
-              </div>
-            )}
-          </div>
-        </SortableContext>
+        <div className="space-y-2 min-h-[100px]">
+          {deals.map((deal) => (
+            <KanbanCard
+              key={deal.id}
+              deal={deal}
+              onClick={() => onDealClick?.(deal.id)}
+              readOnly={readOnly}
+              showBrand={showBrand}
+              preloadedTags={tagsMap !== undefined ? (tagsMap[deal.id] ?? []) : []}
+            />
+          ))}
+          {deals.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              Nessun deal
+            </div>
+          )}
+        </div>
       </ScrollArea>
     </div>
   );
