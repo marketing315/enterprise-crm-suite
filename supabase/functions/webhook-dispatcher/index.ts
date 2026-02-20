@@ -295,9 +295,6 @@ Deno.serve(async (req) => {
       const token = authHeader.replace("Bearer ", "");
       // Direct comparison with known cron JWT
       const cronAnonJwt = Deno.env.get("CRON_ANON_JWT");
-      console.log(`[DEBUG] token len=${token.length}, first8=${token.substring(0,8)}, last8=${token.substring(token.length-8)}`);
-      console.log(`[DEBUG] cronAnonJwt len=${cronAnonJwt?.length ?? 'null'}, first8=${cronAnonJwt?.substring(0,8) ?? 'null'}, last8=${cronAnonJwt?.substring((cronAnonJwt?.length ?? 0)-8) ?? 'null'}`);
-      console.log(`[DEBUG] match=${cronAnonJwt && token === cronAnonJwt}`);
       if (cronAnonJwt && token === cronAnonJwt) {
         hasValidJwt = true;
       }
