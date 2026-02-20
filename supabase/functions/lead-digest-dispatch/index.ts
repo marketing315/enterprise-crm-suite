@@ -249,7 +249,8 @@ Deno.serve(async (req) => {
           phone,
           email,
           cap,
-          brands!inner(name)
+          brands!inner(name),
+          contact_phones(phone_raw, phone_normalized, is_primary)
         )
       `)
       .gte("created_at", windowStart.toISOString())
@@ -304,12 +305,13 @@ Deno.serve(async (req) => {
         email: string | null;
         cap: string | null;
         brands: { name: string } | null;
+        contact_phones: { phone_raw: string | null; phone_normalized: string | null; is_primary: boolean }[] | null;
       };
 
       if (!contact) continue;
 
-      const contactId = contact.id;
-      const phoneNorm = contact.phone_normalized?.trim() || null;
+      const primaryPhone = contact.contact_phones?.find(p => p.is_primary);
+      const phoneNorm = primaryPhone?.phone_normalized?.trim() || contact.phone_normalized?.trim() || null;
       const emailLower = contact.email?.trim().toLowerCase() || null;
 
       // Dedup by contact_id first (most reliable)
@@ -348,10 +350,13 @@ Deno.serve(async (req) => {
         email: string | null;
         cap: string | null;
         brands: { name: string } | null;
+        contact_phones: { phone_raw: string | null; phone_normalized: string | null; is_primary: boolean }[] | null;
       };
+      const primaryPhone = contact.contact_phones?.find(p => p.is_primary);
+      const phoneDisplay = primaryPhone?.phone_raw || primaryPhone?.phone_normalized || contact.phone || contact.phone_normalized || null;
       return {
         full_name: [contact.first_name, contact.last_name].filter(Boolean).join(" ") || null,
-        phone: contact.phone || contact.phone_normalized || null,
+        phone: phoneDisplay,
         cap: contact.cap || null,
         brand: contact.brands?.name || null,
         source: lead.source_name || null,
@@ -407,7 +412,7 @@ Deno.serve(async (req) => {
     const windowEndLocal = new Date(windowEnd).toLocaleString("it-IT", {
       timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
     });
-    const subject = `[CRM] Nuovi lead (${uniqueCount}) - ${windowEndLocal}`;
+    const subject = `Aggiornamento Lead (${uniqueCount}) - ${windowEndLocal}`;
 
     // ── HTML escaping helper ──
     const esc = (s: string | null | undefined): string => {
@@ -450,7 +455,7 @@ Deno.serve(async (req) => {
 <html lang="it">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="font-family:Arial,sans-serif;color:#222;max-width:700px;margin:0 auto;padding:20px;">
-  <h2 style="margin-top:0;color:#1e3a5f;">📋 Lead Digest Call Center</h2>
+  <h2 style="margin-top:0;color:#1e3a5f;">📋 Aggiornamento Lead</h2>
   <p><strong>Periodo:</strong> ${fmtLocal(windowStart.toISOString())} → ${fmtLocal(windowEnd.toISOString())}</p>
   <p><strong>Lead unici nuovi:</strong> <span style="font-size:18px;font-weight:bold;color:#2563eb;">${uniqueCount}</span>
     <span style="color:#888;font-size:12px;">(grezzo: ${rawCount})</span></p>
@@ -465,7 +470,7 @@ Deno.serve(async (req) => {
       `${i + 1}. ${l.full_name || "—"} | ${l.phone || "—"} | ${l.cap || "—"} | ${l.brand || "—"} | ${l.source || "—"}`
     ).join("\n");
 
-    const text_body = `Lead Digest Call Center
+    const text_body = `Aggiornamento Lead
 Periodo: ${fmtLocal(windowStart.toISOString())} → ${fmtLocal(windowEnd.toISOString())}
 Lead unici nuovi: ${uniqueCount} (grezzo: ${rawCount})
 
