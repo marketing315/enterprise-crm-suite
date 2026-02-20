@@ -72,6 +72,9 @@ const TABLE_QUERY_MAP: Record<string, InvalidationEntry[]> = {
   action_suggestions: [{ key: ['action-suggestions'], exact: true }],
 };
 
+/** Tables that do NOT have a brand_id column – subscribe without filter */
+const TABLES_WITHOUT_BRAND_ID = new Set(['deal_stage_history', 'sales_order_items']);
+
 /** Group tables into logical channels to keep subscriptions organized */
 const CHANNEL_GROUPS: Record<string, string[]> = {
   'global-pipeline-rt': ['deals', 'deal_stage_history', 'pipeline_stages'],
@@ -105,7 +108,8 @@ export function useGlobalRealtime() {
         const channel = supabase.channel(channelName);
 
         tables.forEach((table) => {
-          const opts = isAllBrandsSelected
+          const noBrandFilter = TABLES_WITHOUT_BRAND_ID.has(table);
+          const opts = (isAllBrandsSelected || noBrandFilter)
             ? { event: '*' as const, schema: 'public' as const, table }
             : { event: '*' as const, schema: 'public' as const, table, filter: `brand_id=eq.${brandId}` };
 
