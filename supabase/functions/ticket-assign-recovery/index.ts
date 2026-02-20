@@ -33,18 +33,24 @@ Deno.serve(async (req: Request) => {
     let hasValidJwt = false;
     if (!hasValidCronSecret && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
-      try {
-        const verifyClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          global: { headers: { Authorization: authHeader } },
-        });
-        const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
-        if (!claimsErr && claimsData?.claims) {
-          const role = claimsData.claims.role as string;
-          if (role === "service_role" || role === "anon") {
-            hasValidJwt = true;
+      const cronAnonJwt = Deno.env.get("CRON_ANON_JWT");
+      if (cronAnonJwt && token === cronAnonJwt) {
+        hasValidJwt = true;
+      }
+      if (!hasValidJwt) {
+        try {
+          const verifyClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { headers: { Authorization: authHeader } },
+          });
+          const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+          if (!claimsErr && claimsData?.claims) {
+            const role = claimsData.claims.role as string;
+            if (role === "service_role" || role === "anon") {
+              hasValidJwt = true;
+            }
           }
-        }
-      } catch { /* invalid JWT, fall through */ }
+        } catch { /* invalid JWT, fall through */ }
+      }
     }
     
     if (!hasValidCronSecret && !hasValidJwt) {
