@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useModuleFlag, useAutoTrackModule, type ModuleStatus } from "@/hooks/useFeatureFlags";
+import { useModuleFlag, useIsModuleAccessible, useAutoTrackModule, type ModuleStatus } from "@/hooks/useFeatureFlags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +21,43 @@ const STATUS_CONFIG: Record<ModuleStatus, { show: boolean; badge: string; varian
 
 export function FrozenModuleGuard({ moduleKey, children }: FrozenModuleGuardProps) {
   const flag = useModuleFlag(moduleKey);
+  const isAccessible = useIsModuleAccessible(moduleKey);
   const navigate = useNavigate();
   const status = flag?.status ?? "active";
   const config = STATUS_CONFIG[status];
 
   // Track usage even for evaluate modules
   useAutoTrackModule(status === "evaluate" || status === "active" || status === "maintain" ? moduleKey : null);
+
+  // Per-user override: if module is disabled for this user, show frozen fallback
+  if (!isAccessible && !config.show) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+              <Snowflake className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-xl">Modulo non disponibile</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <Badge variant="destructive">{flag?.module_label ?? moduleKey}</Badge>
+            <p className="text-muted-foreground">
+              Questo modulo non è abilitato per il tuo account. Contatta un amministratore per richiedere l'accesso.
+            </p>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => navigate("/dashboard")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Torna alla dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!config.show) {
     return (
