@@ -99,10 +99,14 @@ async function getAuthMethod(req: Request): Promise<string | null> {
     }
   }
 
-  // 2. Bearer token: verify server-side via getClaims
+  // 2. Bearer token: check CRON_ANON_JWT or verify via getClaims
   const authHeader = req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
+    const cronAnonJwt = Deno.env.get("CRON_ANON_JWT");
+    if (cronAnonJwt && token === cronAnonJwt) {
+      return "jwt_anon_key";
+    }
     try {
       const verifyClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
