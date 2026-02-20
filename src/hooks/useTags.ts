@@ -188,6 +188,45 @@ export function useEntityTags(entityType: "contact" | "event" | "deal" | "appoin
   });
 }
 
+// Batch fetch tags for multiple entities at once (prevents N+1 queries)
+export function useBatchEntityTags(
+  entityType: "contact" | "event" | "deal" | "appointment" | "ticket",
+  entityIds: string[]
+) {
+  const columnMap = {
+    contact: "contact_id",
+    event: "lead_event_id",
+    deal: "deal_id",
+    appointment: "appointment_id",
+    ticket: "ticket_id",
+  };
+  const col = columnMap[entityType];
+
+  return useQuery({
+    queryKey: ["batch-entity-tags", entityType, entityIds],
+    queryFn: async (): Promise<Record<string, TagAssignment[]>> => {
+      if (entityIds.length === 0) return {};
+
+      const { data, error } = await untypedClient
+        .from("tag_assignments")
+        .select(`*, tag:tags(*)`)
+        .in(col, entityIds);
+
+      if (error) throw error;
+
+      const map: Record<string, TagAssignment[]> = {};
+      entityIds.forEach((id) => { map[id] = []; });
+      (data || []).forEach((row: any) => {
+        const id = row[col] as string;
+        if (id && map[id]) map[id].push(row as TagAssignment);
+      });
+      return map;
+    },
+    enabled: entityIds.length > 0,
+    staleTime: 30_000,
+  });
+}
+
 // Create tag
 export function useCreateTag() {
   const queryClient = useQueryClient();

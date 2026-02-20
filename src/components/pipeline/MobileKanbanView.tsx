@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { KanbanCard } from "./KanbanCard";
 import type { PipelineStage } from "@/types/database";
 import type { DealWithBrand } from "@/hooks/usePipeline";
+import type { TagAssignment } from "@/hooks/useTags";
 
 export interface MobileKanbanViewProps {
   stages: PipelineStage[];
@@ -13,6 +14,7 @@ export interface MobileKanbanViewProps {
   onDealClick?: (dealId: string) => void;
   readOnly?: boolean;
   showBrand?: boolean;
+  tagsMap?: Record<string, TagAssignment[]>;
 }
 
 export function MobileKanbanView({ 
@@ -20,7 +22,8 @@ export function MobileKanbanView({
   dealsByStage, 
   onDealClick,
   readOnly = false,
-  showBrand = false
+  showBrand = false,
+  tagsMap,
 }: MobileKanbanViewProps) {
   const [activeStageIndex, setActiveStageIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -197,6 +200,7 @@ export function MobileKanbanView({
                   onClick={() => onDealClick?.(deal.id)}
                   readOnly={readOnly}
                   showBrand={showBrand}
+                  preloadedTags={tagsMap !== undefined ? (tagsMap[deal.id] ?? []) : []}
                 />
               ))
             )}

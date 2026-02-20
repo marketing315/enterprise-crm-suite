@@ -16,6 +16,8 @@ interface EntityTagListProps {
   scope?: TagScope;
   editable?: boolean;
   size?: "sm" | "md";
+  /** Pre-fetched assignments from a batch query – skips individual fetch */
+  preloadedAssignments?: TagAssignment[];
 }
 
 export function EntityTagList({
@@ -24,8 +26,11 @@ export function EntityTagList({
   scope,
   editable = true,
   size = "md",
+  preloadedAssignments,
 }: EntityTagListProps) {
-  const { data: assignments = [], isLoading } = useEntityTags(entityType, entityId);
+  const individualQuery = useEntityTags(entityType, preloadedAssignments ? null : entityId);
+  const assignments = preloadedAssignments ?? individualQuery.data ?? [];
+  const isLoading = preloadedAssignments ? false : individualQuery.isLoading;
   const assignTag = useAssignTag();
   const removeTag = useRemoveTag();
 

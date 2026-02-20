@@ -27,16 +27,18 @@ import { useUpdateDealStatus, useUpdateDealStage, usePipelineStages } from "@/ho
 import { toast } from "sonner";
 import type { DealStatus } from "@/types/database";
 import type { DealWithBrand } from "@/hooks/usePipeline";
+import type { TagAssignment } from "@/hooks/useTags";
 
 interface KanbanCardProps {
   deal: DealWithBrand;
   onClick?: () => void;
   readOnly?: boolean;
   showBrand?: boolean;
+  preloadedTags?: TagAssignment[];
 }
 
 export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
-  function KanbanCard({ deal, onClick, readOnly = false, showBrand = false }, ref) {
+  function KanbanCard({ deal, onClick, readOnly = false, showBrand = false, preloadedTags }, ref) {
     const [menuOpen, setMenuOpen] = useState(false);
     const { data: stages } = usePipelineStages();
     const updateStatus = useUpdateDealStatus();
@@ -279,6 +281,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
               entityId={deal.id} 
               scope="deal"
               size="sm"
+              preloadedAssignments={preloadedTags}
             />
           </div>
 
