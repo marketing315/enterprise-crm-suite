@@ -99,7 +99,7 @@ async function getAuthMethod(req: Request): Promise<string | null> {
     }
   }
 
-  // 2. Bearer token: verify server-side via getClaims, only service_role accepted
+  // 2. Bearer token: verify server-side via getClaims
   const authHeader = req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
@@ -111,14 +111,9 @@ async function getAuthMethod(req: Request): Promise<string | null> {
       );
       const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
       if (!claimsErr && claimsData?.claims) {
-        if (claimsData.claims.role === "service_role") {
-          return "jwt_service_role";
-        }
-      }
-      // Fallback: accept project anon key from pg_cron
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-      if (anonKey && token === anonKey) {
-        return "jwt_anon_key";
+        const role = claimsData.claims.role as string;
+        if (role === "service_role") return "jwt_service_role";
+        if (role === "anon") return "jwt_anon_key";
       }
     } catch {
       // Invalid JWT — fall through
