@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { withModuleGuard } from "@/components/layout/withModuleGuard";
+import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
 
 // Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
@@ -104,6 +105,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <ErrorConsolePanel />
       <BrowserRouter>
         <AuthProvider>
           <BrandProvider>
