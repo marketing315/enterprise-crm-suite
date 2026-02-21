@@ -54,6 +54,7 @@ export function useDashboardData() {
         .from("lead_events")
         .select("contact_id")
         .gte("received_at", weekAgo.toISOString())
+        .lte("received_at", endOfDay(new Date()).toISOString())
         .not("contact_id", "is", null);
 
       if (brandIds.length === 1) {
