@@ -5,9 +5,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-// SHA-256 hash for CAPI user data (lowercase, trimmed)
-async function sha256(value: string): Promise<string> {
-  const normalized = value.toLowerCase().trim();
+// SHA-256 hash for CAPI user data with per-field normalization
+// Meta requires: email → lowercase+trim, phone → digits only (E.164 without +),
+// names/city → lowercase+trim, zip → trim
+async function sha256(value: string, fieldType?: "em" | "ph" | "fn" | "ln" | "ct" | "zp" | "country"): Promise<string> {
+  let normalized: string;
+  switch (fieldType) {
+    case "ph":
+      // Phone: strip all non-digits for E.164 format (Meta requirement)
+      normalized = value.replace(/[^\d]/g, "");
+      break;
+    case "em":
+      // Email: lowercase + trim
+      normalized = value.toLowerCase().trim();
+      break;
+    case "fn":
+    case "ln":
+    case "ct":
+      // Names/city: lowercase + trim + unicode NFC normalization
+      normalized = value.toLowerCase().trim().normalize("NFC");
+      break;
+    default:
+      normalized = value.toLowerCase().trim();
+      break;
+  }
   const encoder = new TextEncoder();
   const data = encoder.encode(normalized);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -23,15 +44,15 @@ async function buildUserData(
   tracking: { fbp?: string | null; fbc?: string | null; client_ip?: string | null; client_user_agent?: string | null } | null
 ): Promise<Record<string, any>> {
   const userData: Record<string, any> = {
-    country: [await sha256("it")],
+    country: [await sha256("it", "country")],
   };
 
-  if (contact.email) userData.em = [await sha256(contact.email)];
-  if (phone) userData.ph = [await sha256(phone)];
-  if (contact.first_name) userData.fn = [await sha256(contact.first_name)];
-  if (contact.last_name) userData.ln = [await sha256(contact.last_name)];
-  if (contact.city) userData.ct = [await sha256(contact.city)];
-  if (contact.cap) userData.zp = [await sha256(contact.cap)];
+  if (contact.email) userData.em = [await sha256(contact.email, "em")];
+  if (phone) userData.ph = [await sha256(phone, "ph")];
+  if (contact.first_name) userData.fn = [await sha256(contact.first_name, "fn")];
+  if (contact.last_name) userData.ln = [await sha256(contact.last_name, "ln")];
+  if (contact.city) userData.ct = [await sha256(contact.city, "ct")];
+  if (contact.cap) userData.zp = [await sha256(contact.cap, "zp")];
 
   if (tracking?.fbp) userData.fbp = tracking.fbp;
   if (tracking?.fbc) userData.fbc = tracking.fbc;

@@ -330,7 +330,7 @@ export function InboundSourceFormDrawer({
                   </code>
                   <p className="text-xs">Headers richiesti:</p>
                   <ul className="text-xs list-disc list-inside">
-                    <li><code>X-Signature: sha256=&lt;hex&gt;</code></li>
+                    <li><code>X-Signature: sha256=&lt;64_hex_chars&gt;</code></li>
                     <li><code>X-Timestamp: &lt;unix_seconds&gt;</code></li>
                   </ul>
                   <p className="text-xs text-green-700 dark:text-green-300 mt-2">
