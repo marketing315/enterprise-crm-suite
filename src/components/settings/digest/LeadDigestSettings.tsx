@@ -11,7 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Send, Plus, X, Clock, Mail, AlertTriangle, Users, CalendarIcon, CalendarRange } from "lucide-react";
+import { Send, Plus, X, Clock, Mail, AlertTriangle, Users, CalendarIcon, CalendarRange, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, isAfter, isBefore, differenceInDays } from "date-fns";
 import { it } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -97,7 +98,19 @@ function ScheduleTimesInput({
 
   return (
     <div className="space-y-2">
-      <Label>Orari di invio (HH:mm, Europe/Rome)</Label>
+      <div className="flex items-center gap-1.5">
+        <Label>Orari di invio (HH:mm, Europe/Rome)</Label>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-[280px] text-xs">
+              <p>Gli orari sono in fuso orario <strong>Europe/Rome</strong> (CET/CEST). Il sistema converte automaticamente in UTC per la pianificazione.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       <div className="flex gap-2">
         <Input
           type="time"
@@ -187,9 +200,21 @@ function DateTimePicker({
           className="w-28"
         />
         {value && (
-          <span className="text-xs text-muted-foreground">
-            {format(value, "dd/MM HH:mm", { locale: it })} (Europe/Rome)
-          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-xs text-muted-foreground cursor-help flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  {format(value, "dd/MM HH:mm", { locale: it })} (Rome)
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[260px] text-xs">
+                <p><strong>Ora locale:</strong> {format(value, "dd/MM/yyyy HH:mm", { locale: it })} Europe/Rome</p>
+                <p><strong>UTC:</strong> {value.toISOString().slice(0, 16).replace("T", " ")} UTC</p>
+                <p className="mt-1 text-muted-foreground">Il backend elabora in UTC e converte automaticamente.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
     </div>
@@ -432,9 +457,12 @@ export function LeadDigestSettings() {
                 Invio per periodo personalizzato
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Seleziona un range di date per inviare il digest con i lead di quel periodo.
-                Fuso orario: Europe/Rome — range massimo 31 giorni.
+                Seleziona un range di date per inviare il digest con i lead di quel periodo (max 31 giorni).
               </p>
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
+                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Le date/orari selezionati sono in fuso <strong>Europe/Rome</strong> (CET/CEST). Il backend converte automaticamente in UTC prima dell'estrazione lead.</span>
+              </div>
             </div>
 
             <DateTimePicker
