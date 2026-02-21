@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -18,7 +19,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function DeliveryDetailSheet({ deliveryId, onClose }: Props) {
+export const DeliveryDetailSheet = forwardRef<HTMLDivElement, Props>(function DeliveryDetailSheet({ deliveryId, onClose }, ref) {
   const { data: delivery, isLoading } = useWebhookDeliveryDetail(deliveryId);
 
   const getStatusBadge = (status: string) => {
@@ -172,4 +173,4 @@ export function DeliveryDetailSheet({ deliveryId, onClose }: Props) {
       </SheetContent>
     </Sheet>
   );
-}
+});
