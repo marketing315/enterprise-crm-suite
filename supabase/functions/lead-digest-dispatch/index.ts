@@ -347,8 +347,15 @@ Deno.serve(async (req) => {
     const uniqueCount = dedupedLeads.length;
     const dedupeStats = { raw: rawCount, unique: uniqueCount, deduped_by_contact: byContact, deduped_by_phone: byPhone, deduped_by_email: byEmail };
 
+    // ── Payload size protection ──
+    // DIGEST_MAX_LEADS_FULL: above this threshold, switch to summary mode
+    // DIGEST_CHUNK_SIZE: max leads per chunk when chunking is needed
+    const MAX_LEADS_FULL = 200;
+    const CHUNK_SIZE = 100;
+    const isSummaryMode = uniqueCount > MAX_LEADS_FULL;
+
     // ── Build leads array for payload ──
-    const leadsPayload = dedupedLeads.map((lead) => {
+    const mapLead = (lead: typeof dedupedLeads[number]) => {
       const contact = lead.contacts as unknown as {
         first_name: string | null;
         last_name: string | null;
@@ -368,7 +375,12 @@ Deno.serve(async (req) => {
         brand: contact.brands?.name || null,
         source: lead.source_name || null,
       };
-    });
+    };
+
+    // In summary mode, only include first CHUNK_SIZE leads in the payload body
+    const leadsForBody = isSummaryMode ? dedupedLeads.slice(0, CHUNK_SIZE) : dedupedLeads;
+    const leadsPayload = leadsForBody.map(mapLead);
+    const allLeadsPayload = dedupedLeads.map(mapLead); // full list for chunked sends if needed
 
     // ── Filtered link ──
     const appUrl = Deno.env.get("VITE_SUPABASE_URL")?.replace("supabase.co", "lovable.app") || "https://ralph-hub.lovable.app";
@@ -440,7 +452,16 @@ Deno.serve(async (req) => {
         <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.source)}</td>
       </tr>`).join("");
 
+    // Summary mode notice
+    const summaryNotice = isSummaryMode
+      ? `<p style="background:#fff3cd;padding:10px;border-radius:6px;border:1px solid #ffc107;margin:10px 0;">
+           ⚠️ <strong>Modalità riepilogo:</strong> ${uniqueCount} lead totali, mostrati i primi ${leadsPayload.length}.
+           ${filteredLink ? `<a href="${filteredLink}">Vedi tutti nel CRM →</a>` : "Usa il link CRM per la lista completa."}
+         </p>`
+      : "";
+
     const leadsTableHtml = leadsPayload.length > 0 ? `
+      ${summaryNotice}
       <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
         <thead>
           <tr style="background:#f5f5f5;">
@@ -473,27 +494,35 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    const textLeads = leadsPayload.map((l, i) =>
+    const textLeadsList = leadsPayload.map((l, i) =>
       `${i + 1}. ${l.full_name || "—"} | ${l.phone || "—"} | ${l.cap || "—"} | ${l.brand || "—"} | ${l.source || "—"}`
     ).join("\n");
+
+    const summaryTextNotice = isSummaryMode
+      ? `\n⚠️ Modalità riepilogo: ${uniqueCount} lead totali, mostrati i primi ${leadsPayload.length}. Usa il CRM per la lista completa.\n`
+      : "";
 
     const text_body = `Aggiornamento Lead
 Periodo: ${fmtLocal(windowStart.toISOString())} → ${fmtLocal(windowEnd.toISOString())}
 Lead unici nuovi: ${uniqueCount} (grezzo: ${rawCount})
-
-${leadsPayload.length > 0 ? textLeads : "Nessun lead nel periodo."}
+${summaryTextNotice}
+${leadsPayload.length > 0 ? textLeadsList : "Nessun lead nel periodo."}
 ${filteredLink ? `\nVedi lead filtrati: ${filteredLink}` : ""}
 
 ---
 Inviato automaticamente da CRM Ralph Hub`;
 
     // ── Build payload ──
+    // In summary mode, the leads array in payload is truncated to avoid oversized webhook calls
     const now = new Date();
     const payload = {
       event_type: "lead_digest_callcenter",
       generated_at: now.toISOString(),
       timezone: config.timezone || "Europe/Rome",
       window_mode: windowMode,
+      digest_mode: isSummaryMode ? "summary" : "full",
+      total_leads: uniqueCount,
+      leads_included: leadsPayload.length,
       window: {
         start: windowStart.toISOString(),
         end: windowEnd.toISOString(),
