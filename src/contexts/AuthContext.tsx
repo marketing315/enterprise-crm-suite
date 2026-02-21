@@ -114,21 +114,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
-      setSession(existingSession);
-      setSupabaseUser(existingSession?.user ?? null);
+    // THEN check for existing session — B2 FIX: wrap in try/catch/finally
+    // so isLoading is ALWAYS set to false even if getSession rejects
+    (async () => {
+      try {
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        setSession(existingSession);
+        setSupabaseUser(existingSession?.user ?? null);
 
-      if (existingSession?.user) {
-        currentAuthIdRef.current = existingSession.user.id;
-        await fetchUserData(existingSession.user.id);
+        if (existingSession?.user) {
+          currentAuthIdRef.current = existingSession.user.id;
+          await fetchUserData(existingSession.user.id);
+        }
+      } catch (err) {
+        console.error('B2: getSession bootstrap failed, clearing auth state', err);
+        setSession(null);
+        setSupabaseUser(null);
+        setUser(null);
+        setUserRoles([]);
+      } finally {
+        // H03 FIX: Only set loading false AFTER fetchUserData completes
+        initialFetchDoneRef.current = true;
+        setIsLoading(false);
       }
-
-      // H03 FIX: Only set loading false AFTER fetchUserData completes
-      // This ensures userRoles are available before BrandContext reads isAdmin/isCeo
-      initialFetchDoneRef.current = true;
-      setIsLoading(false);
-    });
+    })();
 
     return () => {
       subscription.unsubscribe();
