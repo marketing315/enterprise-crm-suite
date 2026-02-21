@@ -444,10 +444,16 @@ Deno.serve(async (req: Request) => {
     jsonParseError = true;
   }
 
-  // Extract source ID from URL
+  // Extract source ID (and optional inline API key) from URL
+  // Supports: /webhook-ingest/{source_id}
+  //           /webhook-ingest/{source_id}/{api_key}  (for platforms like systeme.io that don't support custom headers)
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);
-  const sourceId = pathParts[pathParts.length - 1];
+  // Find the index of "webhook-ingest" to parse relative segments
+  const ingestIdx = pathParts.indexOf("webhook-ingest");
+  const afterIngest = ingestIdx >= 0 ? pathParts.slice(ingestIdx + 1) : [pathParts[pathParts.length - 1]];
+  const sourceId = afterIngest[0] || "";
+  const apiKeyFromPath = afterIngest.length > 1 ? afterIngest[1] : null;
 
   // Generate request ID for structured logging
   const requestId = crypto.randomUUID();
@@ -564,8 +570,8 @@ Deno.serve(async (req: Request) => {
   //    This prevents source enumeration via 404 responses (B01 fix)
   //    Also accept api_key as query parameter for platforms that don't support custom headers (e.g. systeme.io)
   const apiKeyFromQuery = url.searchParams.get("api_key");
-  const hasApiKey = !!(req.headers.get("x-api-key") || apiKeyFromQuery);
-  const hasSignature = !!req.headers.get("x-signature");
+  const hasApiKey = !!(req.headers.get("x-api-key") || apiKeyFromQuery || apiKeyFromPath);
+  const hasSignature = !!req.headers.get("x-signature") || !!req.headers.get("x-webhook-signature");
   if (!hasApiKey && !hasSignature) {
     console.log(JSON.stringify({ ...logContext, outcome: "missing_credentials", status: 401 }));
     await createAuditRecord("rejected", "missing_credentials", sourceId, null);
@@ -618,7 +624,7 @@ Deno.serve(async (req: Request) => {
   // 5. Authentication: API Key is ONLY required if HMAC is NOT enabled
   //    If HMAC is enabled, authentication is done via signature verification
   //    Accept API key from header OR query parameter (for platforms without custom header support)
-  const apiKey = req.headers.get("x-api-key") || apiKeyFromQuery;
+  const apiKey = req.headers.get("x-api-key") || apiKeyFromQuery || apiKeyFromPath;
   
   if (!source.hmac_enabled) {
     // HMAC disabled: require API key
