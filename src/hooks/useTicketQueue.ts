@@ -11,16 +11,29 @@ interface QueuePreferences {
   lastTab: QueueTab;
 }
 
+const VALID_TABS: QueueTab[] = ["my_queue", "unassigned", "sla_breached", "all"];
+
+function isValidTab(val: unknown): val is QueueTab {
+  return typeof val === "string" && VALID_TABS.includes(val as QueueTab);
+}
+
 function getStoredPreferences(): QueuePreferences {
+  const defaults: QueuePreferences = { defaultTab: "my_queue", lastTab: "my_queue" };
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // S3 FIX: Validate enum values from localStorage
+      return {
+        defaultTab: isValidTab(parsed.defaultTab) ? parsed.defaultTab : defaults.defaultTab,
+        lastTab: isValidTab(parsed.lastTab) ? parsed.lastTab : defaults.lastTab,
+      };
     }
-  } catch {
-    // Ignore parse errors
+  } catch (err) {
+    console.warn("S3: Ticket queue preferences corrupted, resetting:", err instanceof Error ? err.message : err);
+    localStorage.removeItem(STORAGE_KEY);
   }
-  return { defaultTab: "my_queue", lastTab: "my_queue" };
+  return defaults;
 }
 
 function storePreferences(prefs: Partial<QueuePreferences>) {

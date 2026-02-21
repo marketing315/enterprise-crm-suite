@@ -32,8 +32,9 @@ export const localStoragePersister: Persister = {
       if (serialized.length < 2 * 1024 * 1024) {
         localStorage.setItem(STORAGE_KEY, serialized);
       }
-    } catch {
-      // Silently ignore storage errors (quota, private browsing, etc.)
+    } catch (err) {
+      // S1 FIX: Log storage errors for observability
+      console.warn('S1: Query cache persist failed:', err instanceof Error ? err.message : err);
     }
   },
 
@@ -51,7 +52,8 @@ export const localStoragePersister: Persister = {
       }
 
       return client;
-    } catch {
+    } catch (err) {
+      console.warn('S1: Query cache restore failed, clearing:', err instanceof Error ? err.message : err);
       localStorage.removeItem(STORAGE_KEY);
       return undefined;
     }
