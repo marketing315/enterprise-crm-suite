@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useBrand } from "@/contexts/BrandContext";
+import { useBrandFilter } from "@/hooks/useBrandFilter";
 
 // =============================================================================
 // Types
@@ -60,105 +60,110 @@ export interface TopWebhook {
 // =============================================================================
 
 export function useWebhookMetrics24h() {
-  const { currentBrand } = useBrand();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   return useQuery({
-    queryKey: ["webhook-metrics-24h", currentBrand?.id],
+    queryKey: ["webhook-metrics-24h", getQueryKeyBrand()],
     queryFn: async (): Promise<WebhookMetrics24h | null> => {
-      if (!currentBrand?.id) return null;
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return null;
 
       const { data, error } = await supabase.rpc("webhook_metrics_24h", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandIds[0],
       });
 
       if (error) throw error;
       return data as unknown as WebhookMetrics24h;
     },
-    enabled: !!currentBrand?.id,
-    refetchInterval: 30000, // 30s auto-refresh
+    enabled: isQueryEnabled(),
+    refetchInterval: 30000,
   });
 }
 
 export function useWebhookTimeseries24h(bucketMinutes: number = 15) {
-  const { currentBrand } = useBrand();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   return useQuery({
-    queryKey: ["webhook-timeseries-24h", currentBrand?.id, bucketMinutes],
+    queryKey: ["webhook-timeseries-24h", getQueryKeyBrand(), bucketMinutes],
     queryFn: async (): Promise<TimeseriesBucket[]> => {
-      if (!currentBrand?.id) return [];
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return [];
 
       const { data, error } = await supabase.rpc("webhook_timeseries_24h", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandIds[0],
         p_bucket_minutes: bucketMinutes,
       });
 
       if (error) throw error;
       return (data as unknown as TimeseriesBucket[]) || [];
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 }
 
 export function useWebhookTopErrors24h(limit: number = 10) {
-  const { currentBrand } = useBrand();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   return useQuery({
-    queryKey: ["webhook-top-errors-24h", currentBrand?.id, limit],
+    queryKey: ["webhook-top-errors-24h", getQueryKeyBrand(), limit],
     queryFn: async (): Promise<TopError[]> => {
-      if (!currentBrand?.id) return [];
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return [];
 
       const { data, error } = await supabase.rpc("webhook_top_errors_24h", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandIds[0],
         p_limit: limit,
       });
 
       if (error) throw error;
       return (data as unknown as TopError[]) || [];
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 }
 
 export function useWebhookTopEventTypes24h(limit: number = 10) {
-  const { currentBrand } = useBrand();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   return useQuery({
-    queryKey: ["webhook-top-event-types-24h", currentBrand?.id, limit],
+    queryKey: ["webhook-top-event-types-24h", getQueryKeyBrand(), limit],
     queryFn: async (): Promise<TopEventType[]> => {
-      if (!currentBrand?.id) return [];
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return [];
 
       const { data, error } = await supabase.rpc("webhook_top_event_types_24h", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandIds[0],
         p_limit: limit,
       });
 
       if (error) throw error;
       return (data as unknown as TopEventType[]) || [];
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 }
 
 export function useWebhookTopWebhooks24h(limit: number = 10) {
-  const { currentBrand } = useBrand();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   return useQuery({
-    queryKey: ["webhook-top-webhooks-24h", currentBrand?.id, limit],
+    queryKey: ["webhook-top-webhooks-24h", getQueryKeyBrand(), limit],
     queryFn: async (): Promise<TopWebhook[]> => {
-      if (!currentBrand?.id) return [];
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return [];
 
       const { data, error } = await supabase.rpc("webhook_top_webhooks_24h", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandIds[0],
         p_limit: limit,
       });
 
       if (error) throw error;
       return (data as unknown as TopWebhook[]) || [];
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
     refetchInterval: 30000,
   });
 }
