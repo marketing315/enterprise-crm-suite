@@ -10,6 +10,7 @@ import {
   closestCorners,
 } from "@dnd-kit/core";
 import { usePipelineStages, useDeals, useUpdateDealStage, type DealWithBrand } from "@/hooks/usePipeline";
+import { recordKanbanTransition } from "@/hooks/useKanbanTransitionAudit";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { useBatchEntityTags, type TagAssignment } from "@/hooks/useTags";
 import { KanbanColumn } from "./KanbanColumn";
@@ -117,13 +118,26 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     const deal = deals?.find((d) => d.id === dealId);
     if (!deal || deal.current_stage_id === newStageId) return;
 
+    // Capture previous stage info before update
+    const fromStageId = deal.current_stage_id;
+    const fromStageLabel = stages?.find((s) => s.id === fromStageId)?.name || null;
+    const toStageLabel = stages?.find((s) => s.id === newStageId)?.name || "";
+
     // Optimistic update - pass the deal's brand_id for proper update
     updateStage.mutate(
       { dealId, stageId: newStageId, dealBrandId: deal.brand_id },
       {
         onSuccess: () => {
-          const stageName = stages?.find((s) => s.id === newStageId)?.name;
-          toast.success(`Deal spostato in "${stageName}"`);
+          toast.success(`Deal spostato in "${toStageLabel}"`);
+          // Fire-and-forget audit
+          recordKanbanTransition({
+            dealId,
+            brandId: deal.brand_id,
+            fromStageId: fromStageId || null,
+            fromStageLabel,
+            toStageId: newStageId,
+            toStageLabel,
+          });
         },
         onError: (error) => {
           console.error("Stage update error:", error);

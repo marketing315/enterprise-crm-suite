@@ -2525,6 +2525,83 @@ export type Database = {
           },
         ]
       }
+      deal_stage_transitions: {
+        Row: {
+          actor_display_name: string | null
+          actor_user_id: string | null
+          brand_id: string
+          chat_message_id: string | null
+          created_at: string
+          deal_id: string
+          from_stage_id: string | null
+          from_stage_label: string | null
+          id: string
+          idempotency_key: string
+          occurred_at: string
+          to_stage_id: string
+          to_stage_label: string
+        }
+        Insert: {
+          actor_display_name?: string | null
+          actor_user_id?: string | null
+          brand_id: string
+          chat_message_id?: string | null
+          created_at?: string
+          deal_id: string
+          from_stage_id?: string | null
+          from_stage_label?: string | null
+          id?: string
+          idempotency_key: string
+          occurred_at?: string
+          to_stage_id: string
+          to_stage_label: string
+        }
+        Update: {
+          actor_display_name?: string | null
+          actor_user_id?: string | null
+          brand_id?: string
+          chat_message_id?: string | null
+          created_at?: string
+          deal_id?: string
+          from_stage_id?: string | null
+          from_stage_label?: string | null
+          id?: string
+          idempotency_key?: string
+          occurred_at?: string
+          to_stage_id?: string
+          to_stage_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_transitions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_transitions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_transitions_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_transitions_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           assigned_user_id: string | null

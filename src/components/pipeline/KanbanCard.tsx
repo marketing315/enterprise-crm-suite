@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { User, Mail, Clock, DollarSign, MoreVertical, Archive, Trophy, XCircle, MoveRight, Megaphone, Building2 } from "lucide-react";
+import { recordKanbanTransition } from "@/hooks/useKanbanTransitionAudit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,12 +95,22 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
     };
 
     const handleStageChange = (stageId: string) => {
-      const stageName = stages?.find((s) => s.id === stageId)?.name;
+      if (stageId === deal.current_stage_id) return;
+      const fromStageLabel = stages?.find((s) => s.id === deal.current_stage_id)?.name || null;
+      const toStageLabel = stages?.find((s) => s.id === stageId)?.name || "";
       updateStage.mutate(
         { dealId: deal.id, stageId, dealBrandId: deal.brand_id },
         {
           onSuccess: () => {
-            toast.success(`Deal spostato in "${stageName}"`);
+            toast.success(`Deal spostato in "${toStageLabel}"`);
+            recordKanbanTransition({
+              dealId: deal.id,
+              brandId: deal.brand_id,
+              fromStageId: deal.current_stage_id || null,
+              fromStageLabel,
+              toStageId: stageId,
+              toStageLabel,
+            });
           },
           onError: () => {
             toast.error("Errore nello spostamento");

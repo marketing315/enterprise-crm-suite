@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { MessageSquare, Send, Sparkles, Loader2, User } from "lucide-react";
+import { MessageSquare, Send, Sparkles, Loader2, User, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -155,40 +155,73 @@ export function EntityChatBox({ entityType, entityId, className }: EntityChatBox
                 Nessun messaggio. Inizia la discussione!
               </p>
             ) : (
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "flex gap-2",
-                    msg.sender_type === "ai" && "bg-primary/5 -mx-2 px-2 py-1 rounded"
-                  )}
-                >
-                  <Avatar className="h-6 w-6 shrink-0">
-                    <AvatarFallback className="text-[10px]">
-                      {msg.sender_type === "ai" ? (
-                        <Sparkles className="h-3 w-3" />
-                      ) : (
-                        <User className="h-3 w-3" />
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-medium">
-                        {msg.sender_type === "ai"
-                          ? "AI Assistant"
-                          : msg.sender?.full_name || "Utente"}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: it })}
-                      </span>
+              messages.map((msg) => {
+                const isSystem = msg.sender_type === "system";
+                const isAI = msg.sender_type === "ai";
+
+                if (isSystem) {
+                  return (
+                    <div
+                      key={msg.id}
+                      className="flex gap-2 bg-muted/40 -mx-2 px-2 py-1.5 rounded border border-border/50"
+                    >
+                      <Avatar className="h-6 w-6 shrink-0">
+                        <AvatarFallback className="text-[10px] bg-accent text-accent-foreground">
+                          <ArrowRightLeft className="h-3 w-3" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                            Sistema
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(new Date(msg.created_at), "HH:mm", { locale: it })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground italic whitespace-pre-wrap break-words">
+                          {msg.message_text}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-foreground whitespace-pre-wrap break-words">
-                      {msg.message_text}
-                    </p>
+                  );
+                }
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "flex gap-2",
+                      isAI && "bg-primary/5 -mx-2 px-2 py-1 rounded"
+                    )}
+                  >
+                    <Avatar className="h-6 w-6 shrink-0">
+                      <AvatarFallback className="text-[10px]">
+                        {isAI ? (
+                          <Sparkles className="h-3 w-3" />
+                        ) : (
+                          <User className="h-3 w-3" />
+                        )}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-medium">
+                          {isAI
+                            ? "AI Assistant"
+                            : msg.sender?.full_name || "Utente"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(new Date(msg.created_at), "HH:mm", { locale: it })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                        {msg.message_text}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </ScrollArea>
