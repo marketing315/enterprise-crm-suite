@@ -1,18 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from "recharts";
 
 interface TrendDataPoint {
   date: string;
   label: string;
   leads: number;
   tickets: number;
+  cpl?: number | null;
 }
 
 interface DashboardTrendChartProps {
   data: TrendDataPoint[];
   isLoading?: boolean;
 }
+
+const CplTooltipFormatter = (value: number, name: string) => {
+  if (name === "CPL") return [`€${value.toFixed(2)}`, name];
+  return [value, name];
+};
 
 export function DashboardTrendChart({ data, isLoading }: DashboardTrendChartProps) {
   if (isLoading) {
@@ -29,16 +35,18 @@ export function DashboardTrendChart({ data, isLoading }: DashboardTrendChartProp
     );
   }
 
+  const hasCpl = data.some(d => d.cpl != null && d.cpl > 0);
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Andamento 7 Giorni</CardTitle>
-        <CardDescription>Lead e ticket ricevuti</CardDescription>
+        <CardDescription>Lead, ticket e CPL giornaliero</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[200px] md:h-[250px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <ComposedChart data={data} margin={{ top: 5, right: hasCpl ? 10 : 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="leadGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -58,11 +66,23 @@ export function DashboardTrendChart({ data, isLoading }: DashboardTrendChartProp
                 className="text-muted-foreground"
               />
               <YAxis 
+                yAxisId="left"
                 tick={{ fontSize: 11 }} 
                 tickLine={false}
                 axisLine={false}
                 className="text-muted-foreground"
               />
+              {hasCpl && (
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `€${v}`}
+                  className="text-muted-foreground"
+                />
+              )}
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--popover))",
@@ -71,8 +91,10 @@ export function DashboardTrendChart({ data, isLoading }: DashboardTrendChartProp
                   fontSize: "12px",
                 }}
                 labelStyle={{ color: "hsl(var(--foreground))" }}
+                formatter={CplTooltipFormatter}
               />
               <Area
+                yAxisId="left"
                 type="monotone"
                 dataKey="leads"
                 name="Lead"
@@ -81,6 +103,7 @@ export function DashboardTrendChart({ data, isLoading }: DashboardTrendChartProp
                 fill="url(#leadGradient)"
               />
               <Area
+                yAxisId="left"
                 type="monotone"
                 dataKey="tickets"
                 name="Ticket"
@@ -88,7 +111,20 @@ export function DashboardTrendChart({ data, isLoading }: DashboardTrendChartProp
                 strokeWidth={2}
                 fill="url(#ticketGradient)"
               />
-            </AreaChart>
+              {hasCpl && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="cpl"
+                  name="CPL"
+                  stroke="hsl(var(--chart-4, 43 74% 66%))"
+                  strokeWidth={2}
+                  strokeDasharray="5 3"
+                  dot={{ r: 3, fill: "hsl(var(--chart-4, 43 74% 66%))" }}
+                  connectNulls
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

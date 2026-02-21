@@ -247,13 +247,44 @@ export function useDashboardData() {
         ticketsQuery = ticketsQuery.in("brand_id", brandIds);
       }
 
-      const [leadsResult, ticketsResult] = await Promise.all([leadsQuery, ticketsQuery]);
+      // Batch query: marketing costs for CPL calculation
+      let costsQuery = supabase
+        .from("marketing_costs")
+        .select("amount, cost_date")
+        .gte("cost_date", format(weekAgo, "yyyy-MM-dd"))
+        .lte("cost_date", format(new Date(), "yyyy-MM-dd"));
+
+      if (brandIds.length === 1) {
+        costsQuery = costsQuery.eq("brand_id", brandIds[0]);
+      } else {
+        costsQuery = costsQuery.in("brand_id", brandIds);
+      }
+
+      // Batch query: ad platform spend for CPL calculation
+      let adSpendQuery = supabase
+        .from("ad_platform_stats")
+        .select("spend, stat_date")
+        .gte("stat_date", format(weekAgo, "yyyy-MM-dd"))
+        .lte("stat_date", format(new Date(), "yyyy-MM-dd"));
+
+      if (brandIds.length === 1) {
+        adSpendQuery = adSpendQuery.eq("brand_id", brandIds[0]);
+      } else {
+        adSpendQuery = adSpendQuery.in("brand_id", brandIds);
+      }
+
+      const [leadsResult, ticketsResult, costsResult, adSpendResult] = await Promise.all([
+        leadsQuery, ticketsQuery, costsQuery, adSpendQuery,
+      ]);
 
       if (leadsResult.error) throw leadsResult.error;
       if (ticketsResult.error) throw ticketsResult.error;
+      // costs are non-critical — don't throw on error
+      const costsData = costsResult.error ? [] : (costsResult.data || []);
+      const adSpendData = adSpendResult.error ? [] : (adSpendResult.data || []);
 
       // Group by day client-side
-      const days: { date: string; label: string; leads: number; tickets: number }[] = [];
+      const days: { date: string; label: string; leads: number; tickets: number; cpl: number | null }[] = [];
 
       for (let i = 6; i >= 0; i--) {
         const date = subDays(new Date(), i);
@@ -275,11 +306,22 @@ export function useDashboardData() {
           return ts >= dayStart && ts <= dayEnd;
         });
 
+        // Sum marketing costs + ad spend for this day
+        const dayCosts = costsData
+          .filter(c => c.cost_date === dateStr)
+          .reduce((sum, c) => sum + (c.amount || 0), 0);
+        const dayAdSpend = adSpendData
+          .filter(a => a.stat_date === dateStr)
+          .reduce((sum, a) => sum + (a.spend || 0), 0);
+        const totalSpend = dayCosts + dayAdSpend;
+        const leadCount = uniqueContacts.size;
+
         days.push({
           date: dateStr,
           label: label.charAt(0).toUpperCase() + label.slice(1),
-          leads: uniqueContacts.size,
+          leads: leadCount,
           tickets: dayTickets.length,
+          cpl: leadCount > 0 ? Math.round((totalSpend / leadCount) * 100) / 100 : null,
         });
       }
 
