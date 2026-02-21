@@ -51,7 +51,8 @@ export function ErrorConsolePanel() {
       if (
         msg.includes("Function components cannot be given refs") ||
         (msg.includes("DialogContent") && msg.includes("DialogTitle")) ||
-        (msg.includes("Missing") && msg.includes("aria-describedby"))
+        (msg.includes("Missing") && msg.includes("aria-describedby")) ||
+        msg.includes("contextMenuMessage")
       ) {
         origError.apply(console, args);
         return;
