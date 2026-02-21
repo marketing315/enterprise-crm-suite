@@ -48,7 +48,10 @@ export function ErrorConsolePanel() {
     console.error = (...args: unknown[]) => {
       // Filter out harmless recharts ref warnings
       const msg = String(args[0] ?? "");
-      if (msg.includes("Function components cannot be given refs")) {
+      if (
+        msg.includes("Function components cannot be given refs") ||
+        msg.includes("DialogContent") && msg.includes("DialogTitle")
+      ) {
         origError.apply(console, args);
         return;
       }
