@@ -106,7 +106,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <ErrorConsolePanel />
-      <BrowserRouter future={{ v7_relativeSplatPath: true }}>
+      <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AuthProvider>
           <BrandProvider>
             <Suspense fallback={<PageLoader />}>
