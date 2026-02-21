@@ -16,6 +16,7 @@ import { AutomationSettings } from "@/components/settings/automation/AutomationS
 import { ModuleGovernanceSettings } from "@/components/settings/ModuleGovernanceSettings";
 import { LeadDigestSettings } from "@/components/settings/digest/LeadDigestSettings";
 import { LeadDigestRunsTable } from "@/components/settings/digest/LeadDigestRunsTable";
+import { LeadDigestKpiCards } from "@/components/settings/digest/LeadDigestKpiCards";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -211,6 +212,7 @@ export default function Settings() {
         {(isAdmin || isBrandAdmin) && (
           <TabsContent value="digest" className="space-y-4">
             <LeadDigestSettings />
+            <LeadDigestKpiCards />
             <LeadDigestRunsTable />
           </TabsContent>
         )}
