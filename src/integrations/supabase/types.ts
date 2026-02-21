@@ -1499,6 +1499,7 @@ export type Database = {
       }
       call_logs: {
         Row: {
+          answered_at: string | null
           brand_id: string
           call_type: string
           contact_id: string
@@ -1506,19 +1507,23 @@ export type Database = {
           deal_id: string | null
           duration_seconds: number | null
           ended_at: string | null
+          event_version: number | null
           id: string
           last_error: string | null
           notes: string | null
+          outcome: string | null
           phone_number: string
           provider: string | null
           provider_call_id: string | null
           provider_ext_id: string | null
           recording_url: string | null
+          response_time_seconds: number | null
           started_at: string
           status: string
           user_id: string
         }
         Insert: {
+          answered_at?: string | null
           brand_id: string
           call_type?: string
           contact_id: string
@@ -1526,19 +1531,23 @@ export type Database = {
           deal_id?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
+          event_version?: number | null
           id?: string
           last_error?: string | null
           notes?: string | null
+          outcome?: string | null
           phone_number: string
           provider?: string | null
           provider_call_id?: string | null
           provider_ext_id?: string | null
           recording_url?: string | null
+          response_time_seconds?: number | null
           started_at?: string
           status?: string
           user_id: string
         }
         Update: {
+          answered_at?: string | null
           brand_id?: string
           call_type?: string
           contact_id?: string
@@ -1546,14 +1555,17 @@ export type Database = {
           deal_id?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
+          event_version?: number | null
           id?: string
           last_error?: string | null
           notes?: string | null
+          outcome?: string | null
           phone_number?: string
           provider?: string | null
           provider_call_id?: string | null
           provider_ext_id?: string | null
           recording_url?: string | null
+          response_time_seconds?: number | null
           started_at?: string
           status?: string
           user_id?: string
@@ -1585,6 +1597,76 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_transcripts: {
+        Row: {
+          ai_error: string | null
+          ai_model: string | null
+          ai_status: string
+          brand_id: string
+          call_log_id: string
+          contact_id: string
+          created_at: string
+          full_text: string | null
+          id: string
+          latency_ms: number | null
+          summary: string | null
+          tokens_used: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_error?: string | null
+          ai_model?: string | null
+          ai_status?: string
+          brand_id: string
+          call_log_id: string
+          contact_id: string
+          created_at?: string
+          full_text?: string | null
+          id?: string
+          latency_ms?: number | null
+          summary?: string | null
+          tokens_used?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_error?: string | null
+          ai_model?: string | null
+          ai_status?: string
+          brand_id?: string
+          call_log_id?: string
+          contact_id?: string
+          created_at?: string
+          full_text?: string | null
+          id?: string
+          latency_ms?: number | null
+          summary?: string | null
+          tokens_used?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_transcripts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_transcripts_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_transcripts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -6662,6 +6744,10 @@ export type Database = {
           parent_brand_name: string
           slug: string
         }[]
+      }
+      get_call_center_telephony_kpis: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
       }
       get_callcenter_kpis_by_operator: {
         Args: { p_brand_id: string; p_from: string; p_to: string }

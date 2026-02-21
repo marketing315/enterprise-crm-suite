@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { MessageSquare, Send, Sparkles, Loader2, User, ArrowRightLeft } from "lucide-react";
+import { MessageSquare, Send, Sparkles, Loader2, User, ArrowRightLeft, Phone } from "lucide-react";
+import { CallSummaryMessage } from "./CallSummaryMessage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -158,6 +159,12 @@ export function EntityChatBox({ entityType, entityId, className }: EntityChatBox
               messages.map((msg) => {
                 const isSystem = msg.sender_type === "system";
                 const isAI = msg.sender_type === "ai";
+
+                // Call summary message (expandable)
+                const aiCtx = msg.ai_context as Record<string, any> | null;
+                if (isSystem && aiCtx?.message_type === "system_call_summary") {
+                  return <CallSummaryMessage key={msg.id} message={msg as any} />;
+                }
 
                 if (isSystem) {
                   return (

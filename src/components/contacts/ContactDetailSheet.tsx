@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText } from 'lucide-react';
+import { CallTranscriptsSection } from './CallTranscriptsSection';
 import { Switch } from '@/components/ui/switch';
 import { ClickToCallButton } from './ClickToCallButton';
 import { CreateTicketDialog } from '@/components/tickets/CreateTicketDialog';
@@ -520,6 +521,9 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   Apri Ticket Supporto
                 </Button>
               </div>
+
+              {/* Call Transcripts */}
+              <CallTranscriptsSection contactId={contact.id} />
 
               {/* Custom Fields */}
               <Separator />

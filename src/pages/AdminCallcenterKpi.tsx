@@ -7,13 +7,16 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { CalendarIcon, Ticket, UserCheck, CheckCircle, AlertCircle, Users, Download, Headphones } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CalendarIcon, Ticket, UserCheck, CheckCircle, AlertCircle, Users, Download, Headphones, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useCallcenterKpisOverview,
   useCallcenterKpisByOperator,
 } from "@/hooks/useCallcenterKpis";
+import { useTelephonyKpis } from "@/hooks/useCallTranscripts";
 import { CallcenterKpiCharts } from "@/components/admin/CallcenterKpiCharts";
+import { TelephonyKpiCards } from "@/components/admin/TelephonyKpiCards";
 import { useBrand } from "@/contexts/BrandContext";
 import { arrayToCSV, downloadCSV, formatMinutesForCSV } from "@/lib/csvExport";
 import { toast } from "sonner";
@@ -30,6 +33,10 @@ export default function AdminCallcenterKpi() {
     dateRange.to
   );
   const { data: operatorKpis = [], isLoading: isLoadingOperators } = useCallcenterKpisByOperator(
+    dateRange.from,
+    dateRange.to
+  );
+  const { data: telephonyKpis, isLoading: isLoadingTelephony } = useTelephonyKpis(
     dateRange.from,
     dateRange.to
   );
@@ -190,7 +197,19 @@ export default function AdminCallcenterKpi() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      <Tabs defaultValue="tickets" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="tickets">
+            <Ticket className="h-4 w-4 mr-1.5" />
+            Ticket
+          </TabsTrigger>
+          <TabsTrigger value="telephony">
+            <Phone className="h-4 w-4 mr-1.5" />
+            Telefonia
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tickets" className="space-y-4">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
@@ -351,6 +370,18 @@ export default function AdminCallcenterKpi() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="telephony" className="space-y-4">
+          {telephonyKpis ? (
+            <TelephonyKpiCards data={telephonyKpis} isLoading={isLoadingTelephony} />
+          ) : isLoadingTelephony ? (
+            <TelephonyKpiCards data={{} as any} isLoading={true} />
+          ) : (
+            <p className="text-muted-foreground text-center py-8">Nessun dato di telefonia disponibile</p>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
