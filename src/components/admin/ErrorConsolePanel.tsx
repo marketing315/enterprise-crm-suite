@@ -46,6 +46,12 @@ export function ErrorConsolePanel() {
     const origWarn = console.warn;
 
     console.error = (...args: unknown[]) => {
+      // Filter out harmless recharts ref warnings
+      const msg = String(args[0] ?? "");
+      if (msg.includes("Function components cannot be given refs")) {
+        origError.apply(console, args);
+        return;
+      }
       addLog("error", args, new Error().stack);
       origError.apply(console, args);
     };
