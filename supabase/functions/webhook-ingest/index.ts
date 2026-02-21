@@ -729,7 +729,7 @@ Deno.serve(async (req: Request) => {
       providedSignature = signatureHeader.toLowerCase();
       expectedSignature = await computeHmacSha256(source.hmac_secret, bodyText);
     } else {
-      const signatureMatch = signatureHeader.match(/^sha256=([a-f0-9]+)$/i);
+      const signatureMatch = signatureHeader.match(/^sha256=([a-f0-9]{64})$/i);
       if (!signatureMatch) {
         console.log(JSON.stringify({ ...logContext, outcome: "invalid_signature_format", status: 400 }));
         await createAuditRecord("rejected", "invalid_signature_format", sourceId, brandId);
