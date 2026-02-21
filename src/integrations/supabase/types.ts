@@ -3072,6 +3072,81 @@ export type Database = {
           },
         ]
       }
+      lead_campaign_attribution: {
+        Row: {
+          brand_id: string
+          campaign_id: string | null
+          contact_id: string | null
+          created_at: string
+          group_id: string | null
+          id: string
+          lead_event_id: string
+          match_type: string
+          matched_at: string
+          metadata: Json | null
+        }
+        Insert: {
+          brand_id: string
+          campaign_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          lead_event_id: string
+          match_type: string
+          matched_at?: string
+          metadata?: Json | null
+        }
+        Update: {
+          brand_id?: string
+          campaign_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          lead_event_id?: string
+          match_type?: string
+          matched_at?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_campaign_attribution_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_digest_config: {
         Row: {
           cc_recipients: string[] | null
@@ -3388,6 +3463,50 @@ export type Database = {
             columns: ["marketing_campaign_id"]
             isOneToOne: false
             referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_campaign_groups: {
+        Row: {
+          brand_id: string
+          campaign_ids: string[]
+          created_at: string
+          id: string
+          is_active: boolean
+          match_rules: Json
+          name: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          campaign_ids?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          match_rules?: Json
+          name: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          campaign_ids?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          match_rules?: Json
+          name?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaign_groups_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
             referencedColumns: ["id"]
           },
         ]
@@ -6434,6 +6553,17 @@ export type Database = {
           role_value: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_attribution_summary: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: {
+          exact_count: number
+          group_count: number
+          match_rate: number
+          overall_cpl: number
+          total_leads: number
+          unmapped_count: number
+        }[]
+      }
       get_brand_operators: {
         Args: { p_brand_id: string }
         Returns: {
@@ -6498,6 +6628,22 @@ export type Database = {
           contact_id: string
           sales_count: number
           sales_total: number
+        }[]
+      }
+      get_cpl_analytics: {
+        Args: {
+          p_brand_id: string
+          p_from?: string
+          p_group_by?: string
+          p_to?: string
+        }
+        Returns: {
+          cpl: number
+          entity_id: string
+          entity_name: string
+          leads_count: number
+          match_type: string
+          total_spend: number
         }[]
       }
       get_cron_secret: { Args: never; Returns: string }
@@ -6967,6 +7113,20 @@ export type Database = {
       replay_outbound_dlq: {
         Args: { p_delivery_id: string; p_override_url?: string }
         Returns: Json
+      }
+      resolve_lead_campaign_attribution: {
+        Args: {
+          p_brand_id: string
+          p_campaign_id?: string
+          p_lead_event_id: string
+          p_source_name?: string
+          p_tags?: string[]
+        }
+        Returns: {
+          campaign_id: string
+          group_id: string
+          match_type: string
+        }[]
       }
       rotate_outbound_webhook_secret: {
         Args: { p_id: string; p_new_secret: string }

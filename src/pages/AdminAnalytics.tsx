@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAdvancedAnalytics } from "@/hooks/useAdvancedAnalytics";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
+import { useCplAnalytics, useAttributionSummary } from "@/hooks/useCplAnalytics";
 import { AnalyticsKpiCards } from "@/components/admin/analytics/AnalyticsKpiCards";
 import { FunnelChart } from "@/components/admin/analytics/FunnelChart";
 import { MarketingFunnelChart } from "@/components/admin/analytics/MarketingFunnelChart";
@@ -8,6 +9,8 @@ import { FunnelLossTable } from "@/components/admin/analytics/FunnelLossTable";
 import { FunnelBreakdownTable } from "@/components/admin/analytics/FunnelBreakdownTable";
 import { SourcePerformanceChart } from "@/components/admin/analytics/SourcePerformanceChart";
 import { TrendComparisonChart } from "@/components/admin/analytics/TrendComparisonChart";
+import { CplKpiCards } from "@/components/admin/analytics/CplKpiCards";
+import { CplTable } from "@/components/admin/analytics/CplTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,6 +39,19 @@ export default function AdminAnalytics() {
     isLoading: funnelLoading,
     refetch: refetchFunnel,
   } = useFunnelMetrics({
+    from: dateRange?.from,
+    to: dateRange?.to,
+  });
+
+  const [cplGroupBy, setCplGroupBy] = useState<"campaign" | "group">("campaign");
+
+  const { data: cplData, isLoading: cplLoading } = useCplAnalytics({
+    from: dateRange?.from,
+    to: dateRange?.to,
+    groupBy: cplGroupBy,
+  });
+
+  const { data: attrSummary, isLoading: attrLoading } = useAttributionSummary({
     from: dateRange?.from,
     to: dateRange?.to,
   });
@@ -110,8 +126,9 @@ export default function AdminAnalytics() {
 
       {/* Tabs */}
       <Tabs defaultValue="marketing-funnel" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="marketing-funnel">Funnel Mkt</TabsTrigger>
+          <TabsTrigger value="cpl">CPL</TabsTrigger>
           <TabsTrigger value="losses">Perdite</TabsTrigger>
           <TabsTrigger value="funnel">Pipeline</TabsTrigger>
           <TabsTrigger value="sources">Fonti</TabsTrigger>
@@ -121,6 +138,27 @@ export default function AdminAnalytics() {
         <TabsContent value="marketing-funnel" className="space-y-4">
           <MarketingFunnelChart data={funnelMetrics} isLoading={funnelLoading} />
           <FunnelBreakdownTable data={funnelBreakdown} isLoading={funnelLoading} />
+        </TabsContent>
+
+        <TabsContent value="cpl" className="space-y-4">
+          <CplKpiCards data={attrSummary} isLoading={attrLoading} />
+          <div className="flex gap-2">
+            <Button
+              variant={cplGroupBy === "campaign" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCplGroupBy("campaign")}
+            >
+              Per Campagna
+            </Button>
+            <Button
+              variant={cplGroupBy === "group" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCplGroupBy("group")}
+            >
+              Per Gruppo
+            </Button>
+          </div>
+          <CplTable data={cplData ?? []} isLoading={cplLoading} groupBy={cplGroupBy} />
         </TabsContent>
 
         <TabsContent value="losses" className="space-y-4">
