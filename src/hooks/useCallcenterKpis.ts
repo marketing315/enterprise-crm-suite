@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useBrand } from "@/contexts/BrandContext";
+import { useBrandFilter } from "@/hooks/useBrandFilter";
 
 export interface CallcenterKpisOverview {
   tickets_created: number;
@@ -30,15 +30,17 @@ export interface OperatorKpis {
 }
 
 export function useCallcenterKpisOverview(from: Date, to: Date) {
-  const { currentBrand, isAllBrandsSelected } = useBrand();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   return useQuery({
-    queryKey: ["callcenter-kpis-overview", isAllBrandsSelected ? "all" : currentBrand?.id, from.toISOString(), to.toISOString()],
+    queryKey: ["callcenter-kpis-overview", getQueryKeyBrand(), from.toISOString(), to.toISOString()],
     queryFn: async () => {
-      if (!currentBrand?.id) return null;
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return null;
 
+      // Use first brand for single-brand, pass array for multi-brand when RPC supports it
       const { data, error } = await supabase.rpc("get_callcenter_kpis_overview", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandIds[0],
         p_from: from.toISOString(),
         p_to: to.toISOString(),
       });
@@ -47,20 +49,21 @@ export function useCallcenterKpisOverview(from: Date, to: Date) {
       if (!data) return null;
       return data as unknown as CallcenterKpisOverview;
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
   });
 }
 
 export function useCallcenterKpisByOperator(from: Date, to: Date) {
-  const { currentBrand, isAllBrandsSelected } = useBrand();
+  const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
   return useQuery({
-    queryKey: ["callcenter-kpis-by-operator", isAllBrandsSelected ? "all" : currentBrand?.id, from.toISOString(), to.toISOString()],
+    queryKey: ["callcenter-kpis-by-operator", getQueryKeyBrand(), from.toISOString(), to.toISOString()],
     queryFn: async () => {
-      if (!currentBrand?.id) return [];
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return [];
 
       const { data, error } = await supabase.rpc("get_callcenter_kpis_by_operator", {
-        p_brand_id: currentBrand.id,
+        p_brand_id: brandIds[0],
         p_from: from.toISOString(),
         p_to: to.toISOString(),
       });
@@ -69,6 +72,6 @@ export function useCallcenterKpisByOperator(from: Date, to: Date) {
       if (!data) return [];
       return data as unknown as OperatorKpis[];
     },
-    enabled: !!currentBrand?.id,
+    enabled: isQueryEnabled(),
   });
 }

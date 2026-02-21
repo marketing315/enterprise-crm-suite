@@ -87,6 +87,7 @@ export default function CallcenterOperatorDashboard() {
       let query = supabase
         .from('appointments')
         .select('*', { count: 'exact', head: true })
+        .eq('created_by_user_id', user.id)
         .gte('scheduled_at', todayStart)
         .lte('scheduled_at', todayEnd);
 
@@ -114,11 +115,13 @@ export default function CallcenterOperatorDashboard() {
       const now = new Date().toISOString();
       const in60min = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
+      // Filter callbacks by operator ownership via payload->assigned_to
       let query = supabase
         .from('automation_jobs')
         .select('id, run_at, payload, contact_id, status')
         .eq('status', 'pending')
         .eq('job_type', 'callback')
+        .contains('payload', { assigned_to: user.id })
         .gte('run_at', now)
         .lte('run_at', in60min)
         .order('run_at', { ascending: true })

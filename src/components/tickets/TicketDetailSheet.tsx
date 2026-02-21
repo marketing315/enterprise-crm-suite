@@ -79,7 +79,7 @@ export function TicketDetailSheet({
   if (!ticket) return null;
 
   // Check if user can assign tickets (callcenter can also reassign to other operators)
-  const canAssign = hasRole('admin') || hasRole('callcenter');
+  const canAssign = hasRole('admin') || hasRole('callcenter') || hasRole('operatore_callcenter') || hasRole('responsabile_callcenter');
   const currentOperator = operators.find((op) => op.supabase_auth_id === supabaseUser?.id);
 
   const handleStatusChange = async (status: TicketStatus) => {
