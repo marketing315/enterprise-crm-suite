@@ -131,9 +131,13 @@ Deno.serve(async (req) => {
       console.log(`[lead-digest-dispatch] Scheduled check at ${currentHHMM} (${tz}), slots: ${JSON.stringify(config.schedule_times)}`);
 
       const slots: string[] = config.schedule_times || ["12:00", "16:30"];
+      // Widen matching window to ±2 minutes to survive cold-starts and redeploys
+      const currentTotalMin = h * 60 + m;
       const isInSlot = slots.some((slot: string) => {
         const [sh, sm] = slot.split(":").map(Number);
-        return h === sh && m === sm;
+        const slotTotalMin = sh * 60 + sm;
+        const diff = Math.abs(currentTotalMin - slotTotalMin);
+        return diff <= 2 || diff >= (24 * 60 - 2); // handle midnight wrap
       });
 
       if (!isInSlot) {
@@ -144,14 +148,16 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Anti-duplicate: check if already sent within this minute
-      const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+      console.log(`[lead-digest-dispatch] Matched send slot at ${currentHHMM}`);
+
+      // Anti-duplicate: check if already sent within last 5 minutes (covers the ±2 min window)
+      const dedupeWindow = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data: recentRun } = await supabase
         .from("lead_digest_runs")
         .select("id, created_at")
         .in("status", ["sent", "pending"])
         .eq("trigger_type", "scheduled")
-        .gte("created_at", oneMinuteAgo)
+        .gte("created_at", dedupeWindow)
         .limit(1)
         .maybeSingle();
 
@@ -314,8 +320,9 @@ Deno.serve(async (req) => {
       const phoneNorm = primaryPhone?.phone_normalized?.trim() || contact.phone_normalized?.trim() || null;
       const emailLower = contact.email?.trim().toLowerCase() || null;
 
+      const cId = contact.id;
       // Dedup by contact_id first (most reliable)
-      if (contactId && seenContactIds.has(contactId)) {
+      if (cId && seenContactIds.has(cId)) {
         byContact++;
         continue;
       }
@@ -330,7 +337,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      if (contactId) seenContactIds.add(contactId);
+      if (cId) seenContactIds.add(cId);
       if (phoneNorm) seenPhones.add(phoneNorm);
       if (emailLower) seenEmails.add(emailLower);
 
