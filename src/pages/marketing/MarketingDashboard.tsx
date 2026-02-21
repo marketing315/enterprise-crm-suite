@@ -1,11 +1,15 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, ChevronLeft, ChevronRight, Megaphone, BarChart3, Image as ImageIcon, Users2 } from "lucide-react";
+import { AlertCircle, CalendarIcon, Megaphone, BarChart3, Image as ImageIcon, Users2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 import { useBrand } from "@/contexts/BrandContext";
 import { CustomReportDialog } from "@/components/marketing/CustomReportDialog";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
@@ -38,13 +42,16 @@ export default function MarketingDashboard() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const hasAccess = useHasMarketingAccess();
   
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
   const [activeTab, setActiveTab] = useState("overview");
   
   const dateRange = useMemo(() => ({
-    from: format(startOfMonth(selectedMonth), "yyyy-MM-dd"),
-    to: format(endOfMonth(selectedMonth), "yyyy-MM-dd"),
-  }), [selectedMonth]);
+    from: selectedRange?.from ? format(selectedRange.from, "yyyy-MM-dd") : format(startOfMonth(new Date()), "yyyy-MM-dd"),
+    to: selectedRange?.to ? format(selectedRange.to, "yyyy-MM-dd") : format(endOfMonth(new Date()), "yyyy-MM-dd"),
+  }), [selectedRange]);
 
   const { data: summaryKpis, isLoading: summaryLoading } = useMarketingSummaryKpis(
     dateRange.from,
@@ -63,19 +70,19 @@ export default function MarketingDashboard() {
   });
 
   // Funnel metrics for the same period
-  const funnelFrom = useMemo(() => startOfMonth(selectedMonth), [selectedMonth]);
-  const funnelTo = useMemo(() => endOfMonth(selectedMonth), [selectedMonth]);
+  const funnelFrom = useMemo(() => selectedRange?.from ?? startOfMonth(new Date()), [selectedRange]);
+  const funnelTo = useMemo(() => selectedRange?.to ?? endOfMonth(new Date()), [selectedRange]);
   const { metrics: funnelMetrics, isLoading: funnelLoading } = useFunnelMetrics({
     from: funnelFrom,
     to: funnelTo,
   });
 
-  const handlePrevMonth = () => setSelectedMonth((d) => subMonths(d, 1));
-  const handleNextMonth = () => setSelectedMonth((d) => {
-    const next = new Date(d);
-    next.setMonth(next.getMonth() + 1);
-    return next;
-  });
+  const handlePreset = (days: number) => {
+    setSelectedRange({ from: subDays(new Date(), days), to: new Date() });
+  };
+  const handleThisMonth = () => {
+    setSelectedRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
+  };
 
   if (!hasBrandSelected) {
     return (
@@ -150,17 +157,49 @@ export default function MarketingDashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
-          {/* Month Selector */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="min-w-[140px] text-center font-medium">
-              {format(selectedMonth, "MMMM yyyy", { locale: it })}
-            </span>
-            <Button variant="outline" size="icon" onClick={handleNextMonth}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          {/* Date Range Selector */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "justify-start text-left font-normal",
+                    !selectedRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedRange?.from ? (
+                    selectedRange.to ? (
+                      <>
+                        {format(selectedRange.from, "d MMM", { locale: it })} –{" "}
+                        {format(selectedRange.to, "d MMM yyyy", { locale: it })}
+                      </>
+                    ) : (
+                      format(selectedRange.from, "d MMM yyyy", { locale: it })
+                    )
+                  ) : (
+                    <span>Seleziona periodo</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={selectedRange?.from}
+                  selected={selectedRange}
+                  onSelect={setSelectedRange}
+                  numberOfMonths={2}
+                  locale={it}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="sm" onClick={() => handlePreset(7)}>7gg</Button>
+            <Button variant="outline" size="sm" onClick={() => handlePreset(30)}>30gg</Button>
+            <Button variant="outline" size="sm" onClick={() => handlePreset(90)}>90gg</Button>
+            <Button variant="outline" size="sm" onClick={handleThisMonth}>Mese</Button>
           </div>
 
           {/* KPI Cards (with ADV metrics integrated) */}
