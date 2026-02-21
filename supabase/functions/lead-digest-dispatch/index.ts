@@ -433,10 +433,15 @@ Deno.serve(async (req) => {
     });
     const subject = `Aggiornamento Lead (${uniqueCount}) - ${windowEndLocal}`;
 
-    // ── HTML escaping helper ──
+    // ── HTML escaping helper (prevents XSS/injection in email body) ──
     const esc = (s: string | null | undefined): string => {
       if (!s) return "—";
-      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      return s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#x27;");
     };
 
     // ── Build HTML body ──
