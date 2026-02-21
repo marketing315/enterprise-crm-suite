@@ -50,7 +50,8 @@ export function ErrorConsolePanel() {
       const msg = String(args[0] ?? "");
       if (
         msg.includes("Function components cannot be given refs") ||
-        msg.includes("DialogContent") && msg.includes("DialogTitle")
+        (msg.includes("DialogContent") && msg.includes("DialogTitle")) ||
+        (msg.includes("Missing") && msg.includes("aria-describedby"))
       ) {
         origError.apply(console, args);
         return;
