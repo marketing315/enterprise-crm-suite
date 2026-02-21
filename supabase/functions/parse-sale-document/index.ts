@@ -134,7 +134,7 @@ Rispondi SOLO con JSON valido, senza markdown.`
       
       parsedData = JSON.parse(jsonStr.trim());
     } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
+      console.error("B3: Failed to parse AI response:", content);
       parsedData = {
         amount: null,
         date: null,
@@ -145,11 +145,25 @@ Rispondi SOLO con JSON valido, senza markdown.`
         confidence: 0.1,
         raw_text: content,
       };
+      // B3 FIX: Return parsed:false so consumers know this is a fallback
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          parsed: false,
+          status: "partial",
+          data: parsedData 
+        }),
+        { 
+          status: 207, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
+        parsed: true,
         data: parsedData 
       }),
       { 

@@ -56,8 +56,9 @@ export function useBrandSettings() {
             "4": parsed["4"] ?? DEFAULT_SLA_THRESHOLDS["4"],
             "5": parsed["5"] ?? DEFAULT_SLA_THRESHOLDS["5"],
           };
-        } catch {
-          // Use defaults if parsing fails
+        } catch (err) {
+          // S2 FIX: Log invalid SLA config for observability
+          console.warn(`S2: Invalid sla_thresholds_minutes for brand ${currentBrand?.id}, using defaults:`, err instanceof Error ? err.message : err);
         }
       }
 
