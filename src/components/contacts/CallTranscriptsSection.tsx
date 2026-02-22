@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useContactCallTranscripts } from "@/hooks/useCallTranscripts";
+import { CallActionReviewPanel } from "@/components/calls/CallActionReviewPanel";
 
 interface CallTranscriptsSectionProps {
   contactId: string;
@@ -163,6 +164,11 @@ export function CallTranscriptsSection({ contactId }: CallTranscriptsSectionProp
                       <p className="text-xs text-destructive">
                         Errore AI: {t.ai_error}
                       </p>
+                    )}
+
+                    {/* AI Call Action Proposals */}
+                    {call?.id && t.ai_status === "completed" && (
+                      <CallActionReviewPanel callLogId={call.id} />
                     )}
                   </div>
                 )}

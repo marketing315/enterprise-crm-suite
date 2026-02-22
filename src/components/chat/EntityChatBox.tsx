@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { MessageSquare, Send, Sparkles, Loader2, User, ArrowRightLeft, Phone } from "lucide-react";
 import { CallSummaryMessage } from "./CallSummaryMessage";
+import { CallProposalsSummaryMessage } from "./CallProposalsSummaryMessage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -164,6 +165,9 @@ export function EntityChatBox({ entityType, entityId, className }: EntityChatBox
                 const aiCtx = msg.ai_context as Record<string, any> | null;
                 if (isSystem && aiCtx?.message_type === "system_call_summary") {
                   return <CallSummaryMessage key={msg.id} message={msg as any} />;
+                }
+                if (isSystem && aiCtx?.message_type === "ai_call_proposals_summary") {
+                  return <CallProposalsSummaryMessage key={msg.id} message={msg as any} />;
                 }
 
                 if (isSystem) {
