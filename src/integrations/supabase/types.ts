@@ -419,6 +419,227 @@ export type Database = {
           },
         ]
       }
+      ai_call_action_decisions: {
+        Row: {
+          brand_id: string
+          decided_at: string
+          decided_by: string
+          decision: Database["public"]["Enums"]["call_action_decision_status"]
+          edited_changes: Json | null
+          id: string
+          proposal_id: string
+          rejection_reason: string | null
+        }
+        Insert: {
+          brand_id: string
+          decided_at?: string
+          decided_by: string
+          decision: Database["public"]["Enums"]["call_action_decision_status"]
+          edited_changes?: Json | null
+          id?: string
+          proposal_id: string
+          rejection_reason?: string | null
+        }
+        Update: {
+          brand_id?: string
+          decided_at?: string
+          decided_by?: string
+          decision?: Database["public"]["Enums"]["call_action_decision_status"]
+          edited_changes?: Json | null
+          id?: string
+          proposal_id?: string
+          rejection_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_call_action_decisions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_decisions_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_decisions_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "ai_call_action_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_call_action_executions: {
+        Row: {
+          brand_id: string
+          created_at: string
+          decision_id: string
+          duration_ms: number | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          idempotency_key: string
+          proposal_id: string
+          result_snapshot: Json | null
+          status: Database["public"]["Enums"]["call_action_execution_status"]
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          decision_id: string
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          idempotency_key: string
+          proposal_id: string
+          result_snapshot?: Json | null
+          status?: Database["public"]["Enums"]["call_action_execution_status"]
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          decision_id?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          idempotency_key?: string
+          proposal_id?: string
+          result_snapshot?: Json | null
+          status?: Database["public"]["Enums"]["call_action_execution_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_call_action_executions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_executions_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "ai_call_action_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_executions_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "ai_call_action_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_call_action_proposals: {
+        Row: {
+          action_label: string
+          action_type: Database["public"]["Enums"]["call_action_type"]
+          ai_confidence: number | null
+          ai_model: string
+          ai_prompt_version: string
+          ai_rationale: string | null
+          brand_id: string
+          call_log_id: string
+          contact_id: string | null
+          created_at: string
+          current_snapshot: Json | null
+          deal_id: string | null
+          decision_status: Database["public"]["Enums"]["call_action_decision_status"]
+          display_order: number
+          id: string
+          proposed_changes: Json
+          transcript_excerpt: string | null
+          transcript_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_label: string
+          action_type: Database["public"]["Enums"]["call_action_type"]
+          ai_confidence?: number | null
+          ai_model?: string
+          ai_prompt_version?: string
+          ai_rationale?: string | null
+          brand_id: string
+          call_log_id: string
+          contact_id?: string | null
+          created_at?: string
+          current_snapshot?: Json | null
+          deal_id?: string | null
+          decision_status?: Database["public"]["Enums"]["call_action_decision_status"]
+          display_order?: number
+          id?: string
+          proposed_changes?: Json
+          transcript_excerpt?: string | null
+          transcript_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_label?: string
+          action_type?: Database["public"]["Enums"]["call_action_type"]
+          ai_confidence?: number | null
+          ai_model?: string
+          ai_prompt_version?: string
+          ai_rationale?: string | null
+          brand_id?: string
+          call_log_id?: string
+          contact_id?: string | null
+          created_at?: string
+          current_snapshot?: Json | null
+          deal_id?: string | null
+          decision_status?: Database["public"]["Enums"]["call_action_decision_status"]
+          display_order?: number
+          id?: string
+          proposed_changes?: Json
+          transcript_excerpt?: string | null
+          transcript_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_call_action_proposals_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_proposals_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_proposals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_proposals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_call_action_proposals_transcript_id_fkey"
+            columns: ["transcript_id"]
+            isOneToOne: false
+            referencedRelation: "call_transcripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_chat_logs: {
         Row: {
           brand_id: string
@@ -7636,6 +7857,26 @@ export type Database = {
         | "no_show"
       appointment_type: "primo_appuntamento" | "follow_up" | "visita_tecnica"
       assigned_by: "ai" | "user" | "rule"
+      call_action_decision_status:
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "edited_then_approved"
+      call_action_execution_status:
+        | "pending"
+        | "running"
+        | "success"
+        | "failed"
+        | "skipped"
+      call_action_type:
+        | "update_contact"
+        | "update_kanban_stage"
+        | "create_or_update_ticket"
+        | "create_or_update_appointment"
+        | "create_lead_event"
+        | "update_deal"
+        | "add_action_suggestion"
+        | "update_call_log"
       chat_sender_type: "user" | "ai" | "system"
       chat_thread_type: "direct" | "group" | "entity"
       commission_status: "pending" | "approved" | "paid"
@@ -7944,6 +8185,29 @@ export const Constants = {
       ],
       appointment_type: ["primo_appuntamento", "follow_up", "visita_tecnica"],
       assigned_by: ["ai", "user", "rule"],
+      call_action_decision_status: [
+        "pending_approval",
+        "approved",
+        "rejected",
+        "edited_then_approved",
+      ],
+      call_action_execution_status: [
+        "pending",
+        "running",
+        "success",
+        "failed",
+        "skipped",
+      ],
+      call_action_type: [
+        "update_contact",
+        "update_kanban_stage",
+        "create_or_update_ticket",
+        "create_or_update_appointment",
+        "create_lead_event",
+        "update_deal",
+        "add_action_suggestion",
+        "update_call_log",
+      ],
       chat_sender_type: ["user", "ai", "system"],
       chat_thread_type: ["direct", "group", "entity"],
       commission_status: ["pending", "approved", "paid"],
