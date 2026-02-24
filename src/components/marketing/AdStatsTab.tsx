@@ -3,7 +3,7 @@ import { format, startOfMonth, endOfMonth, subMonths, subYears, subDays } from "
 import { it } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, RefreshCw, Clock, Download, Link2 } from "lucide-react";
+import { RefreshCw, Clock, Download, Link2 } from "lucide-react";
 import {
   Select,
   SelectContent,
