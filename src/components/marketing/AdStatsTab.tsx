@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subMonths, subYears } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, subYears, subDays } from "date-fns";
 import { it } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -104,15 +104,7 @@ export function AdStatsTab() {
     return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
   }, [allStats]);
 
-  const handlePrevMonth = () => setSelectedMonth((d) => subMonths(d, 1));
-  const handleNextMonth = () => {
-    setSelectedMonth((d) => {
-      const next = new Date(d);
-      next.setMonth(next.getMonth() + 1);
-      return next;
-    });
-  };
-
+  // Removed prev/next month handlers – replaced by date range picker
   const handleRefresh = () => {
     // Invalidate queries to force re-fetch regardless of staleTime
     queryClient.invalidateQueries({ queryKey: ["ad-platform-stats"] });
