@@ -106,7 +106,7 @@ export async function recordKanbanTransition(params: TransitionParams): Promise<
           to_stage_id: toStageId,
           from_stage_label: fromLabel,
           to_stage_label: toStageLabel,
-          actor_user_id: actorUserId,
+          actor_user_id: actorAppUserId,
           actor_display_name: actorName,
           occurred_at: occurredAt.toISOString(),
           idempotency_key: idempotencyKey,
