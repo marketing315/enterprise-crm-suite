@@ -36,7 +36,10 @@ import type { AdPlatform } from "@/types/adPlatform";
 export function AdStatsTab() {
   const { currentBrand, isAllBrandsSelected } = useBrand();
   const queryClient = useQueryClient();
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedRange, setSelectedRange] = useState<{ from: Date; to: Date }>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
   const [platformFilter, setPlatformFilter] = useState<AdPlatform | "all">("all");
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -48,9 +51,16 @@ export function AdStatsTab() {
   const [syncToDate, setSyncToDate] = useState<Date>(new Date());
 
   const dateRange = useMemo(() => ({
-    from: format(startOfMonth(selectedMonth), "yyyy-MM-dd"),
-    to: format(endOfMonth(selectedMonth), "yyyy-MM-dd"),
-  }), [selectedMonth]);
+    from: format(selectedRange.from, "yyyy-MM-dd"),
+    to: format(selectedRange.to, "yyyy-MM-dd"),
+  }), [selectedRange]);
+
+  const handlePreset = (days: number) => {
+    setSelectedRange({ from: subDays(new Date(), days), to: new Date() });
+  };
+  const handleThisMonth = () => {
+    setSelectedRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
+  };
 
   const platform = platformFilter === "all" ? null : platformFilter;
   const campaignId = campaignFilter === "all" ? null : campaignFilter;
