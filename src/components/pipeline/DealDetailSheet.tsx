@@ -23,6 +23,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -169,6 +170,9 @@ export function DealDetailSheet({
               {statusLabels[deal.status]}
             </Badge>
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            Dettagli completi del deal, azioni rapide e discussione associata.
+          </SheetDescription>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             <span>
