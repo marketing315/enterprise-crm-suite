@@ -35,7 +35,8 @@ export async function recordKanbanTransition(params: TransitionParams): Promise<
       .single();
 
     const actorName = profile?.full_name || "Utente sconosciuto";
-    const actorUserId = profile?.id ?? null;
+    const actorAppUserId = profile?.id ?? null;
+    const actorAuthUserId = user.id;
     const occurredAt = new Date();
 
     // Idempotency key: deal + from + to + minute-level timestamp
@@ -52,7 +53,7 @@ export async function recordKanbanTransition(params: TransitionParams): Promise<
         to_stage_id: toStageId,
         from_stage_label: fromStageLabel || "Sconosciuto",
         to_stage_label: toStageLabel,
-        actor_user_id: actorUserId,
+        actor_user_id: actorAuthUserId,
         actor_display_name: actorName,
         idempotency_key: idempotencyKey,
         occurred_at: occurredAt.toISOString(),
@@ -95,7 +96,7 @@ export async function recordKanbanTransition(params: TransitionParams): Promise<
       .insert({
         thread_id: threadId,
         brand_id: brandId,
-        sender_user_id: actorUserId,
+        sender_user_id: actorAppUserId,
         sender_type: "system",
         message_text: messageText,
         ai_context: {
@@ -105,7 +106,7 @@ export async function recordKanbanTransition(params: TransitionParams): Promise<
           to_stage_id: toStageId,
           from_stage_label: fromLabel,
           to_stage_label: toStageLabel,
-          actor_user_id: actorUserId,
+          actor_user_id: actorAppUserId,
           actor_display_name: actorName,
           occurred_at: occurredAt.toISOString(),
           idempotency_key: idempotencyKey,
