@@ -56,8 +56,8 @@ export function AdStatsTable({ data, isLoading, showBrand }: AdStatsTableProps) 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((row) => (
-                  <TableRow key={`${row.platform}-${row.external_campaign_id}-${row.brand_id}`}>
+                {data.map((row, idx) => (
+                  <TableRow key={`${row.platform}-${row.external_campaign_id}-${row.brand_id}-${idx}`}>
                     <TableCell>
                       <div>
                         <div className="font-medium">
