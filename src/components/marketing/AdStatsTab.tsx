@@ -286,16 +286,35 @@ export function AdStatsTab() {
     <div className="space-y-6">
       {/* Filters */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[140px] text-center font-medium">
-            {format(selectedMonth, "MMMM yyyy", { locale: it })}
-          </span>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(selectedRange.from, "d MMM", { locale: it })} –{" "}
+                {format(selectedRange.to, "d MMM yyyy", { locale: it })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={selectedRange.from}
+                selected={{ from: selectedRange.from, to: selectedRange.to }}
+                onSelect={(range) => {
+                  if (range?.from && range?.to) setSelectedRange({ from: range.from, to: range.to });
+                  else if (range?.from) setSelectedRange({ from: range.from, to: range.from });
+                }}
+                numberOfMonths={2}
+                locale={it}
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" onClick={() => handlePreset(7)}>7gg</Button>
+          <Button variant="outline" size="sm" onClick={() => handlePreset(30)}>30gg</Button>
+          <Button variant="outline" size="sm" onClick={() => handlePreset(90)}>90gg</Button>
+          <Button variant="outline" size="sm" onClick={handleThisMonth}>Mese</Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
