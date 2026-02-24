@@ -31,7 +31,7 @@ export async function recordKanbanTransition(params: TransitionParams): Promise<
     const { data: profile } = await untypedClient
       .from("users")
       .select("id, full_name")
-      .eq("id", user.id)
+      .eq("supabase_auth_id", user.id)
       .single();
 
     const actorName = profile?.full_name || "Utente sconosciuto";
@@ -52,7 +52,7 @@ export async function recordKanbanTransition(params: TransitionParams): Promise<
         to_stage_id: toStageId,
         from_stage_label: fromStageLabel || "Sconosciuto",
         to_stage_label: toStageLabel,
-        actor_user_id: user.id,
+        actor_user_id: actorUserId,
         actor_display_name: actorName,
         idempotency_key: idempotencyKey,
         occurred_at: occurredAt.toISOString(),
