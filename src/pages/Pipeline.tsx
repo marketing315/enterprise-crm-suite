@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
-import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
+import { DealInlinePanel } from "@/components/pipeline/DealInlinePanel";
 import { TagFilter } from "@/components/tags/TagFilter";
 import { ManageStagesDialog } from "@/components/pipeline/ManageStagesDialog";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
@@ -132,11 +132,19 @@ export default function Pipeline() {
               />
             </div>
           )}
-          <div className="flex-1 overflow-hidden">
-            <KanbanBoard 
-              onDealClick={handleDealClick}
-              filterTagIds={selectedTagIds}
-            />
+          <div className="flex-1 overflow-hidden flex">
+            <div className="flex-1 overflow-hidden">
+              <KanbanBoard 
+                onDealClick={handleDealClick}
+                filterTagIds={selectedTagIds}
+              />
+            </div>
+            {selectedDealId && (
+              <DealInlinePanel
+                deal={selectedDeal}
+                onClose={() => setSelectedDealId(null)}
+              />
+            )}
           </div>
         </TabsContent>
 
@@ -170,13 +178,6 @@ export default function Pipeline() {
           />
         </TabsContent>
       </Tabs>
-
-      {/* Deal Detail Sheet */}
-      <DealDetailSheet
-        deal={selectedDeal}
-        open={!!selectedDealId}
-        onOpenChange={(open) => !open && setSelectedDealId(null)}
-      />
     </div>
   );
 }
