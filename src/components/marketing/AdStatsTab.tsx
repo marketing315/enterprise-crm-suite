@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subMonths, subYears } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, subYears, subDays } from "date-fns";
 import { it } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, RefreshCw, Clock, Download, Link2 } from "lucide-react";
+import { RefreshCw, Clock, Download, Link2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -36,7 +36,10 @@ import type { AdPlatform } from "@/types/adPlatform";
 export function AdStatsTab() {
   const { currentBrand, isAllBrandsSelected } = useBrand();
   const queryClient = useQueryClient();
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedRange, setSelectedRange] = useState<{ from: Date; to: Date }>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
   const [platformFilter, setPlatformFilter] = useState<AdPlatform | "all">("all");
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -48,9 +51,16 @@ export function AdStatsTab() {
   const [syncToDate, setSyncToDate] = useState<Date>(new Date());
 
   const dateRange = useMemo(() => ({
-    from: format(startOfMonth(selectedMonth), "yyyy-MM-dd"),
-    to: format(endOfMonth(selectedMonth), "yyyy-MM-dd"),
-  }), [selectedMonth]);
+    from: format(selectedRange.from, "yyyy-MM-dd"),
+    to: format(selectedRange.to, "yyyy-MM-dd"),
+  }), [selectedRange]);
+
+  const handlePreset = (days: number) => {
+    setSelectedRange({ from: subDays(new Date(), days), to: new Date() });
+  };
+  const handleThisMonth = () => {
+    setSelectedRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
+  };
 
   const platform = platformFilter === "all" ? null : platformFilter;
   const campaignId = campaignFilter === "all" ? null : campaignFilter;
@@ -94,15 +104,7 @@ export function AdStatsTab() {
     return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
   }, [allStats]);
 
-  const handlePrevMonth = () => setSelectedMonth((d) => subMonths(d, 1));
-  const handleNextMonth = () => {
-    setSelectedMonth((d) => {
-      const next = new Date(d);
-      next.setMonth(next.getMonth() + 1);
-      return next;
-    });
-  };
-
+  // Removed prev/next month handlers – replaced by date range picker
   const handleRefresh = () => {
     // Invalidate queries to force re-fetch regardless of staleTime
     queryClient.invalidateQueries({ queryKey: ["ad-platform-stats"] });
@@ -284,16 +286,35 @@ export function AdStatsTab() {
     <div className="space-y-6">
       {/* Filters */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[140px] text-center font-medium">
-            {format(selectedMonth, "MMMM yyyy", { locale: it })}
-          </span>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(selectedRange.from, "d MMM", { locale: it })} –{" "}
+                {format(selectedRange.to, "d MMM yyyy", { locale: it })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={selectedRange.from}
+                selected={{ from: selectedRange.from, to: selectedRange.to }}
+                onSelect={(range) => {
+                  if (range?.from && range?.to) setSelectedRange({ from: range.from, to: range.to });
+                  else if (range?.from) setSelectedRange({ from: range.from, to: range.from });
+                }}
+                numberOfMonths={2}
+                locale={it}
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" onClick={() => handlePreset(7)}>7gg</Button>
+          <Button variant="outline" size="sm" onClick={() => handlePreset(30)}>30gg</Button>
+          <Button variant="outline" size="sm" onClick={() => handlePreset(90)}>90gg</Button>
+          <Button variant="outline" size="sm" onClick={handleThisMonth}>Mese</Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
