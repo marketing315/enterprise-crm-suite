@@ -71,6 +71,13 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  if (phoneRaw.includes("{{") || phoneRaw.includes("}}")) {
+    return new Response(
+      JSON.stringify({ error: "Phone placeholder not resolved: send a real phone number value" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
