@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useBrand } from "@/contexts/BrandContext";
 import {
   Sheet,
   SheetContent,
@@ -19,7 +22,119 @@ import {
 import { ChannelSelect } from "./ChannelSelect";
 import { useCreateMarketingCampaign, useUpdateMarketingCampaign } from "@/hooks/useMarketingCampaigns";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { MarketingCampaign, MarketingCampaignStatus } from "@/types/marketing";
+
+// ---- AdvCampaignSelect ----
+function AdvCampaignSelect({
+  value,
+  onValueChange,
+  channelId,
+}: {
+  value: string;
+  onValueChange: (v: string) => void;
+  channelId: string | null;
+}) {
+  const { currentBrand } = useBrand();
+  const [open, setOpen] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+
+  const { data: advCampaigns = [] } = useQuery({
+    queryKey: ["adv-campaigns-select", currentBrand?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ad_platform_stats")
+        .select("external_campaign_id, external_campaign_name, platform")
+        .order("external_campaign_name");
+      if (error) throw error;
+      // Deduplicate
+      const seen = new Set<string>();
+      return (data || []).filter((r) => {
+        if (seen.has(r.external_campaign_id)) return false;
+        seen.add(r.external_campaign_id);
+        return true;
+      });
+    },
+    enabled: !!currentBrand,
+    staleTime: 300000,
+  });
+
+  const selectedLabel = useMemo(() => {
+    const found = advCampaigns.find((c) => c.external_campaign_id === value);
+    return found ? `${found.external_campaign_name} (${found.platform})` : value || undefined;
+  }, [value, advCampaigns]);
+
+  if (manualMode) {
+    return (
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          placeholder="ID campagna manuale"
+          className="flex-1"
+        />
+        <Button type="button" variant="outline" size="sm" onClick={() => setManualMode(false)}>
+          Lista
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            type="button"
+            className={cn("flex-1 justify-between font-normal", !value && "text-muted-foreground")}
+          >
+            <span className="truncate">{selectedLabel || "Seleziona campagna ADV..."}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[400px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Cerca campagna..." />
+            <CommandList>
+              <CommandEmpty>Nessuna campagna trovata</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value="__none__"
+                  onSelect={() => { onValueChange(""); setOpen(false); }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                  <span className="text-muted-foreground">Nessun collegamento</span>
+                </CommandItem>
+                {advCampaigns.map((c) => (
+                  <CommandItem
+                    key={c.external_campaign_id}
+                    value={c.external_campaign_name || c.external_campaign_id}
+                    onSelect={() => { onValueChange(c.external_campaign_id); setOpen(false); }}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", value === c.external_campaign_id ? "opacity-100" : "opacity-0")} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="truncate text-sm">{c.external_campaign_name || c.external_campaign_id}</span>
+                      <span className="text-xs text-muted-foreground">{c.platform} · {c.external_campaign_id}</span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <Button type="button" variant="outline" size="sm" onClick={() => setManualMode(true)}>
+        ID
+      </Button>
+    </div>
+  );
+}
 
 interface CampaignFormDrawerProps {
   open: boolean;
@@ -125,13 +240,15 @@ export function CampaignFormDrawer({ open, onOpenChange, campaign }: CampaignFor
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="external_id">ID Esterno (UTM/Campaign ID)</Label>
-            <Input
-              id="external_id"
+            <Label htmlFor="external_id">Campagna ADV collegata</Label>
+            <AdvCampaignSelect
               value={form.external_id}
-              onChange={(e) => setForm((f) => ({ ...f, external_id: e.target.value }))}
-              placeholder="es. fb_bf2026"
+              onValueChange={(v) => setForm((f) => ({ ...f, external_id: v }))}
+              channelId={form.channel_id}
             />
+            <p className="text-xs text-muted-foreground">
+              Seleziona la campagna dalla piattaforma ADV oppure inserisci un ID manuale
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
