@@ -6606,6 +6606,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_brand_notifications: {
+        Args: {
+          p_body?: string
+          p_brand_id: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_exclude_user_id?: string
+          p_title: string
+          p_type: Database["public"]["Enums"]["notification_type"]
+        }
+        Returns: undefined
+      }
       create_group_chat: {
         Args: { p_brand_id: string; p_member_ids: string[]; p_title: string }
         Returns: string
