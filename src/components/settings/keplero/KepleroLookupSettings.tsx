@@ -100,16 +100,10 @@ export function KepleroLookupSettings() {
   };
 
   const copyKepleroConfig = () => {
-    const config = `URL: ${endpointUrl}
-Metodo: POST
-Intestazioni:
-  Content-Type: application/json
-Corpo (JSON):
-  {
-    "phone": "{{waSessionNumber}}",
-    "brand_slug": "${brandSlug}",
-    "secret": "<IL_TUO_SECRET>"
-  }
+    const config = `URL: ${endpointUrl}?phone={{waSessionNumber}}&brand_slug=${brandSlug}&secret=<IL_TUO_SECRET>
+Metodo: GET
+Intestazioni: (nessuna intestazione custom richiesta)
+Corpo: (vuoto)
 
 Risposta:
   found=true → contact.first_name, contact.last_name, contact.status, contact.tags
@@ -248,17 +242,19 @@ Risposta:
         <CardContent>
           <div className="space-y-3 rounded-md border bg-muted/30 p-3 text-sm">
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground">URL</Label>
+              <Label className="text-xs font-semibold text-muted-foreground">URL completo</Label>
               <div className="mt-1 flex items-center gap-2">
                 <code className="flex-1 rounded bg-background px-2 py-1 text-xs font-mono break-all border">
-                  {endpointUrl}
+                  {endpointUrl}?phone={"{{waSessionNumber}}"}&brand_slug={brandSlug}&secret=&lt;SECRET&gt;
                 </code>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 shrink-0"
                   onClick={() => {
-                    navigator.clipboard.writeText(endpointUrl);
+                    navigator.clipboard.writeText(
+                      `${endpointUrl}?phone={{waSessionNumber}}&brand_slug=${brandSlug}&secret=<IL_TUO_SECRET>`
+                    );
                     toast.success("URL copiato");
                   }}
                 >
@@ -270,20 +266,11 @@ Risposta:
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold text-muted-foreground">Metodo</Label>
-                <p className="mt-1 text-xs font-mono">POST</p>
+                <p className="mt-1 text-xs font-mono">GET</p>
               </div>
               <div>
-                <Label className="text-xs font-semibold text-muted-foreground">Corpo</Label>
-                <p className="mt-1 text-xs font-mono">{"{ \"phone\": \"{{waSessionNumber}}\", \"brand_slug\": \""}{brandSlug}{"\", \"secret\": \"<SECRET_GENERATO>\" }"}</p>
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-muted-foreground">Intestazioni</Label>
-              <div className="mt-1 space-y-1">
-                <code className="block rounded bg-background px-2 py-1 text-xs font-mono border">
-                  Content-Type: application/json
-                </code>
+                <Label className="text-xs font-semibold text-muted-foreground">Intestazioni</Label>
+                <p className="mt-1 text-xs text-muted-foreground italic">Nessuna richiesta</p>
               </div>
             </div>
 
@@ -291,8 +278,16 @@ Risposta:
               <Label className="text-xs font-semibold text-muted-foreground">Parametri query</Label>
               <div className="mt-1 space-y-1 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <code className="font-mono">(opzionale) secret</code>
-                  <span className="text-muted-foreground">→ usa solo se il tuo client non supporta header/body</span>
+                  <code className="font-mono">phone</code>
+                  <span className="text-muted-foreground">→ numero del chiamante (es. {"{{waSessionNumber}}"})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <code className="font-mono">brand_slug</code>
+                  <span className="text-muted-foreground">→ {brandSlug}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <code className="font-mono">secret</code>
+                  <span className="text-muted-foreground">→ il secret generato</span>
                 </div>
               </div>
             </div>
