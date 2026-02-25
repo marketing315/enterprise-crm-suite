@@ -36,6 +36,7 @@ Deno.serve(async (req: Request) => {
   let phoneRaw: string | null = url.searchParams.get("phone");
   let brandSlug: string | null = url.searchParams.get("brand_slug");
   let brandIdParam: string | null = url.searchParams.get("brand_id");
+  const secretFromQuery = url.searchParams.get("secret");
   let secretFromBody: string | null = null;
   const requestedAt = new Date().toISOString();
 
@@ -117,11 +118,11 @@ Deno.serve(async (req: Request) => {
     resolved_brand_slug: resolvedBrandSlug,
   });
 
-  // FR3: Validate secret - check brand-specific secret first, then global
-  const providedSecret = req.headers.get("x-keplero-secret") || secretFromBody;
+  // FR3: Validate secret - accepts header, body (POST), or query param fallback
+  const providedSecret = req.headers.get("x-keplero-secret") || secretFromBody || secretFromQuery;
   if (!providedSecret) {
     return new Response(
-      JSON.stringify({ error: "Missing x-keplero-secret header (or secret in body for POST)" }),
+      JSON.stringify({ error: "Missing secret (x-keplero-secret header, secret in POST body, or ?secret=... query param)" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
