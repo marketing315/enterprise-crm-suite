@@ -169,6 +169,10 @@ export function useTestKepleroLookup() {
       const cleanSecret = secret.trim().replace(/[^\x20-\x7E]/g, "");
       const cleanSlug = brandSlug.trim().replace(/[^\x20-\x7E]/g, "");
 
+      if (!/^[a-f0-9]{64}$/i.test(cleanSecret)) {
+        throw new Error("Secret non valido: atteso formato esadecimale a 64 caratteri");
+      }
+
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const url = `https://${projectId}.supabase.co/functions/v1/keplero-contact-lookup?phone=${encodeURIComponent(phone.trim())}&brand_slug=${encodeURIComponent(cleanSlug)}`;
 
