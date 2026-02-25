@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 
@@ -99,6 +100,7 @@ export function useToggleKepleroLookup() {
 
 export function useGenerateKepleroSecret() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ brandId }: { brandId: string | null }): Promise<string> => {
@@ -116,16 +118,27 @@ export function useGenerateKepleroSecret() {
       const secretHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
       // Deactivate old secrets for this brand
-      await (supabase as any)
+      let deactivateQuery = (supabase as any)
         .from("keplero_lookup_secrets")
         .update({ is_active: false, rotated_at: new Date().toISOString() })
-        .eq("brand_id", brandId ?? null)
         .eq("is_active", true);
+
+      if (brandId) {
+        deactivateQuery = deactivateQuery.eq("brand_id", brandId);
+      } else {
+        deactivateQuery = deactivateQuery.is("brand_id", null);
+      }
+      await deactivateQuery;
 
       // Insert new secret
       const { error } = await (supabase as any)
         .from("keplero_lookup_secrets")
-        .insert({ brand_id: brandId, secret_hash: secretHash, is_active: true });
+        .insert({
+          brand_id: brandId,
+          secret_hash: secretHash,
+          is_active: true,
+          created_by: user?.supabase_auth_id || null,
+        });
 
       if (error) throw error;
       return secret; // Return plaintext secret (shown once)
