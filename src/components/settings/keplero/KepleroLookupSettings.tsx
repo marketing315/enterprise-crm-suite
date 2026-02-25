@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,19 @@ export function KepleroLookupSettings() {
   const [testPhone, setTestPhone] = useState("");
   const [testSecret, setTestSecret] = useState("");
   const [testResult, setTestResult] = useState<any>(null);
+  const [lastBrandId, setLastBrandId] = useState<string | null | undefined>(undefined);
 
   const brandId = currentBrand?.id || null;
   const brandSlug = currentBrand?.name?.toLowerCase() || "";
+
+  // Reset generated secret when brand changes
+  useEffect(() => {
+    if (lastBrandId !== undefined && lastBrandId !== brandId) {
+      setGeneratedSecret(null);
+      setTestResult(null);
+    }
+    setLastBrandId(brandId);
+  }, [brandId, lastBrandId]);
 
   // Effective setting: brand-specific > global
   const brandSetting = settings?.find((s) => s.brand_id === brandId);
