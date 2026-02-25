@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 
@@ -71,11 +70,13 @@ export function useToggleKepleroLookup() {
 
   return useMutation({
     mutationFn: async ({ enabled, brandId }: { enabled: boolean; brandId: string | null }) => {
-      const { data: existing } = await (supabase as any)
+      let existingQuery = (supabase as any)
         .from("keplero_lookup_settings")
-        .select("id")
-        .eq("brand_id", brandId ?? null)
-        .maybeSingle();
+        .select("id");
+
+      existingQuery = brandId ? existingQuery.eq("brand_id", brandId) : existingQuery.is("brand_id", null);
+
+      const { data: existing } = await existingQuery.maybeSingle();
 
       if (existing) {
         const { error } = await (supabase as any)
@@ -100,7 +101,6 @@ export function useToggleKepleroLookup() {
 
 export function useGenerateKepleroSecret() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ brandId }: { brandId: string | null }): Promise<string> => {
@@ -123,12 +123,15 @@ export function useGenerateKepleroSecret() {
         .update({ is_active: false, rotated_at: new Date().toISOString() })
         .eq("is_active", true);
 
-      if (brandId) {
-        deactivateQuery = deactivateQuery.eq("brand_id", brandId);
-      } else {
-        deactivateQuery = deactivateQuery.is("brand_id", null);
-      }
-      await deactivateQuery;
+      deactivateQuery = brandId
+        ? deactivateQuery.eq("brand_id", brandId)
+        : deactivateQuery.is("brand_id", null);
+
+      const { error: deactivateError } = await deactivateQuery;
+      if (deactivateError) throw deactivateError;
+
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
 
       // Insert new secret
       const { error } = await (supabase as any)
@@ -137,7 +140,7 @@ export function useGenerateKepleroSecret() {
           brand_id: brandId,
           secret_hash: secretHash,
           is_active: true,
-          created_by: user?.supabase_auth_id || null,
+          created_by: authData.user?.id ?? null,
         });
 
       if (error) throw error;
