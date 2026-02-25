@@ -260,7 +260,7 @@ Deno.serve(async (req: Request) => {
   const selectedPhone = phoneRecords[0] as any;
   const { data: contact, error: contactError } = await supabaseAdmin
     .from("contacts")
-    .select("id, first_name, last_name, email, status, city, brand_id")
+    .select("*")
     .eq("id", selectedPhone.contact_id)
     .eq("brand_id", brandId)
     .maybeSingle();
@@ -295,6 +295,31 @@ Deno.serve(async (req: Request) => {
 
   const tags = (tagLinks || []).map((tl: any) => tl.tags?.name).filter(Boolean);
 
+  // Fetch custom field values with their labels
+  const { data: customFieldValues } = await supabaseAdmin
+    .from("contact_field_values")
+    .select("value_text, value_number, value_bool, value_date, value_json, field_definition_id")
+    .eq("contact_id", contact.id)
+    .eq("brand_id", brandId);
+
+  let customFields: Record<string, any> = {};
+  if (customFieldValues && customFieldValues.length > 0) {
+    const defIds = customFieldValues.map((v: any) => v.field_definition_id);
+    const { data: defs } = await supabaseAdmin
+      .from("contact_field_definitions")
+      .select("id, key, label")
+      .in("id", defIds);
+    const defMap = new Map((defs || []).map((d: any) => [d.id, d]));
+    for (const val of customFieldValues) {
+      const def = defMap.get(val.field_definition_id);
+      const key = def?.key || val.field_definition_id;
+      const resolved = val.value_text ?? val.value_number ?? val.value_bool ?? val.value_date ?? val.value_json;
+      if (resolved !== null && resolved !== undefined && resolved !== "") {
+        customFields[key] = resolved;
+      }
+    }
+  }
+
   // Log successful lookup
   await supabaseAdmin.from("audit_log").insert({
     brand_id: brandId,
@@ -319,7 +344,21 @@ Deno.serve(async (req: Request) => {
         phone: normalizedPhone,
         status: contact.status || "",
         city: contact.city || "",
+        cap: contact.cap || "",
+        address: contact.address || "",
+        province: contact.province || "",
+        country: contact.country || "",
+        fiscal_code: contact.fiscal_code || "",
+        vat_number: contact.vat_number || "",
+        company_name: contact.company_name || "",
+        lead_type: contact.lead_type || "",
+        lead_message: contact.lead_message || "",
+        lead_note: contact.lead_note || "",
+        lead_reason: contact.lead_reason || "",
+        esito_chiamata: contact.esito_chiamata || "",
+        notes: contact.notes || "",
         tags,
+        custom_fields: customFields,
       },
       meta: { brand_slug: resolvedBrandSlug, requested_at: requestedAt },
     }),
