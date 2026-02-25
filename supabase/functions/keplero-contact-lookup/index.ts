@@ -110,6 +110,13 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  console.log("[KepleroLookup] Brand resolved", {
+    input_brand_slug: brandSlug,
+    input_brand_id: brandIdParam,
+    resolved_brand_id: brandId,
+    resolved_brand_slug: resolvedBrandSlug,
+  });
+
   // FR3: Validate secret - check brand-specific secret first, then global
   const providedSecret = req.headers.get("x-keplero-secret") || secretFromBody;
   if (!providedSecret) {
@@ -186,6 +193,15 @@ Deno.serve(async (req: Request) => {
     console.error("[KepleroLookup] Phone query error:", phoneError.message);
   }
 
+  console.log("[KepleroLookup] Phone match attempt", {
+    phone_raw: phoneRaw,
+    normalized_phone: normalizedPhone,
+    candidate_phones: candidatePhones,
+    brand_id: brandId,
+    found_phone_records: phoneRecords?.length ?? 0,
+    phone_query_error: phoneError?.message ?? null,
+  });
+
   // FR6/FR7: Standard response
   if (!phoneRecords || phoneRecords.length === 0) {
     await supabaseAdmin.from("audit_log").insert({
@@ -220,6 +236,11 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!contact) {
+    console.log("[KepleroLookup] Contact not found after phone match", {
+      selected_contact_id: selectedPhone?.contact_id ?? null,
+      selected_phone_normalized: selectedPhone?.phone_normalized ?? null,
+      brand_id: brandId,
+    });
     return new Response(
       JSON.stringify({
         success: true,
