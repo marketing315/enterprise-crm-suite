@@ -176,7 +176,6 @@ export function useTestKepleroLookup() {
         method: "GET",
         headers: {
           "x-keplero-secret": cleanSecret,
-          "Content-Type": "application/json",
         },
       });
 

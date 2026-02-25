@@ -93,8 +93,12 @@ export function KepleroLookupSettings() {
 Metodo: GET
 Intestazioni:
   x-keplero-secret: <IL_TUO_SECRET>
-  Content-Type: application/json
 Corpo: (vuoto)
+
+Parametri query:
+  phone → numero del chiamante (es. {{waSessionNumber}})
+  brand_slug → ${brandSlug}
+
 Risposta:
   found=true → contact.first_name, contact.last_name, contact.status, contact.tags
   found=false → numero non in CRM
@@ -270,9 +274,20 @@ Risposta:
                 <code className="block rounded bg-background px-2 py-1 text-xs font-mono border">
                   x-keplero-secret: &lt;SECRET_GENERATO&gt;
                 </code>
-                <code className="block rounded bg-background px-2 py-1 text-xs font-mono border">
-                  Content-Type: application/json
-                </code>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold text-muted-foreground">Parametri query</Label>
+              <div className="mt-1 space-y-1 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <code className="font-mono">phone</code>
+                  <span className="text-muted-foreground">→ numero del chiamante (es. {"{{waSessionNumber}}"})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <code className="font-mono">brand_slug</code>
+                  <span className="text-muted-foreground">→ {brandSlug}</span>
+                </div>
               </div>
             </div>
 
