@@ -3,8 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-keplero-secret",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "authorization, x-client-info, apikey, content-type, x-keplero-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 function normalizePhone(phone: string): string {
@@ -25,7 +25,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method !== "GET") {
+  if (req.method !== "GET" && req.method !== "POST") {
     return new Response(
       JSON.stringify({ error: "Method not allowed" }),
       { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -33,10 +33,26 @@ Deno.serve(async (req: Request) => {
   }
 
   const url = new URL(req.url);
-  const phoneRaw = url.searchParams.get("phone");
-  const brandSlug = url.searchParams.get("brand_slug");
-  const brandIdParam = url.searchParams.get("brand_id");
+  let phoneRaw: string | null = url.searchParams.get("phone");
+  let brandSlug: string | null = url.searchParams.get("brand_slug");
+  let brandIdParam: string | null = url.searchParams.get("brand_id");
+  let secretFromBody: string | null = null;
   const requestedAt = new Date().toISOString();
+
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      phoneRaw = phoneRaw ?? body?.phone ?? null;
+      brandSlug = brandSlug ?? body?.brand_slug ?? null;
+      brandIdParam = brandIdParam ?? body?.brand_id ?? null;
+      secretFromBody = typeof body?.secret === "string" ? body.secret : null;
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
 
   // FR2: phone is required
   if (!phoneRaw) {
@@ -95,10 +111,10 @@ Deno.serve(async (req: Request) => {
   }
 
   // FR3: Validate secret - check brand-specific secret first, then global
-  const providedSecret = req.headers.get("x-keplero-secret");
+  const providedSecret = req.headers.get("x-keplero-secret") || secretFromBody;
   if (!providedSecret) {
     return new Response(
-      JSON.stringify({ error: "Missing x-keplero-secret header" }),
+      JSON.stringify({ error: "Missing x-keplero-secret header (or secret in body for POST)" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

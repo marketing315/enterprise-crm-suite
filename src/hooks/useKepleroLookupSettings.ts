@@ -165,7 +165,8 @@ export function useTestKepleroLookup() {
       brandSlug: string;
       secret: string;
     }) => {
-      // Sanitize: strip non-ASCII / invisible chars from header values
+      // Sanitize: strip non-ASCII / invisible chars from header/body values
+      const cleanPhone = phone.trim().replace(/[^\x20-\x7E]/g, "");
       const cleanSecret = secret.trim().replace(/[^\x20-\x7E]/g, "");
       const cleanSlug = brandSlug.trim().replace(/[^\x20-\x7E]/g, "");
 
@@ -174,18 +175,48 @@ export function useTestKepleroLookup() {
       }
 
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/keplero-contact-lookup?phone=${encodeURIComponent(phone.trim())}&brand_slug=${encodeURIComponent(cleanSlug)}`;
+      const baseUrl = `https://${projectId}.supabase.co/functions/v1/keplero-contact-lookup`;
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "x-keplero-secret": cleanSecret,
-        },
-      });
+      // First attempt: GET + custom header (Keplero production-compatible)
+      try {
+        const getUrl = `${baseUrl}?phone=${encodeURIComponent(cleanPhone)}&brand_slug=${encodeURIComponent(cleanSlug)}`;
+        const response = await fetch(getUrl, {
+          method: "GET",
+          headers: {
+            "x-keplero-secret": cleanSecret,
+          },
+        });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Lookup failed");
-      return data;
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Lookup failed");
+        return data;
+      } catch (err) {
+        // Fallback: POST body (avoids header encoding/client quirks)
+        const fallbackResponse = await fetch(baseUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            brand_slug: cleanSlug,
+            secret: cleanSecret,
+          }),
+        });
+
+        let fallbackData: any = null;
+        try {
+          fallbackData = await fallbackResponse.json();
+        } catch {
+          // ignore json parse errors
+        }
+
+        if (!fallbackResponse.ok) {
+          throw new Error(fallbackData?.error || (err as Error)?.message || "Lookup failed");
+        }
+
+        return fallbackData;
+      }
     },
   });
 }
