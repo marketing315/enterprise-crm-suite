@@ -51,10 +51,15 @@ Deno.serve(async (req: Request) => {
     body: rawBodyText,
   }));
 
-  let phoneRaw: string | null = url.searchParams.get("phone");
-  let brandSlug: string | null = url.searchParams.get("brand_slug");
+  // Keplero sends duplicate query params (e.g. phone={{placeholder}}&phone=realNumber)
+  // getAll returns all values; we pick the last one that looks like a real value
+  const phoneAll = url.searchParams.getAll("phone");
+  let phoneRaw: string | null = phoneAll.reverse().find(p => p && !p.includes("{{") && !p.includes("}}")) || phoneAll[0] || null;
+  let brandSlug: string | null = url.searchParams.get("brand_slug") || url.searchParams.get("brand");
   let brandIdParam: string | null = url.searchParams.get("brand_id");
-  const secretFromQuery = url.searchParams.get("secret");
+  // Sanitize secret: strip zero-width spaces, non-breaking spaces, other invisible chars
+  const rawSecret = url.searchParams.get("secret") || url.searchParams.get("x-keplero-secret");
+  const secretFromQuery = rawSecret ? rawSecret.replace(/[\u200B\u200C\u200D\uFEFF\u00A0\s]/g, "") : null;
   let secretFromBody: string | null = null;
   const requestedAt = new Date().toISOString();
 
@@ -144,7 +149,10 @@ Deno.serve(async (req: Request) => {
   });
 
   // FR3: Validate secret - accepts header, body (POST), or query param fallback
-  const providedSecret = req.headers.get("x-keplero-secret") || secretFromBody || secretFromQuery;
+  // Sanitize all secret sources from invisible Unicode chars
+  const sanitizeSecret = (s: string | null) => s ? s.replace(/[\u200B\u200C\u200D\uFEFF\u00A0\s]/g, "") : null;
+  const headerSecret = sanitizeSecret(req.headers.get("x-keplero-secret"));
+  const providedSecret = headerSecret || sanitizeSecret(secretFromBody) || secretFromQuery;
   if (!providedSecret) {
     return new Response(
       JSON.stringify({ error: "Missing secret (x-keplero-secret header, secret in POST body, or ?secret=... query param)" }),
