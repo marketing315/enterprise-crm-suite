@@ -165,13 +165,17 @@ export function useTestKepleroLookup() {
       brandSlug: string;
       secret: string;
     }) => {
+      // Sanitize: strip non-ASCII / invisible chars from header values
+      const cleanSecret = secret.trim().replace(/[^\x20-\x7E]/g, "");
+      const cleanSlug = brandSlug.trim().replace(/[^\x20-\x7E]/g, "");
+
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/keplero-contact-lookup?phone=${encodeURIComponent(phone)}&brand_slug=${encodeURIComponent(brandSlug)}`;
+      const url = `https://${projectId}.supabase.co/functions/v1/keplero-contact-lookup?phone=${encodeURIComponent(phone.trim())}&brand_slug=${encodeURIComponent(cleanSlug)}`;
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "x-keplero-secret": secret,
+          "x-keplero-secret": cleanSecret,
           "Content-Type": "application/json",
         },
       });
