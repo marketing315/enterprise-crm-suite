@@ -164,12 +164,16 @@ Deno.serve(async (req: Request) => {
   const normalizedPhone = normalizePhone(phoneRaw);
 
   // FR5: Search contact by phone within brand only
-  const { data: phoneRecords } = await supabaseAdmin
+  const { data: phoneRecords, error: phoneError } = await supabaseAdmin
     .from("contact_phones")
-    .select("contact_id, contacts!inner(id, first_name, last_name, email, status, city, brand_id)")
+    .select("contact_id, brand_id, contacts(id, first_name, last_name, email, status, city, brand_id)")
     .eq("phone_normalized", normalizedPhone)
-    .eq("contacts.brand_id", brandId)
+    .eq("brand_id", brandId)
     .limit(1);
+
+  if (phoneError) {
+    console.error("[KepleroLookup] Phone query error:", phoneError.message);
+  }
 
   // FR6/FR7: Standard response
   if (!phoneRecords || phoneRecords.length === 0) {
