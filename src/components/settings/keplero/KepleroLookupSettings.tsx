@@ -75,12 +75,19 @@ export function KepleroLookupSettings() {
       toast.error("Inserisci telefono e secret per il test");
       return;
     }
+    // Sanitize pasted values (strip non-ASCII / invisible chars)
+    const cleanPhone = testPhone.trim().replace(/[^\x20-\x7E]/g, "");
+    const cleanSecret = testSecret.trim().replace(/[^\x20-\x7E]/g, "");
+    if (!cleanSecret) {
+      toast.error("Il secret contiene solo caratteri non validi — ricopialo");
+      return;
+    }
     setTestResult(null);
     try {
       const result = await testLookupMutation.mutateAsync({
-        phone: testPhone,
+        phone: cleanPhone,
         brandSlug,
-        secret: testSecret,
+        secret: cleanSecret,
       });
       setTestResult(result);
     } catch (err: any) {
