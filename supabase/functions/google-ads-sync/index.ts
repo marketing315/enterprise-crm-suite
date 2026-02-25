@@ -33,12 +33,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Auth check: cron secret or admin JWT
+    // Auth check: cron secret, anon key (pg_cron), or admin JWT
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedSecret = Deno.env.get("CRON_SECRET");
     const authHeader = req.headers.get("Authorization");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
-    const isCronCall = cronSecret && cronSecret === expectedSecret;
+    const isCronCall = (cronSecret && cronSecret === expectedSecret) ||
+      (authHeader === `Bearer ${anonKey}`);
 
     let isAdminCall = false;
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
@@ -194,7 +196,7 @@ Deno.serve(async (req) => {
         }
 
         const gaqlResp = await fetch(
-          `https://googleads.googleapis.com/v19/customers/${customerId}/googleAds:searchStream`,
+          `https://googleads.googleapis.com/v20/customers/${customerId}/googleAds:searchStream`,
           {
             method: "POST",
             headers,
