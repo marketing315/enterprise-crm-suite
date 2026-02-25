@@ -3452,6 +3452,85 @@ export type Database = {
           },
         ]
       }
+      keplero_lookup_secrets: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          rotated_at: string | null
+          secret_hash: string
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          rotated_at?: string | null
+          secret_hash: string
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          rotated_at?: string | null
+          secret_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "keplero_lookup_secrets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      keplero_lookup_settings: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          extra_fields: Json | null
+          id: string
+          is_enabled: boolean
+          response_profile: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          extra_fields?: Json | null
+          id?: string
+          is_enabled?: boolean
+          response_profile?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          extra_fields?: Json | null
+          id?: string
+          is_enabled?: boolean
+          response_profile?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "keplero_lookup_settings_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_campaign_attribution: {
         Row: {
           brand_id: string

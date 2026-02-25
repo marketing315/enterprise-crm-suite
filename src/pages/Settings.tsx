@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox, Target } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox, Target, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -18,6 +18,7 @@ import { LeadDigestSettings } from "@/components/settings/digest/LeadDigestSetti
 import { LeadDigestRunsTable } from "@/components/settings/digest/LeadDigestRunsTable";
 import { LeadDigestKpiCards } from "@/components/settings/digest/LeadDigestKpiCards";
 import { CampaignGroupsManager } from "@/components/marketing/CampaignGroupsManager";
+import { KepleroLookupSettings } from "@/components/settings/keplero/KepleroLookupSettings";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -111,6 +112,12 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isBrandAdmin && (
+              <TabsTrigger value="keplero-lookup" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Search className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Keplero</span>
+              </TabsTrigger>
+            )}
+            {isBrandAdmin && (
               <TabsTrigger value="webhooks" className="gap-1.5 px-3 text-xs md:text-sm" data-testid="webhooks-settings-tab">
                 <Webhook className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Webhook</span>
@@ -195,6 +202,12 @@ export default function Settings() {
         {isBrandAdmin && (
           <TabsContent value="webhooks" className="space-y-4">
             <WebhookSettings />
+          </TabsContent>
+        )}
+
+        {isBrandAdmin && (
+          <TabsContent value="keplero-lookup" className="space-y-4">
+            <KepleroLookupSettings />
           </TabsContent>
         )}
 

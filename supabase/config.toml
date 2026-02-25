@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.lead-digest-retry-dispatcher]
 verify_jwt = false
+
+[functions.keplero-contact-lookup]
+verify_jwt = false
