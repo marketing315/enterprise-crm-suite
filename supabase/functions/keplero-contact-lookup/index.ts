@@ -162,14 +162,25 @@ Deno.serve(async (req: Request) => {
 
   // FR4: Normalize phone server-side
   const normalizedPhone = normalizePhone(phoneRaw);
+  const normalizedNoPrefix =
+    normalizedPhone.startsWith("39") && normalizedPhone.length > 10
+      ? normalizedPhone.slice(2)
+      : normalizedPhone;
+  const normalizedWithPrefix = normalizedNoPrefix.startsWith("39")
+    ? normalizedNoPrefix
+    : `39${normalizedNoPrefix}`;
+  const candidatePhones = Array.from(
+    new Set([normalizedPhone, normalizedNoPrefix, normalizedWithPrefix])
+  ).filter(Boolean);
 
-  // FR5: Search contact by phone within brand only
+  // FR5: Search phone record by multiple normalized candidates within brand
   const { data: phoneRecords, error: phoneError } = await supabaseAdmin
     .from("contact_phones")
-    .select("contact_id, brand_id, contacts(id, first_name, last_name, email, status, city, brand_id)")
-    .eq("phone_normalized", normalizedPhone)
+    .select("contact_id, brand_id, phone_normalized, is_primary")
     .eq("brand_id", brandId)
-    .limit(1);
+    .in("phone_normalized", candidatePhones)
+    .order("is_primary", { ascending: false })
+    .limit(5);
 
   if (phoneError) {
     console.error("[KepleroLookup] Phone query error:", phoneError.message);
@@ -177,13 +188,12 @@ Deno.serve(async (req: Request) => {
 
   // FR6/FR7: Standard response
   if (!phoneRecords || phoneRecords.length === 0) {
-    // Log lookup
     await supabaseAdmin.from("audit_log").insert({
       brand_id: brandId,
       entity_type: "keplero_lookup",
       entity_id: normalizedPhone,
       action: "lookup_not_found",
-      metadata: { phone_raw: phoneRaw, brand_slug: resolvedBrandSlug },
+      metadata: { phone_raw: phoneRaw, normalized_candidates: candidatePhones, brand_slug: resolvedBrandSlug },
     });
 
     return new Response(
@@ -197,7 +207,29 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const contact = (phoneRecords[0] as any).contacts;
+  const selectedPhone = phoneRecords[0] as any;
+  const { data: contact, error: contactError } = await supabaseAdmin
+    .from("contacts")
+    .select("id, first_name, last_name, email, status, city, brand_id")
+    .eq("id", selectedPhone.contact_id)
+    .eq("brand_id", brandId)
+    .maybeSingle();
+
+  if (contactError) {
+    console.error("[KepleroLookup] Contact query error:", contactError.message);
+  }
+
+  if (!contact) {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        found: false,
+        contact: null,
+        meta: { brand_slug: resolvedBrandSlug, requested_at: requestedAt },
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
   // Fetch tags for this contact
   const { data: tagLinks } = await supabaseAdmin
