@@ -82,6 +82,10 @@ export function KepleroLookupSettings() {
       toast.error("Il secret contiene solo caratteri non validi — ricopialo");
       return;
     }
+    if (!/^[a-f0-9]{64}$/i.test(cleanSecret)) {
+      toast.error("Secret non valido: usa il valore generato (64 caratteri esadecimali)");
+      return;
+    }
     setTestResult(null);
     try {
       const result = await testLookupMutation.mutateAsync({
