@@ -94,9 +94,11 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  if (phoneRaw.includes("{{") || phoneRaw.includes("}}")) {
+  // Reject unresolved placeholders or non-numeric values
+  const digitsOnly = phoneRaw.replace(/\D/g, "");
+  if (phoneRaw.includes("{{") || phoneRaw.includes("}}") || digitsOnly.length < 6) {
     return new Response(
-      JSON.stringify({ error: "Phone placeholder not resolved: send a real phone number value" }),
+      JSON.stringify({ error: `Phone placeholder not resolved or invalid: "${phoneRaw}". Send a real phone number.` }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
