@@ -249,12 +249,7 @@ Deno.serve(async (req: Request) => {
     });
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        found: false,
-        contact: null,
-        meta: { brand_slug: resolvedBrandSlug, requested_at: requestedAt },
-      }),
+      JSON.stringify({}),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -278,12 +273,7 @@ Deno.serve(async (req: Request) => {
       brand_id: brandId,
     });
     return new Response(
-      JSON.stringify({
-        success: true,
-        found: false,
-        contact: null,
-        meta: { brand_slug: resolvedBrandSlug, requested_at: requestedAt },
-      }),
+      JSON.stringify({}),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -335,29 +325,24 @@ Deno.serve(async (req: Request) => {
 
   return new Response(
     JSON.stringify({
-      success: true,
-      found: true,
-      contact: {
-        id: contact.id,
-        first_name: contact.first_name || "",
-        last_name: contact.last_name || "",
-        full_name: fullName,
-        email: contact.email || "",
-        phone: normalizedPhone,
-        status: contact.status || "",
-        city: contact.city || "",
-        cap: contact.cap || "",
-        address: contact.address || "",
-        province: contact.province || "",
-        country: contact.country || "",
-        lead_type: contact.lead_type || "",
-        lead_message: contact.lead_message || "",
-        lead_note: contact.lead_note || "",
-        esito_chiamata: contact.esito_chiamata || "",
-        notes: contact.notes || "",
-        custom_fields: customFields,
-      },
-      meta: { brand_slug: resolvedBrandSlug, requested_at: requestedAt },
+      id: contact.id,
+      first_name: contact.first_name || "",
+      last_name: contact.last_name || "",
+      full_name: fullName,
+      email: contact.email || "",
+      phone: normalizedPhone,
+      status: contact.status || "",
+      city: contact.city || "",
+      cap: contact.cap || "",
+      address: contact.address || "",
+      province: contact.province || "",
+      country: contact.country || "",
+      lead_type: contact.lead_type || "",
+      lead_message: contact.lead_message || "",
+      lead_note: contact.lead_note || "",
+      esito_chiamata: contact.esito_chiamata || "",
+      notes: contact.notes || "",
+      custom_fields: customFields,
     }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
