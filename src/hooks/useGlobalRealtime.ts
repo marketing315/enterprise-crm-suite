@@ -103,41 +103,66 @@ export function useGlobalRealtime() {
   useEffect(() => {
     if (!brandId) return;
 
-    const channels = Object.entries(CHANNEL_GROUPS).map(
-      ([channelName, tables]) => {
-        const channel = supabase.channel(channelName);
+    const retryTimers: ReturnType<typeof setTimeout>[] = [];
 
-        tables.forEach((table) => {
-          const noBrandFilter = TABLES_WITHOUT_BRAND_ID.has(table);
-          const opts = (isAllBrandsSelected || noBrandFilter)
-            ? { event: '*' as const, schema: 'public' as const, table }
-            : { event: '*' as const, schema: 'public' as const, table, filter: `brand_id=eq.${brandId}` };
+    function createChannel(channelName: string, tables: string[]) {
+      const channel = supabase.channel(channelName);
 
-          channel.on('postgres_changes', opts, () => {
-            const entries = TABLE_QUERY_MAP[table];
-            if (entries) {
-              entries.forEach((entry) => {
-                queryClient.invalidateQueries({
-                  queryKey: entry.key,
-                  exact: entry.exact ?? false,
-                });
+      tables.forEach((table) => {
+        const noBrandFilter = TABLES_WITHOUT_BRAND_ID.has(table);
+        const opts = (isAllBrandsSelected || noBrandFilter)
+          ? { event: '*' as const, schema: 'public' as const, table }
+          : { event: '*' as const, schema: 'public' as const, table, filter: `brand_id=eq.${brandId}` };
+
+        channel.on('postgres_changes', opts, () => {
+          const entries = TABLE_QUERY_MAP[table];
+          if (entries) {
+            entries.forEach((entry) => {
+              queryClient.invalidateQueries({
+                queryKey: entry.key,
+                exact: entry.exact ?? false,
               });
-            }
-          });
-        });
-
-        // H09 FIX: Handle subscribe errors
-        channel.subscribe((status, err) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn(`[Realtime] Channel ${channelName} error:`, status, err?.message);
+            });
           }
         });
-        return channel;
-      },
-    );
+      });
+
+      return channel;
+    }
+
+    const activeChannels: ReturnType<typeof supabase.channel>[] = [];
+    const retryCounts: Record<string, number> = {};
+
+    function subscribeChannel(channelName: string, tables: string[]) {
+      const channel = createChannel(channelName, tables);
+      activeChannels.push(channel);
+
+      channel.subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          retryCounts[channelName] = 0;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          const attempt = (retryCounts[channelName] ?? 0) + 1;
+          retryCounts[channelName] = attempt;
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+          console.warn(`[Realtime] ${channelName} ${status}, retry #${attempt} in ${delay}ms`, err?.message);
+
+          supabase.removeChannel(channel);
+          const idx = activeChannels.indexOf(channel);
+          if (idx !== -1) activeChannels.splice(idx, 1);
+
+          const timer = setTimeout(() => subscribeChannel(channelName, tables), delay);
+          retryTimers.push(timer);
+        }
+      });
+    }
+
+    Object.entries(CHANNEL_GROUPS).forEach(([channelName, tables]) => {
+      subscribeChannel(channelName, tables);
+    });
 
     return () => {
-      channels.forEach((ch) => supabase.removeChannel(ch));
+      retryTimers.forEach(clearTimeout);
+      activeChannels.forEach((ch) => supabase.removeChannel(ch));
     };
   }, [brandId, isAllBrandsSelected, queryClient]);
 }
