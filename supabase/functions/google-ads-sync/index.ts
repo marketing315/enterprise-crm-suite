@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        console.log(`✅ Google Ads sync for ${customerId}: ${statsToUpsert.length} campaign-days imported`);
+        console.log(`[google-ads-sync] ✅ ${customerId}: ${statsToUpsert.length} campaign-days upserted (${sinceDate} → ${untilDate})`);
         results.push({
           brand_id: oauthToken.brand_id,
           account_id: customerId,
