@@ -90,8 +90,8 @@ Deno.serve(async (req) => {
     const toParam = url.searchParams.get("to");
 
     const today = new Date();
-    // Use 7-day lookback window for auto-catchup if sync misses a few cycles
-    const lookbackDays = 7;
+    // Use 2-day lookback window (sync runs every 5 min, so gaps are unlikely)
+    const lookbackDays = 2;
     const lookbackDate = new Date(today);
     lookbackDate.setDate(today.getDate() - lookbackDays);
 
