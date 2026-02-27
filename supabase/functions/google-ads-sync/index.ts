@@ -90,11 +90,15 @@ Deno.serve(async (req) => {
     const toParam = url.searchParams.get("to");
 
     const today = new Date();
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(today.getDate() - 2);
+    // Use 7-day lookback window for auto-catchup if sync misses a few cycles
+    const lookbackDays = 7;
+    const lookbackDate = new Date(today);
+    lookbackDate.setDate(today.getDate() - lookbackDays);
 
-    const sinceDate = fromParam || twoDaysAgo.toISOString().split("T")[0];
+    const sinceDate = fromParam || lookbackDate.toISOString().split("T")[0];
     const untilDate = toParam || today.toISOString().split("T")[0];
+
+    console.log(`[google-ads-sync] Starting sync: ${sinceDate} → ${untilDate}`);
 
     // Fetch all oauth tokens for google_ads
     const { data: oauthTokens, error: tokensError } = await supabase
@@ -290,7 +294,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        console.log(`✅ Google Ads sync for ${customerId}: ${statsToUpsert.length} campaign-days imported`);
+        console.log(`[google-ads-sync] ✅ ${customerId}: ${statsToUpsert.length} campaign-days upserted (${sinceDate} → ${untilDate})`);
         results.push({
           brand_id: oauthToken.brand_id,
           account_id: customerId,
