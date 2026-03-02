@@ -320,6 +320,53 @@ export type Database = {
           },
         ]
       }
+      ad_sync_log: {
+        Row: {
+          account_id: string
+          brand_id: string | null
+          campaigns_synced: number | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          provider: string
+          success: boolean
+          sync_from: string
+          sync_to: string
+        }
+        Insert: {
+          account_id: string
+          brand_id?: string | null
+          campaigns_synced?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          provider: string
+          success: boolean
+          sync_from: string
+          sync_to: string
+        }
+        Update: {
+          account_id?: string
+          brand_id?: string | null
+          campaigns_synced?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          provider?: string
+          success?: boolean
+          sync_from?: string
+          sync_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_sync_log_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notes: {
         Row: {
           brand_id: string
