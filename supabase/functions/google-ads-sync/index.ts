@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         // Refresh token if expired
         let accessToken = oauthToken.access_token_encrypted;
         if (new Date(oauthToken.expires_at) <= new Date()) {
-          console.log(`Refreshing token for account ${oauthToken.account_id}...`);
+          console.log(`[google-ads-sync] Token expired at ${oauthToken.expires_at}, refreshing for account ${oauthToken.account_id}...`);
           const refreshResp = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
