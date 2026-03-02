@@ -5,15 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-interface GoogleAdsRow {
-  campaign_id: string;
-  campaign_name: string;
-  metrics_cost_micros: string;
-  metrics_impressions: string;
-  metrics_clicks: string;
-  segments_date: string;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -33,13 +24,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Auth check: cron secret, anon key (pg_cron), or admin JWT
+    // --- Auth check ---
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedSecret = Deno.env.get("CRON_SECRET");
     const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
     const isCronCall = (cronSecret && cronSecret === expectedSecret) ||
       (authHeader === `Bearer ${anonKey}`) ||
       (authHeader === `Bearer ${serviceRoleKey}`);
@@ -57,15 +48,15 @@ Deno.serve(async (req) => {
         });
       }
 
-      const supabase = createClient(supabaseUrl, serviceKey);
-      const { data: internalUser } = await supabase
+      const sb = createClient(supabaseUrl, serviceKey);
+      const { data: internalUser } = await sb
         .from("users")
         .select("id")
         .eq("supabase_auth_id", claimsData.claims.sub)
         .limit(1)
         .maybeSingle();
 
-      const { data: userRoles } = await supabase
+      const { data: userRoles } = await sb
         .from("user_roles")
         .select("role")
         .eq("user_id", internalUser?.id ?? "");
@@ -86,23 +77,21 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Parse date range from query params
+    // --- Parse date range from query params ---
     const url = new URL(req.url);
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
 
     const today = new Date();
-    // Use 4-day lookback window to handle Google Ads delayed data finalization
-    const lookbackDays = 4;
+    const defaultLookbackDays = 4;
+    const maxLookbackDays = 30;
     const lookbackDate = new Date(today);
-    lookbackDate.setDate(today.getDate() - lookbackDays);
+    lookbackDate.setDate(today.getDate() - defaultLookbackDays);
 
-    const sinceDate = fromParam || lookbackDate.toISOString().split("T")[0];
+    const defaultSinceDate = lookbackDate.toISOString().split("T")[0];
     const untilDate = toParam || today.toISOString().split("T")[0];
 
-    console.log(`[google-ads-sync] Starting sync: ${sinceDate} → ${untilDate}`);
-
-    // Fetch all oauth tokens for google_ads
+    // --- Fetch all oauth tokens for google_ads ---
     const { data: oauthTokens, error: tokensError } = await supabase
       .from("oauth_tokens")
       .select("*")
@@ -131,12 +120,44 @@ Deno.serve(async (req) => {
       error?: string;
     }> = [];
 
+    const mccId = Deno.env.get("GOOGLE_ADS_MCC_ID") || "";
+    const TOKEN_REFRESH_BUFFER_MS = 10 * 60 * 1000; // 10 minuti
+
     for (const oauthToken of oauthTokens) {
+      const customerId = oauthToken.account_id;
+      let accountSinceDate = fromParam || defaultSinceDate;
+
       try {
-        // Refresh token if expired
+        // --- Auto-backfill: check last successful sync ---
+        if (!fromParam) {
+          const { data: lastSync } = await supabase
+            .from("ad_sync_log")
+            .select("sync_to")
+            .eq("provider", "google")
+            .eq("account_id", customerId)
+            .eq("success", true)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (lastSync?.sync_to) {
+            const lastSyncDate = new Date(lastSync.sync_to);
+            const daysSinceLastSync = Math.floor((today.getTime() - lastSyncDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysSinceLastSync > defaultLookbackDays) {
+              const backfillDate = new Date(today);
+              backfillDate.setDate(today.getDate() - Math.min(daysSinceLastSync, maxLookbackDays));
+              accountSinceDate = backfillDate.toISOString().split("T")[0];
+              console.log(`[google-ads-sync] Auto-backfill for ${customerId}: extending lookback to ${accountSinceDate} (${daysSinceLastSync} days gap)`);
+            }
+          }
+        }
+
+        console.log(`[google-ads-sync] Syncing ${customerId}: ${accountSinceDate} → ${untilDate}`);
+
+        // --- Proactive token refresh (10 min buffer) ---
         let accessToken = oauthToken.access_token_encrypted;
-        if (new Date(oauthToken.expires_at) <= new Date()) {
-          console.log(`[google-ads-sync] Token expired at ${oauthToken.expires_at}, refreshing for account ${oauthToken.account_id}...`);
+        if (new Date(oauthToken.expires_at).getTime() <= Date.now() + TOKEN_REFRESH_BUFFER_MS) {
+          console.log(`[google-ads-sync] Proactive refresh for ${customerId} (expires ${oauthToken.expires_at})`);
           const refreshResp = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -150,121 +171,83 @@ Deno.serve(async (req) => {
 
           const refreshData = await refreshResp.json();
           if (refreshData.error) {
-            console.error(`Token refresh failed for ${oauthToken.account_id}:`, refreshData);
-            results.push({
-              brand_id: oauthToken.brand_id,
-              account_id: oauthToken.account_id,
-              success: false,
-              campaigns: 0,
-              error: `Token refresh failed: ${refreshData.error}`,
-            });
+            const errMsg = `Token refresh failed: ${refreshData.error}`;
+            console.error(`[google-ads-sync] ${errMsg} for ${customerId}`);
+            await logSyncResult(supabase, "google", customerId, oauthToken.brand_id, false, 0, accountSinceDate, untilDate, errMsg);
+            results.push({ brand_id: oauthToken.brand_id, account_id: customerId, success: false, campaigns: 0, error: errMsg });
             continue;
           }
 
           accessToken = refreshData.access_token;
           const newExpiry = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString();
-
           await supabase
             .from("oauth_tokens")
-            .update({
-              access_token_encrypted: accessToken,
-              expires_at: newExpiry,
-              updated_at: new Date().toISOString(),
-            })
+            .update({ access_token_encrypted: accessToken, expires_at: newExpiry, updated_at: new Date().toISOString() })
             .eq("id", oauthToken.id);
         }
 
-        // Use Google Ads API (GAQL) to fetch campaign stats
-        const customerId = oauthToken.account_id;
+        // --- Google Ads API query ---
         const query = `
-          SELECT
-            campaign.id,
-            campaign.name,
-            metrics.cost_micros,
-            metrics.impressions,
-            metrics.clicks,
-            segments.date
+          SELECT campaign.id, campaign.name, metrics.cost_micros, metrics.impressions, metrics.clicks, segments.date
           FROM campaign
-          WHERE segments.date BETWEEN '${sinceDate}' AND '${untilDate}'
+          WHERE segments.date BETWEEN '${accountSinceDate}' AND '${untilDate}'
             AND campaign.status != 'REMOVED'
           ORDER BY segments.date DESC
         `;
 
-        // Try with MCC login-customer-id header (manager account)
-        const mccId = Deno.env.get("GOOGLE_ADS_MCC_ID") || "";
         const headers: Record<string, string> = {
           Authorization: `Bearer ${accessToken}`,
           "developer-token": developerToken,
           "Content-Type": "application/json",
         };
-        if (mccId) {
-          headers["login-customer-id"] = mccId;
-        }
+        if (mccId) headers["login-customer-id"] = mccId;
 
         const gaqlResp = await fetch(
           `https://googleads.googleapis.com/v20/customers/${customerId}/googleAds:searchStream`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ query }),
-          }
+          { method: "POST", headers, body: JSON.stringify({ query }) }
         );
 
         if (!gaqlResp.ok) {
           const errText = await gaqlResp.text();
-          console.error(`Google Ads API HTTP ${gaqlResp.status} for ${customerId}:`, errText);
-          results.push({
-            brand_id: oauthToken.brand_id,
-            account_id: customerId,
-            success: false,
-            campaigns: 0,
-            error: `HTTP ${gaqlResp.status}: ${errText.substring(0, 200)}`,
-          });
+          const errMsg = `HTTP ${gaqlResp.status}: ${errText.substring(0, 200)}`;
+          console.error(`[google-ads-sync] API error for ${customerId}: ${errMsg}`);
+          await logSyncResult(supabase, "google", customerId, oauthToken.brand_id, false, 0, accountSinceDate, untilDate, errMsg);
+          results.push({ brand_id: oauthToken.brand_id, account_id: customerId, success: false, campaigns: 0, error: errMsg });
           continue;
         }
 
         const gaqlData = await gaqlResp.json();
 
         if (gaqlData.error) {
-          console.error(`Google Ads API error for ${customerId}:`, gaqlData.error);
-          results.push({
-            brand_id: oauthToken.brand_id,
-            account_id: customerId,
-            success: false,
-            campaigns: 0,
-            error: gaqlData.error.message || JSON.stringify(gaqlData.error),
-          });
+          const errMsg = gaqlData.error.message || JSON.stringify(gaqlData.error);
+          console.error(`[google-ads-sync] API error for ${customerId}:`, errMsg);
+          await logSyncResult(supabase, "google", customerId, oauthToken.brand_id, false, 0, accountSinceDate, untilDate, errMsg);
+          results.push({ brand_id: oauthToken.brand_id, account_id: customerId, success: false, campaigns: 0, error: errMsg });
           continue;
         }
 
-        // Parse results from searchStream (returns array of batches)
+        // --- Parse results ---
         const statsToUpsert: any[] = [];
         const batches = Array.isArray(gaqlData) ? gaqlData : [gaqlData];
 
         for (const batch of batches) {
-          const rows = batch.results || [];
-          for (const row of rows) {
+          for (const row of (batch.results || [])) {
             const campaignId = row.campaign?.id?.toString() || "";
-            const campaignName = row.campaign?.name || "";
-            const costMicros = parseInt(row.metrics?.costMicros || "0");
-            const impressions = parseInt(row.metrics?.impressions || "0");
-            const clicks = parseInt(row.metrics?.clicks || "0");
             const statDate = row.segments?.date || "";
-
             if (!campaignId || !statDate) continue;
 
             statsToUpsert.push({
               brand_id: oauthToken.brand_id,
-              campaign_id: null, // TODO: match with internal campaigns
+              campaign_id: null,
               platform: "google",
               account_id: customerId,
               external_campaign_id: campaignId,
-              external_campaign_name: campaignName,
+              external_campaign_name: row.campaign?.name || "",
               stat_date: statDate,
               currency: "EUR",
-              spend: costMicros / 1_000_000,
-              impressions,
-              clicks,
+              spend: parseInt(row.metrics?.costMicros || "0") / 1_000_000,
+              impressions: parseInt(row.metrics?.impressions || "0"),
+              clicks: parseInt(row.metrics?.clicks || "0"),
               reach: 0,
               frequency: 0,
               conversions: null,
@@ -284,34 +267,23 @@ Deno.serve(async (req) => {
             });
 
           if (upsertError) {
-            console.error(`Upsert error for ${customerId}:`, upsertError);
-            results.push({
-              brand_id: oauthToken.brand_id,
-              account_id: customerId,
-              success: false,
-              campaigns: statsToUpsert.length,
-              error: upsertError.message,
-            });
+            const errMsg = upsertError.message;
+            console.error(`[google-ads-sync] Upsert error for ${customerId}:`, errMsg);
+            await logSyncResult(supabase, "google", customerId, oauthToken.brand_id, false, statsToUpsert.length, accountSinceDate, untilDate, errMsg);
+            results.push({ brand_id: oauthToken.brand_id, account_id: customerId, success: false, campaigns: statsToUpsert.length, error: errMsg });
             continue;
           }
         }
 
-        console.log(`[google-ads-sync] ✅ ${customerId}: ${statsToUpsert.length} campaign-days upserted (${sinceDate} → ${untilDate})`);
-        results.push({
-          brand_id: oauthToken.brand_id,
-          account_id: customerId,
-          success: true,
-          campaigns: statsToUpsert.length,
-        });
+        console.log(`[google-ads-sync] ✅ ${customerId}: ${statsToUpsert.length} campaign-days upserted (${accountSinceDate} → ${untilDate})`);
+        await logSyncResult(supabase, "google", customerId, oauthToken.brand_id, true, statsToUpsert.length, accountSinceDate, untilDate, null);
+        results.push({ brand_id: oauthToken.brand_id, account_id: customerId, success: true, campaigns: statsToUpsert.length });
+
       } catch (err) {
-        console.error(`Error processing account ${oauthToken.account_id}:`, err);
-        results.push({
-          brand_id: oauthToken.brand_id,
-          account_id: oauthToken.account_id,
-          success: false,
-          campaigns: 0,
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
+        const errMsg = err instanceof Error ? err.message : "Unknown error";
+        console.error(`[google-ads-sync] Error for ${customerId}:`, err);
+        await logSyncResult(supabase, "google", customerId, oauthToken.brand_id, false, 0, accountSinceDate, untilDate, errMsg);
+        results.push({ brand_id: oauthToken.brand_id, account_id: customerId, success: false, campaigns: 0, error: errMsg });
       }
     }
 
@@ -327,3 +299,31 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/** Log sync result to ad_sync_log */
+async function logSyncResult(
+  supabase: any,
+  provider: string,
+  accountId: string,
+  brandId: string,
+  success: boolean,
+  campaignsSynced: number,
+  syncFrom: string,
+  syncTo: string,
+  errorMessage: string | null
+) {
+  try {
+    await supabase.from("ad_sync_log").insert({
+      provider,
+      account_id: accountId,
+      brand_id: brandId,
+      success,
+      campaigns_synced: campaignsSynced,
+      sync_from: syncFrom,
+      sync_to: syncTo,
+      error_message: errorMessage,
+    });
+  } catch (logErr) {
+    console.error("[google-ads-sync] Failed to write sync log:", logErr);
+  }
+}
