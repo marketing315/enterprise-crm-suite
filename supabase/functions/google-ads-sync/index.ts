@@ -90,8 +90,8 @@ Deno.serve(async (req) => {
     const toParam = url.searchParams.get("to");
 
     const today = new Date();
-    // Use 2-day lookback window (sync runs every 5 min, so gaps are unlikely)
-    const lookbackDays = 2;
+    // Use 4-day lookback window to handle Google Ads delayed data finalization
+    const lookbackDays = 4;
     const lookbackDate = new Date(today);
     lookbackDate.setDate(today.getDate() - lookbackDays);
 
