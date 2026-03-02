@@ -38,7 +38,6 @@ Deno.serve(async (req) => {
     const expectedSecret = Deno.env.get("CRON_SECRET");
     const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    console.log(`[google-ads-sync] Auth debug: hasCron=${!!cronSecret}, hasAuth=${!!authHeader}, authLen=${authHeader?.length}, anonLen=${anonKey?.length}`);
 
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const isCronCall = (cronSecret && cronSecret === expectedSecret) ||
