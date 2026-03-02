@@ -36,11 +36,13 @@ Deno.serve(async (req) => {
     // Auth check: cron secret, anon key (pg_cron), or admin JWT
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedSecret = Deno.env.get("CRON_SECRET");
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const isCronCall = (cronSecret && cronSecret === expectedSecret) ||
-      (authHeader === `Bearer ${anonKey}`);
+      (authHeader === `Bearer ${anonKey}`) ||
+      (authHeader === `Bearer ${serviceRoleKey}`);
 
     let isAdminCall = false;
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
@@ -90,8 +92,8 @@ Deno.serve(async (req) => {
     const toParam = url.searchParams.get("to");
 
     const today = new Date();
-    // Use 2-day lookback window (sync runs every 5 min, so gaps are unlikely)
-    const lookbackDays = 2;
+    // Use 4-day lookback window to handle Google Ads delayed data finalization
+    const lookbackDays = 4;
     const lookbackDate = new Date(today);
     lookbackDate.setDate(today.getDate() - lookbackDays);
 
@@ -134,7 +136,7 @@ Deno.serve(async (req) => {
         // Refresh token if expired
         let accessToken = oauthToken.access_token_encrypted;
         if (new Date(oauthToken.expires_at) <= new Date()) {
-          console.log(`Refreshing token for account ${oauthToken.account_id}...`);
+          console.log(`[google-ads-sync] Token expired at ${oauthToken.expires_at}, refreshing for account ${oauthToken.account_id}...`);
           const refreshResp = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
