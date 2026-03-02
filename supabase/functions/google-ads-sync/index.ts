@@ -39,8 +39,10 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const isCronCall = (cronSecret && cronSecret === expectedSecret) ||
-      (authHeader === `Bearer ${anonKey}`);
+      (authHeader === `Bearer ${anonKey}`) ||
+      (authHeader === `Bearer ${serviceRoleKey}`);
 
     let isAdminCall = false;
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
