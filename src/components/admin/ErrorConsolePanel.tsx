@@ -34,10 +34,13 @@ export function ErrorConsolePanel() {
       try { return JSON.stringify(a, null, 2); } catch { return String(a); }
     }).join(" ");
 
-    setLogs(prev => {
-      const entry: LogEntry = { id: ++logCounter, level, message, timestamp: new Date(), stack };
-      const next = [entry, ...prev];
-      return next.slice(0, 200);
+    // Defer state update to avoid "Cannot update a component while rendering a different component"
+    queueMicrotask(() => {
+      setLogs(prev => {
+        const entry: LogEntry = { id: ++logCounter, level, message, timestamp: new Date(), stack };
+        const next = [entry, ...prev];
+        return next.slice(0, 200);
+      });
     });
   }, []);
 
