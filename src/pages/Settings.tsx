@@ -149,6 +149,12 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isAdmin && (
+              <TabsTrigger value="mcp" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Cpu className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>MCP</span>
+              </TabsTrigger>
+            )}
+            {isAdmin && (
               <TabsTrigger value="admin" className="gap-1.5 px-3 text-xs md:text-sm">
                 <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Admin</span>
