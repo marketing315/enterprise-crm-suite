@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox, Target, Search } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox, Target, Search, Cpu } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -19,6 +19,7 @@ import { LeadDigestRunsTable } from "@/components/settings/digest/LeadDigestRuns
 import { LeadDigestKpiCards } from "@/components/settings/digest/LeadDigestKpiCards";
 import { CampaignGroupsManager } from "@/components/marketing/CampaignGroupsManager";
 import { KepleroLookupSettings } from "@/components/settings/keplero/KepleroLookupSettings";
+import { McpSettingsModule } from "@/components/settings/mcp/McpSettingsModule";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -148,6 +149,12 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isAdmin && (
+              <TabsTrigger value="mcp" className="gap-1.5 px-3 text-xs md:text-sm">
+                <Cpu className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>MCP</span>
+              </TabsTrigger>
+            )}
+            {isAdmin && (
               <TabsTrigger value="admin" className="gap-1.5 px-3 text-xs md:text-sm">
                 <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Admin</span>
@@ -240,6 +247,12 @@ export default function Settings() {
             <LeadDigestSettings />
             <LeadDigestKpiCards />
             <LeadDigestRunsTable />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="mcp" className="space-y-4">
+            <McpSettingsModule />
           </TabsContent>
         )}
 

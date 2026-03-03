@@ -4186,6 +4186,381 @@ export type Database = {
           },
         ]
       }
+      mcp_approvals: {
+        Row: {
+          approver_user_id: string | null
+          created_at: string
+          decided_at: string | null
+          decision: Database["public"]["Enums"]["mcp_approval_decision"] | null
+          execution_id: string
+          expires_at: string | null
+          id: string
+          reason: string | null
+          required_by_policy: string | null
+        }
+        Insert: {
+          approver_user_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision?: Database["public"]["Enums"]["mcp_approval_decision"] | null
+          execution_id: string
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          required_by_policy?: string | null
+        }
+        Update: {
+          approver_user_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision?: Database["public"]["Enums"]["mcp_approval_decision"] | null
+          execution_id?: string
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          required_by_policy?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_approvals_approver_user_id_fkey"
+            columns: ["approver_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_approvals_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_approvals_required_by_policy_fkey"
+            columns: ["required_by_policy"]
+            isOneToOne: false
+            referencedRelation: "mcp_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_executions: {
+        Row: {
+          actor_id: string | null
+          actor_type: Database["public"]["Enums"]["mcp_actor_type"]
+          brand_id: string | null
+          completed_at: string | null
+          created_at: string
+          decision: Database["public"]["Enums"]["mcp_policy_action"] | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          idempotency_key: string | null
+          input_redacted: Json | null
+          latency_ms: number | null
+          output_redacted: Json | null
+          policy_id: string | null
+          request_id: string
+          resource_uri: string | null
+          server_id: string | null
+          status: Database["public"]["Enums"]["mcp_execution_status"]
+          tool_name: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type?: Database["public"]["Enums"]["mcp_actor_type"]
+          brand_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          decision?: Database["public"]["Enums"]["mcp_policy_action"] | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input_redacted?: Json | null
+          latency_ms?: number | null
+          output_redacted?: Json | null
+          policy_id?: string | null
+          request_id: string
+          resource_uri?: string | null
+          server_id?: string | null
+          status?: Database["public"]["Enums"]["mcp_execution_status"]
+          tool_name?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: Database["public"]["Enums"]["mcp_actor_type"]
+          brand_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          decision?: Database["public"]["Enums"]["mcp_policy_action"] | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input_redacted?: Json | null
+          latency_ms?: number | null
+          output_redacted?: Json | null
+          policy_id?: string | null
+          request_id?: string
+          resource_uri?: string | null
+          server_id?: string | null
+          status?: Database["public"]["Enums"]["mcp_execution_status"]
+          tool_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_executions_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_executions_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_policies: {
+        Row: {
+          action: Database["public"]["Enums"]["mcp_policy_action"]
+          brand_scope: string | null
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          priority: number
+          role: string
+          tool_pattern: string
+          updated_at: string
+        }
+        Insert: {
+          action?: Database["public"]["Enums"]["mcp_policy_action"]
+          brand_scope?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          priority?: number
+          role: string
+          tool_pattern?: string
+          updated_at?: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["mcp_policy_action"]
+          brand_scope?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          priority?: number
+          role?: string
+          tool_pattern?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mcp_resources: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          name: string
+          schema_json: Json
+          server_id: string
+          updated_at: string
+          uri_template: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name: string
+          schema_json?: Json
+          server_id: string
+          updated_at?: string
+          uri_template: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name?: string
+          schema_json?: Json
+          server_id?: string
+          updated_at?: string
+          uri_template?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_resources_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_secrets: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          key_name: string
+          provider: string
+          rotated_at: string | null
+          secret_ref: string
+          server_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key_name: string
+          provider: string
+          rotated_at?: string | null
+          secret_ref: string
+          server_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key_name?: string
+          provider?: string
+          rotated_at?: string | null
+          secret_ref?: string
+          server_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_secrets_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_servers: {
+        Row: {
+          canary_brand_ids: string[] | null
+          canary_role_whitelist: string[] | null
+          capabilities_json: Json
+          created_at: string
+          description: string | null
+          endpoint: string | null
+          id: string
+          kill_switch: boolean
+          name: string
+          owner_user_id: string | null
+          status: Database["public"]["Enums"]["mcp_server_status"]
+          transport: Database["public"]["Enums"]["mcp_transport"]
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          canary_brand_ids?: string[] | null
+          canary_role_whitelist?: string[] | null
+          capabilities_json?: Json
+          created_at?: string
+          description?: string | null
+          endpoint?: string | null
+          id?: string
+          kill_switch?: boolean
+          name: string
+          owner_user_id?: string | null
+          status?: Database["public"]["Enums"]["mcp_server_status"]
+          transport?: Database["public"]["Enums"]["mcp_transport"]
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          canary_brand_ids?: string[] | null
+          canary_role_whitelist?: string[] | null
+          capabilities_json?: Json
+          created_at?: string
+          description?: string | null
+          endpoint?: string | null
+          id?: string
+          kill_switch?: boolean
+          name?: string
+          owner_user_id?: string | null
+          status?: Database["public"]["Enums"]["mcp_server_status"]
+          transport?: Database["public"]["Enums"]["mcp_transport"]
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_servers_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_tools: {
+        Row: {
+          category: Database["public"]["Enums"]["mcp_tool_category"]
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          input_schema_json: Json
+          name: string
+          output_schema_json: Json
+          rate_limit_per_min: number | null
+          requires_approval: boolean
+          server_id: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["mcp_tool_category"]
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          input_schema_json?: Json
+          name: string
+          output_schema_json?: Json
+          rate_limit_per_min?: number | null
+          requires_approval?: boolean
+          server_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["mcp_tool_category"]
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          input_schema_json?: Json
+          name?: string
+          output_schema_json?: Json
+          rate_limit_per_min?: number | null
+          requires_approval?: boolean
+          server_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_tools_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_apps: {
         Row: {
           access_token: string
@@ -8054,6 +8429,22 @@ export type Database = {
       lead_source_type: "webhook" | "manual" | "import" | "api" | "meta"
       lead_type: "trial" | "info" | "support" | "generic"
       marketing_campaign_status: "planned" | "active" | "paused" | "closed"
+      mcp_actor_type: "agent" | "user" | "system" | "cron"
+      mcp_approval_decision: "approved" | "rejected" | "expired"
+      mcp_execution_status:
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "running"
+        | "success"
+        | "failed"
+        | "failed_transient"
+        | "cancelled"
+        | "timeout"
+      mcp_policy_action: "allow" | "deny" | "require_approval"
+      mcp_server_status: "active" | "disabled" | "degraded" | "maintenance"
+      mcp_tool_category: "read" | "write" | "sensitive_write"
+      mcp_transport: "stdio" | "streamable_http" | "sse"
       meta_capi_status: "pending" | "processing" | "sent" | "failed" | "skipped"
       meta_lead_status:
         | "received"
@@ -8382,6 +8773,23 @@ export const Constants = {
       lead_source_type: ["webhook", "manual", "import", "api", "meta"],
       lead_type: ["trial", "info", "support", "generic"],
       marketing_campaign_status: ["planned", "active", "paused", "closed"],
+      mcp_actor_type: ["agent", "user", "system", "cron"],
+      mcp_approval_decision: ["approved", "rejected", "expired"],
+      mcp_execution_status: [
+        "pending_approval",
+        "approved",
+        "rejected",
+        "running",
+        "success",
+        "failed",
+        "failed_transient",
+        "cancelled",
+        "timeout",
+      ],
+      mcp_policy_action: ["allow", "deny", "require_approval"],
+      mcp_server_status: ["active", "disabled", "degraded", "maintenance"],
+      mcp_tool_category: ["read", "write", "sensitive_write"],
+      mcp_transport: ["stdio", "streamable_http", "sse"],
       meta_capi_status: ["pending", "processing", "sent", "failed", "skipped"],
       meta_lead_status: [
         "received",
