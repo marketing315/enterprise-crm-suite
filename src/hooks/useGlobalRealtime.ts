@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Table-to-queryKey mapping for cache invalidation.
@@ -98,14 +99,26 @@ const CHANNEL_GROUPS: Record<string, string[]> = {
 export function useGlobalRealtime() {
   const queryClient = useQueryClient();
   const { currentBrand, isAllBrandsSelected } = useBrand();
+  const { supabaseUser, isLoading: authLoading } = useAuth();
   const brandId = currentBrand?.id ?? null;
 
   useEffect(() => {
-    if (!brandId) return;
+    if (authLoading || !supabaseUser?.id || !brandId) return;
 
+    let isDisposed = false;
     const retryTimers: ReturnType<typeof setTimeout>[] = [];
 
+    function removeExistingChannel(channelName: string) {
+      supabase.getChannels().forEach((existing) => {
+        const topic = (existing as { topic?: string }).topic;
+        if (topic === channelName || topic === `realtime:${channelName}`) {
+          supabase.removeChannel(existing);
+        }
+      });
+    }
+
     function createChannel(channelName: string, tables: string[]) {
+      removeExistingChannel(channelName);
       const channel = supabase.channel(channelName);
 
       tables.forEach((table) => {
@@ -134,10 +147,14 @@ export function useGlobalRealtime() {
     const retryCounts: Record<string, number> = {};
 
     function subscribeChannel(channelName: string, tables: string[]) {
+      if (isDisposed) return;
+
       const channel = createChannel(channelName, tables);
       activeChannels.push(channel);
 
       channel.subscribe((status, err) => {
+        if (isDisposed) return;
+
         if (status === 'SUBSCRIBED') {
           retryCounts[channelName] = 0;
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -150,7 +167,10 @@ export function useGlobalRealtime() {
           const idx = activeChannels.indexOf(channel);
           if (idx !== -1) activeChannels.splice(idx, 1);
 
-          const timer = setTimeout(() => subscribeChannel(channelName, tables), delay);
+          const timer = setTimeout(() => {
+            if (isDisposed) return;
+            subscribeChannel(channelName, tables);
+          }, delay);
           retryTimers.push(timer);
         }
       });
@@ -161,8 +181,10 @@ export function useGlobalRealtime() {
     });
 
     return () => {
+      isDisposed = true;
       retryTimers.forEach(clearTimeout);
       activeChannels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [brandId, isAllBrandsSelected, queryClient]);
+  }, [brandId, isAllBrandsSelected, queryClient, supabaseUser?.id, authLoading]);
 }
+
