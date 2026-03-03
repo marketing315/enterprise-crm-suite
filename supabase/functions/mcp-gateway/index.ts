@@ -401,6 +401,18 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Server is disabled via kill switch", tool: body.tool }, 503);
     }
 
+    // Canary rollout enforcement
+    if (server) {
+      const canaryBrands = server.canary_brand_ids ?? [];
+      const canaryRoles = server.canary_role_whitelist ?? [];
+      if (canaryBrands.length > 0 && (!body.brand_id || !canaryBrands.includes(body.brand_id))) {
+        return json({ error: "Server not available for this brand (canary rollout)", tool: body.tool }, 403);
+      }
+      if (canaryRoles.length > 0 && !canaryRoles.some((r: string) => uniqueRoles.includes(r))) {
+        return json({ error: "Server not available for your role (canary rollout)", tool: body.tool }, 403);
+      }
+    }
+
     // Idempotency check
     if (body.idempotency_key) {
       const { isDuplicate, existingId } = await checkIdempotency(serviceClient, body.idempotency_key);
