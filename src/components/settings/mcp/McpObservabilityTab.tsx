@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Activity, BarChart3, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useMcpExecutions, type McpExecutionStatus } from "@/hooks/useMcpData";
+import { McpLatencyChart } from "./McpLatencyChart";
 
 const STATUS_CONFIG: Record<McpExecutionStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending_approval: { label: "Pending", variant: "secondary" },
@@ -77,6 +78,8 @@ export function McpObservabilityTab() {
           </CardContent>
         </Card>
       </div>
+      {/* Latency Chart */}
+      <McpLatencyChart />
 
       {/* Execution Log */}
       <Card>
