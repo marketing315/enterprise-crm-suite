@@ -69,7 +69,20 @@ export function ErrorConsolePanel() {
       addLog("error", [e.message], e.error?.stack);
     };
     const rejHandler = (e: PromiseRejectionEvent) => {
-      addLog("error", ["Unhandled rejection:", e.reason], e.reason?.stack);
+      const reason = e.reason;
+      const isAbortError = reason instanceof DOMException && reason.name === "AbortError";
+      const isEmptyObjectReason =
+        typeof reason === "object" &&
+        reason !== null &&
+        !Array.isArray(reason) &&
+        Object.keys(reason as Record<string, unknown>).length === 0;
+
+      if (isAbortError || isEmptyObjectReason) {
+        e.preventDefault();
+        return;
+      }
+
+      addLog("error", ["Unhandled rejection:", reason], reason?.stack);
     };
 
     window.addEventListener("error", handler);
