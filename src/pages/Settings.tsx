@@ -251,6 +251,12 @@ export default function Settings() {
         )}
 
         {isAdmin && (
+          <TabsContent value="mcp" className="space-y-4">
+            <McpSettingsModule />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
           <TabsContent value="admin" className="space-y-4">
             <AdminManagement />
           </TabsContent>
