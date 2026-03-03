@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox, Target, Search } from "lucide-react";
+import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox, Target, Search, Cpu } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -19,6 +19,7 @@ import { LeadDigestRunsTable } from "@/components/settings/digest/LeadDigestRuns
 import { LeadDigestKpiCards } from "@/components/settings/digest/LeadDigestKpiCards";
 import { CampaignGroupsManager } from "@/components/marketing/CampaignGroupsManager";
 import { KepleroLookupSettings } from "@/components/settings/keplero/KepleroLookupSettings";
+import { McpSettingsModule } from "@/components/settings/mcp/McpSettingsModule";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
