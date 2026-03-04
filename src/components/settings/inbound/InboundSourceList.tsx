@@ -69,8 +69,7 @@ export function InboundSourceList() {
 
   const handleCopyEndpoint = (sourceId: string) => {
     const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${sourceId}`;
-    navigator.clipboard.writeText(endpoint);
-    toast.success("Endpoint copiato negli appunti");
+    copyToClipboard(endpoint, "Endpoint");
   };
 
   const handleEdit = (source: WebhookSource) => {

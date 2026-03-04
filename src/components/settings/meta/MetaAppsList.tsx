@@ -18,9 +18,8 @@ export function MetaAppsList() {
   const [testingApp, setTestingApp] = useState<MetaApp | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copiato negli appunti`);
+  const handleCopyToClipboard = (text: string, label: string) => {
+    copyToClipboard(text, label);
   };
 
   const getWebhookUrl = (brandSlug: string) => {

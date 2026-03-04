@@ -166,8 +166,7 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
   };
 
   const copyValue = (value: string, label: string) => {
-    navigator.clipboard.writeText(value);
-    toast.success(`${label} copiato`);
+    copyToClipboard(value, label);
   };
 
   return (

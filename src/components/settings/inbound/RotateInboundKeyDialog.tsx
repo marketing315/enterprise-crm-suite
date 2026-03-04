@@ -100,8 +100,7 @@ export function RotateInboundKeyDialog({
   });
 
   const handleCopyValue = (value: string, label: string) => {
-    navigator.clipboard.writeText(value);
-    toast.success(`${label} copiata`);
+    copyToClipboard(value, label);
   };
 
   const handleClose = () => {
