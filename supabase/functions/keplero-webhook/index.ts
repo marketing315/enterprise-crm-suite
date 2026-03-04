@@ -166,33 +166,35 @@ Deno.serve(async (req: Request) => {
   const args = (payload.args || payload) as KepleroArgs;
   const config = (payload.config || {}) as Record<string, unknown>;
 
-  // Find brand by name from email content
-  const brandName = extractBrandName(config);
+  // Resolve brand: 1) query param ?brand=slug  2) payload config  3) reject
+  const url = new URL(req.url);
+  const brandParam = url.searchParams.get("brand")?.trim().toLowerCase() || null;
+  const brandName = brandParam || extractBrandName(config);
   let brandId: string | null = null;
 
   if (brandName) {
-    const { data: brand } = await supabaseAdmin
+    // Try matching by slug first, then by name
+    const { data: brandBySlug } = await supabaseAdmin
       .from("brands")
       .select("id")
-      .ilike("name", brandName)
-      .single();
-    
-    if (brand) {
-      brandId = brand.id;
+      .eq("slug", brandName)
+      .maybeSingle();
+
+    if (brandBySlug) {
+      brandId = brandBySlug.id;
+    } else {
+      const { data: brandByName } = await supabaseAdmin
+        .from("brands")
+        .select("id")
+        .ilike("name", brandName)
+        .maybeSingle();
+      if (brandByName) brandId = brandByName.id;
     }
   }
 
-  // No fallback: reject if brand cannot be resolved (prevent misrouting)
   if (!brandId) {
-    console.error("[Keplero] Could not resolve brand from payload, no fallback");
-    return new Response(JSON.stringify({ error: "Brand not resolved from payload" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  if (!brandId) {
-    return new Response(JSON.stringify({ error: "No brand configured" }), {
+    console.error("[Keplero] Could not resolve brand", { brandParam, brandName });
+    return new Response(JSON.stringify({ error: "Brand not resolved. Use ?brand=<slug> or include brand in config." }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
