@@ -80,6 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error);
+      // BUG-APP-003 FIX: Reset state on unexpected exceptions to prevent stale privileges
+      setUser(null);
+      setUserRoles([]);
     }
   }, []);
 

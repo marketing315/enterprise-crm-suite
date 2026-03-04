@@ -10,6 +10,7 @@ import { MetaAppFormDrawer } from "./MetaAppFormDrawer";
 import { DeleteMetaAppDialog } from "./DeleteMetaAppDialog";
 import { TestLeadDialog } from "./TestLeadDialog";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/copyToClipboard";
 
 export function MetaAppsList() {
   const { metaApps, isLoading, toggleActive, subscribePage } = useMetaApps();
@@ -18,9 +19,8 @@ export function MetaAppsList() {
   const [testingApp, setTestingApp] = useState<MetaApp | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copiato negli appunti`);
+  const handleCopyToClipboard = (text: string, label: string) => {
+    copyToClipboard(text, label);
   };
 
   const getWebhookUrl = (brandSlug: string) => {

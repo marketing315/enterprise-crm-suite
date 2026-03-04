@@ -13,18 +13,44 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isValidating, setIsValidating] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if we have a valid session from the reset link
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Link di recupero non valido o scaduto');
-        navigate('/login');
+    // Listen for PASSWORD_RECOVERY or SIGNED_IN events from the recovery link
+    // Don't redirect immediately — the session may arrive asynchronously via hash/callback
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        // Valid recovery session established
+        setIsValidating(false);
+        if (timeoutId) clearTimeout(timeoutId);
       }
+    });
+
+    // Also check if session already exists (e.g. fast hash parse)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsValidating(false);
+      }
+    });
+
+    // Timeout: if no valid session after 10s, redirect
+    timeoutId = setTimeout(() => {
+      setIsValidating((current) => {
+        if (current) {
+          toast.error('Link di recupero non valido o scaduto');
+          navigate('/login');
+        }
+        return current;
+      });
+    }, 10000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
     };
-    checkSession();
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,6 +86,15 @@ export default function ResetPassword() {
       setIsLoading(false);
     }
   };
+
+  if (isValidating) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Verifica link di recupero...</p>
+      </div>
+    );
+  }
 
   if (isSuccess) {
     return (

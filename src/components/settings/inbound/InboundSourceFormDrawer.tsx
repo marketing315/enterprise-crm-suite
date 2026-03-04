@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/copyToClipboard";
 import {
   Sheet,
   SheetContent,
@@ -197,8 +198,7 @@ export function InboundSourceFormDrawer({
   };
 
   const handleCopy = (value: string, label: string) => {
-    navigator.clipboard.writeText(value);
-    toast.success(`${label} copiata`);
+    copyToClipboard(value, label);
   };
 
   const handleClose = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { PhoneIncoming, User, Briefcase, X, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,9 +17,14 @@ export function IncomingCallPopup() {
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
   const dismissCall = useDismissIncomingCall();
   const navigate = useNavigate();
+  // BUG-APP-005/006 FIX: Track active call ID to prevent stale/race condition updates
+  const activeCallIdRef = useRef<string | null>(null);
 
   const handleIncomingCall = useCallback(async (call: IncomingCall) => {
+    // BUG-APP-005 FIX: Reset contact info immediately for new call
+    setContactInfo(null);
     setIncomingCall(call);
+    activeCallIdRef.current = call.id;
 
     // Fetch contact info if available
     if (call.contact_id) {
@@ -29,11 +34,10 @@ export function IncomingCallPopup() {
         .eq("id", call.contact_id)
         .single();
       
-      if (data) {
-        setContactInfo(data);
+      // BUG-APP-006 FIX: Only update if this call is still the active one
+      if (activeCallIdRef.current === call.id) {
+        setContactInfo(data ?? null);
       }
-    } else {
-      setContactInfo(null);
     }
 
     // Play notification sound (optional)
