@@ -25,6 +25,7 @@ import { RefreshCw, Copy } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useMetaApps, MetaApp, generateVerifyToken } from "@/hooks/useMetaApps";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/copyToClipboard";
 
 const formSchema = z.object({
   brand_slug: z.string().min(1, "Brand slug richiesto").regex(/^[a-z0-9-]+$/, "Solo lettere minuscole, numeri e trattini"),

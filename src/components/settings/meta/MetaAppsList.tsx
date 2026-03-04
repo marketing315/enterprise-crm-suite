@@ -10,6 +10,7 @@ import { MetaAppFormDrawer } from "./MetaAppFormDrawer";
 import { DeleteMetaAppDialog } from "./DeleteMetaAppDialog";
 import { TestLeadDialog } from "./TestLeadDialog";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/copyToClipboard";
 
 export function MetaAppsList() {
   const { metaApps, isLoading, toggleActive, subscribePage } = useMetaApps();

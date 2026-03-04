@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/copyToClipboard";
 import {
   Sheet,
   SheetContent,
