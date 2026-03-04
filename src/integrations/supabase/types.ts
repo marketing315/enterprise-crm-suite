@@ -7484,11 +7484,11 @@ export type Database = {
         Returns: Json
       }
       get_callcenter_kpis_by_operator: {
-        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Args: { p_brand_ids: string[]; p_from: string; p_to: string }
         Returns: Json
       }
       get_callcenter_kpis_overview: {
-        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Args: { p_brand_ids: string[]; p_from: string; p_to: string }
         Returns: Json
       }
       get_ceo_dashboard_kpis: {
