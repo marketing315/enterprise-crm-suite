@@ -38,9 +38,8 @@ export function useCallcenterKpisOverview(from: Date, to: Date) {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return null;
 
-      // Use first brand for single-brand, pass array for multi-brand when RPC supports it
       const { data, error } = await supabase.rpc("get_callcenter_kpis_overview", {
-        p_brand_id: brandIds[0],
+        p_brand_ids: brandIds,
         p_from: from.toISOString(),
         p_to: to.toISOString(),
       });
@@ -63,7 +62,7 @@ export function useCallcenterKpisByOperator(from: Date, to: Date) {
       if (brandIds.length === 0) return [];
 
       const { data, error } = await supabase.rpc("get_callcenter_kpis_by_operator", {
-        p_brand_id: brandIds[0],
+        p_brand_ids: brandIds,
         p_from: from.toISOString(),
         p_to: to.toISOString(),
       });
