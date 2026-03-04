@@ -87,6 +87,15 @@ export default function ResetPassword() {
     }
   };
 
+  if (isValidating) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Verifica link di recupero...</p>
+      </div>
+    );
+  }
+
   if (isSuccess) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
