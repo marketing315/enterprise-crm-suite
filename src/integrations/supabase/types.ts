@@ -3338,6 +3338,69 @@ export type Database = {
           },
         ]
       }
+      household_people: {
+        Row: {
+          brand_id: string
+          contact_id: string
+          created_at: string
+          first_name: string | null
+          has_device: boolean | null
+          id: string
+          is_primary: boolean
+          last_name: string | null
+          pacemaker_status: string | null
+          phone_normalized: string | null
+          phone_raw: string | null
+          role: Database["public"]["Enums"]["household_person_role"]
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          contact_id: string
+          created_at?: string
+          first_name?: string | null
+          has_device?: boolean | null
+          id?: string
+          is_primary?: boolean
+          last_name?: string | null
+          pacemaker_status?: string | null
+          phone_normalized?: string | null
+          phone_raw?: string | null
+          role?: Database["public"]["Enums"]["household_person_role"]
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          contact_id?: string
+          created_at?: string
+          first_name?: string | null
+          has_device?: boolean | null
+          id?: string
+          is_primary?: boolean
+          last_name?: string | null
+          pacemaker_status?: string | null
+          phone_normalized?: string | null
+          phone_raw?: string | null
+          role?: Database["public"]["Enums"]["household_person_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_people_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_people_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incoming_calls: {
         Row: {
           brand_id: string
@@ -3495,6 +3558,103 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "webhook_sources_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      keplero_interactions: {
+        Row: {
+          appointment_id: string | null
+          beneficiary_person_id: string | null
+          brand_id: string
+          contact_id: string
+          created_at: string
+          deal_id: string | null
+          disponibilita_orarie: string | null
+          esito_chiamata: string | null
+          fingerprint: string | null
+          fissato_keplero: boolean
+          id: string
+          motivo_contatto: string | null
+          motivo_rifiuto: string | null
+          raw_payload: Json
+          requester_person_id: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          beneficiary_person_id?: string | null
+          brand_id: string
+          contact_id: string
+          created_at?: string
+          deal_id?: string | null
+          disponibilita_orarie?: string | null
+          esito_chiamata?: string | null
+          fingerprint?: string | null
+          fissato_keplero?: boolean
+          id?: string
+          motivo_contatto?: string | null
+          motivo_rifiuto?: string | null
+          raw_payload?: Json
+          requester_person_id?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          beneficiary_person_id?: string | null
+          brand_id?: string
+          contact_id?: string
+          created_at?: string
+          deal_id?: string | null
+          disponibilita_orarie?: string | null
+          esito_chiamata?: string | null
+          fingerprint?: string | null
+          fissato_keplero?: boolean
+          id?: string
+          motivo_contatto?: string | null
+          motivo_rifiuto?: string | null
+          raw_payload?: Json
+          requester_person_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "keplero_interactions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keplero_interactions_beneficiary_person_id_fkey"
+            columns: ["beneficiary_person_id"]
+            isOneToOne: false
+            referencedRelation: "household_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keplero_interactions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keplero_interactions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keplero_interactions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keplero_interactions_requester_person_id_fkey"
+            columns: ["requester_person_id"]
+            isOneToOne: false
+            referencedRelation: "household_people"
             referencedColumns: ["id"]
           },
         ]
@@ -7306,6 +7466,20 @@ export type Database = {
           ticket_id: string
         }[]
       }
+      find_or_link_household_person: {
+        Args: {
+          p_brand_id: string
+          p_contact_id: string
+          p_first_name?: string
+          p_has_device?: boolean
+          p_last_name?: string
+          p_pacemaker_status?: string
+          p_phone_normalized: string
+          p_phone_raw: string
+          p_role: Database["public"]["Enums"]["household_person_role"]
+        }
+        Returns: string
+      }
       generate_order_number: { Args: { p_brand_id: string }; Returns: string }
       get_accessible_brand_ids: {
         Args: { p_user_id: string }
@@ -8424,6 +8598,7 @@ export type Database = {
         | "ai_extraction_failed"
         | "contact_creation_failed"
         | "unknown_error"
+      household_person_role: "requester" | "beneficiary" | "other"
       ingest_status: "pending" | "success" | "rejected" | "failed"
       lead_source_channel: "tv" | "online" | "other"
       lead_source_type: "webhook" | "manual" | "import" | "api" | "meta"
@@ -8768,6 +8943,7 @@ export const Constants = {
         "contact_creation_failed",
         "unknown_error",
       ],
+      household_person_role: ["requester", "beneficiary", "other"],
       ingest_status: ["pending", "success", "rejected", "failed"],
       lead_source_channel: ["tv", "online", "other"],
       lead_source_type: ["webhook", "manual", "import", "api", "meta"],

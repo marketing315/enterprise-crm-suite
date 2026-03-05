@@ -1,43 +1,70 @@
 
 
-## Piano: Creazione campi contatto Keplero
+# Scansione Debug Completa - Contatti Infinite Scroll
 
-### Cosa faremo
+## Bug Identificati
 
-Inseriremo **19 definizioni di campo** nella tabella `contact_field_definitions` con scope **global** (visibili su tutti i brand). Questi campi archivieranno i dati grezzi ricevuti da Keplero, separati dai campi CRM nativi.
+### Bug 1 (CRITICO): `loadTriggeredRef` viene resettato prematuramente
+In `usePaginatedContactSearch.ts`, linea 56, `loadTriggeredRef.current = false` viene eseguito **incondizionatamente** alla fine dell'`useEffect`. Quando `page` cambia (es. da 0 a 1), React Query crea una nuova query e temporaneamente `pageData` diventa `[]`. L'effetto scatta, nessun branch viene eseguito, ma la guardia viene comunque resettata. Questo permette a `loadMore` di scattare di nuovo prima che i dati della pagina corrente arrivino, saltando pagine.
 
-### Mapping dei campi
+### Bug 2 (MEDIO): Ordine di dichiarazione `handleScrollRef` / `scrollContainerCallbackRef`
+In `ContactsTableWithViews.tsx`, `scrollContainerCallbackRef` (linea 212) fa riferimento a `handleScrollRef.current` (linea 225) che e' dichiarato DOPO. Funziona per via delle closure JS, ma e' fragile e puo' causare problemi con HMR.
 
-| Key | Label | Tipo |
-|-----|-------|------|
-| `cap_keplero` | CAP Keplero | `text` |
-| `nome_keplero` | Nome Keplero | `text` |
-| `numero_keplero` | Numero Keplero | `text` |
-| `zona_keplero` | Zona Keplero | `text` |
-| `citta_keplero` | Città Keplero | `text` |
-| `cognome_keplero` | Cognome Keplero | `text` |
-| `indirizzo_keplero` | Indirizzo Keplero | `text` |
-| `pacemaker_keplero` | Pacemaker Keplero | `select` (sì/no/non so) |
-| `numero_civico_keplero` | Numero Civico Keplero | `text` |
-| `esito_chiamata_keplero` | Esito Chiamata Keplero | `select` (appuntamento_fissato/rifiuto/da_ricontattare) |
-| `motivo_rifiuto_keplero` | Motivo Rifiuto Keplero | `text` |
-| `motivo_contatto_keplero` | Motivo Contatto Keplero | `text` |
-| `ora_appuntamento_keplero` | Ora Appuntamento Keplero | `text` |
-| `data_appuntamento_keplero` | Data Appuntamento Keplero | `text` |
-| `ha_gia_dispositivo_keplero` | Ha Già Dispositivo Keplero | `select` (sì/no) |
-| `telefono_principale_keplero` | Telefono Principale Keplero | `phone` |
-| `telefono_secondario_keplero` | Telefono Secondario Keplero | `phone` |
-| `disponibilita_orarie_keplero` | Disponibilità Orarie Keplero | `text` |
-| `fissato_keplero` | Fissato Keplero | `select` (sì/no) |
+### Bug 3 (MINORE): Warning `forwardRef` su AlertDialog
+Il console log mostra warning di `Function components cannot be given refs` su AlertDialog. Non blocca il funzionamento ma indica un componente non aggiornato.
 
-**Note tecniche:**
-- I campi data/ora restano `text` perché Keplero invia formati liberi (es. "30-01-2026", "17:30")
-- I campi con valori fissi usano `select` con opzioni predefinite
-- Scope `global` = visibili per tutti i brand senza duplicazione
-- `display_order` progressivo per raggruppamento nella UI
+---
 
-### Implementazione
+## Piano di Fix
 
-1. **Inserire le 19 definizioni** nel DB via INSERT (non migration, sono dati non schema)
-2. **Aggiornare il webhook Keplero** (`keplero-webhook/index.ts`) per popolare automaticamente questi campi custom quando riceve un payload, usando la RPC `upsert_contact_field_values`
+### Step 1: Fix `usePaginatedContactSearch.ts`
+- Spostare `loadTriggeredRef.current = false` DENTRO il branch `if (pageData.length > 0)` o dopo la conferma che i dati sono effettivamente arrivati per la pagina corrente
+- Aggiungere un `pageRef` per tracciare quale pagina ha triggerato il load e resettare la guardia solo quando arrivano i dati per quella specifica pagina
+
+```text
+Logica corretta:
+1. loadMore() -> loadTriggeredRef = true, setPage(p+1)
+2. Query parte con nuovo offset
+3. pageData arriva (length > 0) -> appende a allResults -> loadTriggeredRef = false
+4. pageData vuoto (fine lista) -> hasMore = false -> scroll handler bloccato
+```
+
+### Step 2: Riordinare dichiarazioni in `ContactsTableWithViews.tsx`
+- Spostare `handleScrollRef` PRIMA di `scrollContainerCallbackRef` per eliminare la dipendenza da hoisting delle closure
+- Nessun cambiamento di logica, solo ordine piu' sicuro
+
+### Step 3: (Opzionale) Fix warning AlertDialog
+- Verificare se `AlertDialogContent` nel file `alert-dialog.tsx` necessita di `React.forwardRef`
+
+---
+
+## Dettaglio Tecnico - Fix Principale
+
+Il fix chiave in `usePaginatedContactSearch.ts`:
+
+```text
+// PRIMA (buggy):
+useEffect(() => {
+  if (pageData.length > 0) {
+    // append...
+  } else if (page === 0) {
+    setAllResults([]);
+  }
+  loadTriggeredRef.current = false;  // <-- SEMPRE resettato
+}, [pageData, page]);
+
+// DOPO (corretto):
+useEffect(() => {
+  if (pageData.length > 0) {
+    // append...
+    loadTriggeredRef.current = false;  // <-- solo quando dati arrivano
+  } else if (page === 0) {
+    setAllResults([]);
+    loadTriggeredRef.current = false;  // <-- reset iniziale OK
+  }
+  // NON resettare qui per pagine > 0 senza dati (ancora in caricamento)
+}, [pageData, page]);
+```
+
+Questo impedisce che il guard venga rimosso durante il transitorio di caricamento, prevenendo il salto di pagine.
 

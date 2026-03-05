@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createHash } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,6 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// ─── Phone normalization ───────────────────────────────────────
 interface NormalizedPhone {
   normalized: string;
   countryCode: string;
@@ -19,7 +21,6 @@ function normalizePhone(phone: string, defaultCountry = "IT"): NormalizedPhone {
   let countryCode = defaultCountry;
   let assumedCountry = true;
 
-  // Remove leading 39 for Italian numbers
   if (normalized.startsWith("39") && normalized.length > 10) {
     normalized = normalized.slice(2);
     countryCode = "IT";
@@ -29,38 +30,28 @@ function normalizePhone(phone: string, defaultCountry = "IT"): NormalizedPhone {
   return { normalized, countryCode, assumedCountry, raw };
 }
 
-// Parse Italian date formats: "30-01-2026" or "2026-02-01"
+// ─── Date/time helpers ─────────────────────────────────────────
 function parseDate(dateStr: string): string | null {
   if (!dateStr || dateStr === "" || dateStr === "0") return null;
-  
-  // Try DD-MM-YYYY format
   const ddmmyyyy = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (ddmmyyyy) {
     const [, day, month, year] = ddmmyyyy;
     return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   }
-  
-  // Try YYYY-MM-DD format (ISO)
   const iso = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) {
-    return dateStr;
-  }
-  
+  if (iso) return dateStr;
   return null;
 }
 
-// Parse time "14:30" or "17:30"
 function parseTime(timeStr: string): string {
   if (!timeStr || timeStr === "") return "10:00";
   const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-  if (match) {
-    return `${match[1].padStart(2, "0")}:${match[2]}`;
-  }
+  if (match) return `${match[1].padStart(2, "0")}:${match[2]}`;
   return "10:00";
 }
 
-// Map pacemaker string to enum
-function mapPacemakerStatus(value: string): "assente" | "presente" | "non_chiaro" | null {
+// ─── Mapping helpers ───────────────────────────────────────────
+function mapPacemakerStatus(value: string): string | null {
   if (!value || value === "") return null;
   const v = value.toLowerCase();
   if (v === "no") return "assente";
@@ -69,40 +60,68 @@ function mapPacemakerStatus(value: string): "assente" | "presente" | "non_chiaro
   return null;
 }
 
-// Map esito_chiamata to appointment status
 function mapAppointmentStatus(esito: string): "scheduled" | "confirmed" | "cancelled" {
   if (!esito) return "scheduled";
   const e = esito.toLowerCase();
   if (e === "appuntamento_fissato") return "confirmed";
   if (e === "rifiuto") return "cancelled";
-  if (e === "da_ricontattare") return "scheduled";
   return "scheduled";
 }
 
-// Extract brand name from email subject or body
 function extractBrandName(config: Record<string, unknown>): string | null {
-  const subject = (config.subject as string) || "";
   const body = (config.body as string) || "";
-  
-  // Look for "BRAND: Excell" pattern in body
+  const subject = (config.subject as string) || "";
   const brandMatch = body.match(/BRAND:\s*(\w+)/i);
   if (brandMatch) return brandMatch[1].toLowerCase();
-  
-  // Look for brand name in subject
   const subjectMatch = subject.match(/(EXCELL|MYMED|SONIMED)/i);
   if (subjectMatch) return subjectMatch[1].toLowerCase();
-  
   return null;
 }
 
+function parseBooleanish(val: unknown): boolean {
+  if (typeof val === "boolean") return val;
+  if (typeof val === "string") {
+    const v = val.toLowerCase().trim();
+    return v === "true" || v === "si" || v === "sì" || v === "1" || v === "yes";
+  }
+  return false;
+}
+
+function parseHasDevice(val: string | undefined): boolean | null {
+  if (!val || val === "") return null;
+  const v = val.toLowerCase();
+  if (v === "si" || v === "sì" || v === "yes") return true;
+  if (v === "no") return false;
+  return null;
+}
+
+// ─── Fingerprint for idempotency ───────────────────────────────
+function computeFingerprint(brandId: string, args: KepleroArgs): string {
+  const key = [
+    brandId,
+    args.telefono_utente || args.telefono_principale || "",
+    args.telefono_principale || "",
+    args.data_appuntamento || "",
+    args.ora_appuntamento || "",
+    args.esito_chiamata || "",
+    args.Nome || "",
+    args.Cognome || "",
+  ].join("|");
+  return createHash("sha256").update(key).digest("hex").slice(0, 32);
+}
+
+// ─── Types ─────────────────────────────────────────────────────
 interface KepleroArgs {
   Nome?: string;
   Cognome?: string;
+  telefono_utente?: string;
   telefono_principale?: string;
   telefono_secondario?: string;
   citta?: string;
   cap?: number | string;
+  indirizzo?: string;
   indirizzo_completo?: string;
+  numero_civico?: string;
   zona?: string;
   data_appuntamento?: string;
   ora_appuntamento?: string;
@@ -113,13 +132,14 @@ interface KepleroArgs {
   motivo_rifiuto?: string;
   note?: string;
   disponibilita_orarie?: string;
+  fissato_keplero?: string | boolean;
 }
 
+// ─── Main handler ──────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -132,17 +152,16 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // B12 FIX: Secret is REQUIRED in production - reject if not configured
+  // ── Auth: secret is REQUIRED ──
   const expectedSecret = Deno.env.get("KEPLERO_WEBHOOK_SECRET");
   if (!expectedSecret) {
-    console.error("[Keplero] KEPLERO_WEBHOOK_SECRET not configured - rejecting request");
+    console.error("[Keplero] KEPLERO_WEBHOOK_SECRET not configured");
     return new Response(JSON.stringify({ error: "Webhook secret not configured" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  const providedSecret = req.headers.get("x-keplero-secret");
-  if (providedSecret !== expectedSecret) {
+  if (req.headers.get("x-keplero-secret") !== expectedSecret) {
     console.error("[Keplero] Invalid secret");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -150,6 +169,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ── Parse payload ──
   let payload: Record<string, unknown>;
   try {
     payload = await req.json();
@@ -159,98 +179,90 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+  console.log("[Keplero] Payload received:", JSON.stringify(payload));
 
-  console.log("Keplero payload received:", JSON.stringify(payload));
-
-  // Extract args and config from Keplero structure
   const args = (payload.args || payload) as KepleroArgs;
   const config = (payload.config || {}) as Record<string, unknown>;
 
-  // Resolve brand: 1) query param ?brand=slug  2) payload config  3) reject
+  // ── Resolve brand ──
   const url = new URL(req.url);
   const brandParam = url.searchParams.get("brand")?.trim().toLowerCase() || null;
   const brandName = brandParam || extractBrandName(config);
   let brandId: string | null = null;
 
   if (brandName) {
-    // Try matching by slug first, then by name
-    const { data: brandBySlug } = await supabaseAdmin
-      .from("brands")
-      .select("id")
-      .eq("slug", brandName)
-      .maybeSingle();
-
-    if (brandBySlug) {
-      brandId = brandBySlug.id;
+    const { data: bySlug } = await supabaseAdmin
+      .from("brands").select("id").eq("slug", brandName).maybeSingle();
+    if (bySlug) {
+      brandId = bySlug.id;
     } else {
-      const { data: brandByName } = await supabaseAdmin
-        .from("brands")
-        .select("id")
-        .ilike("name", brandName)
-        .maybeSingle();
-      if (brandByName) brandId = brandByName.id;
+      const { data: byName } = await supabaseAdmin
+        .from("brands").select("id").ilike("name", brandName).maybeSingle();
+      if (byName) brandId = byName.id;
     }
   }
-
   if (!brandId) {
-    console.error("[Keplero] Could not resolve brand", { brandParam, brandName });
-    return new Response(JSON.stringify({ error: "Brand not resolved. Use ?brand=<slug> or include brand in config." }), {
+    console.error("[Keplero] Brand not resolved", { brandParam, brandName });
+    return new Response(JSON.stringify({ error: "Brand not resolved. Use ?brand=<slug>." }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Determine event type based on esito_chiamata
-  const esito = args.esito_chiamata?.toLowerCase() || "";
-  let eventType = "keplero.lead"; // default
-  if (esito === "da_ricontattare" || esito.includes("ricontatt")) {
-    eventType = "keplero.ricontatto";
-  } else if (esito === "appuntamento_fissato") {
-    eventType = "keplero.appuntamento";
-  } else if (esito === "rifiuto") {
-    eventType = "keplero.rifiuto";
+  // ── Determine requester phone (telefono_utente) vs beneficiary (telefono_principale) ──
+  const requesterPhoneRaw = args.telefono_utente || args.telefono_principale || "";
+  const beneficiaryPhoneRaw = args.telefono_principale || "";
+
+  if (!requesterPhoneRaw) {
+    console.error("[Keplero] No phone number in payload");
+    return new Response(JSON.stringify({ error: "Phone number required (telefono_utente or telefono_principale)" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
-  // Emit inbound event for automation processing
-  const { data: inboundEvent, error: inboundError } = await supabaseAdmin
-    .from("webhook_inbound_events")
-    .insert({
-      brand_id: brandId,
-      source: "keplero",
-      event_type: eventType,
-      payload: payload,
-      status: "pending",
-    })
+  const requesterPhone = normalizePhone(requesterPhoneRaw);
+  const beneficiaryPhone = beneficiaryPhoneRaw ? normalizePhone(beneficiaryPhoneRaw) : null;
+  const isSamePerson = !beneficiaryPhone || requesterPhone.normalized === beneficiaryPhone.normalized;
+
+  // ── Idempotency check ──
+  const fingerprint = computeFingerprint(brandId, args);
+  const { data: existingInteraction } = await supabaseAdmin
+    .from("keplero_interactions")
     .select("id")
-    .single();
+    .eq("fingerprint", fingerprint)
+    .maybeSingle();
 
-  if (inboundError) {
-    console.warn("Failed to create inbound event:", inboundError);
-  } else {
-    console.log("Inbound event created:", inboundEvent.id, "type:", eventType);
-  }
-
-  // Extract phone (required)
-  const phoneRaw = args.telefono_principale || "";
-  if (!phoneRaw) {
-    console.error("Missing phone number in Keplero payload");
-    return new Response(JSON.stringify({ error: "Phone number required" }), {
-      status: 400,
+  if (existingInteraction) {
+    console.log("[Keplero] Duplicate detected, fingerprint:", fingerprint);
+    return new Response(JSON.stringify({ success: true, duplicate: true, interaction_id: existingInteraction.id }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  const normalizedPhone = normalizePhone(phoneRaw);
+  // ── Emit inbound event ──
+  const esito = args.esito_chiamata?.toLowerCase() || "";
+  let eventType = "keplero.lead";
+  if (esito === "da_ricontattare" || esito.includes("ricontatt")) eventType = "keplero.ricontatto";
+  else if (esito === "appuntamento_fissato") eventType = "keplero.appuntamento";
+  else if (esito === "rifiuto") eventType = "keplero.rifiuto";
 
-  // Find or create contact
+  const { data: inboundEvent } = await supabaseAdmin
+    .from("webhook_inbound_events")
+    .insert({ brand_id: brandId, source: "keplero", event_type: eventType, payload, status: "pending" })
+    .select("id").single();
+
+  // ── Find or create household contact (using requester phone) ──
+  // NO overwrite on existing root contact — find_or_create_contact only fills NULLs via COALESCE
   const { data: contactId, error: contactError } = await supabaseAdmin.rpc(
     "find_or_create_contact",
     {
       p_brand_id: brandId,
-      p_phone_normalized: normalizedPhone.normalized,
-      p_phone_raw: normalizedPhone.raw,
-      p_country_code: normalizedPhone.countryCode,
-      p_assumed_country: normalizedPhone.assumedCountry,
+      p_phone_normalized: requesterPhone.normalized,
+      p_phone_raw: requesterPhone.raw,
+      p_country_code: requesterPhone.countryCode,
+      p_assumed_country: requesterPhone.assumedCountry,
       p_first_name: args.Nome || null,
       p_last_name: args.Cognome || null,
       p_email: null,
@@ -260,61 +272,72 @@ Deno.serve(async (req: Request) => {
   );
 
   if (contactError || !contactId) {
-    console.error("Failed to find/create contact:", contactError);
+    console.error("[Keplero] Contact creation failed:", contactError);
     return new Response(JSON.stringify({ error: "Contact creation failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Update contact address if provided
-  if (args.indirizzo_completo) {
-    const { error: addressError } = await supabaseAdmin
-      .from("contacts")
-      .update({ address: args.indirizzo_completo })
-      .eq("id", contactId);
-    if (addressError) {
-      console.error("[Keplero] Failed to update contact address:", { contact_id: contactId, error: addressError.message });
-    }
+  // ── Link household people ──
+  const pacemakerStatus = mapPacemakerStatus(args.pacemaker || "");
+  const hasDevice = parseHasDevice(args.ha_gia_dispositivo);
+
+  // Requester person
+  const { data: requesterPersonId } = await supabaseAdmin.rpc("find_or_link_household_person", {
+    p_contact_id: contactId,
+    p_brand_id: brandId,
+    p_role: "requester",
+    p_phone_raw: requesterPhone.raw,
+    p_phone_normalized: requesterPhone.normalized,
+    p_first_name: args.Nome || null,
+    p_last_name: args.Cognome || null,
+    p_pacemaker_status: isSamePerson ? pacemakerStatus : null,
+    p_has_device: isSamePerson ? hasDevice : null,
+  });
+
+  // Beneficiary person (only if different from requester)
+  let beneficiaryPersonId: string | null = null;
+  if (!isSamePerson && beneficiaryPhone) {
+    const { data: bpId } = await supabaseAdmin.rpc("find_or_link_household_person", {
+      p_contact_id: contactId,
+      p_brand_id: brandId,
+      p_role: "beneficiary",
+      p_phone_raw: beneficiaryPhone.raw,
+      p_phone_normalized: beneficiaryPhone.normalized,
+      p_first_name: null,
+      p_last_name: null,
+      p_pacemaker_status: pacemakerStatus,
+      p_has_device: hasDevice,
+    });
+    beneficiaryPersonId = bpId;
   }
 
-  // Add secondary phone if provided
+  // ── Add secondary phone as alias ──
   if (args.telefono_secondario) {
     const secondaryNormalized = normalizePhone(args.telefono_secondario);
-    const { error: phoneError } = await supabaseAdmin.rpc("add_contact_phone", {
+    await supabaseAdmin.rpc("add_contact_phone", {
       p_contact_id: contactId,
       p_phone_raw: secondaryNormalized.raw,
       p_is_primary: false,
-    });
-    if (phoneError) {
-      console.error("[Keplero] Failed to add secondary phone:", { contact_id: contactId, error: phoneError.message });
-    }
+    }).catch(() => {});
   }
 
-  // Find or create deal
-  const { data: dealId, error: dealError } = await supabaseAdmin.rpc("find_or_create_deal", {
+  // ── Find or create deal ──
+  const { data: dealId } = await supabaseAdmin.rpc("find_or_create_deal", {
     p_brand_id: brandId,
     p_contact_id: contactId,
   });
 
-  if (dealError) {
-    console.error("[Keplero] Failed to find/create deal:", { contact_id: contactId, brand_id: brandId, error: dealError.message });
-  }
-
-  // Parse appointment date/time
+  // ── Create appointment (always new if date present) ──
   const dateStr = parseDate(args.data_appuntamento || "");
   const timeStr = parseTime(args.ora_appuntamento || "");
-  
   let scheduledAt: string | null = null;
-  if (dateStr) {
-    // Combine date and time into ISO string (assume Europe/Rome timezone)
-    scheduledAt = `${dateStr}T${timeStr}:00+01:00`;
-  }
+  if (dateStr) scheduledAt = `${dateStr}T${timeStr}:00+01:00`;
 
-  // Map pacemaker status
-  const pacemakerStatus = mapPacemakerStatus(args.pacemaker || "");
+  const addressFull = [args.indirizzo || args.indirizzo_completo, args.numero_civico]
+    .filter(Boolean).join(" ").trim() || null;
 
-  // Build notes combining various fields
   const notesParts: string[] = [];
   if (args.note) notesParts.push(args.note);
   if (args.motivo_contatto) notesParts.push(`Motivo contatto: ${args.motivo_contatto}`);
@@ -322,39 +345,10 @@ Deno.serve(async (req: Request) => {
   if (args.ha_gia_dispositivo) notesParts.push(`Ha già dispositivo: ${args.ha_gia_dispositivo}`);
   if (args.motivo_rifiuto) notesParts.push(`Motivo rifiuto: ${args.motivo_rifiuto}`);
   if (args.zona) notesParts.push(`Zona: ${args.zona}`);
-  const combinedNotes = notesParts.join("\n");
+  const combinedNotes = notesParts.join("\n") || null;
 
-  // Create lead_event with qualification metadata
-  const { data: leadEvent, error: leadEventError } = await supabaseAdmin
-    .from("lead_events")
-    .insert({
-      brand_id: brandId,
-      contact_id: contactId,
-      deal_id: dealId,
-      source: "webhook" as const,
-      source_name: "keplero",
-      raw_payload: payload,
-      occurred_at: new Date().toISOString(),
-      received_at: new Date().toISOString(),
-      lead_source_channel: "other" as const,
-      contact_channel: "chat" as const, // WhatsApp
-      pacemaker_status: pacemakerStatus,
-      booking_notes: combinedNotes || null,
-      logistics_notes: args.disponibilita_orarie || null,
-    })
-    .select("id")
-    .single();
-
-  if (leadEventError) {
-    console.error("Failed to create lead event:", leadEventError);
-  }
-
-  // Create appointment if we have a valid date
   let appointmentId: string | null = null;
   if (scheduledAt) {
-    const appointmentStatus = mapAppointmentStatus(args.esito_chiamata || "");
-    
-    // Insert appointment directly (bypass RPC for service role)
     const { data: appointment, error: appointmentError } = await supabaseAdmin
       .from("appointments")
       .insert({
@@ -363,53 +357,181 @@ Deno.serve(async (req: Request) => {
         deal_id: dealId,
         scheduled_at: scheduledAt,
         duration_minutes: 60,
-        address: args.indirizzo_completo || null,
+        address: addressFull,
         city: args.citta || null,
         cap: args.cap?.toString() || null,
-        notes: combinedNotes || null,
-        status: appointmentStatus,
-        appointment_type: "primo_appuntamento" as const,
+        notes: combinedNotes,
+        status: mapAppointmentStatus(args.esito_chiamata || ""),
+        appointment_type: "primo_appuntamento",
       })
-      .select("id")
-      .single();
+      .select("id").single();
 
     if (appointmentError) {
-      console.error("Failed to create appointment:", appointmentError);
+      console.error("[Keplero] Appointment creation failed:", appointmentError);
     } else {
       appointmentId = appointment?.id || null;
-    }
-
-    // Log appointment creation in audit
-    if (appointmentId) {
-      await supabaseAdmin.from("audit_log").insert({
-        brand_id: brandId,
-        entity_type: "appointment",
-        entity_id: appointmentId,
-        action: "create",
-        actor_user_id: null, // System action
-        metadata: { source: "keplero" },
-      });
+      if (appointmentId) {
+        await supabaseAdmin.from("audit_log").insert({
+          brand_id: brandId,
+          entity_type: "appointment",
+          entity_id: appointmentId,
+          action: "create",
+          actor_user_id: null,
+          metadata: { source: "keplero", fingerprint },
+        });
+      }
     }
   }
 
-  console.log(JSON.stringify({
-    outcome: "success",
-    brand_id: brandId,
-    contact_id: contactId,
-    deal_id: dealId,
-    lead_event_id: leadEvent?.id,
-    appointment_id: appointmentId,
-    brand_name: brandName,
-  }));
+  // ── fissato_keplero → auto-stage deal to "Fissato" ──
+  const isFissato = parseBooleanish(args.fissato_keplero);
+  if (isFissato && dealId) {
+    // Find the "Fissato" global stage
+    const { data: fissatoStage } = await supabaseAdmin
+      .from("pipeline_stages")
+      .select("id")
+      .eq("name", "Fissato")
+      .is("brand_id", null)
+      .eq("is_active", true)
+      .maybeSingle();
 
-  return new Response(
-    JSON.stringify({
-      success: true,
+    if (fissatoStage) {
+      // Get current stage for audit
+      const { data: currentDeal } = await supabaseAdmin
+        .from("deals")
+        .select("current_stage_id")
+        .eq("id", dealId)
+        .single();
+
+      const fromStageId = currentDeal?.current_stage_id || null;
+
+      if (fromStageId !== fissatoStage.id) {
+        await supabaseAdmin
+          .from("deals")
+          .update({ current_stage_id: fissatoStage.id, updated_at: new Date().toISOString() })
+          .eq("id", dealId);
+
+        await supabaseAdmin.from("deal_stage_history").insert({
+          deal_id: dealId,
+          from_stage_id: fromStageId,
+          to_stage_id: fissatoStage.id,
+          notes: "Auto-stage da Keplero: fissato_keplero=true",
+        });
+
+        await supabaseAdmin.from("audit_log").insert({
+          brand_id: brandId,
+          entity_type: "deal",
+          entity_id: dealId,
+          action: "auto_stage_fissato",
+          actor_user_id: null,
+          metadata: { source: "keplero", fingerprint, from_stage_id: fromStageId, to_stage_id: fissatoStage.id },
+        });
+
+        console.log("[Keplero] Deal auto-staged to Fissato:", dealId);
+      }
+    }
+  }
+
+  // ── Create lead_event (append-only) ──
+  const { data: leadEvent } = await supabaseAdmin
+    .from("lead_events")
+    .insert({
+      brand_id: brandId,
       contact_id: contactId,
       deal_id: dealId,
-      lead_event_id: leadEvent?.id || null,
+      source: "webhook",
+      source_name: "keplero",
+      raw_payload: payload,
+      occurred_at: new Date().toISOString(),
+      received_at: new Date().toISOString(),
+      lead_source_channel: "other",
+      contact_channel: "chat",
+      pacemaker_status: pacemakerStatus,
+      booking_notes: combinedNotes,
+      logistics_notes: args.disponibilita_orarie || null,
+    })
+    .select("id").single();
+
+  // ── Create keplero_interaction record (append-only, idempotent) ──
+  const { data: interaction, error: interactionError } = await supabaseAdmin
+    .from("keplero_interactions")
+    .insert({
+      brand_id: brandId,
+      contact_id: contactId,
+      deal_id: dealId,
+      requester_person_id: requesterPersonId || null,
+      beneficiary_person_id: isSamePerson ? (requesterPersonId || null) : (beneficiaryPersonId || null),
+      esito_chiamata: args.esito_chiamata || null,
+      motivo_contatto: args.motivo_contatto || null,
+      motivo_rifiuto: args.motivo_rifiuto || null,
+      disponibilita_orarie: args.disponibilita_orarie || null,
+      fissato_keplero: isFissato,
       appointment_id: appointmentId,
-    }),
-    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
+      fingerprint,
+      raw_payload: payload,
+    })
+    .select("id").single();
+
+  if (interactionError) {
+    console.error("[Keplero] Interaction insert error:", interactionError);
+  }
+
+  // ── Upsert custom field values ──
+  const fieldMap: Record<string, string | undefined> = {
+    cap_keplero: args.cap?.toString(),
+    nome_keplero: args.Nome,
+    numero_keplero: args.telefono_utente || args.telefono_principale,
+    zona_keplero: args.zona,
+    citta_keplero: args.citta,
+    cognome_keplero: args.Cognome,
+    indirizzo_keplero: addressFull || undefined,
+    pacemaker_keplero: args.pacemaker,
+    numero_civico_keplero: args.numero_civico,
+    esito_chiamata_keplero: args.esito_chiamata,
+    motivo_rifiuto_keplero: args.motivo_rifiuto,
+    motivo_contatto_keplero: args.motivo_contatto,
+    ora_appuntamento_keplero: args.ora_appuntamento,
+    data_appuntamento_keplero: args.data_appuntamento,
+    ha_gia_dispositivo_keplero: args.ha_gia_dispositivo,
+    telefono_principale_keplero: args.telefono_principale,
+    telefono_secondario_keplero: args.telefono_secondario,
+    disponibilita_orarie_keplero: args.disponibilita_orarie,
+    fissato_keplero: isFissato ? "sì" : "no",
+  };
+
+  // Build field values array for upsert
+  const fieldEntries = Object.entries(fieldMap)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .map(([key, value]) => ({ field_key: key, value: value as string }));
+
+  if (fieldEntries.length > 0) {
+    await supabaseAdmin.rpc("upsert_contact_field_values", {
+      p_contact_id: contactId,
+      p_brand_id: brandId,
+      p_field_values: fieldEntries,
+    }).catch((err: Error) => {
+      console.error("[Keplero] Custom fields upsert error:", err.message);
+    });
+  }
+
+  // ── Response ──
+  const result = {
+    success: true,
+    contact_id: contactId,
+    deal_id: dealId,
+    lead_event_id: leadEvent?.id || null,
+    appointment_id: appointmentId,
+    interaction_id: interaction?.id || null,
+    requester_person_id: requesterPersonId || null,
+    beneficiary_person_id: isSamePerson ? null : (beneficiaryPersonId || null),
+    fissato_applied: isFissato,
+    inbound_event_id: inboundEvent?.id || null,
+  };
+
+  console.log("[Keplero] Success:", JSON.stringify(result));
+
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 });
