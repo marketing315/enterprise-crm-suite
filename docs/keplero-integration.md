@@ -1,92 +1,84 @@
-# Integrazione Keplero Webhook
-
-Questa integrazione riceve appuntamenti fissati dall'AI di Keplero (WhatsApp) e li importa nel CRM.
+# Integrazione Keplero Webhook — Household Model
 
 ## Endpoint
 
 ```
-POST https://qmqcjtmcxfqahhubpaea.supabase.co/functions/v1/keplero-webhook
+POST /functions/v1/keplero-webhook?brand=<slug>
 ```
 
-## Autenticazione (opzionale)
+## Autenticazione
 
-Per aggiungere sicurezza, configurare il secret `KEPLERO_WEBHOOK_SECRET` e inviare l'header:
+Header obbligatorio: `X-Keplero-Secret: <secret>`
 
-```
-X-Keplero-Secret: <your-secret>
-```
-
-## Payload Keplero
-
-Il webhook accetta il formato standard di Keplero:
+## Payload
 
 ```json
 {
   "args": {
-    "Nome": "Vincenzo",
-    "Cognome": "Pace",
-    "telefono_principale": "3662560267",
-    "telefono_secondario": "",
-    "citta": "San Donato Milanese",
-    "cap": 20097,
-    "indirizzo_completo": "Via Unica 55, Poasco",
-    "zona": "Poasco",
-    "data_appuntamento": "30-01-2026",
+    "Nome": "Anna",
+    "Cognome": "Bianchi",
+    "telefono_utente": "3331112222",
+    "telefono_principale": "3339998888",
+    "telefono_secondario": "3201234567",
+    "citta": "Lecce",
+    "cap": 73100,
+    "indirizzo": "Via Roma",
+    "numero_civico": "14",
+    "zona": "Centro",
+    "data_appuntamento": "16-08-2026",
     "ora_appuntamento": "17:30",
     "pacemaker": "no",
     "ha_gia_dispositivo": "no",
     "motivo_contatto": "info prova gratuita",
     "esito_chiamata": "appuntamento_fissato",
     "motivo_rifiuto": "",
-    "note": "Appuntamento fissato per prova gratuita...",
-    "disponibilita_orarie": "pomeriggio dopo le 17"
+    "note": "Appuntamento per prova gratuita",
+    "disponibilita_orarie": "pomeriggio dopo le 17",
+    "fissato_keplero": true
   },
   "config": {
-    "subject": "Nuovo appuntamento fissato EXCELL",
-    "body": "BRAND: Excell\n\nDATI CLIENTE..."
+    "subject": "Nuovo appuntamento EXCELL",
+    "body": "BRAND: Excell"
   }
 }
 ```
 
-## Mapping Campi
+## Modello Household
 
-| Campo Keplero | Destinazione CRM |
-|---------------|------------------|
-| `Nome` | `contacts.first_name` |
-| `Cognome` | `contacts.last_name` |
-| `telefono_principale` | `contact_phones.phone_raw` (primary) |
-| `telefono_secondario` | `contact_phones.phone_raw` (secondary) |
-| `citta` | `contacts.city`, `appointments.city` |
-| `cap` | `contacts.cap`, `appointments.cap` |
-| `indirizzo_completo` | `contacts.address`, `appointments.address` |
-| `data_appuntamento` + `ora_appuntamento` | `appointments.scheduled_at` |
-| `pacemaker` | `lead_events.pacemaker_status` |
-| `note` | `lead_events.booking_notes`, `appointments.notes` |
-| `disponibilita_orarie` | `lead_events.logistics_notes` |
-| `esito_chiamata` | `appointments.status` |
+### Ruoli
 
-## Mapping Pacemaker
+| Campo | Ruolo | Descrizione |
+|-------|-------|-------------|
+| `telefono_utente` | **Requester** | Chi chiama/prenota |
+| `telefono_principale` | **Beneficiary** | Chi riceve il servizio |
 
-| Keplero | CRM |
-|---------|-----|
-| `no` | `assente` |
-| `si` | `presente` |
-| `non_so` | `non_chiaro` |
+- Se `telefono_utente` assente → fallback su `telefono_principale`
+- Se stessi numeri → stessa persona (requester = beneficiary)
+- `telefono_secondario` → telefono aggiuntivo nel household
 
-## Mapping Esito Chiamata
+### Tabelle coinvolte
 
-| Keplero | Appointment Status |
-|---------|-------------------|
-| `appuntamento_fissato` | `confirmed` |
-| `rifiuto` | `cancelled` |
-| `da_ricontattare` | `scheduled` |
+| Tabella | Comportamento |
+|---------|--------------|
+| `contacts` | Find-or-create, **NO overwrite** campi root esistenti |
+| `household_people` | Link persona requester + beneficiary |
+| `keplero_interactions` | Append-only, idempotente via fingerprint |
+| `appointments` | Sempre **nuovo** se data/ora presenti |
+| `deals` | Find-or-create, auto-stage se fissato |
+| `lead_events` | Append-only con raw payload |
 
-## Riconoscimento Brand
+## Auto-Stage "Fissato"
 
-Il brand viene estratto automaticamente da:
-1. Pattern `BRAND: <nome>` nel body email
-2. Nome brand nel subject (EXCELL, MYMED, SONIMED)
-3. Fallback al primo brand non-system
+Quando `fissato_keplero = true`:
+1. Il deal viene spostato allo stage **"Fissato"** (globale, order_index=2)
+2. Record in `deal_stage_history`
+3. Audit log con `action: auto_stage_fissato`
+
+## Idempotenza
+
+Fingerprint SHA-256 su: `brandId|telefono_utente|telefono_principale|data|ora|esito|nome|cognome`
+
+Payload duplicato → risposta `200 { success: true, duplicate: true }`
 
 ## Response
 
@@ -96,22 +88,21 @@ Il brand viene estratto automaticamente da:
   "contact_id": "uuid",
   "deal_id": "uuid",
   "lead_event_id": "uuid",
-  "appointment_id": "uuid"
+  "appointment_id": "uuid",
+  "interaction_id": "uuid",
+  "requester_person_id": "uuid",
+  "beneficiary_person_id": "uuid",
+  "fissato_applied": true,
+  "inbound_event_id": "uuid"
 }
 ```
 
-## Cosa viene creato
+## Edge Cases
 
-1. **Contatto** - Trova per telefono o crea nuovo
-2. **Deal** - Trova aperto o crea nuovo
-3. **Lead Event** - Con metadati di qualificazione
-4. **Appuntamento** - Se data valida presente
-
-## Test
-
-```bash
-curl -X POST \
-  https://qmqcjtmcxfqahhubpaea.supabase.co/functions/v1/keplero-webhook \
-  -H 'Content-Type: application/json' \
-  -d '{"args":{"Nome":"Test","telefono_principale":"3331234567","data_appuntamento":"2026-02-15"},"config":{"subject":"EXCELL"}}'
-```
+| Caso | Comportamento |
+|------|--------------|
+| `telefono_utente == telefono_principale` | Stessa persona, un solo household_people |
+| `telefono_utente` mancante | Fallback su `telefono_principale` |
+| `fissato_keplero=true` + `esito=rifiuto` | Fissato ha priorità, deal → stage Fissato |
+| Payload duplicato | Dedup via fingerprint, 200 OK |
+| Numeri +39/0039/raw | Normalizzazione automatica |
