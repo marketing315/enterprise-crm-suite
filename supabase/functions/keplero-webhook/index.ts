@@ -505,7 +505,7 @@ Deno.serve(async (req: Request) => {
     .map(([key, value]) => ({ field_key: key, value: value as string }));
 
   if (fieldEntries.length > 0) {
-    const { error: fieldsError } = await supabaseAdmin.rpc("upsert_contact_field_values", {
+    const { error: fieldsError } = await supabaseAdmin.rpc("upsert_contact_field_values_by_key", {
       p_contact_id: contactId,
       p_brand_id: brandId,
       p_field_values: fieldEntries,
