@@ -407,10 +407,16 @@ Deno.serve(async (req: Request) => {
       const fromStageId = currentDeal?.current_stage_id || null;
 
       if (fromStageId !== fissatoStage.id) {
-        await supabaseAdmin
+        const { error: dealUpdateError } = await supabaseAdmin
           .from("deals")
           .update({ current_stage_id: fissatoStage.id, updated_at: new Date().toISOString() })
           .eq("id", dealId);
+        
+        if (dealUpdateError) {
+          console.error("[Keplero] Deal update to Fissato FAILED:", dealUpdateError);
+        } else {
+          console.log("[Keplero] Deal updated to Fissato successfully:", dealId);
+        }
 
         await supabaseAdmin.from("deal_stage_history").insert({
           deal_id: dealId,
