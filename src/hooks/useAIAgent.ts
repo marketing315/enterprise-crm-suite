@@ -1,6 +1,7 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface AgentMessage {
@@ -11,6 +12,35 @@ interface AgentMessage {
 interface AgentResponse {
   message: string;
   tools_used: string[];
+  run_id?: string;
+  latency_ms?: number;
+  had_fallback?: boolean;
+}
+
+/**
+ * Hook to get or create the executive thread for the current user+brand.
+ * The thread persists across sessions.
+ */
+export function useExecutiveThread() {
+  const { currentBrand } = useBrand();
+  const { session } = useAuth();
+
+  return useQuery({
+    queryKey: ["executive-thread", currentBrand?.id],
+    queryFn: async (): Promise<string> => {
+      if (!currentBrand || !session?.user?.id) throw new Error("No brand or user");
+
+      const { data, error } = await supabase.rpc("get_or_create_executive_thread", {
+        p_brand_id: currentBrand.id,
+        p_user_id: session.user.id,
+      });
+
+      if (error) throw error;
+      return data as string;
+    },
+    enabled: !!currentBrand && !!session?.user?.id,
+    staleTime: Infinity, // Thread ID doesn't change
+  });
 }
 
 export function useAIAgentChat() {
@@ -68,11 +98,19 @@ export function useAIAgentChat() {
         throw error;
       }
 
-      if ((data as any)?.error) {
+      // FR3: Even if server returns error field, check for fallback message
+      if ((data as any)?.error && !(data as any)?.message) {
         throw new Error((data as any).error);
       }
 
-      return data as AgentResponse;
+      // If server returned both error and message (fallback), use the message
+      const response = data as AgentResponse;
+      if (!response.message || response.message.trim() === "") {
+        response.message = "Mi dispiace, non sono riuscito a elaborare una risposta completa. Puoi riprovare o riformulare la domanda?";
+        response.had_fallback = true;
+      }
+
+      return response;
     },
     onSuccess: (_, variables) => {
       if (variables.threadId) {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,12 +18,18 @@ import {
   Target,
   ArrowUpDown,
   Kanban,
+  AlertCircle,
+  Clock,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import ReactMarkdown from "react-markdown";
-import { useAIAgentChat, AGENT_QUICK_ACTIONS } from "@/hooks/useAIAgent";
+import { useAIAgentChat, useExecutiveThread, AGENT_QUICK_ACTIONS } from "@/hooks/useAIAgent";
+import { useChatMessages, useChatRealtime } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Message {
   id: string;
@@ -31,6 +37,9 @@ interface Message {
   content: string;
   timestamp: Date;
   toolsUsed?: string[];
+  latencyMs?: number;
+  hadFallback?: boolean;
+  deliveryStatus?: string;
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -47,8 +56,42 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 export function AgentChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const agentChat = useAIAgentChat();
+
+  // Get persistent executive thread
+  const { data: threadId, isLoading: threadLoading } = useExecutiveThread();
+
+  // Load persisted messages from thread
+  const { data: persistedMessages } = useChatMessages(threadId || null);
+
+  // Subscribe to realtime updates
+  const { subscribeToMessages } = useChatRealtime(threadId || null);
+
+  useEffect(() => {
+    if (!threadId) return;
+    const unsub = subscribeToMessages();
+    return unsub;
+  }, [threadId]);
+
+  // Load persisted messages on mount (only once)
+  useEffect(() => {
+    if (persistedMessages && persistedMessages.length > 0 && !initialLoadDone) {
+      const loaded: Message[] = persistedMessages.map((m) => ({
+        id: m.id,
+        role: m.sender_type === "user" ? "user" as const : "assistant" as const,
+        content: m.message_text,
+        timestamp: new Date(m.created_at),
+        toolsUsed: (m.ai_context as any)?.tools_used || undefined,
+        latencyMs: (m.ai_context as any)?.latency_ms || undefined,
+        hadFallback: (m.ai_context as any)?.had_fallback || false,
+        deliveryStatus: (m as any).delivery_status || "sent",
+      }));
+      setMessages(loaded);
+      setInitialLoadDone(true);
+    }
+  }, [persistedMessages, initialLoadDone]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -57,7 +100,7 @@ export function AgentChatPanel() {
     }
   }, [messages]);
 
-  const handleSend = async (text: string) => {
+  const handleSend = useCallback(async (text: string) => {
     if (!text.trim() || agentChat.isPending) return;
 
     const userMessage: Message = {
@@ -70,8 +113,8 @@ export function AgentChatPanel() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    // Build conversation history for context
-    const conversationHistory = messages.map((m) => ({
+    // Build conversation history for context (last 20 messages)
+    const conversationHistory = messages.slice(-20).map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -79,6 +122,7 @@ export function AgentChatPanel() {
     try {
       const response = await agentChat.mutateAsync({
         message: text.trim(),
+        threadId, // Always pass threadId for persistence
         conversationHistory,
       });
 
@@ -88,13 +132,24 @@ export function AgentChatPanel() {
         content: response.message,
         timestamp: new Date(),
         toolsUsed: response.tools_used,
+        latencyMs: response.latency_ms,
+        hadFallback: response.had_fallback,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch {
-      // Error is handled by the mutation
+      // Add error message to chat so user sees feedback
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Mi dispiace, si è verificato un errore nell'elaborazione. Riprova tra qualche istante.",
+        timestamp: new Date(),
+        hadFallback: true,
+        deliveryStatus: "failed",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     }
-  };
+  }, [agentChat, messages, threadId]);
 
   const handleQuickAction = (prompt: string) => {
     handleSend(prompt);
@@ -106,6 +161,14 @@ export function AgentChatPanel() {
       handleSend(input);
     }
   };
+
+  if (threadLoading) {
+    return (
+      <Card className="flex-1 flex items-center justify-center h-full">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
 
   return (
     <Card className="flex-1 flex flex-col h-full">
@@ -120,7 +183,7 @@ export function AgentChatPanel() {
               <Sparkles className="h-4 w-4 text-primary" />
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Accesso completo ai dati della piattaforma
+              Accesso completo ai dati della piattaforma • Conversazione persistente
             </p>
           </div>
         </div>
@@ -136,6 +199,9 @@ export function AgentChatPanel() {
                 <h3 className="font-medium text-lg">Ciao! Sono il tuo assistente executive.</h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   Ho accesso completo ai dati del CRM. Chiedimi qualsiasi cosa!
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  La conversazione viene salvata automaticamente.
                 </p>
               </div>
 
@@ -236,6 +302,7 @@ export function AgentChatPanel() {
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   return (
     <div className={cn("flex gap-2", isUser && "flex-row-reverse")}>
@@ -248,9 +315,16 @@ function MessageBubble({ message }: { message: Message }) {
         <div
           className={cn(
             "rounded-lg p-3",
-            isUser ? "bg-primary text-primary-foreground" : "bg-muted"
+            isUser ? "bg-primary text-primary-foreground" : "bg-muted",
+            message.hadFallback && !isUser && "border border-destructive/30 bg-destructive/5"
           )}
         >
+          {message.hadFallback && !isUser && (
+            <div className="flex items-center gap-1.5 mb-2 text-destructive text-xs">
+              <AlertCircle className="h-3 w-3" />
+              <span>Risposta incompleta</span>
+            </div>
+          )}
           {isUser ? (
             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
           ) : (
@@ -285,18 +359,34 @@ function MessageBubble({ message }: { message: Message }) {
             </div>
           )}
         </div>
-        <div className={cn("flex items-center gap-2", isUser && "flex-row-reverse")}>
+        <div className={cn("flex items-center gap-2 flex-wrap", isUser && "flex-row-reverse")}>
           <span className="text-xs text-muted-foreground">
             {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: it })}
           </span>
+          {message.latencyMs && !isUser && (
+            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+              <Clock className="h-3 w-3" />
+              {(message.latencyMs / 1000).toFixed(1)}s
+            </span>
+          )}
           {message.toolsUsed && message.toolsUsed.length > 0 && (
-            <div className="flex gap-1">
-              {message.toolsUsed.map((tool) => (
-                <Badge key={tool} variant="outline" className="text-[10px] py-0">
-                  {tool.replace(/_/g, " ")}
-                </Badge>
-              ))}
-            </div>
+            <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground">
+                  🔧 {message.toolsUsed.length} tool{message.toolsUsed.length > 1 ? "s" : ""}
+                  {toolsOpen ? <ChevronUp className="h-3 w-3 ml-0.5" /> : <ChevronDown className="h-3 w-3 ml-0.5" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="flex gap-1 flex-wrap mt-1">
+                  {message.toolsUsed.map((tool) => (
+                    <Badge key={tool} variant="outline" className="text-[10px] py-0">
+                      {tool.replace(/_/g, " ")}
+                    </Badge>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
       </div>

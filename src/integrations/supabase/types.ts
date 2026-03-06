@@ -759,6 +759,96 @@ export type Database = {
           },
         ]
       }
+      ai_chat_runs: {
+        Row: {
+          assistant_message_id: string | null
+          brand_id: string
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          latency_ms: number | null
+          model: string | null
+          status: string
+          thread_id: string
+          tokens_used: number | null
+          tools_json: Json | null
+          user_id: string
+          user_message_id: string | null
+        }
+        Insert: {
+          assistant_message_id?: string | null
+          brand_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          status?: string
+          thread_id: string
+          tokens_used?: number | null
+          tools_json?: Json | null
+          user_id: string
+          user_message_id?: string | null
+        }
+        Update: {
+          assistant_message_id?: string | null
+          brand_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          status?: string
+          thread_id?: string
+          tokens_used?: number | null
+          tools_json?: Json | null
+          user_id?: string
+          user_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_runs_assistant_message_id_fkey"
+            columns: ["assistant_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_runs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_runs_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_runs_user_message_id_fkey"
+            columns: ["user_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_configs: {
         Row: {
           active_prompt_version: string | null
@@ -1979,12 +2069,14 @@ export type Database = {
           brand_id: string
           created_at: string
           deleted_at: string | null
+          delivery_status: string
           edited_at: string | null
           id: string
           message_text: string
           sender_type: Database["public"]["Enums"]["chat_sender_type"]
           sender_user_id: string | null
           thread_id: string
+          tool_trace_id: string | null
         }
         Insert: {
           ai_context?: Json | null
@@ -1992,12 +2084,14 @@ export type Database = {
           brand_id: string
           created_at?: string
           deleted_at?: string | null
+          delivery_status?: string
           edited_at?: string | null
           id?: string
           message_text: string
           sender_type?: Database["public"]["Enums"]["chat_sender_type"]
           sender_user_id?: string | null
           thread_id: string
+          tool_trace_id?: string | null
         }
         Update: {
           ai_context?: Json | null
@@ -2005,12 +2099,14 @@ export type Database = {
           brand_id?: string
           created_at?: string
           deleted_at?: string | null
+          delivery_status?: string
           edited_at?: string | null
           id?: string
           message_text?: string
           sender_type?: Database["public"]["Enums"]["chat_sender_type"]
           sender_user_id?: string | null
           thread_id?: string
+          tool_trace_id?: string | null
         }
         Relationships: [
           {
@@ -7870,6 +7966,10 @@ export type Database = {
         Args: { p_brand_id: string; p_entity_id: string; p_entity_type: string }
         Returns: string
       }
+      get_or_create_executive_thread: {
+        Args: { p_brand_id: string; p_user_id: string }
+        Returns: string
+      }
       get_paginated_notifications: {
         Args: {
           p_brand_id?: string
@@ -8565,7 +8665,7 @@ export type Database = {
         | "add_action_suggestion"
         | "update_call_log"
       chat_sender_type: "user" | "ai" | "system"
-      chat_thread_type: "direct" | "group" | "entity"
+      chat_thread_type: "direct" | "group" | "entity" | "executive"
       commission_status: "pending" | "approved" | "paid"
       contact_channel: "chat" | "call"
       contact_status:
@@ -8913,7 +9013,7 @@ export const Constants = {
         "update_call_log",
       ],
       chat_sender_type: ["user", "ai", "system"],
-      chat_thread_type: ["direct", "group", "entity"],
+      chat_thread_type: ["direct", "group", "entity", "executive"],
       commission_status: ["pending", "approved", "paid"],
       contact_channel: ["chat", "call"],
       contact_status: ["new", "active", "qualified", "unqualified", "archived"],

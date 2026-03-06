@@ -839,6 +839,39 @@ Deno.serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    const startTime = Date.now();
+
+    // ── Persist user message if threadId provided ──
+    let userMessageId: string | null = null;
+    if (threadId) {
+      const { data: userMsg } = await supabase.from("chat_messages").insert({
+        thread_id: threadId,
+        brand_id: brandId,
+        sender_user_id: crmUser.id,
+        sender_type: "user",
+        message_text: message,
+        delivery_status: "sent",
+      }).select("id").single();
+      userMessageId = userMsg?.id || null;
+
+      // Update thread timestamp
+      await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+    }
+
+    // ── Create ai_chat_run record ──
+    let runId: string | null = null;
+    if (threadId) {
+      const { data: run } = await supabase.from("ai_chat_runs").insert({
+        thread_id: threadId,
+        brand_id: brandId,
+        user_id: crmUser.id,
+        user_message_id: userMessageId,
+        status: "running",
+        model: "google/gemini-3-flash-preview",
+      }).select("id").single();
+      runId = run?.id || null;
+    }
+
     // Build messages array
     const messages = [
       { role: "system", content: EXECUTIVE_AGENT_PROMPT },
@@ -872,64 +905,13 @@ Deno.serve(async (req) => {
     }
 
     const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const toolsUsed: string[] = [];
+    let finalContent: string | null = null;
+    let errorOccurred = false;
 
-    // First API call with tools
-    let response = await fetchWithTimeout(AI_GATEWAY_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages,
-        tools: AGENT_TOOLS,
-        tool_choice: "auto",
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits to your workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    let result = await response.json();
-    let assistantMessage = result.choices[0].message;
-    const toolCalls = assistantMessage.tool_calls || [];
-
-    // Process tool calls if any
-    if (toolCalls.length > 0) {
-      const toolResults: { role: string; tool_call_id: string; content: string }[] = [];
-
-      for (const toolCall of toolCalls) {
-        const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments || "{}");
-
-        console.log(`Executing tool: ${toolName}`, toolArgs);
-
-        const toolResult = await handleToolCall(supabase, brandId, toolName, toolArgs);
-        toolResults.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: JSON.stringify(toolResult),
-        });
-      }
-
-      // Second API call with tool results
-      const messagesWithTools = [...messages, assistantMessage, ...toolResults];
-
-      response = await fetchWithTimeout(AI_GATEWAY_URL, {
+    try {
+      // First API call with tools
+      let response = await fetchWithTimeout(AI_GATEWAY_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -937,48 +919,165 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
-          messages: messagesWithTools,
+          messages,
+          tools: AGENT_TOOLS,
+          tool_choice: "auto",
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`AI gateway error on second call: ${response.status}`);
+        if (response.status === 429) {
+          throw { status: 429, message: "Rate limit exceeded. Please try again later." };
+        }
+        if (response.status === 402) {
+          throw { status: 402, message: "Payment required. Please add credits to your workspace." };
+        }
+        throw new Error(`AI gateway error: ${response.status}`);
       }
 
-      result = await response.json();
-      assistantMessage = result.choices[0].message;
-    }
+      let result = await response.json();
+      let assistantMessage = result.choices[0].message;
+      const toolCalls = assistantMessage.tool_calls || [];
 
-    // Save messages to chat_messages if threadId provided
-    if (threadId) {
-      // Get thread to find brand_id
-      const { data: thread } = await supabase.from("chat_threads").select("brand_id").eq("id", threadId).single();
+      // Process tool calls if any
+      if (toolCalls.length > 0) {
+        const toolResults: { role: string; tool_call_id: string; content: string }[] = [];
 
-      if (thread) {
-        // Insert AI response
-        await supabase.from("chat_messages").insert({
-          thread_id: threadId,
-          brand_id: thread.brand_id,
-          sender_type: "ai",
-          message_text: assistantMessage.content,
-          ai_context: { tools_used: toolCalls.map((t: { function: { name: string } }) => t.function.name) },
+        for (const toolCall of toolCalls) {
+          const toolName = toolCall.function.name;
+          const toolArgs = JSON.parse(toolCall.function.arguments || "{}");
+
+          console.log(`Executing tool: ${toolName}`, toolArgs);
+          toolsUsed.push(toolName);
+
+          const toolResult = await handleToolCall(supabase, brandId, toolName, toolArgs);
+          toolResults.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(toolResult),
+          });
+        }
+
+        // Second API call with tool results
+        const messagesWithTools = [...messages, assistantMessage, ...toolResults];
+
+        response = await fetchWithTimeout(AI_GATEWAY_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: messagesWithTools,
+          }),
         });
 
-        // Update thread updated_at
-        await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+        if (!response.ok) {
+          throw new Error(`AI gateway error on second call: ${response.status}`);
+        }
+
+        result = await response.json();
+        assistantMessage = result.choices[0].message;
+      }
+
+      finalContent = assistantMessage.content;
+    } catch (err) {
+      errorOccurred = true;
+      // Check for structured error (rate limit, payment)
+      if (typeof err === "object" && err !== null && "status" in err) {
+        const structured = err as { status: number; message: string };
+        // Update run with error
+        if (runId) {
+          await supabase.from("ai_chat_runs").update({
+            status: "failed",
+            error_code: `HTTP_${structured.status}`,
+            error_message: structured.message,
+            latency_ms: Date.now() - startTime,
+            completed_at: new Date().toISOString(),
+          }).eq("id", runId);
+        }
+        return new Response(JSON.stringify({ error: structured.message }), {
+          status: structured.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // For other errors, set fallback content
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      console.error("[ai-agent] Error during AI call:", errMsg);
+      finalContent = null;
+
+      // Update run with error
+      if (runId) {
+        await supabase.from("ai_chat_runs").update({
+          status: "failed",
+          error_code: "AI_ERROR",
+          error_message: errMsg,
+          latency_ms: Date.now() - startTime,
+          completed_at: new Date().toISOString(),
+        }).eq("id", runId);
+      }
+    }
+
+    // ── FR3: Fallback anti-risposta-vuota ──
+    const FALLBACK_MESSAGE = "Mi dispiace, non sono riuscito a elaborare una risposta completa. Puoi riprovare o riformulare la domanda?";
+    if (!finalContent || finalContent.trim() === "") {
+      console.warn("[ai-agent] Empty response detected, applying fallback");
+      finalContent = FALLBACK_MESSAGE;
+      errorOccurred = true;
+    }
+
+    const latencyMs = Date.now() - startTime;
+
+    // ── Persist assistant message if threadId provided ──
+    let assistantMessageId: string | null = null;
+    if (threadId) {
+      const { data: aiMsg } = await supabase.from("chat_messages").insert({
+        thread_id: threadId,
+        brand_id: brandId,
+        sender_type: "ai",
+        message_text: finalContent,
+        delivery_status: errorOccurred ? "failed" : "sent",
+        ai_context: {
+          tools_used: toolsUsed,
+          latency_ms: latencyMs,
+          run_id: runId,
+          had_fallback: finalContent === FALLBACK_MESSAGE,
+        },
+      }).select("id").single();
+      assistantMessageId = aiMsg?.id || null;
+
+      // Update thread timestamp
+      await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+
+      // Update run with success
+      if (runId) {
+        await supabase.from("ai_chat_runs").update({
+          status: errorOccurred ? "failed" : "success",
+          assistant_message_id: assistantMessageId,
+          latency_ms: latencyMs,
+          tools_json: toolsUsed.map(t => ({ name: t })),
+          completed_at: new Date().toISOString(),
+        }).eq("id", runId);
       }
     }
 
     return new Response(
       JSON.stringify({
-        message: assistantMessage.content,
-        tools_used: toolCalls.map((t: { function: { name: string } }) => t.function.name),
+        message: finalContent,
+        tools_used: toolsUsed,
+        run_id: runId,
+        latency_ms: latencyMs,
+        had_fallback: finalContent === FALLBACK_MESSAGE,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("AI Agent error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error",
+      message: "Mi dispiace, si è verificato un errore. Riprova tra qualche istante.",
+    }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

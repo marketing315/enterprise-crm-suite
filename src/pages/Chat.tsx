@@ -392,6 +392,8 @@ function ThreadIcon({ type }: { type: string }) {
       return <Users className={iconClass} />;
     case "entity":
       return <MessageSquare className={iconClass} />;
+    case "executive":
+      return <Bot className={cn(iconClass, "bg-primary/10 text-primary")} />;
     default:
       return <User className={iconClass} />;
   }
