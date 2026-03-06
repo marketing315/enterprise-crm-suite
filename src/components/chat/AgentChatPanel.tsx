@@ -22,6 +22,8 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+  Database,
+  CheckCircle2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -43,14 +45,22 @@ interface Message {
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  BarChart3,
-  TrendingUp,
-  Kanban,
-  Ticket,
-  Users,
-  ArrowUpDown,
-  Target,
-  Bot,
+  BarChart3, TrendingUp, Kanban, Ticket, Users, ArrowUpDown, Target, Bot,
+};
+
+// Tool name → human-readable label
+const TOOL_LABELS: Record<string, string> = {
+  dynamic_analytics_query: "📊 Query Analitica",
+  search_contacts: "🔍 Ricerca Contatti",
+  get_contact_timeline: "📋 Timeline Contatto",
+  get_pipeline_status: "💼 Pipeline",
+  get_operator_performance: "👥 Performance Team",
+  get_dashboard_kpis: "📈 KPI Dashboard",
+  get_ticket_overview: "🎫 Ticket Overview",
+  get_appointment_summary: "📅 Appuntamenti",
+  get_lead_analytics: "🎯 Lead Analytics",
+  get_trend_comparison: "📉 Confronto Trend",
+  get_ai_decisions_summary: "🤖 AI Performance",
 };
 
 export function AgentChatPanel() {
@@ -60,13 +70,8 @@ export function AgentChatPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const agentChat = useAIAgentChat();
 
-  // Get persistent executive thread
   const { data: threadId, isLoading: threadLoading } = useExecutiveThread();
-
-  // Load persisted messages from thread
   const { data: persistedMessages } = useChatMessages(threadId || null);
-
-  // Subscribe to realtime updates
   const { subscribeToMessages } = useChatRealtime(threadId || null);
 
   useEffect(() => {
@@ -75,7 +80,7 @@ export function AgentChatPanel() {
     return unsub;
   }, [threadId]);
 
-  // Load persisted messages on mount (only once)
+  // Load persisted messages on mount
   useEffect(() => {
     if (persistedMessages && persistedMessages.length > 0 && !initialLoadDone) {
       const loaded: Message[] = persistedMessages.map((m) => ({
@@ -93,73 +98,41 @@ export function AgentChatPanel() {
     }
   }, [persistedMessages, initialLoadDone]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   const handleSend = useCallback(async (text: string) => {
     if (!text.trim() || agentChat.isPending) return;
 
     const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text.trim(),
-      timestamp: new Date(),
+      id: crypto.randomUUID(), role: "user", content: text.trim(), timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    // Build conversation history for context (last 20 messages)
-    const conversationHistory = messages.slice(-20).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const conversationHistory = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
 
     try {
-      const response = await agentChat.mutateAsync({
-        message: text.trim(),
-        threadId, // Always pass threadId for persistence
-        conversationHistory,
-      });
-
+      const response = await agentChat.mutateAsync({ message: text.trim(), threadId, conversationHistory });
       const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: response.message,
-        timestamp: new Date(),
-        toolsUsed: response.tools_used,
-        latencyMs: response.latency_ms,
-        hadFallback: response.had_fallback,
+        id: crypto.randomUUID(), role: "assistant", content: response.message, timestamp: new Date(),
+        toolsUsed: response.tools_used, latencyMs: response.latency_ms, hadFallback: response.had_fallback,
       };
-
       setMessages((prev) => [...prev, assistantMessage]);
     } catch {
-      // Add error message to chat so user sees feedback
-      const errorMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
+      setMessages((prev) => [...prev, {
+        id: crypto.randomUUID(), role: "assistant",
         content: "Mi dispiace, si è verificato un errore nell'elaborazione. Riprova tra qualche istante.",
-        timestamp: new Date(),
-        hadFallback: true,
-        deliveryStatus: "failed",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+        timestamp: new Date(), hadFallback: true, deliveryStatus: "failed",
+      }]);
     }
   }, [agentChat, messages, threadId]);
 
-  const handleQuickAction = (prompt: string) => {
-    handleSend(prompt);
-  };
+  const handleQuickAction = (prompt: string) => handleSend(prompt);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend(input);
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(input); }
   };
 
   if (threadLoading) {
@@ -180,10 +153,10 @@ export function AgentChatPanel() {
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               Agente AI Executive
-              <Sparkles className="h-4 w-4 text-primary" />
+              <Badge variant="outline" className="text-[10px] font-normal border-primary/30 text-primary">Premium</Badge>
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Accesso completo ai dati della piattaforma • Conversazione persistente
+              Query dinamiche • Analisi geo • Multi-step reasoning
             </p>
           </div>
         </div>
@@ -193,35 +166,26 @@ export function AgentChatPanel() {
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="space-y-6">
-              {/* Welcome message */}
               <div className="text-center py-8">
                 <Bot className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                <h3 className="font-medium text-lg">Ciao! Sono il tuo assistente executive.</h3>
+                <h3 className="font-medium text-lg">Ciao! Sono il tuo assistente executive premium.</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Ho accesso completo ai dati del CRM. Chiedimi qualsiasi cosa!
+                  Puoi chiedermi <strong>qualsiasi</strong> cosa sui dati del CRM — anche domande nuove!
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  La conversazione viene salvata automaticamente.
-                </p>
+                <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Database className="h-3 w-3" /> Query dinamiche</span>
+                  <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Analisi geo</span>
+                  <span className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> Multi-step</span>
+                </div>
               </div>
-
-              {/* Quick actions grid */}
               <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Azioni rapide
-                </p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Azioni rapide</p>
                 <div className="grid grid-cols-2 gap-2">
                   {AGENT_QUICK_ACTIONS.map((action) => {
                     const Icon = iconMap[action.icon] || Bot;
                     return (
-                      <Button
-                        key={action.id}
-                        variant="outline"
-                        size="sm"
-                        className="justify-start h-auto py-2 px-3"
-                        onClick={() => handleQuickAction(action.prompt)}
-                        disabled={agentChat.isPending}
-                      >
+                      <Button key={action.id} variant="outline" size="sm" className="justify-start h-auto py-2 px-3"
+                        onClick={() => handleQuickAction(action.prompt)} disabled={agentChat.isPending}>
                         <Icon className="h-4 w-4 mr-2 shrink-0" />
                         <span className="truncate">{action.label}</span>
                       </Button>
@@ -238,9 +202,7 @@ export function AgentChatPanel() {
               {agentChat.isPending && (
                 <div className="flex gap-2">
                   <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className="bg-primary/10">
-                      <Bot className="h-4 w-4 text-primary" />
-                    </AvatarFallback>
+                    <AvatarFallback className="bg-primary/10"><Bot className="h-4 w-4 text-primary" /></AvatarFallback>
                   </Avatar>
                   <div className="bg-muted rounded-lg p-3 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -252,46 +214,23 @@ export function AgentChatPanel() {
           )}
         </ScrollArea>
 
-        {/* Input area */}
         <div className="p-4 border-t space-y-3">
-          {/* Quick actions row when there are messages */}
           {messages.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
               {AGENT_QUICK_ACTIONS.slice(0, 4).map((action) => (
-                <Button
-                  key={action.id}
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 text-xs"
-                  onClick={() => handleQuickAction(action.prompt)}
-                  disabled={agentChat.isPending}
-                >
+                <Button key={action.id} variant="outline" size="sm" className="shrink-0 text-xs"
+                  onClick={() => handleQuickAction(action.prompt)} disabled={agentChat.isPending}>
                   {action.label}
                 </Button>
               ))}
             </div>
           )}
-
           <div className="flex gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Chiedi qualcosa... (es: Come sta andando oggi?)"
-              className="min-h-[44px] max-h-[120px] resize-none"
-              disabled={agentChat.isPending}
-            />
-            <Button
-              size="icon"
-              onClick={() => handleSend(input)}
-              disabled={!input.trim() || agentChat.isPending}
-              className="shrink-0"
-            >
-              {agentChat.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+            <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+              placeholder="Chiedi qualcosa... (es: Quanti lead dalla Lombardia negli ultimi 3 giorni?)"
+              className="min-h-[44px] max-h-[120px] resize-none" disabled={agentChat.isPending} />
+            <Button size="icon" onClick={() => handleSend(input)} disabled={!input.trim() || agentChat.isPending} className="shrink-0">
+              {agentChat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
         </div>
@@ -303,6 +242,7 @@ export function AgentChatPanel() {
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   const [toolsOpen, setToolsOpen] = useState(false);
+  const hasDynamicQuery = message.toolsUsed?.includes("dynamic_analytics_query");
 
   return (
     <div className={cn("flex gap-2", isUser && "flex-row-reverse")}>
@@ -312,76 +252,64 @@ function MessageBubble({ message }: { message: Message }) {
         </AvatarFallback>
       </Avatar>
       <div className={cn("max-w-[80%] space-y-1", isUser && "items-end")}>
-        <div
-          className={cn(
-            "rounded-lg p-3",
-            isUser ? "bg-primary text-primary-foreground" : "bg-muted",
-            message.hadFallback && !isUser && "border border-destructive/30 bg-destructive/5"
-          )}
-        >
+        <div className={cn(
+          "rounded-lg p-3",
+          isUser ? "bg-primary text-primary-foreground" : "bg-muted",
+          message.hadFallback && !isUser && "border border-destructive/30 bg-destructive/5"
+        )}>
           {message.hadFallback && !isUser && (
             <div className="flex items-center gap-1.5 mb-2 text-destructive text-xs">
-              <AlertCircle className="h-3 w-3" />
-              <span>Risposta incompleta</span>
+              <AlertCircle className="h-3 w-3" /><span>Risposta incompleta</span>
             </div>
           )}
           {isUser ? (
             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown
-                components={{
-                  table: ({ children }) => (
-                    <div className="overflow-x-auto my-2">
-                      <table className="min-w-full text-sm">{children}</table>
-                    </div>
-                  ),
-                  th: ({ children }) => (
-                    <th className="border border-border px-2 py-1 bg-muted/50 text-left font-medium">
-                      {children}
-                    </th>
-                  ),
-                  td: ({ children }) => (
-                    <td className="border border-border px-2 py-1">{children}</td>
-                  ),
-                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                  ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-                  ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-                  li: ({ children }) => <li className="mb-1">{children}</li>,
-                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                  h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-                  h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+              <ReactMarkdown components={{
+                table: ({ children }) => (<div className="overflow-x-auto my-2"><table className="min-w-full text-sm">{children}</table></div>),
+                th: ({ children }) => (<th className="border border-border px-2 py-1 bg-muted/50 text-left font-medium">{children}</th>),
+                td: ({ children }) => (<td className="border border-border px-2 py-1">{children}</td>),
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+                li: ({ children }) => <li className="mb-1">{children}</li>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+              }}>{message.content}</ReactMarkdown>
             </div>
           )}
         </div>
+        {/* Meta row */}
         <div className={cn("flex items-center gap-2 flex-wrap", isUser && "flex-row-reverse")}>
           <span className="text-xs text-muted-foreground">
             {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: it })}
           </span>
+          {!isUser && !message.hadFallback && message.toolsUsed && message.toolsUsed.length > 0 && (
+            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-0.5">
+              <CheckCircle2 className="h-3 w-3" /> Completa
+            </span>
+          )}
           {message.latencyMs && !isUser && (
             <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-              <Clock className="h-3 w-3" />
-              {(message.latencyMs / 1000).toFixed(1)}s
+              <Clock className="h-3 w-3" />{(message.latencyMs / 1000).toFixed(1)}s
             </span>
           )}
           {message.toolsUsed && message.toolsUsed.length > 0 && (
             <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground">
-                  🔧 {message.toolsUsed.length} tool{message.toolsUsed.length > 1 ? "s" : ""}
+                  {hasDynamicQuery ? "📊" : "🔧"} {message.toolsUsed.length} {message.toolsUsed.length > 1 ? "queries" : "query"}
                   {toolsOpen ? <ChevronUp className="h-3 w-3 ml-0.5" /> : <ChevronDown className="h-3 w-3 ml-0.5" />}
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="flex gap-1 flex-wrap mt-1">
-                  {message.toolsUsed.map((tool) => (
-                    <Badge key={tool} variant="outline" className="text-[10px] py-0">
-                      {tool.replace(/_/g, " ")}
+                  {message.toolsUsed.map((tool, i) => (
+                    <Badge key={`${tool}-${i}`} variant="outline" className="text-[10px] py-0">
+                      {TOOL_LABELS[tool] || tool.replace(/_/g, " ")}
                     </Badge>
                   ))}
                 </div>
