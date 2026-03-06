@@ -321,12 +321,39 @@ Deno.serve(async (req: Request) => {
     .order("scheduled_at", { ascending: false })
     .limit(5);
 
-  const hasAppointment = (appointments || []).some(
-    (a: any) => ["scheduled", "confirmed"].includes(a.status)
-  );
   const nextAppointment = (appointments || []).find(
     (a: any) => ["scheduled", "confirmed"].includes(a.status)
   );
+
+  // ha_appuntamento: true if the deal's current stage is >= "Fissato" by order_index
+  let hasAppointment = false;
+  const { data: openDeal } = await supabaseAdmin
+    .from("deals")
+    .select("current_stage_id")
+    .eq("contact_id", contact.id)
+    .eq("brand_id", brandId)
+    .eq("status", "open")
+    .maybeSingle();
+
+  if (openDeal?.current_stage_id) {
+    // Get "Fissato" stage order_index and current stage order_index
+    const { data: allStages } = await supabaseAdmin
+      .from("pipeline_stages")
+      .select("id, name, order_index")
+      .eq("is_active", true)
+      .order("order_index", { ascending: true });
+
+    const fissatoStage = (allStages || []).find((s: any) =>
+      s.name.toLowerCase().includes("fissat")
+    );
+    const currentStage = (allStages || []).find(
+      (s: any) => s.id === openDeal.current_stage_id
+    );
+
+    if (fissatoStage && currentStage) {
+      hasAppointment = currentStage.order_index >= fissatoStage.order_index;
+    }
+  }
 
   // Log successful lookup
   await supabaseAdmin.from("audit_log").insert({

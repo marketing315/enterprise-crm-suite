@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -27,13 +27,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings2, Trash2, RotateCcw, Plus } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Settings2, Trash2, RotateCcw, Plus, GripVertical } from "lucide-react";
 import { 
   usePipelineStagesAdmin,
   useDeactivatePipelineStage,
   useReactivatePipelineStage,
   useDeletePipelineStagePermanently,
   useCreatePipelineStage,
+  useReorderPipelineStages,
 } from "@/hooks/usePipelineStagesAdmin";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
@@ -43,6 +59,73 @@ interface ManageStagesDialogProps {
   trigger?: React.ReactNode;
 }
 
+function SortableStageItem({
+  stage,
+  onDeactivate,
+  canDeactivate,
+}: {
+  stage: PipelineStage;
+  onDeactivate: () => void;
+  canDeactivate: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: stage.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+    >
+      <div className="flex items-center gap-2">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div
+          className="w-3 h-3 rounded-full shrink-0"
+          style={{ backgroundColor: stage.color || "#6366f1" }}
+        />
+        <span className="text-sm font-medium">{stage.name}</span>
+      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={onDeactivate}
+            disabled={!canDeactivate}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {!canDeactivate
+            ? "Deve rimanere almeno una fase attiva"
+            : "Disattiva fase"}
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
 export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { data: stages, isLoading } = usePipelineStagesAdmin();
@@ -50,21 +133,50 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
   const reactivateStage = useReactivatePipelineStage();
   const deleteStage = useDeletePipelineStagePermanently();
   const addStage = useCreatePipelineStage();
+  const reorderStages = useReorderPipelineStages();
 
   const [stageToDeactivate, setStageToDeactivate] = useState<PipelineStage | null>(null);
   const [fallbackStageId, setFallbackStageId] = useState<string>("");
   const [stageToDeletePermanently, setStageToDeletePermanently] = useState<PipelineStage | null>(null);
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState("#6366f1");
+  const [localActiveOrder, setLocalActiveOrder] = useState<PipelineStage[] | null>(null);
 
-  const activeStages = stages?.filter(s => s.is_active) || [];
+  const activeStages = localActiveOrder || stages?.filter(s => s.is_active) || [];
   const inactiveStages = stages?.filter(s => !s.is_active) || [];
+
+  // Reset local order when stages data changes and no local override
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const currentActive = localActiveOrder || stages?.filter(s => s.is_active) || [];
+      const oldIndex = currentActive.findIndex(s => s.id === active.id);
+      const newIndex = currentActive.findIndex(s => s.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newOrder = arrayMove(currentActive, oldIndex, newIndex);
+      setLocalActiveOrder(newOrder);
+
+      // Persist to DB
+      reorderStages.mutate(newOrder.map(s => s.id), {
+        onSettled: () => setLocalActiveOrder(null),
+      });
+    },
+    [localActiveOrder, stages, reorderStages]
+  );
 
   const handleAddStage = async () => {
     if (!newStageName.trim()) return;
     await addStage.mutateAsync({ name: newStageName.trim(), color: newStageColor });
     setNewStageName("");
     setNewStageColor("#6366f1");
+    setLocalActiveOrder(null);
   };
 
   const openDeactivateDialog = (stage: PipelineStage) => {
@@ -84,6 +196,7 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
     });
     setStageToDeactivate(null);
     setFallbackStageId("");
+    setLocalActiveOrder(null);
   };
 
   return (
@@ -100,7 +213,7 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
           <DialogHeader>
             <DialogTitle>Gestisci Fasi</DialogTitle>
             <DialogDescription>
-              Disattiva o elimina le fasi della pipeline.
+              Trascina per riordinare, aggiungi o disattiva le fasi della pipeline.
             </DialogDescription>
           </DialogHeader>
           
@@ -142,49 +255,35 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
               </div>
             ) : (
               <>
-                {/* Active stages */}
+                {/* Active stages - sortable */}
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Fasi Attive
+                    Fasi Attive (trascina per riordinare)
                   </Label>
                   {activeStages.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nessuna fase attiva</p>
                   ) : (
-                    <div className="space-y-1">
-                      {activeStages.map((stage) => (
-                        <div
-                          key={stage.id}
-                          className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full shrink-0"
-                              style={{ backgroundColor: stage.color || "#6366f1" }}
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={activeStages.map(s => s.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-1">
+                          {activeStages.map((stage) => (
+                            <SortableStageItem
+                              key={stage.id}
+                              stage={stage}
+                              onDeactivate={() => openDeactivateDialog(stage)}
+                              canDeactivate={activeStages.length > 1}
                             />
-                            <span className="text-sm font-medium">{stage.name}</span>
-                          </div>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => openDeactivateDialog(stage)}
-                                disabled={activeStages.length <= 1}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {activeStages.length <= 1 
-                                ? "Deve rimanere almeno una fase attiva"
-                                : "Disattiva fase"
-                              }
-                            </TooltipContent>
-                          </Tooltip>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
 
