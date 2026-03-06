@@ -805,23 +805,15 @@ Deno.serve(async (req: Request) => {
     
     const brandSlug = brandData?.slug || "";
     const kepleroUrl = `${supabaseUrl}/functions/v1/keplero-webhook?brand=${brandSlug}`;
-    const kepleroSecret = Deno.env.get("KEPLERO_WEBHOOK_SECRET");
-    
-    if (!kepleroSecret) {
-      console.error("[webhook-ingest] KEPLERO_WEBHOOK_SECRET not configured for forwarding");
-      if (auditId) await updateAuditRecord(auditId, "failed", "keplero_secret_not_configured");
-      return new Response(
-        JSON.stringify({ error: "Handler configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Use service role key as internal forwarding token (no need for separate KEPLERO_WEBHOOK_SECRET)
+    const internalToken = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     
     try {
       const kepleroResponse = await fetch(kepleroUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Keplero-Secret": kepleroSecret,
+          "X-Internal-Forward": internalToken,
         },
         body: bodyText,
       });
