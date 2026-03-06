@@ -152,17 +152,17 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // ── Auth: secret is REQUIRED ──
+  // ── Auth: accept internal forwarding (service role) OR KEPLERO_WEBHOOK_SECRET ──
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const internalForward = req.headers.get("x-internal-forward");
+  const kepleroSecret = req.headers.get("x-keplero-secret");
   const expectedSecret = Deno.env.get("KEPLERO_WEBHOOK_SECRET");
-  if (!expectedSecret) {
-    console.error("[Keplero] KEPLERO_WEBHOOK_SECRET not configured");
-    return new Response(JSON.stringify({ error: "Webhook secret not configured" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  if (req.headers.get("x-keplero-secret") !== expectedSecret) {
-    console.error("[Keplero] Invalid secret");
+
+  const isInternalCall = internalForward && internalForward === serviceRoleKey;
+  const isDirectCall = expectedSecret && kepleroSecret === expectedSecret;
+
+  if (!isInternalCall && !isDirectCall) {
+    console.error("[Keplero] Unauthorized: no valid internal token or keplero secret");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
