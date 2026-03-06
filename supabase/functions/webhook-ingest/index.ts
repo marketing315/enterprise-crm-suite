@@ -858,9 +858,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // === PROCESSING PHASE ===
-  // Create audit record as "pending" before processing
-  const auditId = await createAuditRecord("pending", null, sourceId, brandId);
+  // === STANDARD PROCESSING PHASE ===
 
   try {
     // Apply field mapping (flat)
