@@ -818,7 +818,13 @@ Deno.serve(async (req: Request) => {
         body: bodyText,
       });
       
-      const kepleroResult = await kepleroResponse.json();
+      const kepleroText = await kepleroResponse.text();
+      let kepleroResult: Record<string, unknown>;
+      try {
+        kepleroResult = JSON.parse(kepleroText);
+      } catch {
+        kepleroResult = { error: kepleroText, raw: true };
+      }
       
       if (auditId) {
         await updateAuditRecord(
