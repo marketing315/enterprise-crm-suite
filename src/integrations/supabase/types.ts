@@ -8568,6 +8568,10 @@ export type Database = {
         Args: { p_brand_id: string; p_contact_id: string; p_values: Json }
         Returns: Json
       }
+      upsert_contact_field_values_by_key: {
+        Args: { p_brand_id: string; p_contact_id: string; p_field_values: Json }
+        Returns: Json
+      }
       upsert_notification_preference: {
         Args: {
           p_brand_id: string
