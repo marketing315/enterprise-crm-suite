@@ -312,6 +312,22 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Fetch appointments for this contact
+  const { data: appointments } = await supabaseAdmin
+    .from("appointments")
+    .select("id, scheduled_at, status, appointment_type, notes")
+    .eq("contact_id", contact.id)
+    .eq("brand_id", brandId)
+    .order("scheduled_at", { ascending: false })
+    .limit(5);
+
+  const hasAppointment = (appointments || []).some(
+    (a: any) => ["scheduled", "confirmed"].includes(a.status)
+  );
+  const nextAppointment = (appointments || []).find(
+    (a: any) => ["scheduled", "confirmed"].includes(a.status)
+  );
+
   // Log successful lookup
   await supabaseAdmin.from("audit_log").insert({
     brand_id: brandId,
@@ -342,6 +358,13 @@ Deno.serve(async (req: Request) => {
       lead_note: contact.lead_note || "",
       esito_chiamata: contact.esito_chiamata || "",
       notes: contact.notes || "",
+      ha_appuntamento: hasAppointment,
+      prossimo_appuntamento: nextAppointment ? {
+        data: nextAppointment.scheduled_at,
+        stato: nextAppointment.status,
+        tipo: nextAppointment.appointment_type || "",
+        note: nextAppointment.notes || "",
+      } : null,
       custom_fields: customFields,
     }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
