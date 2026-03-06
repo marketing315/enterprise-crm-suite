@@ -147,7 +147,7 @@ export default function Chat() {
           </TabsList>
         </div>
 
-        <TabsContent value="agent" className="flex-1 min-h-0 mt-0">
+        <TabsContent value="agent" className="flex-1 min-h-0 mt-0 overflow-hidden">
           <AgentChatPanel />
         </TabsContent>
 
