@@ -6,53 +6,131 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Executive Agent System Prompt
-const EXECUTIVE_AGENT_PROMPT = `Sei un assistente AI executive per il CRM. Hai accesso completo ai dati della piattaforma.
+// ── SYSTEM PROMPT with metric catalog ──
+const EXECUTIVE_AGENT_PROMPT = `Sei un assistente AI executive premium per il CRM. Hai accesso COMPLETO ai dati della piattaforma tramite strumenti analitici avanzati.
 
-CAPACITÀ:
-1. Analisi KPI in tempo reale (lead, deal, ticket, appuntamenti)
-2. Report performance operatori e team
-3. Trend analysis e confronti temporali
-4. Ricerca contatti e timeline complete
-5. Insight strategici basati sui dati
-6. Raccomandazioni actionable per il management
+## CAPACITÀ PREMIUM
+1. **Dynamic Analytics**: Puoi interrogare QUALSIASI metrica CRM con filtri, raggruppamenti e periodi personalizzati
+2. **Analisi Geografica**: Breakdown per regione/provincia/città usando i CAP dei contatti
+3. **Trend & Confronti**: Confronti temporali (WoW, MoM, periodi custom)
+4. **Search & Timeline**: Ricerca contatti con timeline completa
+5. **Multi-step Reasoning**: Posso combinare più query per analisi complesse
 
-STILE:
-- Rispondi sempre in italiano
-- Usa dati concreti con numeri e percentuali
-- Evidenzia trend positivi/negativi
-- Suggerisci azioni concrete
-- Usa emoji per evidenziare metriche chiave (📈📉⚠️✅💼🎫)
-- Formatta con markdown per chiarezza (tabelle, liste, bold)
+## CATALOGO METRICHE (usa dynamic_analytics_query)
+| Metrica | Dataset | Metric param | Note |
+|---------|---------|-------------|------|
+| Lead totali (eventi) | leads | count | Conta eventi lead_events |
+| Lead unici (contatti) | leads | count_distinct_contacts | Contatti unici con lead |
+| Contatti totali | contacts | count | |
+| Deal aperti | deals | count | Filtra status=open |
+| Valore pipeline | deals | sum_value | Filtra status=open |
+| Ticket aperti | tickets | count | Filtra status in [open,in_progress] |
+| Appuntamenti | appointments | count | |
+| Chiamate | calls | count | |
+| Costo lead | leads | sum_lead_cost | Costo acquisizione |
 
-LIMITI:
-- Non inventare dati non presenti
-- Se non hai dati sufficienti, chiedi chiarimenti
-- Per operazioni di modifica, spiega cosa faresti ma non eseguire direttamente
+## RAGGRUPPAMENTI DISPONIBILI (group_by)
+- **Temporali**: date, week, month
+- **Geografici**: regione, provincia, city
+- **Business**: status, priority, source_name, lead_type, outcome, appointment_type, call_type
 
-COMPORTAMENTO:
-- Sii proattivo nel suggerire analisi correlate
-- Quando mostri numeri, includi sempre il trend se possibile
-- Concludi con suggerimenti actionable quando rilevante`;
+## FILTRI DISPONIBILI (filters)
+status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, created_by_user_id, contact_id, deal_id, lead_valid
 
-// Tool definitions for Gemini function calling
+## REGOLE DI RISPOSTA
+- Rispondi SEMPRE in italiano
+- Usa dati concreti con numeri E percentuali
+- Per domande geografiche usa group_by=regione o provincia
+- Per periodi custom parsa le date in formato ISO
+- Se dati insufficienti, spiega cosa manca e suggerisci domande alternative
+- Formatta con markdown: tabelle, liste, bold, emoji (📈📉⚠️✅💼🎫🗺️)
+- Concludi con 1-2 suggerimenti actionable
+- MAI inventare dati: se il tool ritorna vuoto, dillo
+- Per analisi complesse, usa più tool calls in sequenza
+
+## STRATEGIA MULTI-STEP
+1. Prima ottieni il totale generale
+2. Poi il breakdown (geo/temporale/business)
+3. Calcola percentuali dal totale
+4. Confronta con periodo precedente se rilevante`;
+
+// ── TOOL DEFINITIONS ──
 const AGENT_TOOLS = [
   {
     type: "function",
     function: {
-      name: "get_dashboard_kpis",
-      description:
-        "Ottiene i KPI principali della dashboard: lead nel periodo, deal aperti, ticket attivi, appuntamenti. Usa questo tool quando l'utente chiede 'come sta andando', 'riepilogo', 'KPI'.",
+      name: "dynamic_analytics_query",
+      description: `Query analitica dinamica su qualsiasi dataset CRM. Supporta filtri, raggruppamenti temporali/geografici/business, e diverse metriche.
+Datasets: leads, contacts, deals, tickets, appointments, calls.
+Metriche: count, count_distinct_contacts, sum_value, avg_value, sum_lead_cost.
+Group by: date, week, month, regione, provincia, city, status, priority, source_name, lead_type, outcome, appointment_type, call_type.
+Filtri: status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, lead_valid.
+USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confronti. È il tool principale.`,
       parameters: {
         type: "object",
         properties: {
-          period: {
+          dataset: {
             type: "string",
-            enum: ["today", "week", "month"],
-            description: "Periodo di riferimento per i KPI",
+            enum: ["leads", "contacts", "deals", "tickets", "appointments", "calls"],
+            description: "Dataset da interrogare",
+          },
+          metric: {
+            type: "string",
+            enum: ["count", "count_distinct_contacts", "sum_value", "avg_value", "sum_lead_cost"],
+            description: "Metrica da calcolare (default: count)",
+          },
+          date_from: {
+            type: "string",
+            description: "Data inizio in formato ISO 8601 (es: 2026-03-01T00:00:00Z). Per 'oggi' usa inizio giornata corrente, per 'ultimi 7 giorni' usa 7 giorni fa, ecc.",
+          },
+          date_to: {
+            type: "string",
+            description: "Data fine in formato ISO 8601 (es: 2026-03-06T23:59:59Z). Default: ora corrente.",
+          },
+          group_by: {
+            type: "string",
+            enum: ["date", "week", "month", "regione", "provincia", "city", "status", "priority", "source_name", "lead_type", "outcome", "appointment_type", "call_type"],
+            description: "Campo per raggruppare i risultati. Usa 'regione' per breakdown geografico per regione italiana.",
+          },
+          filters: {
+            type: "object",
+            description: "Filtri aggiuntivi come oggetto chiave-valore. Es: {\"status\": \"open\"} o {\"priority\": [1,2]} o {\"lead_valid\": true}",
+          },
+          limit: {
+            type: "integer",
+            description: "Numero massimo di risultati raggruppati (default: 50)",
           },
         },
-        required: ["period"],
+        required: ["dataset"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_contacts",
+      description: "Cerca contatti per nome, email, telefono o azienda. Restituisce dati di contatto con CAP, città, provincia per analisi geo.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Termine di ricerca (nome, email, telefono, azienda)" },
+          limit: { type: "integer", description: "Numero massimo di risultati (default: 5)" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_contact_timeline",
+      description: "Timeline completa di un contatto: lead, deal, ticket, appuntamenti, chiamate. Usa dopo search_contacts per approfondire.",
+      parameters: {
+        type: "object",
+        properties: {
+          contact_id: { type: "string", description: "UUID del contatto" },
+        },
+        required: ["contact_id"],
       },
     },
   },
@@ -60,8 +138,7 @@ const AGENT_TOOLS = [
     type: "function",
     function: {
       name: "get_pipeline_status",
-      description:
-        "Ottiene lo stato della pipeline: deal per stage, valore totale, deal più vecchi. Usa per domande su 'pipeline', 'deal', 'vendite', 'trattative'.",
+      description: "Snapshot pipeline: deal per stage con conteggio e valore. Usa per domande su pipeline, vendite, funnel.",
       parameters: {
         type: "object",
         properties: {},
@@ -72,157 +149,12 @@ const AGENT_TOOLS = [
   {
     type: "function",
     function: {
-      name: "get_ticket_overview",
-      description:
-        "Overview ticket: aperti per priorità, backlog, SLA breach, distribuzione. Usa per domande su 'ticket', 'assistenza', 'supporto'.",
-      parameters: {
-        type: "object",
-        properties: {
-          period: {
-            type: "string",
-            enum: ["today", "7d", "30d"],
-            description: "Periodo di riferimento",
-          },
-        },
-        required: ["period"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "get_operator_performance",
-      description:
-        "Performance operatori: ticket gestiti, tempi medi, risoluzione. Usa per 'performance team', 'operatori', 'chi lavora meglio'.",
+      description: "Performance operatori: ticket gestiti, risolti, tempi medi. Usa per domande su team, operatori, performance.",
       parameters: {
         type: "object",
         properties: {
-          period: {
-            type: "string",
-            enum: ["today", "7d", "30d"],
-            description: "Periodo di riferimento",
-          },
-        },
-        required: ["period"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_appointment_summary",
-      description:
-        "Riepilogo appuntamenti: schedulati, completati, cancellati, esiti. Usa per 'appuntamenti', 'visite', 'agenda'.",
-      parameters: {
-        type: "object",
-        properties: {
-          period: {
-            type: "string",
-            enum: ["today", "week", "month"],
-            description: "Periodo di riferimento",
-          },
-        },
-        required: ["period"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "search_contacts",
-      description:
-        "Cerca contatti per nome, email o telefono. Usa quando l'utente vuole trovare un cliente specifico.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "Termine di ricerca (nome, email o telefono)",
-          },
-          limit: {
-            type: "integer",
-            description: "Numero massimo di risultati",
-          },
-        },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_contact_timeline",
-      description:
-        "Timeline completa di un contatto: lead, deal, ticket, appuntamenti. Usa dopo aver trovato un contatto con search_contacts.",
-      parameters: {
-        type: "object",
-        properties: {
-          contact_id: {
-            type: "string",
-            description: "UUID del contatto",
-          },
-        },
-        required: ["contact_id"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_lead_analytics",
-      description:
-        "Analisi lead: fonte, tipo, conversione. Usa per 'da dove arrivano i lead', 'analisi acquisizione', 'fonti'.",
-      parameters: {
-        type: "object",
-        properties: {
-          period: {
-            type: "string",
-            enum: ["today", "7d", "30d"],
-            description: "Periodo di riferimento",
-          },
-        },
-        required: ["period"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_trend_comparison",
-      description:
-        "Confronto tra due periodi (settimana vs settimana, mese vs mese). Usa per 'confronta', 'rispetto a', 'trend', 'WoW', 'MoM'.",
-      parameters: {
-        type: "object",
-        properties: {
-          metric: {
-            type: "string",
-            enum: ["leads", "tickets", "deals", "appointments"],
-            description: "Metrica da confrontare",
-          },
-          comparison: {
-            type: "string",
-            enum: ["wow", "mom"],
-            description: "Tipo di confronto: wow=week over week, mom=month over month",
-          },
-        },
-        required: ["metric", "comparison"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_ai_decisions_summary",
-      description:
-        "Riepilogo performance AI: decisioni prese, override rate, accuracy. Usa per 'performance AI', 'come sta andando l'AI'.",
-      parameters: {
-        type: "object",
-        properties: {
-          period: {
-            type: "string",
-            enum: ["today", "7d", "30d"],
-            description: "Periodo di riferimento",
-          },
+          period: { type: "string", enum: ["today", "7d", "30d"], description: "Periodo di riferimento" },
         },
         required: ["period"],
       },
@@ -230,68 +162,22 @@ const AGENT_TOOLS = [
   },
 ];
 
-// Helper functions for date ranges
+// ── HELPERS ──
 function getPeriodDates(period: string): { from: string; to: string } {
   const now = new Date();
   const to = now.toISOString();
-
   switch (period) {
-    case "today": {
-      const startOfDay = new Date(now);
-      startOfDay.setHours(0, 0, 0, 0);
-      return { from: startOfDay.toISOString(), to };
-    }
-    case "week":
-    case "7d": {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return { from: weekAgo.toISOString(), to };
-    }
-    case "month":
-    case "30d": {
-      const monthAgo = new Date(now);
-      monthAgo.setDate(monthAgo.getDate() - 30);
-      return { from: monthAgo.toISOString(), to };
-    }
-    default: {
-      const defaultStart = new Date(now);
-      defaultStart.setDate(defaultStart.getDate() - 7);
-      return { from: defaultStart.toISOString(), to };
-    }
-  }
-}
-
-function getPreviousPeriodDates(
-  comparison: string
-): { current: { from: string; to: string }; previous: { from: string; to: string } } {
-  const now = new Date();
-  const to = now.toISOString();
-
-  if (comparison === "wow") {
-    const weekAgo = new Date(now);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const twoWeeksAgo = new Date(now);
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-    return {
-      current: { from: weekAgo.toISOString(), to },
-      previous: { from: twoWeeksAgo.toISOString(), to: weekAgo.toISOString() },
-    };
-  } else {
-    const monthAgo = new Date(now);
-    monthAgo.setDate(monthAgo.getDate() - 30);
-    const twoMonthsAgo = new Date(now);
-    twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
-    return {
-      current: { from: monthAgo.toISOString(), to },
-      previous: { from: twoMonthsAgo.toISOString(), to: monthAgo.toISOString() },
-    };
+    case "today": { const s = new Date(now); s.setHours(0, 0, 0, 0); return { from: s.toISOString(), to }; }
+    case "week": case "7d": { const s = new Date(now); s.setDate(s.getDate() - 7); return { from: s.toISOString(), to }; }
+    case "month": case "30d": { const s = new Date(now); s.setDate(s.getDate() - 30); return { from: s.toISOString(), to }; }
+    default: { const s = new Date(now); s.setDate(s.getDate() - 7); return { from: s.toISOString(), to }; }
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
 
-// Tool handler implementations
+// ── TOOL HANDLERS ──
 async function handleToolCall(
   supabase: SupabaseClient,
   brandId: string,
@@ -299,722 +185,326 @@ async function handleToolCall(
   args: Record<string, unknown>
 ): Promise<unknown> {
   switch (toolName) {
-    case "get_dashboard_kpis":
-      return await getDashboardKpis(supabase, brandId, args.period as string);
-    case "get_pipeline_status":
-      return await getPipelineStatus(supabase, brandId);
-    case "get_ticket_overview":
-      return await getTicketOverview(supabase, brandId, args.period as string);
-    case "get_operator_performance":
-      return await getOperatorPerformance(supabase, brandId, args.period as string);
-    case "get_appointment_summary":
-      return await getAppointmentSummary(supabase, brandId, args.period as string);
+    case "dynamic_analytics_query":
+      return await executeDynamicQuery(supabase, brandId, args);
     case "search_contacts":
       return await searchContacts(supabase, brandId, args.query as string, (args.limit as number) || 5);
     case "get_contact_timeline":
       return await getContactTimeline(supabase, brandId, args.contact_id as string);
-    case "get_lead_analytics":
-      return await getLeadAnalytics(supabase, brandId, args.period as string);
-    case "get_trend_comparison":
-      return await getTrendComparison(supabase, brandId, args.metric as string, args.comparison as string);
-    case "get_ai_decisions_summary":
-      return await getAIDecisionsSummary(supabase, brandId, args.period as string);
+    case "get_pipeline_status":
+      return await getPipelineStatus(supabase, brandId);
+    case "get_operator_performance":
+      return await getOperatorPerformance(supabase, brandId, (args.period as string) || "7d");
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
 }
 
-async function getDashboardKpis(supabase: SupabaseClient, brandId: string, period: string) {
-  const { from, to } = getPeriodDates(period);
+// Dynamic analytics via RPC
+async function executeDynamicQuery(supabase: SupabaseClient, brandId: string, args: Record<string, unknown>) {
+  try {
+    const { data, error } = await supabase.rpc("dynamic_analytics_query", {
+      p_brand_id: brandId,
+      p_dataset: args.dataset as string,
+      p_metric: (args.metric as string) || "count",
+      p_date_from: (args.date_from as string) || null,
+      p_date_to: (args.date_to as string) || null,
+      p_group_by: (args.group_by as string) || null,
+      p_filters: args.filters || {},
+      p_limit: (args.limit as number) || 50,
+    });
+    if (error) {
+      console.error("[dynamic_analytics_query] RPC error:", error.message);
+      return { error: error.message, hint: "Verifica che dataset, metric, group_by e filters siano validi." };
+    }
+    return {
+      dataset: args.dataset,
+      metric: args.metric || "count",
+      group_by: args.group_by || null,
+      date_from: args.date_from || null,
+      date_to: args.date_to || null,
+      filters: args.filters || {},
+      results: data,
+      row_count: Array.isArray(data) ? data.length : 0,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[dynamic_analytics_query] Exception:", msg);
+    return { error: msg };
+  }
+}
 
-  const [leadsResult, dealsResult, ticketsResult, appointmentsResult] = await Promise.all([
-    supabase.from("lead_events").select("id, contact_id").eq("brand_id", brandId).gte("received_at", from).lte("received_at", to),
-    supabase.from("deals").select("id, value, status").eq("brand_id", brandId).eq("status", "open"),
-    supabase.from("tickets").select("id, priority, status").eq("brand_id", brandId).in("status", ["open", "in_progress"]),
-    supabase.from("appointments").select("id, status").eq("brand_id", brandId).gte("scheduled_at", from).lte("scheduled_at", to),
+async function searchContacts(supabase: SupabaseClient, brandId: string, query: string, limit: number) {
+  const { data } = await supabase
+    .from("contacts")
+    .select("id, first_name, last_name, email, phone, city, cap, province, company_name, lead_type, status, created_at")
+    .eq("brand_id", brandId)
+    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%`)
+    .limit(limit);
+  return { contacts: data || [], count: (data || []).length };
+}
+
+async function getContactTimeline(supabase: SupabaseClient, brandId: string, contactId: string) {
+  const [leads, deals, tickets, appointments, calls] = await Promise.all([
+    supabase.from("lead_events").select("id, source_name, lead_type, received_at").eq("brand_id", brandId).eq("contact_id", contactId).order("received_at", { ascending: false }).limit(10),
+    supabase.from("deals").select("id, value, status, created_at").eq("brand_id", brandId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("tickets").select("id, status, priority, created_at").eq("brand_id", brandId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("appointments").select("id, status, scheduled_at, appointment_type").eq("brand_id", brandId).eq("contact_id", contactId).order("scheduled_at", { ascending: false }).limit(10),
+    supabase.from("call_logs").select("id, status, outcome, started_at, duration_seconds").eq("brand_id", brandId).eq("contact_id", contactId).order("started_at", { ascending: false }).limit(10),
   ]);
-
-  interface LeadEvent { id: string; contact_id: string }
-  interface Deal { id: string; value: number | null; status: string }
-  interface Ticket { id: string; priority: number; status: string }
-  interface Appointment { id: string; status: string }
-
-  const leads = (leadsResult.data || []) as LeadEvent[];
-  const deals = (dealsResult.data || []) as Deal[];
-  const tickets = (ticketsResult.data || []) as Ticket[];
-  const appointments = (appointmentsResult.data || []) as Appointment[];
-
-  const uniqueContacts = new Set(leads.map((e) => e.contact_id));
-  const totalDealValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
-
   return {
-    period,
-    leads_count: uniqueContacts.size, // Contatti unici, non eventi totali
-    lead_events_count: leads.length, // Eventi totali per dettaglio
-    open_deals: deals.length,
-    total_deal_value: totalDealValue,
-    open_tickets: tickets.length,
-    high_priority_tickets: tickets.filter((t) => t.priority <= 2).length,
-    appointments: appointments.length,
-    completed_appointments: appointments.filter((a) => a.status === "completed").length,
+    leads: leads.data || [],
+    deals: deals.data || [],
+    tickets: tickets.data || [],
+    appointments: appointments.data || [],
+    calls: calls.data || [],
   };
 }
 
 async function getPipelineStatus(supabase: SupabaseClient, brandId: string) {
   const [dealsResult, stagesResult] = await Promise.all([
-    supabase
-      .from("deals")
-      .select("id, value, status, current_stage_id, created_at, contact:contacts(first_name, last_name)")
-      .eq("brand_id", brandId)
-      .eq("status", "open")
-      .order("created_at", { ascending: true }),
+    supabase.from("deals").select("id, value, status, current_stage_id, created_at, contact:contacts(first_name, last_name)").eq("brand_id", brandId).eq("status", "open").order("created_at", { ascending: true }),
     supabase.from("pipeline_stages").select("id, name, sort_order").eq("brand_id", brandId).order("sort_order"),
   ]);
-
-  interface Deal {
-    id: string;
-    value: number | null;
-    status: string;
-    current_stage_id: string | null;
-    created_at: string;
-    contact: { first_name: string | null; last_name: string | null } | null;
-  }
+  interface Deal { id: string; value: number | null; current_stage_id: string | null; created_at: string; contact: { first_name: string | null; last_name: string | null } | null }
   interface Stage { id: string; name: string; sort_order: number }
-
   const deals = (dealsResult.data || []) as Deal[];
   const stages = (stagesResult.data || []) as Stage[];
-
   const dealsByStage = stages.map((stage) => {
     const stageDeals = deals.filter((d) => d.current_stage_id === stage.id);
-    return {
-      stage_name: stage.name,
-      count: stageDeals.length,
-      value: stageDeals.reduce((sum, d) => sum + (d.value || 0), 0),
-    };
+    return { stage_name: stage.name, count: stageDeals.length, value: stageDeals.reduce((sum, d) => sum + (d.value || 0), 0) };
   });
-
-  const oldestDeals = deals.slice(0, 3).map((d) => ({
-    contact_name: d.contact ? `${d.contact.first_name || ""} ${d.contact.last_name || ""}`.trim() : "N/D",
-    value: d.value,
-    days_open: Math.floor((Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24)),
-  }));
-
   return {
     total_open_deals: deals.length,
     total_value: deals.reduce((sum, d) => sum + (d.value || 0), 0),
     deals_by_stage: dealsByStage,
-    oldest_deals: oldestDeals,
-  };
-}
-
-async function getTicketOverview(supabase: SupabaseClient, brandId: string, period: string) {
-  const { from } = getPeriodDates(period);
-
-  const [activeTickets, recentTickets] = await Promise.all([
-    supabase.from("tickets").select("id, priority, status, sla_breached_at, created_at").eq("brand_id", brandId).in("status", ["open", "in_progress"]),
-    supabase.from("tickets").select("id, status, resolved_at").eq("brand_id", brandId).gte("created_at", from),
-  ]);
-
-  interface ActiveTicket { id: string; priority: number; status: string; sla_breached_at: string | null; created_at: string }
-  interface RecentTicket { id: string; status: string; resolved_at: string | null }
-
-  const tickets = (activeTickets.data || []) as ActiveTicket[];
-  const recent = (recentTickets.data || []) as RecentTicket[];
-
-  const byPriority: Record<string, number> = {};
-  tickets.forEach((t) => {
-    byPriority[`P${t.priority}`] = (byPriority[`P${t.priority}`] || 0) + 1;
-  });
-
-  return {
-    period,
-    total_open: tickets.length,
-    by_priority: byPriority,
-    sla_breached: tickets.filter((t) => t.sla_breached_at).length,
-    in_progress: tickets.filter((t) => t.status === "in_progress").length,
-    created_in_period: recent.length,
-    resolved_in_period: recent.filter((t) => t.resolved_at).length,
+    oldest_deals: deals.slice(0, 3).map((d) => ({
+      contact_name: d.contact ? `${d.contact.first_name || ""} ${d.contact.last_name || ""}`.trim() : "N/D",
+      value: d.value,
+      days_open: Math.floor((Date.now() - new Date(d.created_at).getTime()) / 86400000),
+    })),
   };
 }
 
 async function getOperatorPerformance(supabase: SupabaseClient, brandId: string, period: string) {
   const { from } = getPeriodDates(period);
-
   const { data: ticketsData } = await supabase
     .from("tickets")
     .select("id, assigned_user_id, status, resolved_at, created_at, first_response_at, assignee:users!tickets_assigned_user_id_fkey(full_name)")
     .eq("brand_id", brandId)
     .gte("created_at", from);
-
-  interface TicketWithAssignee {
-    id: string;
-    assigned_user_id: string | null;
-    status: string;
-    resolved_at: string | null;
-    created_at: string;
-    first_response_at: string | null;
-    assignee: { full_name: string | null } | null;
-  }
-
-  const tickets = (ticketsData || []) as TicketWithAssignee[];
-
-  const operatorStats: Record<string, { name: string; assigned: number; resolved: number; avgResponseMs: number[] }> = {};
-
+  interface T { assigned_user_id: string | null; status: string; resolved_at: string | null; created_at: string; first_response_at: string | null; assignee: { full_name: string | null } | null }
+  const tickets = (ticketsData || []) as T[];
+  const stats: Record<string, { name: string; assigned: number; resolved: number; responseMs: number[] }> = {};
   tickets.forEach((t) => {
     if (!t.assigned_user_id) return;
-
-    if (!operatorStats[t.assigned_user_id]) {
-      operatorStats[t.assigned_user_id] = {
-        name: t.assignee?.full_name || "N/D",
-        assigned: 0,
-        resolved: 0,
-        avgResponseMs: [],
-      };
-    }
-
-    operatorStats[t.assigned_user_id].assigned++;
-    if (t.resolved_at) operatorStats[t.assigned_user_id].resolved++;
-    if (t.first_response_at && t.created_at) {
-      const responseTime = new Date(t.first_response_at).getTime() - new Date(t.created_at).getTime();
-      operatorStats[t.assigned_user_id].avgResponseMs.push(responseTime);
-    }
+    if (!stats[t.assigned_user_id]) stats[t.assigned_user_id] = { name: t.assignee?.full_name || "N/D", assigned: 0, resolved: 0, responseMs: [] };
+    stats[t.assigned_user_id].assigned++;
+    if (t.resolved_at) stats[t.assigned_user_id].resolved++;
+    if (t.first_response_at && t.created_at) stats[t.assigned_user_id].responseMs.push(new Date(t.first_response_at).getTime() - new Date(t.created_at).getTime());
   });
-
-  const operators = Object.entries(operatorStats).map(([id, stats]) => ({
-    operator_id: id,
-    name: stats.name,
-    tickets_assigned: stats.assigned,
-    tickets_resolved: stats.resolved,
-    resolution_rate: stats.assigned > 0 ? Math.round((stats.resolved / stats.assigned) * 100) : 0,
-    avg_response_hours:
-      stats.avgResponseMs.length > 0
-        ? Math.round((stats.avgResponseMs.reduce((a, b) => a + b, 0) / stats.avgResponseMs.length / 1000 / 60 / 60) * 10) / 10
-        : null,
-  }));
-
   return {
     period,
-    operators: operators.sort((a, b) => b.tickets_resolved - a.tickets_resolved),
-    total_operators: operators.length,
+    operators: Object.entries(stats).map(([id, s]) => ({
+      operator_id: id, name: s.name, assigned: s.assigned, resolved: s.resolved,
+      resolution_rate: s.assigned > 0 ? Math.round((s.resolved / s.assigned) * 100) : 0,
+      avg_response_hours: s.responseMs.length > 0 ? Math.round((s.responseMs.reduce((a, b) => a + b, 0) / s.responseMs.length / 3600000) * 10) / 10 : null,
+    })).sort((a, b) => b.resolved - a.resolved),
   };
 }
 
-async function getAppointmentSummary(supabase: SupabaseClient, brandId: string, period: string) {
-  const { from, to } = getPeriodDates(period);
+// ── MULTI-STEP TOOL LOOP ──
+async function runAgentLoop(
+  messages: Array<{ role: string; content?: string; tool_calls?: unknown[]; tool_call_id?: string }>,
+  supabase: SupabaseClient,
+  brandId: string,
+  apiKey: string,
+  maxRounds: number = 3
+): Promise<{ content: string; toolsUsed: string[]; totalLatencyMs: number }> {
+  const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+  const allToolsUsed: string[] = [];
+  let currentMessages = [...messages];
+  const startTime = Date.now();
 
-  const { data: appointmentsData } = await supabase
-    .from("appointments")
-    .select("id, status, appointment_type, scheduled_at")
-    .eq("brand_id", brandId)
-    .gte("scheduled_at", from)
-    .lte("scheduled_at", to);
+  for (let round = 0; round < maxRounds; round++) {
+    const isFirstRound = round === 0;
+    const response = await fetchWithTimeout(AI_GATEWAY_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: currentMessages,
+        ...(isFirstRound || allToolsUsed.length < 6 ? { tools: AGENT_TOOLS, tool_choice: "auto" } : {}),
+      }),
+    });
 
-  interface AppointmentData { id: string; status: string; appointment_type: string | null; scheduled_at: string }
-
-  const appts = (appointmentsData || []) as AppointmentData[];
-
-  const byStatus: Record<string, number> = {};
-  const byType: Record<string, number> = {};
-
-  appts.forEach((a) => {
-    byStatus[a.status] = (byStatus[a.status] || 0) + 1;
-    if (a.appointment_type) {
-      byType[a.appointment_type] = (byType[a.appointment_type] || 0) + 1;
+    if (!response.ok) {
+      if (response.status === 429) throw { status: 429, message: "Rate limit exceeded. Please try again later." };
+      if (response.status === 402) throw { status: 402, message: "Payment required. Please add credits." };
+      throw new Error(`AI gateway error: ${response.status}`);
     }
-  });
 
-  return {
-    period,
-    total: appts.length,
-    by_status: byStatus,
-    by_type: byType,
-    completion_rate: appts.length > 0 ? Math.round(((byStatus["completed"] || 0) / appts.length) * 100) : 0,
-  };
-}
+    const result = await response.json();
+    const assistantMessage = result.choices[0].message;
+    const toolCalls = assistantMessage.tool_calls || [];
 
-async function searchContacts(supabase: SupabaseClient, brandId: string, query: string, limit: number) {
-  const searchTerm = `%${query}%`;
-
-  const { data: contactsData } = await supabase
-    .from("contacts")
-    .select("id, first_name, last_name, email, city, status, created_at")
-    .eq("brand_id", brandId)
-    .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm}`)
-    .limit(limit);
-
-  interface ContactData {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-    city: string | null;
-    status: string;
-    created_at: string;
-  }
-
-  const contacts = (contactsData || []) as ContactData[];
-
-  return {
-    query,
-    results: contacts.map((c) => ({
-      id: c.id,
-      name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || "N/D",
-      email: c.email,
-      city: c.city,
-      status: c.status,
-      created_at: c.created_at,
-    })),
-    count: contacts.length,
-  };
-}
-
-async function getContactTimeline(supabase: SupabaseClient, brandId: string, contactId: string) {
-  const [contactResult, leadsResult, dealsResult, ticketsResult, appointmentsResult] = await Promise.all([
-    supabase.from("contacts").select("*").eq("id", contactId).eq("brand_id", brandId).single(),
-    supabase.from("lead_events").select("id, source, lead_type, received_at, ai_priority").eq("contact_id", contactId).order("received_at", { ascending: false }).limit(10),
-    supabase.from("deals").select("id, status, value, current_stage_id, created_at, stage:pipeline_stages(name)").eq("contact_id", contactId).order("created_at", { ascending: false }),
-    supabase.from("tickets").select("id, title, status, priority, created_at, resolved_at").eq("contact_id", contactId).order("created_at", { ascending: false }).limit(10),
-    supabase.from("appointments").select("id, status, appointment_type, scheduled_at").eq("contact_id", contactId).order("scheduled_at", { ascending: false }).limit(10),
-  ]);
-
-  if (contactResult.error) {
-    return { error: "Contatto non trovato" };
-  }
-
-  interface Contact {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-    city: string | null;
-    status: string;
-    created_at: string;
-  }
-  interface LeadEvent { id: string; source: string; lead_type: string | null; received_at: string; ai_priority: number | null }
-  interface DealWithStage { id: string; status: string; value: number | null; current_stage_id: string | null; created_at: string; stage: { name: string } | null }
-  interface TicketData { id: string; title: string; status: string; priority: number; created_at: string; resolved_at: string | null }
-  interface AppointmentData { id: string; status: string; appointment_type: string | null; scheduled_at: string }
-
-  const contact = (contactResult.data || {}) as Contact;
-  const leads = (leadsResult.data || []) as LeadEvent[];
-  const deals = (dealsResult.data || []) as DealWithStage[];
-  const tickets = (ticketsResult.data || []) as TicketData[];
-  const appointments = (appointmentsResult.data || []) as AppointmentData[];
-
-  return {
-    contact: {
-      id: contact.id,
-      name: `${contact.first_name || ""} ${contact.last_name || ""}`.trim(),
-      email: contact.email,
-      city: contact.city,
-      status: contact.status,
-      created_at: contact.created_at,
-    },
-    lead_events: leads.map((l) => ({
-      date: l.received_at,
-      source: l.source,
-      type: l.lead_type,
-      priority: l.ai_priority,
-    })),
-    deals: deals.map((d) => ({
-      status: d.status,
-      value: d.value,
-      stage: d.stage?.name || "N/D",
-      created_at: d.created_at,
-    })),
-    tickets: tickets.map((t) => ({
-      title: t.title,
-      status: t.status,
-      priority: t.priority,
-      created_at: t.created_at,
-      resolved_at: t.resolved_at,
-    })),
-    appointments: appointments.map((a) => ({
-      type: a.appointment_type,
-      status: a.status,
-      scheduled_at: a.scheduled_at,
-    })),
-  };
-}
-
-async function getLeadAnalytics(supabase: SupabaseClient, brandId: string, period: string) {
-  const { from } = getPeriodDates(period);
-
-  const { data: leadsData } = await supabase
-    .from("lead_events")
-    .select("id, source, lead_type, lead_source_channel, contact_id")
-    .eq("brand_id", brandId)
-    .gte("received_at", from);
-
-  interface LeadData { id: string; source: string; lead_type: string | null; lead_source_channel: string | null; contact_id: string | null }
-
-  const leadsList = (leadsData || []) as LeadData[];
-
-  const bySource: Record<string, number> = {};
-  const byType: Record<string, number> = {};
-  const byChannel: Record<string, number> = {};
-
-  leadsList.forEach((l) => {
-    bySource[l.source] = (bySource[l.source] || 0) + 1;
-    if (l.lead_type) byType[l.lead_type] = (byType[l.lead_type] || 0) + 1;
-    if (l.lead_source_channel) byChannel[l.lead_source_channel] = (byChannel[l.lead_source_channel] || 0) + 1;
-  });
-
-  const uniqueContacts = new Set(leadsList.map((l) => l.contact_id).filter(Boolean));
-
-  return {
-    period,
-    total_events: leadsList.length,
-    unique_contacts: uniqueContacts.size,
-    by_source: bySource,
-    by_type: byType,
-    by_channel: byChannel,
-  };
-}
-
-async function getTrendComparison(supabase: SupabaseClient, brandId: string, metric: string, comparison: string) {
-  const periods = getPreviousPeriodDates(comparison);
-
-  let currentCount = 0;
-  let previousCount = 0;
-
-  switch (metric) {
-    case "leads": {
-      // Count unique contacts, not events
-      const [currentData, previousData] = await Promise.all([
-        supabase.from("lead_events").select("contact_id").eq("brand_id", brandId).gte("received_at", periods.current.from).lte("received_at", periods.current.to).not("contact_id", "is", null),
-        supabase.from("lead_events").select("contact_id").eq("brand_id", brandId).gte("received_at", periods.previous.from).lte("received_at", periods.previous.to).not("contact_id", "is", null),
-      ]);
-      const currentContacts = new Set((currentData.data || []).map((e: { contact_id: string }) => e.contact_id));
-      const previousContacts = new Set((previousData.data || []).map((e: { contact_id: string }) => e.contact_id));
-      currentCount = currentContacts.size;
-      previousCount = previousContacts.size;
-      break;
+    if (toolCalls.length === 0) {
+      // No more tool calls — return final content
+      return { content: assistantMessage.content || "", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
     }
-    case "tickets": {
-      const [current, previous] = await Promise.all([
-        supabase.from("tickets").select("id", { count: "exact" }).eq("brand_id", brandId).gte("created_at", periods.current.from).lte("created_at", periods.current.to),
-        supabase.from("tickets").select("id", { count: "exact" }).eq("brand_id", brandId).gte("created_at", periods.previous.from).lte("created_at", periods.previous.to),
-      ]);
-      currentCount = current.count || 0;
-      previousCount = previous.count || 0;
-      break;
-    }
-    case "deals": {
-      const [current, previous] = await Promise.all([
-        supabase.from("deals").select("id", { count: "exact" }).eq("brand_id", brandId).gte("created_at", periods.current.from).lte("created_at", periods.current.to),
-        supabase.from("deals").select("id", { count: "exact" }).eq("brand_id", brandId).gte("created_at", periods.previous.from).lte("created_at", periods.previous.to),
-      ]);
-      currentCount = current.count || 0;
-      previousCount = previous.count || 0;
-      break;
-    }
-    case "appointments": {
-      const [current, previous] = await Promise.all([
-        supabase.from("appointments").select("id", { count: "exact" }).eq("brand_id", brandId).gte("scheduled_at", periods.current.from).lte("scheduled_at", periods.current.to),
-        supabase.from("appointments").select("id", { count: "exact" }).eq("brand_id", brandId).gte("scheduled_at", periods.previous.from).lte("scheduled_at", periods.previous.to),
-      ]);
-      currentCount = current.count || 0;
-      previousCount = previous.count || 0;
-      break;
+
+    // Execute tool calls
+    currentMessages.push(assistantMessage);
+    for (const toolCall of toolCalls) {
+      const toolName = toolCall.function.name;
+      const toolArgs = JSON.parse(toolCall.function.arguments || "{}");
+      console.log(`[ai-agent] Round ${round + 1}: Executing tool ${toolName}`, JSON.stringify(toolArgs));
+      allToolsUsed.push(toolName);
+      const toolResult = await handleToolCall(supabase, brandId, toolName, toolArgs);
+      currentMessages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(toolResult) });
     }
   }
 
-  const change = previousCount > 0 ? Math.round(((currentCount - previousCount) / previousCount) * 100) : currentCount > 0 ? 100 : 0;
-
-  return {
-    metric,
-    comparison: comparison === "wow" ? "Week over Week" : "Month over Month",
-    current_period: currentCount,
-    previous_period: previousCount,
-    change_percent: change,
-    trend: change > 0 ? "up" : change < 0 ? "down" : "stable",
-  };
-}
-
-async function getAIDecisionsSummary(supabase: SupabaseClient, brandId: string, period: string) {
-  const { from } = getPeriodDates(period);
-
-  const { data: decisionsData } = await supabase
-    .from("ai_decision_logs")
-    .select("id, lead_type, priority, was_overridden, confidence")
-    .eq("brand_id", brandId)
-    .gte("created_at", from);
-
-  interface DecisionData { id: string; lead_type: string; priority: number; was_overridden: boolean; confidence: number | null }
-
-  const decisionsList = (decisionsData || []) as DecisionData[];
-  const overridden = decisionsList.filter((d) => d.was_overridden).length;
-  const avgConfidence = decisionsList.length > 0 ? decisionsList.reduce((sum, d) => sum + (d.confidence || 0), 0) / decisionsList.length : 0;
-
-  const byType: Record<string, number> = {};
-  const byPriority: Record<string, number> = {};
-
-  decisionsList.forEach((d) => {
-    if (d.lead_type) byType[d.lead_type] = (byType[d.lead_type] || 0) + 1;
-    byPriority[`P${d.priority}`] = (byPriority[`P${d.priority}`] || 0) + 1;
+  // Max rounds reached — one final call without tools to get summary
+  const finalResponse = await fetchWithTimeout(AI_GATEWAY_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: currentMessages }),
   });
-
-  return {
-    period,
-    total_decisions: decisionsList.length,
-    overridden_count: overridden,
-    override_rate: decisionsList.length > 0 ? Math.round((overridden / decisionsList.length) * 100) : 0,
-    avg_confidence: Math.round(avgConfidence * 100),
-    by_lead_type: byType,
-    by_priority: byPriority,
-  };
+  if (!finalResponse.ok) throw new Error(`AI gateway final error: ${finalResponse.status}`);
+  const finalResult = await finalResponse.json();
+  return { content: finalResult.choices[0].message.content || "", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
 }
 
-Deno.serve(async (req) => {
+// Fetch with timeout + retry
+async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs = 25000, retries = 1): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err: unknown) {
+      clearTimeout(timer);
+      const isAbort = err instanceof DOMException && err.name === "AbortError";
+      if (attempt < retries && isAbort) { console.log(`[ai-agent] Attempt ${attempt + 1} timed out, retrying...`); continue; }
+      if (isAbort) throw new Error("La richiesta AI è scaduta. Riprova con una domanda più semplice.");
+      throw err;
+    }
+  }
+  throw new Error("Unexpected: all retries exhausted");
+}
+
+// ── MAIN HANDLER ──
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // AUTH: Verify user JWT
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
 
-    const { data: { user }, error: authError } = await anonClient.auth.getUser();
+    const { data: { user }, error: authError } = await createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    ).auth.getUser();
+
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { message, threadId, brandId, conversationHistory = [] } = await req.json();
-
     if (!message || !brandId) {
-      return new Response(JSON.stringify({ error: "Missing required parameters" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // AUTH: Verify user belongs to the requested brand
-    const { data: crmUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("supabase_auth_id", user.id)
-      .single();
-
+    // AUTH: Verify user belongs to brand
+    const { data: crmUser } = await supabase.from("users").select("id").eq("supabase_auth_id", user.id).single();
     if (!crmUser) {
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: userBrandRole } = await supabase
-      .from("user_roles")
-      .select("id")
-      .eq("user_id", crmUser.id)
-      .eq("brand_id", brandId)
-      .limit(1)
-      .maybeSingle();
-
+    const { data: userBrandRole } = await supabase.from("user_roles").select("id").eq("user_id", crmUser.id).eq("brand_id", brandId).limit(1).maybeSingle();
     if (!userBrandRole) {
-      return new Response(JSON.stringify({ error: "Access denied to this brand" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Access denied" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const startTime = Date.now();
 
-    // ── Persist user message if threadId provided ──
+    // ── Persist user message ──
     let userMessageId: string | null = null;
     if (threadId) {
       const { data: userMsg } = await supabase.from("chat_messages").insert({
-        thread_id: threadId,
-        brand_id: brandId,
-        sender_user_id: crmUser.id,
-        sender_type: "user",
-        message_text: message,
-        delivery_status: "sent",
+        thread_id: threadId, brand_id: brandId, sender_user_id: crmUser.id,
+        sender_type: "user", message_text: message, delivery_status: "sent",
       }).select("id").single();
       userMessageId = userMsg?.id || null;
-
-      // Update thread timestamp
       await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
     }
 
-    // ── Create ai_chat_run record ──
+    // ── Create run record ──
     let runId: string | null = null;
     if (threadId) {
       const { data: run } = await supabase.from("ai_chat_runs").insert({
-        thread_id: threadId,
-        brand_id: brandId,
-        user_id: crmUser.id,
-        user_message_id: userMessageId,
-        status: "running",
-        model: "google/gemini-3-flash-preview",
+        thread_id: threadId, brand_id: brandId, user_id: crmUser.id,
+        user_message_id: userMessageId, status: "running", model: "google/gemini-3-flash-preview",
       }).select("id").single();
       runId = run?.id || null;
     }
 
-    // Build messages array
-    const messages = [
+    // ── Build messages ──
+    const aiMessages: Array<{ role: string; content: string }> = [
       { role: "system", content: EXECUTIVE_AGENT_PROMPT },
       ...conversationHistory,
       { role: "user", content: message },
     ];
 
-    // Helper: fetch with timeout and retry
-    async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs = 25000, retries = 1): Promise<Response> {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const res = await fetch(url, { ...opts, signal: controller.signal });
-          clearTimeout(timer);
-          return res;
-        } catch (err: unknown) {
-          clearTimeout(timer);
-          const isAbort = err instanceof DOMException && err.name === "AbortError";
-          if (attempt < retries && isAbort) {
-            console.log(`[ai-agent] Attempt ${attempt + 1} timed out, retrying...`);
-            continue;
-          }
-          if (isAbort) {
-            throw new Error("La richiesta AI è scaduta. Riprova con una domanda più semplice.");
-          }
-          throw err;
-        }
-      }
-      throw new Error("Unexpected: all retries exhausted");
-    }
-
-    const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const toolsUsed: string[] = [];
+    // ── Run multi-step agent loop ──
     let finalContent: string | null = null;
+    let toolsUsed: string[] = [];
     let errorOccurred = false;
+    let latencyMs = 0;
 
     try {
-      // First API call with tools
-      let response = await fetchWithTimeout(AI_GATEWAY_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages,
-          tools: AGENT_TOOLS,
-          tool_choice: "auto",
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          throw { status: 429, message: "Rate limit exceeded. Please try again later." };
-        }
-        if (response.status === 402) {
-          throw { status: 402, message: "Payment required. Please add credits to your workspace." };
-        }
-        throw new Error(`AI gateway error: ${response.status}`);
-      }
-
-      let result = await response.json();
-      let assistantMessage = result.choices[0].message;
-      const toolCalls = assistantMessage.tool_calls || [];
-
-      // Process tool calls if any
-      if (toolCalls.length > 0) {
-        const toolResults: { role: string; tool_call_id: string; content: string }[] = [];
-
-        for (const toolCall of toolCalls) {
-          const toolName = toolCall.function.name;
-          const toolArgs = JSON.parse(toolCall.function.arguments || "{}");
-
-          console.log(`Executing tool: ${toolName}`, toolArgs);
-          toolsUsed.push(toolName);
-
-          const toolResult = await handleToolCall(supabase, brandId, toolName, toolArgs);
-          toolResults.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(toolResult),
-          });
-        }
-
-        // Second API call with tool results
-        const messagesWithTools = [...messages, assistantMessage, ...toolResults];
-
-        response = await fetchWithTimeout(AI_GATEWAY_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
-            messages: messagesWithTools,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`AI gateway error on second call: ${response.status}`);
-        }
-
-        result = await response.json();
-        assistantMessage = result.choices[0].message;
-      }
-
-      finalContent = assistantMessage.content;
+      const result = await runAgentLoop(aiMessages, supabase, brandId, LOVABLE_API_KEY, 3);
+      finalContent = result.content;
+      toolsUsed = result.toolsUsed;
+      latencyMs = result.totalLatencyMs;
     } catch (err) {
       errorOccurred = true;
-      // Check for structured error (rate limit, payment)
       if (typeof err === "object" && err !== null && "status" in err) {
         const structured = err as { status: number; message: string };
-        // Update run with error
         if (runId) {
           await supabase.from("ai_chat_runs").update({
-            status: "failed",
-            error_code: `HTTP_${structured.status}`,
-            error_message: structured.message,
-            latency_ms: Date.now() - startTime,
-            completed_at: new Date().toISOString(),
+            status: "failed", error_code: `HTTP_${structured.status}`, error_message: structured.message,
+            latency_ms: Date.now() - startTime, completed_at: new Date().toISOString(),
           }).eq("id", runId);
         }
         return new Response(JSON.stringify({ error: structured.message }), {
-          status: structured.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: structured.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // For other errors, set fallback content
       const errMsg = err instanceof Error ? err.message : "Unknown error";
-      console.error("[ai-agent] Error during AI call:", errMsg);
+      console.error("[ai-agent] Error:", errMsg);
       finalContent = null;
-
-      // Update run with error
+      latencyMs = Date.now() - startTime;
       if (runId) {
         await supabase.from("ai_chat_runs").update({
-          status: "failed",
-          error_code: "AI_ERROR",
-          error_message: errMsg,
-          latency_ms: Date.now() - startTime,
-          completed_at: new Date().toISOString(),
+          status: "failed", error_code: "AI_ERROR", error_message: errMsg,
+          latency_ms: latencyMs, completed_at: new Date().toISOString(),
         }).eq("id", runId);
       }
     }
@@ -1022,64 +512,45 @@ Deno.serve(async (req) => {
     // ── FR3: Fallback anti-risposta-vuota ──
     const FALLBACK_MESSAGE = "Mi dispiace, non sono riuscito a elaborare una risposta completa. Puoi riprovare o riformulare la domanda?";
     if (!finalContent || finalContent.trim() === "") {
-      console.warn("[ai-agent] Empty response detected, applying fallback");
+      console.warn("[ai-agent] Empty response, applying fallback");
       finalContent = FALLBACK_MESSAGE;
       errorOccurred = true;
     }
 
-    const latencyMs = Date.now() - startTime;
+    if (!latencyMs) latencyMs = Date.now() - startTime;
 
-    // ── Persist assistant message if threadId provided ──
+    // ── Persist assistant message ──
     let assistantMessageId: string | null = null;
     if (threadId) {
       const { data: aiMsg } = await supabase.from("chat_messages").insert({
-        thread_id: threadId,
-        brand_id: brandId,
-        sender_type: "ai",
+        thread_id: threadId, brand_id: brandId, sender_type: "ai",
         message_text: finalContent,
         delivery_status: errorOccurred ? "failed" : "sent",
-        ai_context: {
-          tools_used: toolsUsed,
-          latency_ms: latencyMs,
-          run_id: runId,
-          had_fallback: finalContent === FALLBACK_MESSAGE,
-        },
+        ai_context: { tools_used: toolsUsed, latency_ms: latencyMs, run_id: runId, had_fallback: finalContent === FALLBACK_MESSAGE },
       }).select("id").single();
       assistantMessageId = aiMsg?.id || null;
-
-      // Update thread timestamp
       await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
-
-      // Update run with success
       if (runId) {
         await supabase.from("ai_chat_runs").update({
-          status: errorOccurred ? "failed" : "success",
-          assistant_message_id: assistantMessageId,
-          latency_ms: latencyMs,
-          tools_json: toolsUsed.map(t => ({ name: t })),
-          completed_at: new Date().toISOString(),
+          status: errorOccurred ? "failed" : "success", assistant_message_id: assistantMessageId,
+          latency_ms: latencyMs, tools_json: toolsUsed.map(t => ({ name: t })), completed_at: new Date().toISOString(),
         }).eq("id", runId);
       }
     }
 
     return new Response(
       JSON.stringify({
-        message: finalContent,
-        tools_used: toolsUsed,
-        run_id: runId,
-        latency_ms: latencyMs,
-        had_fallback: finalContent === FALLBACK_MESSAGE,
+        message: finalContent, tools_used: toolsUsed, run_id: runId,
+        latency_ms: latencyMs, had_fallback: finalContent === FALLBACK_MESSAGE,
+        sources: [...new Set(toolsUsed.filter(t => t === "dynamic_analytics_query").length > 0 ? toolsUsed : [])],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("AI Agent error:", error);
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : "Unknown error",
       message: "Mi dispiace, si è verificato un errore. Riprova tra qualche istante.",
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -7192,6 +7192,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      cap_to_provincia: { Args: { p_cap: string }; Returns: string }
+      cap_to_regione: { Args: { p_cap: string }; Returns: string }
       capi_events_summary: {
         Args: { p_brand_ids: string[]; p_from?: string; p_to?: string }
         Returns: {
@@ -7494,6 +7496,19 @@ export type Database = {
       delete_read_notifications: {
         Args: { p_brand_id?: string }
         Returns: number
+      }
+      dynamic_analytics_query: {
+        Args: {
+          p_brand_id: string
+          p_dataset: string
+          p_date_from?: string
+          p_date_to?: string
+          p_filters?: Json
+          p_group_by?: string
+          p_limit?: number
+          p_metric?: string
+        }
+        Returns: Json
       }
       enqueue_webhook_delivery: {
         Args: {
@@ -8254,6 +8269,7 @@ export type Database = {
             }
             Returns: Json
           }
+      provincia_to_regione: { Args: { p_sigla: string }; Returns: string }
       reactivate_pipeline_stage: { Args: { p_stage_id: string }; Returns: Json }
       rebuild_contact_search_index: { Args: never; Returns: number }
       reclaim_stale_capi_events: { Args: never; Returns: number }
