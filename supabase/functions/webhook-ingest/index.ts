@@ -789,6 +789,9 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // Create audit record as "pending" before processing or forwarding
+  const auditId = await createAuditRecord("pending", null, sourceId, brandId);
+
   // === HANDLER ROUTING: forward to specialized edge functions ===
   if (source.handler === "keplero") {
     console.log(JSON.stringify({ ...logContext, action: "forwarding_to_keplero_webhook", brand_id: brandId }));
