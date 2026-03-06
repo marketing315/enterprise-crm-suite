@@ -505,13 +505,14 @@ Deno.serve(async (req: Request) => {
     .map(([key, value]) => ({ field_key: key, value: value as string }));
 
   if (fieldEntries.length > 0) {
-    await supabaseAdmin.rpc("upsert_contact_field_values", {
+    const { error: fieldsError } = await supabaseAdmin.rpc("upsert_contact_field_values", {
       p_contact_id: contactId,
       p_brand_id: brandId,
       p_field_values: fieldEntries,
-    }).catch((err: Error) => {
-      console.error("[Keplero] Custom fields upsert error:", err.message);
     });
+    if (fieldsError) {
+      console.error("[Keplero] Custom fields upsert error:", fieldsError.message);
+    }
   }
 
   // ── Response ──
