@@ -6959,6 +6959,7 @@ export type Database = {
           brand_id: string
           created_at: string
           description: string | null
+          handler: string | null
           hmac_enabled: boolean
           hmac_secret: string | null
           hmac_secret_hash: string | null
@@ -6975,6 +6976,7 @@ export type Database = {
           brand_id: string
           created_at?: string
           description?: string | null
+          handler?: string | null
           hmac_enabled?: boolean
           hmac_secret?: string | null
           hmac_secret_hash?: string | null
@@ -6991,6 +6993,7 @@ export type Database = {
           brand_id?: string
           created_at?: string
           description?: string | null
+          handler?: string | null
           hmac_enabled?: boolean
           hmac_secret?: string | null
           hmac_secret_hash?: string | null

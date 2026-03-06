@@ -584,7 +584,7 @@ Deno.serve(async (req: Request) => {
   // 3. Find webhook source to check authentication mode
   const { data: source, error: sourceError } = await supabaseAdmin
     .from("webhook_sources")
-    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds")
+    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds, handler")
     .eq("id", sourceId)
     .maybeSingle();
 
@@ -789,9 +789,76 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // === PROCESSING PHASE ===
-  // Create audit record as "pending" before processing
+  // Create audit record as "pending" before processing or forwarding
   const auditId = await createAuditRecord("pending", null, sourceId, brandId);
+
+  // === HANDLER ROUTING: forward to specialized edge functions ===
+  if (source.handler === "keplero") {
+    console.log(JSON.stringify({ ...logContext, action: "forwarding_to_keplero_webhook", brand_id: brandId }));
+    
+    // Resolve brand slug for keplero-webhook
+    const { data: brandData } = await supabaseAdmin
+      .from("brands")
+      .select("slug")
+      .eq("id", brandId)
+      .single();
+    
+    const brandSlug = brandData?.slug || "";
+    const kepleroUrl = `${supabaseUrl}/functions/v1/keplero-webhook?brand=${brandSlug}`;
+    const kepleroSecret = Deno.env.get("KEPLERO_WEBHOOK_SECRET");
+    
+    if (!kepleroSecret) {
+      console.error("[webhook-ingest] KEPLERO_WEBHOOK_SECRET not configured for forwarding");
+      if (auditId) await updateAuditRecord(auditId, "failed", "keplero_secret_not_configured");
+      return new Response(
+        JSON.stringify({ error: "Handler configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    try {
+      const kepleroResponse = await fetch(kepleroUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Keplero-Secret": kepleroSecret,
+        },
+        body: bodyText,
+      });
+      
+      const kepleroResult = await kepleroResponse.json();
+      
+      if (auditId) {
+        await updateAuditRecord(
+          auditId,
+          kepleroResponse.ok ? "success" : "failed",
+          kepleroResponse.ok ? null : `keplero_handler_error: ${JSON.stringify(kepleroResult)}`,
+          kepleroResult?.lead_event_id || null
+        );
+      }
+      
+      console.log(JSON.stringify({
+        ...logContext,
+        outcome: kepleroResponse.ok ? "keplero_forwarded_success" : "keplero_forwarded_error",
+        status: kepleroResponse.status,
+        keplero_result: kepleroResult,
+      }));
+      
+      return new Response(JSON.stringify(kepleroResult), {
+        status: kepleroResponse.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      console.error("[webhook-ingest] Keplero forwarding failed:", err);
+      if (auditId) await updateAuditRecord(auditId, "failed", `keplero_forward_error: ${String(err)}`);
+      return new Response(
+        JSON.stringify({ error: "Handler forwarding failed" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+
+  // === STANDARD PROCESSING PHASE ===
 
   try {
     // Apply field mapping (flat)
