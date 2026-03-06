@@ -929,7 +929,7 @@ Deno.serve(async (req) => {
       // Second API call with tool results
       const messagesWithTools = [...messages, assistantMessage, ...toolResults];
 
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      response = await fetchWithTimeout(AI_GATEWAY_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
