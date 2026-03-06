@@ -144,7 +144,7 @@ export function AgentChatPanel() {
   }
 
   return (
-    <Card className="flex-1 flex flex-col h-full">
+    <Card className="flex-1 flex flex-col h-full overflow-hidden">
       <CardHeader className="pb-3 border-b">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -162,8 +162,8 @@ export function AgentChatPanel() {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <CardContent className="flex-1 p-0 overflow-hidden flex flex-col min-h-0">
+        <ScrollArea className="flex-1 p-4 min-h-0" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="space-y-6">
               <div className="text-center py-8">
