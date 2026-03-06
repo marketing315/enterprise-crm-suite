@@ -127,7 +127,7 @@ export default function Chat() {
   const isPending = sendMessage.isPending || sendAIMessage.isPending;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col" style={{ height: "calc(100vh - 6rem)" }}>
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "threads" | "agent")} className="flex-1 flex flex-col min-h-0">
         <div className="pb-4">
           <TabsList className="grid w-full max-w-md grid-cols-2">
