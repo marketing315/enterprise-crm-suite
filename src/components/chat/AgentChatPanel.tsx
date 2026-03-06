@@ -288,7 +288,7 @@ function MessageBubble({ message }: { message: Message }) {
             {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: it })}
           </span>
           {!isUser && !message.hadFallback && message.toolsUsed && message.toolsUsed.length > 0 && (
-            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-0.5">
+            <span className="text-xs text-primary flex items-center gap-0.5">
               <CheckCircle2 className="h-3 w-3" /> Completa
             </span>
           )}
