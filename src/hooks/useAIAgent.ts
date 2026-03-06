@@ -68,8 +68,8 @@ export function useAIAgentChat() {
         throw error;
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if ((data as any)?.error) {
+        throw new Error((data as any).error);
       }
 
       return data as AgentResponse;
