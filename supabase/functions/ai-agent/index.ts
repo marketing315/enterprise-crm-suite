@@ -846,8 +846,35 @@ Deno.serve(async (req) => {
       { role: "user", content: message },
     ];
 
+    // Helper: fetch with timeout and retry
+    async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs = 25000, retries = 1): Promise<Response> {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { ...opts, signal: controller.signal });
+          clearTimeout(timer);
+          return res;
+        } catch (err: unknown) {
+          clearTimeout(timer);
+          const isAbort = err instanceof DOMException && err.name === "AbortError";
+          if (attempt < retries && isAbort) {
+            console.log(`[ai-agent] Attempt ${attempt + 1} timed out, retrying...`);
+            continue;
+          }
+          if (isAbort) {
+            throw new Error("La richiesta AI è scaduta. Riprova con una domanda più semplice.");
+          }
+          throw err;
+        }
+      }
+      throw new Error("Unexpected: all retries exhausted");
+    }
+
+    const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
     // First API call with tools
-    let response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    let response = await fetchWithTimeout(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -902,7 +929,7 @@ Deno.serve(async (req) => {
       // Second API call with tool results
       const messagesWithTools = [...messages, assistantMessage, ...toolResults];
 
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      response = await fetchWithTimeout(AI_GATEWAY_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,

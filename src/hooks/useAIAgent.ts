@@ -31,14 +31,31 @@ export function useAIAgentChat() {
         throw new Error("No brand selected");
       }
 
-      const { data, error } = await supabase.functions.invoke("ai-agent", {
-        body: {
-          message,
-          threadId,
-          brandId: currentBrand.id,
-          conversationHistory,
-        },
-      });
+      // Use AbortController for client-side timeout (35s — slightly longer than server-side 25s)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
+
+      let data: AgentResponse | null = null;
+      let error: Error | null = null;
+      try {
+        const result = await supabase.functions.invoke("ai-agent", {
+          body: {
+            message,
+            threadId,
+            brandId: currentBrand.id,
+            conversationHistory,
+          },
+        });
+        data = result.data;
+        error = result.error;
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          throw new Error("La richiesta è scaduta. L'agente potrebbe essere sovraccarico, riprova.");
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (error) {
         // Handle specific error codes
@@ -51,8 +68,8 @@ export function useAIAgentChat() {
         throw error;
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if ((data as any)?.error) {
+        throw new Error((data as any).error);
       }
 
       return data as AgentResponse;
