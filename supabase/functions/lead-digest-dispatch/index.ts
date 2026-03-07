@@ -466,14 +466,31 @@ Deno.serve(async (req) => {
     const fmtLocal = (iso: string) =>
       new Date(iso).toLocaleString("it-IT", { timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-    const leadsTableRows = leadsPayload.map((l) => `
-      <tr>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.full_name)}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.phone)}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.cap)}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.brand)}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.source)}</td>
-      </tr>`).join("");
+    // Helper to build a table for a list of leads
+    const buildLeadsTable = (leads: typeof leadsPayload, bgColor = "#f5f5f5") => {
+      if (leads.length === 0) return "";
+      const rows = leads.map((l) => `
+        <tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.full_name)}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.phone)}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.cap)}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.brand)}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${esc(l.source)}</td>
+        </tr>`).join("");
+      return `
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:${bgColor};">
+              <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Nome</th>
+              <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Telefono</th>
+              <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">CAP</th>
+              <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Brand</th>
+              <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Fonte</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    };
 
     // Summary mode notice
     const summaryNotice = isSummaryMode
@@ -483,20 +500,23 @@ Deno.serve(async (req) => {
          </p>`
       : "";
 
-    const leadsTableHtml = leadsPayload.length > 0 ? `
-      ${summaryNotice}
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
-        <thead>
-          <tr style="background:#f5f5f5;">
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Nome</th>
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Telefono</th>
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">CAP</th>
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Brand</th>
-            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;">Fonte</th>
-          </tr>
-        </thead>
-        <tbody>${leadsTableRows}</tbody>
-      </table>` : `<p style="color:#888;font-style:italic;">Nessun lead nel periodo.</p>`;
+    // Build sections
+    let leadsTableHtml = "";
+    if (leadsPayload.length === 0) {
+      leadsTableHtml = `<p style="color:#888;font-style:italic;">Nessun lead nel periodo.</p>`;
+    } else {
+      if (nuoviLeads.length > 0) {
+        leadsTableHtml += `
+          <h3 style="color:#1e3a5f;margin:20px 0 8px 0;font-size:15px;">🆕 Nuovi Lead (${nuoviLeads.length})</h3>
+          ${buildLeadsTable(nuoviLeads, "#f5f5f5")}`;
+      }
+      if (fissatiLeads.length > 0) {
+        leadsTableHtml += `
+          <h3 style="color:#16a34a;margin:20px 0 8px 0;font-size:15px;">📅 Appuntamenti Fissati da Keplero (${fissatiLeads.length})</h3>
+          <p style="color:#555;font-size:12px;margin:0 0 8px 0;">Questi lead sono passati da "Nuovo Lead" → "Appuntamento Fissato"</p>
+          ${buildLeadsTable(fissatiLeads, "#dcfce7")}`;
+      }
+    }
 
     const filteredLinkHtml = filteredLink
       ? `<p style="margin-top:20px;"><a href="${filteredLink}" style="background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Vedi lead filtrati nel CRM</a></p>`
@@ -508,8 +528,12 @@ Deno.serve(async (req) => {
 <body style="font-family:Arial,sans-serif;color:#222;max-width:700px;margin:0 auto;padding:20px;">
   <h2 style="margin-top:0;color:#1e3a5f;">📋 Aggiornamento Lead</h2>
   <p><strong>Periodo:</strong> ${fmtLocal(windowStart.toISOString())} → ${fmtLocal(windowEnd.toISOString())}</p>
-  <p><strong>Lead unici nuovi:</strong> <span style="font-size:18px;font-weight:bold;color:#2563eb;">${uniqueCount}</span>
-    <span style="color:#888;font-size:12px;">(grezzo: ${rawCount})</span></p>
+  <p><strong>Totale:</strong> <span style="font-size:18px;font-weight:bold;color:#2563eb;">${uniqueCount}</span>
+    <span style="color:#888;font-size:12px;">(grezzo: ${rawCount})</span>
+    ${nuoviLeads.length > 0 ? ` · <span style="color:#1e3a5f;">${nuoviLeads.length} nuovi</span>` : ""}
+    ${fissatiLeads.length > 0 ? ` · <span style="color:#16a34a;">${fissatiLeads.length} fissati</span>` : ""}
+  </p>
+  ${summaryNotice}
   ${leadsTableHtml}
   ${filteredLinkHtml}
   <hr style="margin-top:30px;border:none;border-top:1px solid #eee;">
@@ -517,19 +541,32 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    const textLeadsList = leadsPayload.map((l, i) =>
-      `${i + 1}. ${l.full_name || "—"} | ${l.phone || "—"} | ${l.cap || "—"} | ${l.brand || "—"} | ${l.source || "—"}`
-    ).join("\n");
+    // ── Text body ──
+    const buildTextList = (leads: typeof leadsPayload, startIdx = 1) =>
+      leads.map((l, i) =>
+        `${startIdx + i}. ${l.full_name || "—"} | ${l.phone || "—"} | ${l.cap || "—"} | ${l.brand || "—"} | ${l.source || "—"}`
+      ).join("\n");
 
     const summaryTextNotice = isSummaryMode
       ? `\n⚠️ Modalità riepilogo: ${uniqueCount} lead totali, mostrati i primi ${leadsPayload.length}. Usa il CRM per la lista completa.\n`
       : "";
 
+    let textLeadsSection = "";
+    if (leadsPayload.length === 0) {
+      textLeadsSection = "Nessun lead nel periodo.";
+    } else {
+      if (nuoviLeads.length > 0) {
+        textLeadsSection += `\n--- NUOVI LEAD (${nuoviLeads.length}) ---\n${buildTextList(nuoviLeads)}`;
+      }
+      if (fissatiLeads.length > 0) {
+        textLeadsSection += `\n\n--- APPUNTAMENTI FISSATI DA KEPLERO (${fissatiLeads.length}) ---\n(Passati da "Nuovo Lead" → "Appuntamento Fissato")\n${buildTextList(fissatiLeads, nuoviLeads.length + 1)}`;
+      }
+    }
+
     const text_body = `Aggiornamento Lead
 Periodo: ${fmtLocal(windowStart.toISOString())} → ${fmtLocal(windowEnd.toISOString())}
-Lead unici nuovi: ${uniqueCount} (grezzo: ${rawCount})
-${summaryTextNotice}
-${leadsPayload.length > 0 ? textLeadsList : "Nessun lead nel periodo."}
+Totale: ${uniqueCount} (grezzo: ${rawCount}) · ${nuoviLeads.length} nuovi · ${fissatiLeads.length} fissati
+${summaryTextNotice}${textLeadsSection}
 ${filteredLink ? `\nVedi lead filtrati: ${filteredLink}` : ""}
 
 ---
@@ -546,6 +583,8 @@ Inviato automaticamente da CRM Ralph Hub`;
       digest_mode: isSummaryMode ? "summary" : "full",
       total_leads: uniqueCount,
       leads_included: leadsPayload.length,
+      new_leads_count: nuoviLeads.length,
+      fissati_count: fissatiLeads.length,
       window: {
         start: windowStart.toISOString(),
         end: windowEnd.toISOString(),
@@ -557,6 +596,8 @@ Inviato automaticamente da CRM Ralph Hub`;
       counts: {
         raw_leads: rawCount,
         unique_real_leads: uniqueCount,
+        new_leads: nuoviLeads.length,
+        fissati: fissatiLeads.length,
       },
       include_filtered_link: config.include_filtered_link,
       filtered_link: filteredLink,
