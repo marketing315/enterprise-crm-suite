@@ -256,7 +256,8 @@ Deno.serve(async (req) => {
           email,
           cap,
           brands!inner(name),
-          contact_phones(phone_raw, phone_normalized, is_primary)
+          contact_phones(phone_raw, phone_normalized, is_primary),
+          deals(id, current_stage_id, pipeline_stages!deals_current_stage_id_fkey(name))
         )
       `)
       .gte("created_at", windowStart.toISOString())
@@ -365,15 +366,22 @@ Deno.serve(async (req) => {
         cap: string | null;
         brands: { name: string } | null;
         contact_phones: { phone_raw: string | null; phone_normalized: string | null; is_primary: boolean }[] | null;
+        deals: { id: string; current_stage_id: string | null; pipeline_stages: { name: string } | null }[] | null;
       };
       const primaryPhone = contact.contact_phones?.find(p => p.is_primary);
       const phoneDisplay = primaryPhone?.phone_raw || primaryPhone?.phone_normalized || contact.phone || contact.phone_normalized || null;
+
+      // Determine if this is a Keplero "fissato" (appointment set) rather than a new lead
+      const isKepleroFissato = lead.source_name === "keplero" &&
+        contact.deals?.some(d => d.pipeline_stages?.name?.toLowerCase() === "fissato");
+
       return {
         full_name: [contact.first_name, contact.last_name].filter(Boolean).join(" ") || null,
         phone: phoneDisplay,
         cap: contact.cap || null,
         brand: contact.brands?.name || null,
         source: lead.source_name || null,
+        tipo: isKepleroFissato ? "appuntamento_fissato" : "nuovo_lead",
       };
     };
 
