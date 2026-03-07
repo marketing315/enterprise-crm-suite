@@ -1,32 +1,70 @@
 
 
-## Obiettivo
+# Scansione Debug Completa - Contatti Infinite Scroll
 
-Nella mail di riepilogo lead, distinguere i lead provenienti da Keplero con appuntamento fissato: non sono "nuovi lead" ma lead passati da "Nuovo Lead" → "Appuntamento Fissato". Devono apparire in una sezione separata o con un'etichetta chiara.
+## Bug Identificati
 
-## Modifiche
+### Bug 1 (CRITICO): `loadTriggeredRef` viene resettato prematuramente
+In `usePaginatedContactSearch.ts`, linea 56, `loadTriggeredRef.current = false` viene eseguito **incondizionatamente** alla fine dell'`useEffect`. Quando `page` cambia (es. da 0 a 1), React Query crea una nuova query e temporaneamente `pageData` diventa `[]`. L'effetto scatta, nessun branch viene eseguito, ma la guardia viene comunque resettata. Questo permette a `loadMore` di scattare di nuovo prima che i dati della pagina corrente arrivino, saltando pagine.
 
-### Edge Function `lead-digest-dispatch/index.ts`
+### Bug 2 (MEDIO): Ordine di dichiarazione `handleScrollRef` / `scrollContainerCallbackRef`
+In `ContactsTableWithViews.tsx`, `scrollContainerCallbackRef` (linea 212) fa riferimento a `handleScrollRef.current` (linea 225) che e' dichiarato DOPO. Funziona per via delle closure JS, ma e' fragile e puo' causare problemi con HMR.
 
-1. **Arricchire la query `lead_events`** — aggiungere il join su `deals` con la pipeline stage:
-   ```
-   deals(id, current_stage_id, pipeline_stages(name))
-   ```
+### Bug 3 (MINORE): Warning `forwardRef` su AlertDialog
+Il console log mostra warning di `Function components cannot be given refs` su AlertDialog. Non blocca il funzionamento ma indica un componente non aggiornato.
 
-2. **Nella funzione `mapLead`** — aggiungere un campo `tipo` al lead mappato:
-   - Se `source_name === "keplero"` e il deal è nello stage "Fissato" → `tipo = "appuntamento_fissato"`
-   - Altrimenti → `tipo = "nuovo_lead"`
+---
 
-3. **Separare i lead nel body HTML/testo** in due sezioni:
-   - **Sezione 1: "Nuovi Lead"** — lead con `tipo = "nuovo_lead"`
-   - **Sezione 2: "Appuntamenti Fissati (da Keplero)"** — lead con `tipo = "appuntamento_fissato"`, con una nota che indica la transizione di stato
+## Piano di Fix
 
-4. **Aggiornare il subject** per includere entrambi i conteggi, es:
-   ```
-   Aggiornamento Lead (12 nuovi, 3 fissati) - 07/03 16:30
-   ```
+### Step 1: Fix `usePaginatedContactSearch.ts`
+- Spostare `loadTriggeredRef.current = false` DENTRO il branch `if (pageData.length > 0)` o dopo la conferma che i dati sono effettivamente arrivati per la pagina corrente
+- Aggiungere un `pageRef` per tracciare quale pagina ha triggerato il load e resettare la guardia solo quando arrivano i dati per quella specifica pagina
 
-5. **Aggiornare la tabella HTML** — aggiungere una colonna "Tipo" o separare in due tabelle con intestazioni diverse. La sezione "fissati" avrà uno sfondo leggermente diverso (es. verde chiaro) per distinguerla visivamente.
+```text
+Logica corretta:
+1. loadMore() -> loadTriggeredRef = true, setPage(p+1)
+2. Query parte con nuovo offset
+3. pageData arriva (length > 0) -> appende a allResults -> loadTriggeredRef = false
+4. pageData vuoto (fine lista) -> hasMore = false -> scroll handler bloccato
+```
 
-6. **Aggiornare il payload JSON** — aggiungere i conteggi separati (`new_leads_count`, `fissati_count`) e il campo `tipo` per ogni lead nell'array.
+### Step 2: Riordinare dichiarazioni in `ContactsTableWithViews.tsx`
+- Spostare `handleScrollRef` PRIMA di `scrollContainerCallbackRef` per eliminare la dipendenza da hoisting delle closure
+- Nessun cambiamento di logica, solo ordine piu' sicuro
+
+### Step 3: (Opzionale) Fix warning AlertDialog
+- Verificare se `AlertDialogContent` nel file `alert-dialog.tsx` necessita di `React.forwardRef`
+
+---
+
+## Dettaglio Tecnico - Fix Principale
+
+Il fix chiave in `usePaginatedContactSearch.ts`:
+
+```text
+// PRIMA (buggy):
+useEffect(() => {
+  if (pageData.length > 0) {
+    // append...
+  } else if (page === 0) {
+    setAllResults([]);
+  }
+  loadTriggeredRef.current = false;  // <-- SEMPRE resettato
+}, [pageData, page]);
+
+// DOPO (corretto):
+useEffect(() => {
+  if (pageData.length > 0) {
+    // append...
+    loadTriggeredRef.current = false;  // <-- solo quando dati arrivano
+  } else if (page === 0) {
+    setAllResults([]);
+    loadTriggeredRef.current = false;  // <-- reset iniziale OK
+  }
+  // NON resettare qui per pagine > 0 senza dati (ancora in caricamento)
+}, [pageData, page]);
+```
+
+Questo impedisce che il guard venga rimosso durante il transitorio di caricamento, prevenendo il salto di pagine.
 
