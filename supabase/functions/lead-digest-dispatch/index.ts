@@ -434,12 +434,22 @@ Deno.serve(async (req) => {
     }
 
 
+    // ── Separate leads by tipo ──
+    const nuoviLeads = leadsPayload.filter(l => l.tipo === "nuovo_lead");
+    const fissatiLeads = leadsPayload.filter(l => l.tipo === "appuntamento_fissato");
+    const allNuovi = allLeadsPayload.filter(l => l.tipo === "nuovo_lead");
+    const allFissati = allLeadsPayload.filter(l => l.tipo === "appuntamento_fissato");
+
     // ── Build subject ──
     const tz = config.timezone || "Europe/Rome";
     const windowEndLocal = new Date(windowEnd).toLocaleString("it-IT", {
       timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
     });
-    const subject = `Aggiornamento Lead (${uniqueCount}) - ${windowEndLocal}`;
+    const subjectParts: string[] = [];
+    if (nuoviLeads.length > 0) subjectParts.push(`${nuoviLeads.length} nuovi`);
+    if (fissatiLeads.length > 0) subjectParts.push(`${fissatiLeads.length} fissati`);
+    const subjectCounts = subjectParts.length > 0 ? subjectParts.join(", ") : "0";
+    const subject = `Aggiornamento Lead (${subjectCounts}) - ${windowEndLocal}`;
 
     // ── HTML escaping helper (prevents XSS/injection in email body) ──
     const esc = (s: string | null | undefined): string => {
