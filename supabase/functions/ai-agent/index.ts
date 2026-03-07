@@ -335,7 +335,7 @@ async function runAgentLoop(
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-3.1-pro-preview",
         messages: currentMessages,
         ...(isFirstRound || allToolsUsed.length < 6 ? { tools: AGENT_TOOLS, tool_choice: "auto" } : {}),
       }),
@@ -372,7 +372,7 @@ async function runAgentLoop(
   const finalResponse = await fetchWithTimeout(AI_GATEWAY_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: currentMessages }),
+    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages }),
   });
   if (!finalResponse.ok) throw new Error(`AI gateway final error: ${finalResponse.status}`);
   const finalResult = await finalResponse.json();
@@ -463,7 +463,7 @@ Deno.serve(async (req: Request) => {
     if (threadId) {
       const { data: run } = await supabase.from("ai_chat_runs").insert({
         thread_id: threadId, brand_id: brandId, user_id: crmUser.id,
-        user_message_id: userMessageId, status: "running", model: "google/gemini-3-flash-preview",
+        user_message_id: userMessageId, status: "running", model: "google/gemini-3.1-pro-preview",
       }).select("id").single();
       runId = run?.id || null;
     }
