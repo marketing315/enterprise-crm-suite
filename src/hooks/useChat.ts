@@ -439,3 +439,50 @@ export function useThreadDisplayTitles(threadIds: string[]) {
     staleTime: 60_000,
   });
 }
+
+// Archive a thread (soft-hide)
+export function useArchiveThread() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      const { error } = await (supabase as any)
+        .from("chat_threads")
+        .update({ archived_at: new Date().toISOString() })
+        .eq("id", threadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["executive-thread"] });
+      toast.success("Conversazione archiviata");
+    },
+    onError: () => toast.error("Errore nell'archiviazione"),
+  });
+}
+
+// Delete a thread and its messages permanently
+export function useDeleteThread() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      // Delete messages first (FK constraint)
+      await supabase.from("chat_messages").delete().eq("thread_id", threadId);
+      await (supabase as any).from("chat_message_reads").delete().eq("message_id", threadId); // cleanup
+      await (supabase as any).from("chat_thread_members").delete().eq("thread_id", threadId);
+      await (supabase as any).from("ai_chat_runs").delete().eq("thread_id", threadId);
+      const { error } = await supabase.from("chat_threads").delete().eq("id", threadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["executive-thread"] });
+      toast.success("Conversazione eliminata");
+    },
+    onError: (err: Error) => {
+      console.error("Delete thread error:", err);
+      toast.error("Errore nell'eliminazione");
+    },
+  });
+}
