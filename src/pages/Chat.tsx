@@ -51,6 +51,7 @@ export default function Chat() {
   const [messageInput, setMessageInput] = useState("");
   const [askAI, setAskAI] = useState(false);
   const [activeTab, setActiveTab] = useState<"threads" | "agent">("agent");
+  const [forceExecutiveThreadId, setForceExecutiveThreadId] = useState<string | null>(null);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -69,7 +70,7 @@ export default function Chat() {
   const markRead = useMarkThreadRead();
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
-  const isExecutiveThread = selectedThread?.type === "executive";
+  const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId;
 
   // Auto-enable AI for executive threads
   useEffect(() => {
@@ -191,7 +192,9 @@ export default function Chat() {
                       variant="ghost"
                       onClick={async () => {
                         const newId = await createNewAIThread.mutateAsync();
+                        setForceExecutiveThreadId(newId);
                         setSelectedThreadId(newId);
+                        setAskAI(true);
                       }}
                       disabled={createNewAIThread.isPending}
                       title="Nuova chat AI"
