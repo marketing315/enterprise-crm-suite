@@ -84,6 +84,7 @@ status, priority, source_name, lead_type, outcome, appointment_type, call_type, 
 - MAI inventare dati: se il tool ritorna vuoto, dillo
 - Per analisi complesse, usa più tool calls in sequenza
 - Per domande su ADV/advertising, usa SEMPRE get_ad_performance
+- NON includere mai ragionamenti interni, pensieri, pianificazione o meta-commenti nella risposta. Scrivi SOLO il contenuto finale destinato all'utente.
 
 ## STRATEGIA MULTI-STEP
 1. Prima ottieni il totale generale
@@ -272,6 +273,21 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
 ];
 
 // ── HELPERS ──
+
+/** Strip thinking/reasoning blocks that some models leak into output */
+function cleanThinkingContent(text: string): string {
+  if (!text) return text;
+  // Remove <think>...</think>, <thinking>...</thinking> blocks
+  let cleaned = text.replace(/<think(?:ing)?[\s\S]*?<\/think(?:ing)?>/gi, '');
+  // Remove lines that are clearly internal reasoning patterns
+  cleaned = cleaned.replace(/^(?:\((?:Done|Thinking|Note|Stopping|Ready|Over|Goodbye|Proceeding|Checked|Excellent|Let's|I (?:will|should|need|am)|No (?:more|markdown)|Wait|Steps|Matches|All (?:good|correct)|Everything|Just|End)[^)]*\)\s*)+$/gm, '');
+  // Remove repeated "(done)" or "(Done)" filler
+  cleaned = cleaned.replace(/(?:\s*\(done\)\s*){3,}/gi, '');
+  // Trim excessive whitespace
+  cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n').trim();
+  return cleaned;
+}
+
 const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
 function isAllBrandsMode(brandId: string): boolean {
   return brandId === SYSTEM_BRAND_ID;
@@ -813,7 +829,7 @@ async function runAgentLoop(
 
     if (toolCalls.length === 0) {
       // No more tool calls — return final content
-      return { content: assistantMessage.content || "", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
+      return { content: cleanThinkingContent(assistantMessage.content || ""), toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
     }
 
     // Execute tool calls
@@ -847,7 +863,7 @@ async function runAgentLoop(
     throw new Error(`AI gateway final error: ${finalResponse.status}`);
   }
   const finalResult = await finalResponse.json();
-  const finalMessage = finalResult?.choices?.[0]?.message?.content || "";
+  const finalMessage = cleanThinkingContent(finalResult?.choices?.[0]?.message?.content || "");
   console.log(`[ai-agent] Final message length: ${finalMessage.length}`);
   if (!finalMessage) {
     console.warn("[ai-agent] Final summarization returned empty, tools used:", allToolsUsed);
