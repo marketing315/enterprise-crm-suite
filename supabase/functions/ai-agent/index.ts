@@ -163,6 +163,40 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_ad_performance",
+      description: `Analisi performance advertising (Meta Ads, Google Ads). Restituisce dati aggregati su spesa, impressioni, click, CTR, CPC, CPM, reach, frequenza, conversioni. Include breakdown per campagna, per creatività e per demografica. USA QUESTO TOOL per QUALSIASI domanda su: ads, advertising, campagne pubblicitarie, spesa adv, Meta Ads, Google Ads, budget pubblicitario, CTR, CPC, CPM, ROAS, ottimizzazione ads, creatività, target demografico.`,
+      parameters: {
+        type: "object",
+        properties: {
+          date_from: {
+            type: "string",
+            description: "Data inizio in formato ISO 8601 (es: 2026-03-01). Default: ultimi 30 giorni.",
+          },
+          date_to: {
+            type: "string",
+            description: "Data fine in formato ISO 8601 (es: 2026-03-09). Default: oggi.",
+          },
+          platform: {
+            type: "string",
+            enum: ["meta", "google"],
+            description: "Filtra per piattaforma. Se omesso, restituisce tutte.",
+          },
+          include_creatives: {
+            type: "boolean",
+            description: "Se true, include breakdown per creatività/ad singolo. Default: false.",
+          },
+          include_demographics: {
+            type: "boolean",
+            description: "Se true, include breakdown per età e genere. Default: false.",
+          },
+        },
+        required: [],
+      },
+    },
+  },
 ];
 
 // ── HELPERS ──
