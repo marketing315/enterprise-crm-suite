@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   Bot,
   Send,
@@ -25,6 +27,10 @@ import {
   Database,
   CheckCircle2,
   Plus,
+  UserPlus,
+  Briefcase,
+  CalendarPlus,
+  TicketPlus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -33,6 +39,7 @@ import { useAIAgentChat, useExecutiveThread, useCreateNewExecutiveThread, AGENT_
 import { useChatMessages, useChatRealtime } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 
 interface Message {
   id: string;
@@ -255,26 +262,15 @@ export function AgentChatPanel() {
           )}
         </ScrollArea>
 
-        <div className="p-4 border-t space-y-3">
-          {messages.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-              {AGENT_QUICK_ACTIONS.slice(0, 4).map((action) => (
-                <Button key={action.id} variant="outline" size="sm" className="shrink-0 text-xs"
-                  onClick={() => handleQuickAction(action.prompt)} disabled={agentChat.isPending}>
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder="Chiedi qualcosa... (es: Quanti lead dalla Lombardia negli ultimi 3 giorni?)"
-              className="min-h-[44px] max-h-[120px] resize-none" disabled={agentChat.isPending} />
-            <Button size="icon" onClick={() => handleSend(input)} disabled={!input.trim() || agentChat.isPending} className="shrink-0">
-              {agentChat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
+        <QuickActionsBar
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          isPending={agentChat.isPending}
+          onSend={handleSend}
+          onQuickAction={handleQuickAction}
+          onKeyDown={handleKeyDown}
+        />
       </CardContent>
     </Card>
   );
@@ -358,6 +354,105 @@ function MessageBubble({ message }: { message: Message }) {
             </Collapsible>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+const OPERATIONAL_ACTIONS = [
+  { id: "new-contact", label: "Contatto", icon: UserPlus, route: "/contacts?create=true" },
+  { id: "new-deal", label: "Deal", icon: Briefcase, route: "/pipeline" },
+  { id: "new-ticket", label: "Ticket", icon: TicketPlus, route: "/tickets?create=true" },
+  { id: "new-appointment", label: "Appuntamento", icon: CalendarPlus, route: "/calendar?create=true" },
+] as const;
+
+function QuickActionsBar({
+  messages,
+  input,
+  setInput,
+  isPending,
+  onSend,
+  onQuickAction,
+  onKeyDown,
+}: {
+  messages: Message[];
+  input: string;
+  setInput: (v: string) => void;
+  isPending: boolean;
+  onSend: (text: string) => void;
+  onQuickAction: (prompt: string) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="border-t">
+      {/* Operational + AI quick actions row */}
+      <div className="px-4 pt-3 pb-1 flex items-center gap-2 overflow-x-auto scrollbar-thin">
+        <TooltipProvider delayDuration={300}>
+          {/* Operational shortcuts */}
+          {OPERATIONAL_ACTIONS.map((action) => (
+            <Tooltip key={action.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 h-8 gap-1.5 text-xs border-dashed"
+                  onClick={() => navigate(action.route)}
+                >
+                  <action.icon className="h-3.5 w-3.5" />
+                  <Plus className="h-2.5 w-2.5 -ml-1" />
+                  <span className="hidden sm:inline">{action.label}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Crea {action.label.toLowerCase()}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+
+          <Separator orientation="vertical" className="h-5 mx-1" />
+
+          {/* AI prompt shortcuts */}
+          {(messages.length > 0 ? AGENT_QUICK_ACTIONS.slice(0, 4) : []).map((action) => (
+            <Tooltip key={action.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 h-8 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => onQuickAction(action.prompt)}
+                  disabled={isPending}
+                >
+                  {action.label}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                {action.prompt}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </TooltipProvider>
+      </div>
+
+      {/* Input row */}
+      <div className="px-4 pb-4 pt-2 flex gap-2">
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Chiedi qualcosa... (es: Quanti lead dalla Lombardia negli ultimi 3 giorni?)"
+          className="min-h-[44px] max-h-[120px] resize-none"
+          disabled={isPending}
+        />
+        <Button
+          size="icon"
+          onClick={() => onSend(input)}
+          disabled={!input.trim() || isPending}
+          className="shrink-0"
+        >
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
       </div>
     </div>
   );
