@@ -654,8 +654,9 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
     if (includeDemographics) {
       let demoQuery = supabase
         .from("ad_demographic_stats")
-        .select("age_range, gender, spend, impressions, clicks, reach, stat_date")
-        .eq("brand_id", brandId)
+        .select("age_range, gender, spend, impressions, clicks, reach, stat_date");
+      demoQuery = applyBrandFilter(demoQuery, brandId);
+      demoQuery = demoQuery
         .gte("stat_date", dateFrom)
         .lte("stat_date", dateTo);
       if (platform) demoQuery = demoQuery.eq("platform", platform);
