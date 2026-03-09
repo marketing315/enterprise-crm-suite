@@ -53,6 +53,8 @@ import {
   useUnreadCounts,
   useMarkThreadRead,
   useThreadDisplayTitles,
+  useArchiveThread,
+  useDeleteThread,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
