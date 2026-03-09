@@ -768,6 +768,7 @@ async function runAgentLoop(
       body: JSON.stringify({
         model: "google/gemini-3.1-pro-preview",
         messages: currentMessages,
+        max_tokens: 1200,
         ...(isFirstRound || allToolsUsed.length < 6 ? { tools: AGENT_TOOLS, tool_choice: "auto" } : {}),
       }),
     });
