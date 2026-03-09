@@ -281,10 +281,10 @@ export default function Chat() {
                 <>
                   <CardHeader className="pb-3 border-b">
                     <div className="flex items-center gap-3">
-                      <ThreadIcon type={selectedThread?.type || "direct"} />
+                      <ThreadIcon type={selectedThread?.type || (draftExecutiveThread ? "executive" : "direct")} />
                       <div className="flex-1">
                         <CardTitle className="text-base">
-                          {selectedThread?.title || "Conversazione"}
+                          {draftExecutiveThread && !selectedThreadId ? "Nuova Chat AI" : (selectedThread?.title || "Conversazione")}
                         </CardTitle>
                         {selectedThread?.entity_type && (
                           <Badge variant="outline" className="text-xs mt-1">
