@@ -98,8 +98,8 @@ export function useCreateNewExecutiveThread() {
 
       if (error) throw error;
 
-      // Add the creator as a participant
-      await supabase.from("chat_thread_participants").insert({
+      // Add the creator as a member
+      await supabase.from("chat_thread_members").insert({
         thread_id: data.id,
         user_id: session.user.id,
       });
