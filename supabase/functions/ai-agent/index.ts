@@ -863,7 +863,7 @@ async function runAgentLoop(
     throw new Error(`AI gateway final error: ${finalResponse.status}`);
   }
   const finalResult = await finalResponse.json();
-  const finalMessage = finalResult?.choices?.[0]?.message?.content || "";
+  const finalMessage = cleanThinkingContent(finalResult?.choices?.[0]?.message?.content || "");
   console.log(`[ai-agent] Final message length: ${finalMessage.length}`);
   if (!finalMessage) {
     console.warn("[ai-agent] Final summarization returned empty, tools used:", allToolsUsed);
