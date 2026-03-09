@@ -272,6 +272,17 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
 ];
 
 // ── HELPERS ──
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+function isAllBrandsMode(brandId: string): boolean {
+  return brandId === SYSTEM_BRAND_ID;
+}
+
+/** Apply brand filter: skip filter for all-brands mode, otherwise eq brand_id */
+function applyBrandFilter(query: any, brandId: string): any {
+  if (isAllBrandsMode(brandId)) return query;
+  return query.eq("brand_id", brandId);
+}
+
 function getPeriodDates(period: string): { from: string; to: string } {
   const now = new Date();
   const to = now.toISOString();
@@ -444,22 +455,28 @@ async function executeDynamicQuery(supabase: SupabaseClient, brandId: string, ar
 }
 
 async function searchContacts(supabase: SupabaseClient, brandId: string, query: string, limit: number) {
-  const { data } = await supabase
+  let q = supabase
     .from("contacts")
-    .select("id, first_name, last_name, email, phone, city, cap, province, company_name, lead_type, status, created_at")
-    .eq("brand_id", brandId)
-    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%`)
+    .select("id, first_name, last_name, email, phone, city, cap, province, company_name, lead_type, status, created_at");
+  q = applyBrandFilter(q, brandId);
+  q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%`)
     .limit(limit);
+  const { data } = await q;
   return { contacts: data || [], count: (data || []).length };
 }
 
 async function getContactTimeline(supabase: SupabaseClient, brandId: string, contactId: string) {
+  const buildQ = (table: string, select: string, contactField: string, orderField: string) => {
+    let q = supabase.from(table).select(select);
+    q = applyBrandFilter(q, brandId);
+    return q.eq(contactField, contactId).order(orderField, { ascending: false }).limit(10);
+  };
   const [leads, deals, tickets, appointments, calls] = await Promise.all([
-    supabase.from("lead_events").select("id, source_name, lead_type, received_at").eq("brand_id", brandId).eq("contact_id", contactId).order("received_at", { ascending: false }).limit(10),
-    supabase.from("deals").select("id, value, status, created_at").eq("brand_id", brandId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(10),
-    supabase.from("tickets").select("id, status, priority, created_at").eq("brand_id", brandId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(10),
-    supabase.from("appointments").select("id, status, scheduled_at, appointment_type").eq("brand_id", brandId).eq("contact_id", contactId).order("scheduled_at", { ascending: false }).limit(10),
-    supabase.from("call_logs").select("id, status, outcome, started_at, duration_seconds").eq("brand_id", brandId).eq("contact_id", contactId).order("started_at", { ascending: false }).limit(10),
+    buildQ("lead_events", "id, source_name, lead_type, received_at", "contact_id", "received_at"),
+    buildQ("deals", "id, value, status, created_at", "contact_id", "created_at"),
+    buildQ("tickets", "id, status, priority, created_at", "contact_id", "created_at"),
+    buildQ("appointments", "id, status, scheduled_at, appointment_type", "contact_id", "scheduled_at"),
+    buildQ("call_logs", "id, status, outcome, started_at, duration_seconds", "contact_id", "started_at"),
   ]);
   return {
     leads: leads.data || [],
@@ -471,10 +488,13 @@ async function getContactTimeline(supabase: SupabaseClient, brandId: string, con
 }
 
 async function getPipelineStatus(supabase: SupabaseClient, brandId: string) {
-  const [dealsResult, stagesResult] = await Promise.all([
-    supabase.from("deals").select("id, value, status, current_stage_id, created_at, contact:contacts(first_name, last_name)").eq("brand_id", brandId).eq("status", "open").order("created_at", { ascending: true }),
-    supabase.from("pipeline_stages").select("id, name, sort_order").eq("brand_id", brandId).order("sort_order"),
-  ]);
+  let dealsQ = supabase.from("deals").select("id, value, status, current_stage_id, created_at, contact:contacts(first_name, last_name)");
+  dealsQ = applyBrandFilter(dealsQ, brandId);
+  dealsQ = dealsQ.eq("status", "open").order("created_at", { ascending: true });
+  let stagesQ = supabase.from("pipeline_stages").select("id, name, sort_order");
+  stagesQ = applyBrandFilter(stagesQ, brandId);
+  stagesQ = stagesQ.order("sort_order");
+  const [dealsResult, stagesResult] = await Promise.all([dealsQ, stagesQ]);
   interface Deal { id: string; value: number | null; current_stage_id: string | null; created_at: string; contact: { first_name: string | null; last_name: string | null } | null }
   interface Stage { id: string; name: string; sort_order: number }
   const deals = (dealsResult.data || []) as Deal[];
@@ -497,11 +517,12 @@ async function getPipelineStatus(supabase: SupabaseClient, brandId: string) {
 
 async function getOperatorPerformance(supabase: SupabaseClient, brandId: string, period: string) {
   const { from } = getPeriodDates(period);
-  const { data: ticketsData } = await supabase
+  let ticketQ = supabase
     .from("tickets")
-    .select("id, assigned_user_id, status, resolved_at, created_at, first_response_at, assignee:users!tickets_assigned_user_id_fkey(full_name)")
-    .eq("brand_id", brandId)
-    .gte("created_at", from);
+    .select("id, assigned_user_id, status, resolved_at, created_at, first_response_at, assignee:users!tickets_assigned_user_id_fkey(full_name)");
+  ticketQ = applyBrandFilter(ticketQ, brandId);
+  ticketQ = ticketQ.gte("created_at", from);
+  const { data: ticketsData } = await ticketQ;
   interface T { assigned_user_id: string | null; status: string; resolved_at: string | null; created_at: string; first_response_at: string | null; assignee: { full_name: string | null } | null }
   const tickets = (ticketsData || []) as T[];
   const stats: Record<string, { name: string; assigned: number; resolved: number; responseMs: number[] }> = {};
@@ -535,8 +556,9 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
     // 1. Campaign-level aggregated stats
     let campaignQuery = supabase
       .from("ad_platform_stats")
-      .select("external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, frequency, conversions, conversions_value, stat_date")
-      .eq("brand_id", brandId)
+      .select("external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, frequency, conversions, conversions_value, stat_date, brand_id");
+    campaignQuery = applyBrandFilter(campaignQuery, brandId);
+    campaignQuery = campaignQuery
       .gte("stat_date", dateFrom)
       .lte("stat_date", dateTo);
     if (platform) campaignQuery = campaignQuery.eq("platform", platform);
@@ -610,8 +632,9 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
     if (includeCreatives) {
       let creativeQuery = supabase
         .from("ad_creative_stats")
-        .select("external_ad_id, external_ad_name, external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, thumbnail_url, stat_date")
-        .eq("brand_id", brandId)
+        .select("external_ad_id, external_ad_name, external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, thumbnail_url, stat_date");
+      creativeQuery = applyBrandFilter(creativeQuery, brandId);
+      creativeQuery = creativeQuery
         .gte("stat_date", dateFrom)
         .lte("stat_date", dateTo);
       if (platform) creativeQuery = creativeQuery.eq("platform", platform);
@@ -641,8 +664,9 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
     if (includeDemographics) {
       let demoQuery = supabase
         .from("ad_demographic_stats")
-        .select("age_range, gender, spend, impressions, clicks, reach, stat_date")
-        .eq("brand_id", brandId)
+        .select("age_range, gender, spend, impressions, clicks, reach, stat_date");
+      demoQuery = applyBrandFilter(demoQuery, brandId);
+      demoQuery = demoQuery
         .gte("stat_date", dateFrom)
         .lte("stat_date", dateTo);
       if (platform) demoQuery = demoQuery.eq("platform", platform);
@@ -717,7 +741,8 @@ async function getRawTableData(supabase: SupabaseClient, brandId: string, args: 
     const ascending = (args.ascending as boolean) ?? false;
     const limit = Math.min((args.limit as number) || 20, 50);
 
-    let query = supabase.from(tableName).select(columns).eq("brand_id", brandId);
+    let query = supabase.from(tableName).select(columns);
+    query = applyBrandFilter(query, brandId);
 
     // Apply filters
     const filters = (args.filters as Record<string, unknown>) || {};
