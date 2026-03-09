@@ -466,12 +466,17 @@ async function searchContacts(supabase: SupabaseClient, brandId: string, query: 
 }
 
 async function getContactTimeline(supabase: SupabaseClient, brandId: string, contactId: string) {
+  const buildQ = (table: string, select: string, contactField: string, orderField: string) => {
+    let q = supabase.from(table).select(select);
+    q = applyBrandFilter(q, brandId);
+    return q.eq(contactField, contactId).order(orderField, { ascending: false }).limit(10);
+  };
   const [leads, deals, tickets, appointments, calls] = await Promise.all([
-    supabase.from("lead_events").select("id, source_name, lead_type, received_at").eq("brand_id", brandId).eq("contact_id", contactId).order("received_at", { ascending: false }).limit(10),
-    supabase.from("deals").select("id, value, status, created_at").eq("brand_id", brandId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(10),
-    supabase.from("tickets").select("id, status, priority, created_at").eq("brand_id", brandId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(10),
-    supabase.from("appointments").select("id, status, scheduled_at, appointment_type").eq("brand_id", brandId).eq("contact_id", contactId).order("scheduled_at", { ascending: false }).limit(10),
-    supabase.from("call_logs").select("id, status, outcome, started_at, duration_seconds").eq("brand_id", brandId).eq("contact_id", contactId).order("started_at", { ascending: false }).limit(10),
+    buildQ("lead_events", "id, source_name, lead_type, received_at", "contact_id", "received_at"),
+    buildQ("deals", "id, value, status, created_at", "contact_id", "created_at"),
+    buildQ("tickets", "id, status, priority, created_at", "contact_id", "created_at"),
+    buildQ("appointments", "id, status, scheduled_at, appointment_type", "contact_id", "scheduled_at"),
+    buildQ("call_logs", "id, status, outcome, started_at, duration_seconds", "contact_id", "started_at"),
   ]);
   return {
     leads: leads.data || [],
