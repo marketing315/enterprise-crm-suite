@@ -236,7 +236,8 @@ export function AgentChatPanel() {
                     <span className="text-sm text-muted-foreground">Sto analizzando i dati...</span>
                   </div>
                 </div>
-              )}
+               )}
+              <div ref={messagesEndRef} />
             </div>
           )}
         </ScrollArea>
