@@ -196,7 +196,9 @@ export function useChatThreads() {
         .order("updated_at", { ascending: false });
 
       if (isAllBrandsSelected && allBrandIds.length > 0) {
-        query = query.in("brand_id", allBrandIds);
+        // Include system brand ID so executive threads created under it are visible
+        const idsWithSystem = [...allBrandIds, currentBrand?.id].filter(Boolean) as string[];
+        query = query.in("brand_id", idsWithSystem);
       } else if (currentBrand) {
         query = query.eq("brand_id", currentBrand.id);
       }
