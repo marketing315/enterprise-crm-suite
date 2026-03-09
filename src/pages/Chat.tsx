@@ -55,6 +55,8 @@ import {
   useThreadDisplayTitles,
   useArchiveThread,
   useDeleteThread,
+  useArchivedThreads,
+  useUnarchiveThread,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
