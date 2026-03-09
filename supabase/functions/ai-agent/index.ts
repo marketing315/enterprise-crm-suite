@@ -731,7 +731,8 @@ async function getRawTableData(supabase: SupabaseClient, brandId: string, args: 
     const ascending = (args.ascending as boolean) ?? false;
     const limit = Math.min((args.limit as number) || 20, 50);
 
-    let query = supabase.from(tableName).select(columns).eq("brand_id", brandId);
+    let query = supabase.from(tableName).select(columns);
+    query = applyBrandFilter(query, brandId);
 
     // Apply filters
     const filters = (args.filters as Record<string, unknown>) || {};
