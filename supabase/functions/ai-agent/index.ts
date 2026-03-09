@@ -780,8 +780,11 @@ async function runAgentLoop(
     }
 
     const result = await response.json();
-    const assistantMessage = result.choices[0].message;
-    const toolCalls = assistantMessage.tool_calls || [];
+    const assistantMessage = result?.choices?.[0]?.message;
+    if (!assistantMessage) {
+      throw new Error("AI response missing message payload");
+    }
+    const toolCalls = Array.isArray(assistantMessage.tool_calls) ? assistantMessage.tool_calls : [];
 
     if (toolCalls.length === 0) {
       // No more tool calls — return final content
