@@ -9,7 +9,7 @@ import { useWriteBrandId } from "@/hooks/useWriteBrandId";
 export interface ChatThread {
   id: string;
   brand_id: string;
-  type: "direct" | "group" | "entity";
+  type: "direct" | "group" | "entity" | "executive";
   entity_type: string | null;
   entity_id: string | null;
   title: string | null;
