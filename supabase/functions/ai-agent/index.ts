@@ -286,6 +286,102 @@ function getPeriodDates(period: string): { from: string; to: string } {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
 
+type AgentHistoryMessage = { role: "user" | "assistant"; content: string };
+
+const MAX_CONTEXT_MESSAGES = 12;
+const MAX_CONTEXT_TOTAL_CHARS = 12000;
+const MAX_CONTEXT_MESSAGE_CHARS = 1200;
+const THREAD_HISTORY_FETCH_LIMIT = 30;
+
+function compactHistory(messages: AgentHistoryMessage[]): AgentHistoryMessage[] {
+  const selected: AgentHistoryMessage[] = [];
+  let totalChars = 0;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (!msg.content) continue;
+    if (selected.length >= MAX_CONTEXT_MESSAGES) break;
+
+    if (totalChars + msg.content.length > MAX_CONTEXT_TOTAL_CHARS && selected.length > 0) break;
+
+    selected.push({
+      role: msg.role,
+      content: msg.content.slice(0, MAX_CONTEXT_MESSAGE_CHARS),
+    });
+    totalChars += Math.min(msg.content.length, MAX_CONTEXT_MESSAGE_CHARS);
+  }
+
+  return selected.reverse();
+}
+
+function sanitizeRequestedHistory(history: unknown): AgentHistoryMessage[] {
+  if (!Array.isArray(history)) return [];
+
+  const normalized = history
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const role = (item as { role?: string }).role;
+      const content = (item as { content?: unknown }).content;
+
+      if ((role !== "user" && role !== "assistant") || typeof content !== "string") return null;
+
+      const clean = content.trim();
+      if (!clean) return null;
+
+      return { role, content: clean } as AgentHistoryMessage;
+    })
+    .filter((m): m is AgentHistoryMessage => m !== null);
+
+  return compactHistory(normalized);
+}
+
+async function getThreadHistory(
+  supabase: SupabaseClient,
+  threadId: string
+): Promise<AgentHistoryMessage[]> {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("sender_type, message_text, created_at")
+    .eq("thread_id", threadId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(THREAD_HISTORY_FETCH_LIMIT);
+
+  if (error) {
+    console.warn("[ai-agent] Failed to load thread history, fallback to request history:", error.message);
+    return [];
+  }
+
+  const normalized = (data || [])
+    .reverse()
+    .map((row: { sender_type: string; message_text: string }) => {
+      if (row.sender_type !== "user" && row.sender_type !== "ai") return null;
+      const clean = (row.message_text || "").trim();
+      if (!clean) return null;
+
+      return {
+        role: row.sender_type === "ai" ? "assistant" : "user",
+        content: clean,
+      } as AgentHistoryMessage;
+    })
+    .filter((m): m is AgentHistoryMessage => m !== null);
+
+  return compactHistory(normalized);
+}
+
+async function resolveConversationHistory(
+  supabase: SupabaseClient,
+  threadId: string | undefined,
+  requestedHistory: unknown
+): Promise<AgentHistoryMessage[]> {
+  if (!threadId) return sanitizeRequestedHistory(requestedHistory);
+
+  const dbHistory = await getThreadHistory(supabase, threadId);
+  if (dbHistory.length > 0) return dbHistory;
+
+  return sanitizeRequestedHistory(requestedHistory);
+}
+
 // ── TOOL HANDLERS ──
 async function handleToolCall(
   supabase: SupabaseClient,
