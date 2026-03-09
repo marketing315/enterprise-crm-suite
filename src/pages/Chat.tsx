@@ -74,7 +74,7 @@ export default function Chat() {
   const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
-  const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId;
+  const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId || draftExecutiveThread;
 
   // Auto-enable AI for executive threads
   useEffect(() => {
