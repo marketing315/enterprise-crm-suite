@@ -8065,6 +8065,13 @@ export type Database = {
           scope: Database["public"]["Enums"]["tag_scope"]
         }[]
       }
+      get_thread_display_titles: {
+        Args: { p_thread_ids: string[] }
+        Returns: {
+          display_title: string
+          thread_id: string
+        }[]
+      }
       get_ticket_queue_counts:
         | {
             Args: {
