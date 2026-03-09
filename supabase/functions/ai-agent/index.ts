@@ -108,12 +108,12 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
         properties: {
           dataset: {
             type: "string",
-            enum: ["leads", "contacts", "deals", "tickets", "appointments", "calls"],
+            enum: ["leads", "contacts", "deals", "tickets", "appointments", "calls", "expenses", "budgets", "sales_orders", "products", "marketing_campaigns", "deal_transitions"],
             description: "Dataset da interrogare",
           },
           metric: {
             type: "string",
-            enum: ["count", "count_distinct_contacts", "sum_value", "avg_value", "sum_lead_cost"],
+            enum: ["count", "count_distinct_contacts", "sum_value", "avg_value", "sum_lead_cost", "sum_amount", "avg_amount", "sum_planned_amount", "sum_total_amount", "sum_paid_amount", "sum_default_price", "sum_planned_budget", "sum_gross_amount", "sum_discount_amount", "sum_tax_amount"],
             description: "Metrica da calcolare (default: count)",
           },
           date_from: {
