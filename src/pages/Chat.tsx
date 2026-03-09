@@ -70,7 +70,7 @@ export default function Chat() {
   const markRead = useMarkThreadRead();
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
-  const isExecutiveThread = selectedThread?.type === "executive";
+  const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId;
 
   // Auto-enable AI for executive threads
   useEffect(() => {
