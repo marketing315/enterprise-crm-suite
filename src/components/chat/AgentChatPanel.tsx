@@ -71,6 +71,7 @@ export function AgentChatPanel() {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const agentChat = useAIAgentChat();
+  const createNewThread = useCreateNewExecutiveThread();
 
   const { data: threadId, isLoading: threadLoading } = useExecutiveThread();
   const { data: persistedMessages } = useChatMessages(threadId || null);
