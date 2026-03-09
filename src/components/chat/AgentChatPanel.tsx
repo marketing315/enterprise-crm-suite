@@ -358,3 +358,102 @@ function MessageBubble({ message }: { message: Message }) {
     </div>
   );
 }
+
+const OPERATIONAL_ACTIONS = [
+  { id: "new-contact", label: "Contatto", icon: UserPlus, route: "/contacts?create=true" },
+  { id: "new-deal", label: "Deal", icon: Briefcase, route: "/pipeline" },
+  { id: "new-ticket", label: "Ticket", icon: TicketPlus, route: "/tickets?create=true" },
+  { id: "new-appointment", label: "Appuntamento", icon: CalendarPlus, route: "/calendar?create=true" },
+] as const;
+
+function QuickActionsBar({
+  messages,
+  input,
+  setInput,
+  isPending,
+  onSend,
+  onQuickAction,
+  onKeyDown,
+}: {
+  messages: Message[];
+  input: string;
+  setInput: (v: string) => void;
+  isPending: boolean;
+  onSend: (text: string) => void;
+  onQuickAction: (prompt: string) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="border-t">
+      {/* Operational + AI quick actions row */}
+      <div className="px-4 pt-3 pb-1 flex items-center gap-2 overflow-x-auto scrollbar-thin">
+        <TooltipProvider delayDuration={300}>
+          {/* Operational shortcuts */}
+          {OPERATIONAL_ACTIONS.map((action) => (
+            <Tooltip key={action.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 h-8 gap-1.5 text-xs border-dashed"
+                  onClick={() => navigate(action.route)}
+                >
+                  <action.icon className="h-3.5 w-3.5" />
+                  <Plus className="h-2.5 w-2.5 -ml-1" />
+                  <span className="hidden sm:inline">{action.label}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Crea {action.label.toLowerCase()}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+
+          <Separator orientation="vertical" className="h-5 mx-1" />
+
+          {/* AI prompt shortcuts */}
+          {(messages.length > 0 ? AGENT_QUICK_ACTIONS.slice(0, 4) : []).map((action) => (
+            <Tooltip key={action.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 h-8 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => onQuickAction(action.prompt)}
+                  disabled={isPending}
+                >
+                  {action.label}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                {action.prompt}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </TooltipProvider>
+      </div>
+
+      {/* Input row */}
+      <div className="px-4 pb-4 pt-2 flex gap-2">
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Chiedi qualcosa... (es: Quanti lead dalla Lombardia negli ultimi 3 giorni?)"
+          className="min-h-[44px] max-h-[120px] resize-none"
+          disabled={isPending}
+        />
+        <Button
+          size="icon"
+          onClick={() => onSend(input)}
+          disabled={!input.trim() || isPending}
+          className="shrink-0"
+        >
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
