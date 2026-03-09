@@ -84,12 +84,18 @@ export function useCreateNewExecutiveThread() {
     mutationFn: async (): Promise<string> => {
       if (!currentBrand || !session?.user?.id) throw new Error("No brand or user");
 
+      // Resolve internal user ID from auth UUID
+      const { data: internalUserId, error: rpcError } = await supabase.rpc("get_user_id", {
+        _auth_uid: session.user.id,
+      });
+      if (rpcError || !internalUserId) throw new Error("Cannot resolve internal user ID");
+
       // Insert a new executive thread
       const { data, error } = await supabase
         .from("chat_threads")
         .insert({
           brand_id: currentBrand.id,
-          created_by: session.user.id,
+          created_by: internalUserId,
           type: "executive" as any,
           title: `Agente AI Executive — ${new Date().toLocaleDateString("it-IT")}`,
         })
@@ -101,7 +107,7 @@ export function useCreateNewExecutiveThread() {
       // Add the creator as a member
       await supabase.from("chat_thread_members").insert({
         thread_id: data.id,
-        user_id: session.user.id,
+        user_id: internalUserId,
       });
 
       return data.id;
