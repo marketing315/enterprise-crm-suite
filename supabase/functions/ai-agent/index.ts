@@ -488,10 +488,13 @@ async function getContactTimeline(supabase: SupabaseClient, brandId: string, con
 }
 
 async function getPipelineStatus(supabase: SupabaseClient, brandId: string) {
-  const [dealsResult, stagesResult] = await Promise.all([
-    supabase.from("deals").select("id, value, status, current_stage_id, created_at, contact:contacts(first_name, last_name)").eq("brand_id", brandId).eq("status", "open").order("created_at", { ascending: true }),
-    supabase.from("pipeline_stages").select("id, name, sort_order").eq("brand_id", brandId).order("sort_order"),
-  ]);
+  let dealsQ = supabase.from("deals").select("id, value, status, current_stage_id, created_at, contact:contacts(first_name, last_name)");
+  dealsQ = applyBrandFilter(dealsQ, brandId);
+  dealsQ = dealsQ.eq("status", "open").order("created_at", { ascending: true });
+  let stagesQ = supabase.from("pipeline_stages").select("id, name, sort_order");
+  stagesQ = applyBrandFilter(stagesQ, brandId);
+  stagesQ = stagesQ.order("sort_order");
+  const [dealsResult, stagesResult] = await Promise.all([dealsQ, stagesQ]);
   interface Deal { id: string; value: number | null; current_stage_id: string | null; created_at: string; contact: { first_name: string | null; last_name: string | null } | null }
   interface Stage { id: string; name: string; sort_order: number }
   const deals = (dealsResult.data || []) as Deal[];
