@@ -89,11 +89,30 @@ export default function Chat() {
   const agentChat = useAIAgentChat();
   const createNewAIThread = useCreateNewExecutiveThread();
   const createGroupChat = useCreateGroupChat();
+  const archiveThread = useArchiveThread();
+  const deleteThread = useDeleteThread();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
   const markRead = useMarkThreadRead();
   const threadIds = threads.map(t => t.id);
   const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
+  const [deleteConfirmThreadId, setDeleteConfirmThreadId] = useState<string | null>(null);
+
+  const handleArchiveThread = (threadId: string) => {
+    if (selectedThreadId === threadId) setSelectedThreadId(null);
+    archiveThread.mutate(threadId);
+  };
+
+  const handleDeleteThread = (threadId: string) => {
+    setDeleteConfirmThreadId(threadId);
+  };
+
+  const confirmDeleteThread = () => {
+    if (!deleteConfirmThreadId) return;
+    if (selectedThreadId === deleteConfirmThreadId) setSelectedThreadId(null);
+    deleteThread.mutate(deleteConfirmThreadId);
+    setDeleteConfirmThreadId(null);
+  };
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId || draftExecutiveThread;
