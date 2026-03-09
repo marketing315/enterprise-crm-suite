@@ -17,6 +17,33 @@ interface AgentResponse {
   had_fallback?: boolean;
 }
 
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_HISTORY_TOTAL_CHARS = 12000;
+const MAX_HISTORY_MESSAGE_CHARS = 1200;
+
+function compactConversationHistory(history: AgentMessage[]): AgentMessage[] {
+  const normalized = history
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .map((m) => ({
+      role: m.role,
+      content: m.content.trim().slice(0, MAX_HISTORY_MESSAGE_CHARS),
+    }))
+    .filter((m) => m.content.length > 0);
+
+  const selected: AgentMessage[] = [];
+  let totalChars = 0;
+
+  for (let i = normalized.length - 1; i >= 0; i--) {
+    const msg = normalized[i];
+    if (selected.length >= MAX_HISTORY_MESSAGES) break;
+    if (totalChars + msg.content.length > MAX_HISTORY_TOTAL_CHARS && selected.length > 0) break;
+    selected.push(msg);
+    totalChars += msg.content.length;
+  }
+
+  return selected.reverse();
+}
+
 /**
  * Hook to get or create the executive thread for the current user+brand.
  * The thread persists across sessions.
@@ -68,12 +95,14 @@ export function useAIAgentChat() {
       let data: AgentResponse | null = null;
       let error: Error | null = null;
       try {
+        const safeHistory = compactConversationHistory(conversationHistory);
+
         const result = await supabase.functions.invoke("ai-agent", {
           body: {
             message,
             threadId,
             brandId: currentBrand.id,
-            conversationHistory,
+            ...(safeHistory.length > 0 ? { conversationHistory: safeHistory } : {}),
           },
         });
         data = result.data;

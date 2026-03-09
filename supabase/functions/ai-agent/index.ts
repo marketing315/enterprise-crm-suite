@@ -286,6 +286,102 @@ function getPeriodDates(period: string): { from: string; to: string } {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
 
+type AgentHistoryMessage = { role: "user" | "assistant"; content: string };
+
+const MAX_CONTEXT_MESSAGES = 12;
+const MAX_CONTEXT_TOTAL_CHARS = 12000;
+const MAX_CONTEXT_MESSAGE_CHARS = 1200;
+const THREAD_HISTORY_FETCH_LIMIT = 30;
+
+function compactHistory(messages: AgentHistoryMessage[]): AgentHistoryMessage[] {
+  const selected: AgentHistoryMessage[] = [];
+  let totalChars = 0;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (!msg.content) continue;
+    if (selected.length >= MAX_CONTEXT_MESSAGES) break;
+
+    if (totalChars + msg.content.length > MAX_CONTEXT_TOTAL_CHARS && selected.length > 0) break;
+
+    selected.push({
+      role: msg.role,
+      content: msg.content.slice(0, MAX_CONTEXT_MESSAGE_CHARS),
+    });
+    totalChars += Math.min(msg.content.length, MAX_CONTEXT_MESSAGE_CHARS);
+  }
+
+  return selected.reverse();
+}
+
+function sanitizeRequestedHistory(history: unknown): AgentHistoryMessage[] {
+  if (!Array.isArray(history)) return [];
+
+  const normalized = history
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const role = (item as { role?: string }).role;
+      const content = (item as { content?: unknown }).content;
+
+      if ((role !== "user" && role !== "assistant") || typeof content !== "string") return null;
+
+      const clean = content.trim();
+      if (!clean) return null;
+
+      return { role, content: clean } as AgentHistoryMessage;
+    })
+    .filter((m): m is AgentHistoryMessage => m !== null);
+
+  return compactHistory(normalized);
+}
+
+async function getThreadHistory(
+  supabase: SupabaseClient,
+  threadId: string
+): Promise<AgentHistoryMessage[]> {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("sender_type, message_text, created_at")
+    .eq("thread_id", threadId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(THREAD_HISTORY_FETCH_LIMIT);
+
+  if (error) {
+    console.warn("[ai-agent] Failed to load thread history, fallback to request history:", error.message);
+    return [];
+  }
+
+  const normalized = (data || [])
+    .reverse()
+    .map((row: { sender_type: string; message_text: string }) => {
+      if (row.sender_type !== "user" && row.sender_type !== "ai") return null;
+      const clean = (row.message_text || "").trim();
+      if (!clean) return null;
+
+      return {
+        role: row.sender_type === "ai" ? "assistant" : "user",
+        content: clean,
+      } as AgentHistoryMessage;
+    })
+    .filter((m): m is AgentHistoryMessage => m !== null);
+
+  return compactHistory(normalized);
+}
+
+async function resolveConversationHistory(
+  supabase: SupabaseClient,
+  threadId: string | undefined,
+  requestedHistory: unknown
+): Promise<AgentHistoryMessage[]> {
+  if (!threadId) return sanitizeRequestedHistory(requestedHistory);
+
+  const dbHistory = await getThreadHistory(supabase, threadId);
+  if (dbHistory.length > 0) return dbHistory;
+
+  return sanitizeRequestedHistory(requestedHistory);
+}
+
 // ── TOOL HANDLERS ──
 async function handleToolCall(
   supabase: SupabaseClient,
@@ -672,6 +768,7 @@ async function runAgentLoop(
       body: JSON.stringify({
         model: "google/gemini-3.1-pro-preview",
         messages: currentMessages,
+        max_tokens: 1200,
         ...(isFirstRound || allToolsUsed.length < 6 ? { tools: AGENT_TOOLS, tool_choice: "auto" } : {}),
       }),
     });
@@ -683,8 +780,11 @@ async function runAgentLoop(
     }
 
     const result = await response.json();
-    const assistantMessage = result.choices[0].message;
-    const toolCalls = assistantMessage.tool_calls || [];
+    const assistantMessage = result?.choices?.[0]?.message;
+    if (!assistantMessage) {
+      throw new Error("AI response missing message payload");
+    }
+    const toolCalls = Array.isArray(assistantMessage.tool_calls) ? assistantMessage.tool_calls : [];
 
     if (toolCalls.length === 0) {
       // No more tool calls — return final content
@@ -707,11 +807,12 @@ async function runAgentLoop(
   const finalResponse = await fetchWithTimeout(AI_GATEWAY_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages }),
+    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages, max_tokens: 1200 }),
   });
   if (!finalResponse.ok) throw new Error(`AI gateway final error: ${finalResponse.status}`);
   const finalResult = await finalResponse.json();
-  return { content: finalResult.choices[0].message.content || "", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
+  const finalMessage = finalResult?.choices?.[0]?.message?.content || "";
+  return { content: finalMessage, toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
 }
 
 // Fetch with timeout + retry
@@ -761,7 +862,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { message, threadId, brandId, conversationHistory = [] } = await req.json();
+    const { message, threadId, brandId, conversationHistory: requestConversationHistory = [] } = await req.json();
     if (!message || !brandId) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -779,6 +880,13 @@ Deno.serve(async (req: Request) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const conversationHistoryForAI = await resolveConversationHistory(
+      supabase,
+      threadId,
+      requestConversationHistory
+    );
+    console.log(`[ai-agent] Context history selected: ${conversationHistoryForAI.length} messages`);
 
     const startTime = Date.now();
 
@@ -806,7 +914,7 @@ Deno.serve(async (req: Request) => {
     // ── Build messages ──
     const aiMessages: Array<{ role: string; content: string }> = [
       { role: "system", content: EXECUTIVE_AGENT_PROMPT },
-      ...conversationHistory,
+      ...conversationHistoryForAI,
       { role: "user", content: message },
     ];
 
