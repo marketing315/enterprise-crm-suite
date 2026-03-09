@@ -416,7 +416,7 @@ function ThreadItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <p className={cn("text-sm truncate", unreadCount > 0 && "font-semibold")}>
-            {thread.title || getThreadDefaultTitle(thread)}
+            {displayTitle || thread.title || getThreadDefaultTitle(thread)}
           </p>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1 text-[10px] shrink-0">
