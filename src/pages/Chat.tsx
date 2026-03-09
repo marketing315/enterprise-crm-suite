@@ -474,20 +474,24 @@ function ThreadItem({
   unreadCount,
   displayTitle,
   onClick,
+  onArchive,
+  onDelete,
 }: {
   thread: ChatThread;
   isSelected: boolean;
   unreadCount: number;
   displayTitle?: string;
   onClick: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        "w-full p-3 text-left hover:bg-muted/50 transition-colors flex gap-3",
+        "w-full p-3 text-left hover:bg-muted/50 transition-colors flex gap-3 cursor-pointer group relative",
         isSelected && "bg-muted"
       )}
+      onClick={onClick}
     >
       <ThreadIcon type={thread.type} />
       <div className="flex-1 min-w-0">
@@ -495,11 +499,35 @@ function ThreadItem({
           <p className={cn("text-sm truncate", unreadCount > 0 && "font-semibold")}>
             {displayTitle || thread.title || getThreadDefaultTitle(thread)}
           </p>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1 text-[10px] shrink-0">
-              {unreadCount}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-[20px] px-1 text-[10px]">
+                {unreadCount}
+              </Badge>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={onArchive}>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archivia
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {getThreadSubtitle(thread)}
@@ -511,7 +539,7 @@ function ThreadItem({
           })}
         </p>
       </div>
-    </button>
+    </div>
   );
 }
 
