@@ -38,6 +38,7 @@ import {
   Settings,
   MoreVertical,
   Archive,
+  ArchiveRestore,
   Trash2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -55,6 +56,8 @@ import {
   useThreadDisplayTitles,
   useArchiveThread,
   useDeleteThread,
+  useArchivedThreads,
+  useUnarchiveThread,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
@@ -91,12 +94,15 @@ export default function Chat() {
   const createGroupChat = useCreateGroupChat();
   const archiveThread = useArchiveThread();
   const deleteThread = useDeleteThread();
+  const unarchiveThread = useUnarchiveThread();
+  const { data: archivedThreads = [], isLoading: archivedLoading } = useArchivedThreads();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
   const markRead = useMarkThreadRead();
-  const threadIds = threads.map(t => t.id);
-  const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
+  const allThreadIds = [...threads.map(t => t.id), ...archivedThreads.map(t => t.id)];
+  const { data: titleMap = new Map() } = useThreadDisplayTitles(allThreadIds);
   const [deleteConfirmThreadId, setDeleteConfirmThreadId] = useState<string | null>(null);
+  const [threadListTab, setThreadListTab] = useState<"active" | "archived">("active");
 
   const handleArchiveThread = (threadId: string) => {
     if (selectedThreadId === threadId) setSelectedThreadId(null);
@@ -273,7 +279,34 @@ export default function Chat() {
                 </div>
               </CardHeader>
 
-              {!threadsLoading && threads.length === 0 && (
+              {/* Active / Archived tabs */}
+              <div className="px-3 pb-2 flex gap-1">
+                <Button
+                  variant={threadListTab === "active" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="flex-1 text-xs h-7"
+                  onClick={() => setThreadListTab("active")}
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  Attive
+                </Button>
+                <Button
+                  variant={threadListTab === "archived" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="flex-1 text-xs h-7"
+                  onClick={() => setThreadListTab("archived")}
+                >
+                  <Archive className="h-3 w-3 mr-1" />
+                  Archiviate
+                  {archivedThreads.length > 0 && (
+                    <Badge variant="outline" className="ml-1 h-4 min-w-[16px] px-1 text-[9px]">
+                      {archivedThreads.length}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
+
+              {threadListTab === "active" && !threadsLoading && threads.length === 0 && (
                 <div className="px-3 pb-2">
                   <Button 
                     variant="outline" 
@@ -287,32 +320,65 @@ export default function Chat() {
               )}
               <CardContent className="flex-1 p-0 overflow-hidden">
                 <ScrollArea className="h-full">
-                  {threadsLoading ? (
-                    <div className="flex items-center justify-center p-6">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : threads.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-6 text-center">
-                      <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-2" />
-                      <span className="text-sm text-muted-foreground">
-                        Nessuna conversazione
-                      </span>
-                    </div>
+                  {threadListTab === "active" ? (
+                    // Active threads
+                    threadsLoading ? (
+                      <div className="flex items-center justify-center p-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : threads.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-6 text-center">
+                        <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                        <span className="text-sm text-muted-foreground">
+                          Nessuna conversazione
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {threads.map((thread) => (
+                          <ThreadItem
+                            key={thread.id}
+                            thread={thread}
+                            isSelected={thread.id === selectedThreadId}
+                            unreadCount={unreadMap.get(thread.id) || 0}
+                            displayTitle={titleMap.get(thread.id)}
+                            onClick={() => { setSelectedThreadId(thread.id); setDraftExecutiveThread(false); }}
+                            onArchive={() => handleArchiveThread(thread.id)}
+                            onDelete={() => handleDeleteThread(thread.id)}
+                          />
+                        ))}
+                      </div>
+                    )
                   ) : (
-                    <div className="divide-y">
-                      {threads.map((thread) => (
-                        <ThreadItem
-                          key={thread.id}
-                          thread={thread}
-                          isSelected={thread.id === selectedThreadId}
-                          unreadCount={unreadMap.get(thread.id) || 0}
-                          displayTitle={titleMap.get(thread.id)}
-                          onClick={() => { setSelectedThreadId(thread.id); setDraftExecutiveThread(false); }}
-                          onArchive={() => handleArchiveThread(thread.id)}
-                          onDelete={() => handleDeleteThread(thread.id)}
-                        />
-                      ))}
-                    </div>
+                    // Archived threads
+                    archivedLoading ? (
+                      <div className="flex items-center justify-center p-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : archivedThreads.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-6 text-center">
+                        <Archive className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                        <span className="text-sm text-muted-foreground">
+                          Nessuna conversazione archiviata
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {archivedThreads.map((thread) => (
+                          <ThreadItem
+                            key={thread.id}
+                            thread={thread}
+                            isSelected={thread.id === selectedThreadId}
+                            unreadCount={0}
+                            displayTitle={titleMap.get(thread.id)}
+                            onClick={() => { setSelectedThreadId(thread.id); setDraftExecutiveThread(false); }}
+                            onUnarchive={() => unarchiveThread.mutate(thread.id)}
+                            onDelete={() => handleDeleteThread(thread.id)}
+                            isArchived
+                          />
+                        ))}
+                      </div>
+                    )
                   )}
                 </ScrollArea>
               </CardContent>
@@ -475,15 +541,19 @@ function ThreadItem({
   displayTitle,
   onClick,
   onArchive,
+  onUnarchive,
   onDelete,
+  isArchived = false,
 }: {
   thread: ChatThread;
   isSelected: boolean;
   unreadCount: number;
   displayTitle?: string;
   onClick: () => void;
-  onArchive: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onDelete: () => void;
+  isArchived?: boolean;
 }) {
   return (
     <div
@@ -516,10 +586,17 @@ function ThreadItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuItem onClick={onArchive}>
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archivia
-                </DropdownMenuItem>
+                {isArchived && onUnarchive ? (
+                  <DropdownMenuItem onClick={onUnarchive}>
+                    <ArchiveRestore className="h-4 w-4 mr-2" />
+                    Ripristina
+                  </DropdownMenuItem>
+                ) : onArchive ? (
+                  <DropdownMenuItem onClick={onArchive}>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archivia
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />

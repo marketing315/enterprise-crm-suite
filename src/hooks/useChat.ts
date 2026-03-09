@@ -440,7 +440,35 @@ export function useThreadDisplayTitles(threadIds: string[]) {
   });
 }
 
-// Archive a thread (soft-hide)
+// Fetch archived threads
+export function useArchivedThreads() {
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
+
+  return useQuery({
+    queryKey: ["chat-threads-archived", currentBrand?.id, isAllBrandsSelected],
+    queryFn: async (): Promise<ChatThread[]> => {
+      let query = supabase
+        .from("chat_threads")
+        .select("*")
+        .not("archived_at", "is", null)
+        .order("updated_at", { ascending: false });
+
+      if (isAllBrandsSelected && allBrandIds.length > 0) {
+        const idsWithSystem = [...allBrandIds, currentBrand?.id].filter(Boolean) as string[];
+        query = query.in("brand_id", idsWithSystem);
+      } else if (currentBrand) {
+        query = query.eq("brand_id", currentBrand.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as ChatThread[];
+    },
+    enabled: (!!currentBrand || (isAllBrandsSelected && allBrandIds.length > 0)),
+  });
+}
+
+// Archive a thread (soft-hide) — optimistic
 export function useArchiveThread() {
   const queryClient = useQueryClient();
 
@@ -452,37 +480,109 @@ export function useArchiveThread() {
         .eq("id", threadId);
       if (error) throw error;
     },
+    onMutate: async (threadId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["chat-threads"] });
+      const prev = queryClient.getQueryData<ChatThread[]>(["chat-threads"]);
+      if (prev) {
+        queryClient.setQueryData<ChatThread[]>(
+          ["chat-threads"],
+          (old) => (old || []).filter((t) => t.id !== threadId)
+        );
+      }
+      return { prev };
+    },
+    onError: (_err, _threadId, context) => {
+      if (context?.prev) queryClient.setQueryData(["chat-threads"], context.prev);
+      toast.error("Errore nell'archiviazione");
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
-      queryClient.invalidateQueries({ queryKey: ["executive-thread"] });
       toast.success("Conversazione archiviata");
     },
-    onError: () => toast.error("Errore nell'archiviazione"),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-threads-archived"] });
+      queryClient.invalidateQueries({ queryKey: ["executive-thread"] });
+    },
   });
 }
 
-// Delete a thread and its messages permanently
+// Unarchive a thread — optimistic
+export function useUnarchiveThread() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      const { error } = await (supabase as any)
+        .from("chat_threads")
+        .update({ archived_at: null })
+        .eq("id", threadId);
+      if (error) throw error;
+    },
+    onMutate: async (threadId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["chat-threads-archived"] });
+      const prev = queryClient.getQueryData<ChatThread[]>(["chat-threads-archived"]);
+      if (prev) {
+        queryClient.setQueryData<ChatThread[]>(
+          ["chat-threads-archived"],
+          (old) => (old || []).filter((t) => t.id !== threadId)
+        );
+      }
+      return { prev };
+    },
+    onError: (_err, _threadId, context) => {
+      if (context?.prev) queryClient.setQueryData(["chat-threads-archived"], context.prev);
+      toast.error("Errore nel ripristino");
+    },
+    onSuccess: () => {
+      toast.success("Conversazione ripristinata");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-threads-archived"] });
+      queryClient.invalidateQueries({ queryKey: ["executive-thread"] });
+    },
+  });
+}
+
+// Delete a thread and its messages permanently — optimistic
 export function useDeleteThread() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (threadId: string) => {
-      // Delete messages first (FK constraint)
       await supabase.from("chat_messages").delete().eq("thread_id", threadId);
-      await (supabase as any).from("chat_message_reads").delete().eq("message_id", threadId); // cleanup
+      await (supabase as any).from("chat_message_reads").delete().eq("message_id", threadId);
       await (supabase as any).from("chat_thread_members").delete().eq("thread_id", threadId);
       await (supabase as any).from("ai_chat_runs").delete().eq("thread_id", threadId);
       const { error } = await supabase.from("chat_threads").delete().eq("id", threadId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
-      queryClient.invalidateQueries({ queryKey: ["executive-thread"] });
-      toast.success("Conversazione eliminata");
+    onMutate: async (threadId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["chat-threads"] });
+      await queryClient.cancelQueries({ queryKey: ["chat-threads-archived"] });
+      const prevThreads = queryClient.getQueryData<ChatThread[]>(["chat-threads"]);
+      const prevArchived = queryClient.getQueryData<ChatThread[]>(["chat-threads-archived"]);
+      if (prevThreads) {
+        queryClient.setQueryData<ChatThread[]>(["chat-threads"], (old) => (old || []).filter((t) => t.id !== threadId));
+      }
+      if (prevArchived) {
+        queryClient.setQueryData<ChatThread[]>(["chat-threads-archived"], (old) => (old || []).filter((t) => t.id !== threadId));
+      }
+      return { prevThreads, prevArchived };
     },
-    onError: (err: Error) => {
+    onError: (err: Error, _threadId, context) => {
+      if (context?.prevThreads) queryClient.setQueryData(["chat-threads"], context.prevThreads);
+      if (context?.prevArchived) queryClient.setQueryData(["chat-threads-archived"], context.prevArchived);
       console.error("Delete thread error:", err);
       toast.error("Errore nell'eliminazione");
+    },
+    onSuccess: () => {
+      toast.success("Conversazione eliminata");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-threads-archived"] });
+      queryClient.invalidateQueries({ queryKey: ["executive-thread"] });
     },
   });
 }
