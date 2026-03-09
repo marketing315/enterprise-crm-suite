@@ -94,12 +94,15 @@ export default function Chat() {
   const createGroupChat = useCreateGroupChat();
   const archiveThread = useArchiveThread();
   const deleteThread = useDeleteThread();
+  const unarchiveThread = useUnarchiveThread();
+  const { data: archivedThreads = [], isLoading: archivedLoading } = useArchivedThreads();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
   const markRead = useMarkThreadRead();
-  const threadIds = threads.map(t => t.id);
-  const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
+  const allThreadIds = [...threads.map(t => t.id), ...archivedThreads.map(t => t.id)];
+  const { data: titleMap = new Map() } = useThreadDisplayTitles(allThreadIds);
   const [deleteConfirmThreadId, setDeleteConfirmThreadId] = useState<string | null>(null);
+  const [threadListTab, setThreadListTab] = useState<"active" | "archived">("active");
 
   const handleArchiveThread = (threadId: string) => {
     if (selectedThreadId === threadId) setSelectedThreadId(null);
