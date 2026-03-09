@@ -965,7 +965,7 @@ Deno.serve(async (req: Request) => {
     let latencyMs = 0;
 
     try {
-      const result = await runAgentLoop(aiMessages, supabase, brandId, LOVABLE_API_KEY, 3);
+      const result = await runAgentLoop(aiMessages, supabase, brandId, LOVABLE_API_KEY, 5);
       finalContent = result.content;
       toolsUsed = result.toolsUsed;
       latencyMs = result.totalLatencyMs;
