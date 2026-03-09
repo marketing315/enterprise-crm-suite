@@ -61,6 +61,8 @@ const TOOL_LABELS: Record<string, string> = {
   get_lead_analytics: "🎯 Lead Analytics",
   get_trend_comparison: "📉 Confronto Trend",
   get_ai_decisions_summary: "🤖 AI Performance",
+  get_ad_performance: "📣 Performance ADV",
+  get_raw_table_data: "🗃️ Dati Tabella",
 };
 
 export function AgentChatPanel() {
