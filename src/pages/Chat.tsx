@@ -410,6 +410,32 @@ function ThreadItem({
   );
 }
 
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  contact: "Contatto",
+  deal: "Deal",
+  ticket: "Ticket",
+  appointment: "Appuntamento",
+};
+
+function getThreadDefaultTitle(thread: ChatThread): string {
+  if (thread.type === "executive") return "Agente AI Executive";
+  if (thread.type === "group") return "Gruppo";
+  if (thread.type === "entity" && thread.entity_type) {
+    return `${ENTITY_TYPE_LABELS[thread.entity_type] || thread.entity_type}`;
+  }
+  return "Conversazione";
+}
+
+function getThreadSubtitle(thread: ChatThread): string {
+  const timeAgo = formatDistanceToNow(new Date(thread.updated_at), {
+    addSuffix: true,
+    locale: it,
+  });
+  if (thread.type === "executive") return `AI Premium • ${timeAgo}`;
+  if (thread.entity_type) return `${ENTITY_TYPE_LABELS[thread.entity_type] || thread.entity_type} • ${timeAgo}`;
+  return timeAgo;
+}
+
 function ThreadIcon({ type }: { type: string }) {
   const iconClass = "h-8 w-8 p-1.5 rounded-full bg-muted";
   
