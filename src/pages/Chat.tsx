@@ -32,6 +32,7 @@ import {
   useCreateGroupChat,
   useUnreadCounts,
   useMarkThreadRead,
+  useThreadDisplayTitles,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
