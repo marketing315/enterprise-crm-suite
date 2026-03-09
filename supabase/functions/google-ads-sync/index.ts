@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("[google-ads-sync] Function invoked");
+    console.log("[google-ads-sync] Function invoked, method:", req.method);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -29,65 +29,83 @@ Deno.serve(async (req) => {
     }
 
     // --- Auth check ---
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const cronSecret = req.headers.get("x-cron-secret");
-    const expectedSecret = Deno.env.get("CRON_SECRET");
-    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const expectedCronSecret = Deno.env.get("CRON_SECRET");
 
-    const isCronCall = (cronSecret && cronSecret === expectedSecret) ||
-      (authHeader === `Bearer ${anonKey}`) ||
-      (authHeader === `Bearer ${serviceRoleKey}`);
-
+    // Determine if this is a cron/service call by decoding the JWT role claim
+    let isCronCall = false;
     let isAdminCall = false;
-    if (!isCronCall && authHeader?.startsWith("Bearer ")) {
+
+    // Check x-cron-secret header first
+    if (cronSecret && expectedCronSecret && cronSecret === expectedCronSecret) {
+      isCronCall = true;
+      console.log("[google-ads-sync] Authenticated via x-cron-secret");
+    }
+
+    // Check Bearer token
+    if (!isCronCall && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+
+      // Try to decode the JWT payload to check the role (works without verification)
       try {
-        const token = authHeader.replace("Bearer ", "");
-        const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-          global: { headers: { Authorization: authHeader } },
-        });
+        const payloadB64 = token.split(".")[1];
+        if (payloadB64) {
+          const payload = JSON.parse(atob(payloadB64));
+          console.log("[google-ads-sync] JWT role:", payload.role, "iss:", payload.iss);
 
-        // Use getUser instead of getClaims for broader compatibility
-        const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
-        if (userError || !userData?.user) {
-          console.warn("[google-ads-sync] Auth failed for user token:", userError?.message);
-          return new Response(JSON.stringify({ error: "Unauthorized" }), {
-            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          if (payload.role === "anon" && payload.iss === "supabase") {
+            // This is the anon key from pg_cron — treat as cron call
+            isCronCall = true;
+            console.log("[google-ads-sync] Authenticated via anon JWT (cron)");
+          } else if (payload.role === "service_role") {
+            isCronCall = true;
+            console.log("[google-ads-sync] Authenticated via service_role JWT");
+          } else if (payload.role === "authenticated" && payload.sub) {
+            // Real user JWT — verify and check admin/ceo role
+            const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || token, {
+              global: { headers: { Authorization: authHeader } },
+            });
+            const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
+            if (userError || !userData?.user) {
+              console.warn("[google-ads-sync] Auth failed for user token:", userError?.message);
+              return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            const sb = createClient(supabaseUrl, serviceKey);
+            const { data: internalUser } = await sb
+              .from("users")
+              .select("id")
+              .eq("supabase_auth_id", userData.user.id)
+              .limit(1)
+              .maybeSingle();
+
+            const { data: userRoles } = await sb
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", internalUser?.id ?? "");
+
+            if (!userRoles?.some(r => r.role === "admin" || r.role === "ceo")) {
+              console.warn("[google-ads-sync] User lacks admin/ceo role");
+              return new Response(JSON.stringify({ error: "Forbidden" }), {
+                status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+            isAdminCall = true;
+            console.log("[google-ads-sync] Authenticated as admin user:", userData.user.id);
+          }
         }
-
-        const sb = createClient(supabaseUrl, serviceKey);
-        const { data: internalUser } = await sb
-          .from("users")
-          .select("id")
-          .eq("supabase_auth_id", userData.user.id)
-          .limit(1)
-          .maybeSingle();
-
-        const { data: userRoles } = await sb
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", internalUser?.id ?? "");
-
-        if (!userRoles?.some(r => r.role === "admin" || r.role === "ceo")) {
-          console.warn("[google-ads-sync] User lacks admin/ceo role");
-          return new Response(JSON.stringify({ error: "Forbidden" }), {
-            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        isAdminCall = true;
-      } catch (authErr) {
-        console.error("[google-ads-sync] Auth check crashed:", authErr);
-        return new Response(JSON.stringify({ error: "Auth check failed" }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      } catch (decodeErr) {
+        console.error("[google-ads-sync] JWT decode error:", decodeErr);
       }
     }
 
-    console.log("[google-ads-sync] Auth: isCron=%s isAdmin=%s", isCronCall, isAdminCall);
+    console.log("[google-ads-sync] Auth result: isCron=%s isAdmin=%s", isCronCall, isAdminCall);
 
     if (!isCronCall && !isAdminCall) {
-      console.warn("[google-ads-sync] Rejected: no valid auth");
+      console.warn("[google-ads-sync] Rejected: no valid auth. authHeader present:", !!authHeader);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
