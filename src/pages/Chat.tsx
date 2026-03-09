@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import ReactMarkdown from "react-markdown";
 import {
   useChatThreads,
   useChatMessages,
@@ -41,6 +42,7 @@ import { toast } from "sonner";
 import { AgentChatPanel } from "@/components/chat/AgentChatPanel";
 import { CreateGroupChatDialog } from "@/components/chat/CreateGroupChatDialog";
 import { GroupSettingsDrawer } from "@/components/chat/GroupSettingsDrawer";
+import { useAIAgentChat } from "@/hooks/useAIAgent";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -59,12 +61,19 @@ export default function Chat() {
   );
   const sendMessage = useSendChatMessage();
   const sendAIMessage = useSendAIMessage();
+  const agentChat = useAIAgentChat();
   const createGroupChat = useCreateGroupChat();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
   const markRead = useMarkThreadRead();
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
+  const isExecutiveThread = selectedThread?.type === "executive";
+
+  // Auto-enable AI for executive threads
+  useEffect(() => {
+    if (isExecutiveThread) setAskAI(true);
+  }, [selectedThreadId, isExecutiveThread]);
 
   // Build unread map
   const unreadMap = new Map(unreadCounts.map((u) => [u.thread_id, u.unread_count]));
@@ -100,20 +109,28 @@ export default function Chat() {
     const text = messageInput.trim();
     setMessageInput("");
 
-    if (askAI) {
+    if (askAI || isExecutiveThread) {
       await sendMessage.mutateAsync({
         threadId: selectedThreadId,
         messageText: text,
       });
       try {
-        const aiBrandId = selectedThread?.brand_id || currentBrand.id;
-        await sendAIMessage.mutateAsync({
-          threadId: selectedThreadId,
-          message: text,
-          entityType: selectedThread?.entity_type || undefined,
-          entityId: selectedThread?.entity_id || undefined,
-          brandId: aiBrandId,
-        });
+        if (isExecutiveThread) {
+          // Use the executive AI agent for executive threads
+          await agentChat.mutateAsync({
+            message: text,
+            threadId: selectedThreadId,
+          });
+        } else {
+          const aiBrandId = selectedThread?.brand_id || currentBrand.id;
+          await sendAIMessage.mutateAsync({
+            threadId: selectedThreadId,
+            message: text,
+            entityType: selectedThread?.entity_type || undefined,
+            entityId: selectedThread?.entity_id || undefined,
+            brandId: aiBrandId,
+          });
+        }
       } catch (error) {
         toast.error("Errore nella risposta AI");
       }
@@ -125,7 +142,7 @@ export default function Chat() {
     }
   };
 
-  const isPending = sendMessage.isPending || sendAIMessage.isPending;
+  const isPending = sendMessage.isPending || sendAIMessage.isPending || agentChat.isPending;
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 6rem)" }}>
@@ -267,18 +284,23 @@ export default function Chat() {
                     </ScrollArea>
                     <Separator />
                     <form onSubmit={handleSendMessage} className="p-4 space-y-3">
-                      {selectedThread?.type === "entity" && (
+                      {(selectedThread?.type === "entity" || isExecutiveThread) && (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Switch id="ai-mode" checked={askAI} onCheckedChange={setAskAI} />
+                            <Switch
+                              id="ai-mode"
+                              checked={askAI || isExecutiveThread}
+                              onCheckedChange={setAskAI}
+                              disabled={isExecutiveThread}
+                            />
                             <Label htmlFor="ai-mode" className="text-sm flex items-center gap-1.5 cursor-pointer">
-                              <Sparkles className={cn("h-4 w-4", askAI && "text-primary")} />
-                              Chiedi all'AI
+                              <Sparkles className={cn("h-4 w-4", (askAI || isExecutiveThread) && "text-primary")} />
+                              {isExecutiveThread ? "Agente AI Executive" : "Chiedi all'AI"}
                             </Label>
                           </div>
-                          {askAI && (
+                          {(askAI || isExecutiveThread) && (
                             <Badge variant="secondary" className="text-xs">
-                              L'AI analizzerà il contesto
+                              {isExecutiveThread ? "Sempre attivo" : "L'AI analizzerà il contesto"}
                             </Badge>
                           )}
                         </div>
@@ -426,7 +448,13 @@ function MessageBubble({
             : "bg-muted"
         )}
       >
-        <p className="text-sm whitespace-pre-wrap">{message.message_text}</p>
+        {isAI ? (
+          <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown>{message.message_text}</ReactMarkdown>
+          </div>
+        ) : (
+          <p className="text-sm whitespace-pre-wrap">{message.message_text}</p>
+        )}
         <p
           className={cn(
             "text-xs mt-1",
