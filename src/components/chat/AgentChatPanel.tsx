@@ -24,6 +24,7 @@ import {
   ChevronUp,
   Database,
   CheckCircle2,
+  Plus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
