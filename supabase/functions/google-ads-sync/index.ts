@@ -11,6 +11,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("[google-ads-sync] Function invoked");
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const developerToken = Deno.env.get("GOOGLE_ADS_DEVELOPER_TOKEN")!;
@@ -18,6 +20,8 @@ Deno.serve(async (req) => {
     const googleClientSecret = Deno.env.get("GOOGLE_ADS_CLIENT_SECRET")!;
 
     if (!developerToken || !googleClientId || !googleClientSecret) {
+      console.error("[google-ads-sync] Missing secrets: devToken=%s clientId=%s clientSecret=%s",
+        !!developerToken, !!googleClientId, !!googleClientSecret);
       return new Response(
         JSON.stringify({ error: "Google Ads secrets not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -37,39 +41,53 @@ Deno.serve(async (req) => {
 
     let isAdminCall = false;
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "");
-      const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-      if (claimsError || !claimsData?.claims) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      try {
+        const token = authHeader.replace("Bearer ", "");
+        const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: authHeader } },
+        });
+
+        // Use getUser instead of getClaims for broader compatibility
+        const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
+        if (userError || !userData?.user) {
+          console.warn("[google-ads-sync] Auth failed for user token:", userError?.message);
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const sb = createClient(supabaseUrl, serviceKey);
+        const { data: internalUser } = await sb
+          .from("users")
+          .select("id")
+          .eq("supabase_auth_id", userData.user.id)
+          .limit(1)
+          .maybeSingle();
+
+        const { data: userRoles } = await sb
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", internalUser?.id ?? "");
+
+        if (!userRoles?.some(r => r.role === "admin" || r.role === "ceo")) {
+          console.warn("[google-ads-sync] User lacks admin/ceo role");
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        isAdminCall = true;
+      } catch (authErr) {
+        console.error("[google-ads-sync] Auth check crashed:", authErr);
+        return new Response(JSON.stringify({ error: "Auth check failed" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      const sb = createClient(supabaseUrl, serviceKey);
-      const { data: internalUser } = await sb
-        .from("users")
-        .select("id")
-        .eq("supabase_auth_id", claimsData.claims.sub)
-        .limit(1)
-        .maybeSingle();
-
-      const { data: userRoles } = await sb
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", internalUser?.id ?? "");
-
-      if (!userRoles?.some(r => r.role === "admin" || r.role === "ceo")) {
-        return new Response(JSON.stringify({ error: "Forbidden" }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      isAdminCall = true;
     }
 
+    console.log("[google-ads-sync] Auth: isCron=%s isAdmin=%s", isCronCall, isAdminCall);
+
     if (!isCronCall && !isAdminCall) {
+      console.warn("[google-ads-sync] Rejected: no valid auth");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -33,9 +33,8 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) {
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -50,7 +49,7 @@ Deno.serve(async (req) => {
     const { data: crmUser } = await serviceClient
       .from("users")
       .select("id")
-      .eq("supabase_auth_id", claims.claims.sub)
+      .eq("supabase_auth_id", userData.user.id)
       .single();
 
     if (!crmUser) {
