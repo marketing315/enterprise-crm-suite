@@ -190,7 +190,7 @@ export function AgentChatPanel() {
       </CardHeader>
 
       <CardContent className="flex-1 p-0 overflow-hidden flex flex-col min-h-0">
-        <ScrollArea className="flex-1 p-4 min-h-0" ref={scrollRef}>
+        <ScrollArea className="flex-1 p-4 min-h-0">
           {messages.length === 0 ? (
             <div className="space-y-6">
               <div className="text-center py-8">
