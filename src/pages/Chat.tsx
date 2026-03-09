@@ -97,10 +97,12 @@ export default function Chat() {
     return () => unsubscribe();
   }, [selectedThreadId, subscribeToMessages]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or thread changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+  }, [messages, selectedThreadId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
