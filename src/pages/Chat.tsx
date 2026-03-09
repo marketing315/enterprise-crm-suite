@@ -42,7 +42,7 @@ import { toast } from "sonner";
 import { AgentChatPanel } from "@/components/chat/AgentChatPanel";
 import { CreateGroupChatDialog } from "@/components/chat/CreateGroupChatDialog";
 import { GroupSettingsDrawer } from "@/components/chat/GroupSettingsDrawer";
-import { useAIAgentChat } from "@/hooks/useAIAgent";
+import { useAIAgentChat, useCreateNewExecutiveThread } from "@/hooks/useAIAgent";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -62,6 +62,7 @@ export default function Chat() {
   const sendMessage = useSendChatMessage();
   const sendAIMessage = useSendAIMessage();
   const agentChat = useAIAgentChat();
+  const createNewAIThread = useCreateNewExecutiveThread();
   const createGroupChat = useCreateGroupChat();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
@@ -184,9 +185,27 @@ export default function Chat() {
                     <MessageSquare className="h-5 w-5" />
                     Chat
                   </CardTitle>
-                  <Button size="icon" variant="ghost" onClick={() => setCreateGroupOpen(true)} title="Nuovo gruppo">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={async () => {
+                        const newId = await createNewAIThread.mutateAsync();
+                        setSelectedThreadId(newId);
+                      }}
+                      disabled={createNewAIThread.isPending}
+                      title="Nuova chat AI"
+                    >
+                      {createNewAIThread.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Bot className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => setCreateGroupOpen(true)} title="Nuovo gruppo">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
 
