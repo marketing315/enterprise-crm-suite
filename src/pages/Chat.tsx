@@ -395,11 +395,13 @@ function ThreadItem({
   thread,
   isSelected,
   unreadCount,
+  displayTitle,
   onClick,
 }: {
   thread: ChatThread;
   isSelected: boolean;
   unreadCount: number;
+  displayTitle?: string;
   onClick: () => void;
 }) {
   return (
