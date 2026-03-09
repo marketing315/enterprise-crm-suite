@@ -546,8 +546,9 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
     // 1. Campaign-level aggregated stats
     let campaignQuery = supabase
       .from("ad_platform_stats")
-      .select("external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, frequency, conversions, conversions_value, stat_date")
-      .eq("brand_id", brandId)
+      .select("external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, frequency, conversions, conversions_value, stat_date, brand_id");
+    campaignQuery = applyBrandFilter(campaignQuery, brandId);
+    campaignQuery = campaignQuery
       .gte("stat_date", dateFrom)
       .lte("stat_date", dateTo);
     if (platform) campaignQuery = campaignQuery.eq("platform", platform);
