@@ -388,7 +388,7 @@ function ThreadItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <p className={cn("text-sm truncate", unreadCount > 0 && "font-semibold")}>
-            {thread.title || "Conversazione"}
+            {thread.title || getThreadDefaultTitle(thread)}
           </p>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1 text-[10px] shrink-0">
@@ -396,11 +396,9 @@ function ThreadItem({
             </Badge>
           )}
         </div>
-        {thread.entity_type && (
-          <p className="text-xs text-muted-foreground">
-            {thread.entity_type}
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          {getThreadSubtitle(thread)}
+        </p>
         <p className="text-xs text-muted-foreground mt-0.5">
           {formatDistanceToNow(new Date(thread.updated_at), {
             addSuffix: true,
