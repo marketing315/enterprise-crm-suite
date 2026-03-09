@@ -8161,6 +8161,10 @@ export type Database = {
         Args: { p_thread_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_thread_owner_or_moderator: {
+        Args: { _thread_id: string; _user_id: string }
+        Returns: boolean
+      }
       list_capi_events: {
         Args: {
           p_brand_ids: string[]
