@@ -272,6 +272,17 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
 ];
 
 // ── HELPERS ──
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+function isAllBrandsMode(brandId: string): boolean {
+  return brandId === SYSTEM_BRAND_ID;
+}
+
+/** Apply brand filter: skip filter for all-brands mode, otherwise eq brand_id */
+function applyBrandFilter(query: any, brandId: string): any {
+  if (isAllBrandsMode(brandId)) return query;
+  return query.eq("brand_id", brandId);
+}
+
 function getPeriodDates(period: string): { from: string; to: string } {
   const now = new Date();
   const to = now.toISOString();
