@@ -108,20 +108,28 @@ export default function Chat() {
     const text = messageInput.trim();
     setMessageInput("");
 
-    if (askAI) {
+    if (askAI || isExecutiveThread) {
       await sendMessage.mutateAsync({
         threadId: selectedThreadId,
         messageText: text,
       });
       try {
-        const aiBrandId = selectedThread?.brand_id || currentBrand.id;
-        await sendAIMessage.mutateAsync({
-          threadId: selectedThreadId,
-          message: text,
-          entityType: selectedThread?.entity_type || undefined,
-          entityId: selectedThread?.entity_id || undefined,
-          brandId: aiBrandId,
-        });
+        if (isExecutiveThread) {
+          // Use the executive AI agent for executive threads
+          await agentChat.mutateAsync({
+            message: text,
+            threadId: selectedThreadId,
+          });
+        } else {
+          const aiBrandId = selectedThread?.brand_id || currentBrand.id;
+          await sendAIMessage.mutateAsync({
+            threadId: selectedThreadId,
+            message: text,
+            entityType: selectedThread?.entity_type || undefined,
+            entityId: selectedThread?.entity_id || undefined,
+            brandId: aiBrandId,
+          });
+        }
       } catch (error) {
         toast.error("Errore nella risposta AI");
       }
