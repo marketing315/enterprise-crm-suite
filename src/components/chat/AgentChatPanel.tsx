@@ -68,7 +68,7 @@ const TOOL_LABELS: Record<string, string> = {
 export function AgentChatPanel() {
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const agentChat = useAIAgentChat();
 
   const { data: threadId, isLoading: threadLoading } = useExecutiveThread();
@@ -102,9 +102,25 @@ export function AgentChatPanel() {
   });
   const messages = [...dbMessages, ...pendingOptimistic];
 
+  // Auto-scroll to bottom on new messages AND on initial load
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+  }, []);
+
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages.length]);
+    scrollToBottom();
+  }, [messages.length, scrollToBottom]);
+
+  // Also scroll when thread first loads
+  useEffect(() => {
+    if (persistedMessages && persistedMessages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      }, 100);
+    }
+  }, [threadId, persistedMessages?.length]);
 
   // Clean up optimistic messages that are now in DB
   useEffect(() => {
