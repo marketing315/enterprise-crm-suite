@@ -62,6 +62,7 @@ export default function Chat() {
   const sendMessage = useSendChatMessage();
   const sendAIMessage = useSendAIMessage();
   const agentChat = useAIAgentChat();
+  const createNewAIThread = useCreateNewExecutiveThread();
   const createGroupChat = useCreateGroupChat();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
