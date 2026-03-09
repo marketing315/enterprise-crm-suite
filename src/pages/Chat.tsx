@@ -308,6 +308,8 @@ export default function Chat() {
                           unreadCount={unreadMap.get(thread.id) || 0}
                           displayTitle={titleMap.get(thread.id)}
                           onClick={() => { setSelectedThreadId(thread.id); setDraftExecutiveThread(false); }}
+                          onArchive={() => handleArchiveThread(thread.id)}
+                          onDelete={() => handleDeleteThread(thread.id)}
                         />
                       ))}
                     </div>
