@@ -517,11 +517,12 @@ async function getPipelineStatus(supabase: SupabaseClient, brandId: string) {
 
 async function getOperatorPerformance(supabase: SupabaseClient, brandId: string, period: string) {
   const { from } = getPeriodDates(period);
-  const { data: ticketsData } = await supabase
+  let ticketQ = supabase
     .from("tickets")
-    .select("id, assigned_user_id, status, resolved_at, created_at, first_response_at, assignee:users!tickets_assigned_user_id_fkey(full_name)")
-    .eq("brand_id", brandId)
-    .gte("created_at", from);
+    .select("id, assigned_user_id, status, resolved_at, created_at, first_response_at, assignee:users!tickets_assigned_user_id_fkey(full_name)");
+  ticketQ = applyBrandFilter(ticketQ, brandId);
+  ticketQ = ticketQ.gte("created_at", from);
+  const { data: ticketsData } = await ticketQ;
   interface T { assigned_user_id: string | null; status: string; resolved_at: string | null; created_at: string; first_response_at: string | null; assignee: { full_name: string | null } | null }
   const tickets = (ticketsData || []) as T[];
   const stats: Record<string, { name: string; assigned: number; resolved: number; responseMs: number[] }> = {};
