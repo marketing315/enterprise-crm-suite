@@ -97,10 +97,12 @@ export default function Chat() {
     return () => unsubscribe();
   }, [selectedThreadId, subscribeToMessages]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or thread changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+  }, [messages, selectedThreadId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,28 +111,31 @@ export default function Chat() {
     const text = messageInput.trim();
     setMessageInput("");
 
-    if (askAI || isExecutiveThread) {
+    if (isExecutiveThread) {
+      // Executive threads: ai-agent already persists the user message, don't send twice
+      try {
+        await agentChat.mutateAsync({
+          message: text,
+          threadId: selectedThreadId,
+        });
+      } catch (error) {
+        toast.error("Errore nella risposta AI");
+      }
+    } else if (askAI) {
+      // Entity AI: send user message first (ai-chat does NOT persist it)
       await sendMessage.mutateAsync({
         threadId: selectedThreadId,
         messageText: text,
       });
       try {
-        if (isExecutiveThread) {
-          // Use the executive AI agent for executive threads
-          await agentChat.mutateAsync({
-            message: text,
-            threadId: selectedThreadId,
-          });
-        } else {
-          const aiBrandId = selectedThread?.brand_id || currentBrand.id;
-          await sendAIMessage.mutateAsync({
-            threadId: selectedThreadId,
-            message: text,
-            entityType: selectedThread?.entity_type || undefined,
-            entityId: selectedThread?.entity_id || undefined,
-            brandId: aiBrandId,
-          });
-        }
+        const aiBrandId = selectedThread?.brand_id || currentBrand.id;
+        await sendAIMessage.mutateAsync({
+          threadId: selectedThreadId,
+          message: text,
+          entityType: selectedThread?.entity_type || undefined,
+          entityId: selectedThread?.entity_id || undefined,
+          brandId: aiBrandId,
+        });
       } catch (error) {
         toast.error("Errore nella risposta AI");
       }
@@ -383,7 +388,7 @@ function ThreadItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <p className={cn("text-sm truncate", unreadCount > 0 && "font-semibold")}>
-            {thread.title || "Conversazione"}
+            {thread.title || getThreadDefaultTitle(thread)}
           </p>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1 text-[10px] shrink-0">
@@ -391,11 +396,9 @@ function ThreadItem({
             </Badge>
           )}
         </div>
-        {thread.entity_type && (
-          <p className="text-xs text-muted-foreground">
-            {thread.entity_type}
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          {getThreadSubtitle(thread)}
+        </p>
         <p className="text-xs text-muted-foreground mt-0.5">
           {formatDistanceToNow(new Date(thread.updated_at), {
             addSuffix: true,
@@ -405,6 +408,32 @@ function ThreadItem({
       </div>
     </button>
   );
+}
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  contact: "Contatto",
+  deal: "Deal",
+  ticket: "Ticket",
+  appointment: "Appuntamento",
+};
+
+function getThreadDefaultTitle(thread: ChatThread): string {
+  if (thread.type === "executive") return "Agente AI Executive";
+  if (thread.type === "group") return "Gruppo";
+  if (thread.type === "entity" && thread.entity_type) {
+    return `${ENTITY_TYPE_LABELS[thread.entity_type] || thread.entity_type}`;
+  }
+  return "Conversazione";
+}
+
+function getThreadSubtitle(thread: ChatThread): string {
+  const timeAgo = formatDistanceToNow(new Date(thread.updated_at), {
+    addSuffix: true,
+    locale: it,
+  });
+  if (thread.type === "executive") return `AI Premium • ${timeAgo}`;
+  if (thread.entity_type) return `${ENTITY_TYPE_LABELS[thread.entity_type] || thread.entity_type} • ${timeAgo}`;
+  return timeAgo;
 }
 
 function ThreadIcon({ type }: { type: string }) {
