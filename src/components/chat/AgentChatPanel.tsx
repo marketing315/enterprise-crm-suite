@@ -66,9 +66,8 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 export function AgentChatPanel() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const agentChat = useAIAgentChat();
 
@@ -82,49 +81,57 @@ export function AgentChatPanel() {
     return unsub;
   }, [threadId]);
 
-  // Load persisted messages on mount
-  useEffect(() => {
-    if (persistedMessages && persistedMessages.length > 0 && !initialLoadDone) {
-      const loaded: Message[] = persistedMessages.map((m) => ({
-        id: m.id,
-        role: m.sender_type === "user" ? "user" as const : "assistant" as const,
-        content: m.message_text,
-        timestamp: new Date(m.created_at),
-        toolsUsed: (m.ai_context as any)?.tools_used || undefined,
-        latencyMs: (m.ai_context as any)?.latency_ms || undefined,
-        hadFallback: (m.ai_context as any)?.had_fallback || false,
-        deliveryStatus: (m as any).delivery_status || "sent",
-      }));
-      setMessages(loaded);
-      setInitialLoadDone(true);
-    }
-  }, [persistedMessages, initialLoadDone]);
+  // Derive messages from DB + optimistic (pending) messages
+  const dbMessages: Message[] = (persistedMessages || []).map((m) => ({
+    id: m.id,
+    role: m.sender_type === "user" ? "user" as const : "assistant" as const,
+    content: m.message_text,
+    timestamp: new Date(m.created_at),
+    toolsUsed: (m.ai_context as any)?.tools_used || undefined,
+    latencyMs: (m.ai_context as any)?.latency_ms || undefined,
+    hadFallback: (m.ai_context as any)?.had_fallback || false,
+    deliveryStatus: (m as any).delivery_status || "sent",
+  }));
+
+  // Merge: DB messages are source of truth; optimistic messages that aren't yet in DB are appended
+  const dbMessageIds = new Set(dbMessages.map(m => m.id));
+  const pendingOptimistic = optimisticMessages.filter(m => !dbMessageIds.has(m.id));
+  const messages = [...dbMessages, ...pendingOptimistic];
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages]);
+  }, [messages.length]);
+
+  // Clean up optimistic messages that are now in DB
+  useEffect(() => {
+    if (pendingOptimistic.length < optimisticMessages.length) {
+      setOptimisticMessages(pendingOptimistic);
+    }
+  }, [pendingOptimistic.length, optimisticMessages.length]);
 
   const handleSend = useCallback(async (text: string) => {
     if (!text.trim() || agentChat.isPending) return;
 
     const userMessage: Message = {
-      id: crypto.randomUUID(), role: "user", content: text.trim(), timestamp: new Date(),
+      id: `optimistic-${crypto.randomUUID()}`, role: "user", content: text.trim(), timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+    setOptimisticMessages((prev) => [...prev, userMessage]);
     setInput("");
 
     const conversationHistory = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
 
     try {
       const response = await agentChat.mutateAsync({ message: text.trim(), threadId, conversationHistory });
+      // Add assistant response as optimistic until DB syncs
       const assistantMessage: Message = {
-        id: crypto.randomUUID(), role: "assistant", content: response.message, timestamp: new Date(),
+        id: `optimistic-${crypto.randomUUID()}`, role: "assistant", content: response.message, timestamp: new Date(),
         toolsUsed: response.tools_used, latencyMs: response.latency_ms, hadFallback: response.had_fallback,
       };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch {
-      setMessages((prev) => [...prev, {
-        id: crypto.randomUUID(), role: "assistant",
+      setOptimisticMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error("[AgentChatPanel] Send error:", err);
+      setOptimisticMessages((prev) => [...prev, {
+        id: `optimistic-error-${crypto.randomUUID()}`, role: "assistant",
         content: "Mi dispiace, si è verificato un errore nell'elaborazione. Riprova tra qualche istante.",
         timestamp: new Date(), hadFallback: true, deliveryStatus: "failed",
       }]);
