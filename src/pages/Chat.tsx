@@ -447,6 +447,23 @@ export default function Chat() {
           threadTitle={selectedThread.title || "Gruppo"}
         />
       )}
+
+      <AlertDialog open={!!deleteConfirmThreadId} onOpenChange={(open) => !open && setDeleteConfirmThreadId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questa conversazione?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tutti i messaggi verranno eliminati permanentemente. Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteThread} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
