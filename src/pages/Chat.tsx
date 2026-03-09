@@ -192,7 +192,9 @@ export default function Chat() {
                       variant="ghost"
                       onClick={async () => {
                         const newId = await createNewAIThread.mutateAsync();
+                        setForceExecutiveThreadId(newId);
                         setSelectedThreadId(newId);
+                        setAskAI(true);
                       }}
                       disabled={createNewAIThread.isPending}
                       title="Nuova chat AI"
