@@ -69,6 +69,8 @@ export default function Chat() {
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
   const markRead = useMarkThreadRead();
+  const threadIds = threads.map(t => t.id);
+  const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId;
