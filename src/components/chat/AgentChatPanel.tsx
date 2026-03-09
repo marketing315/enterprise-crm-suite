@@ -262,26 +262,15 @@ export function AgentChatPanel() {
           )}
         </ScrollArea>
 
-        <div className="p-4 border-t space-y-3">
-          {messages.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-              {AGENT_QUICK_ACTIONS.slice(0, 4).map((action) => (
-                <Button key={action.id} variant="outline" size="sm" className="shrink-0 text-xs"
-                  onClick={() => handleQuickAction(action.prompt)} disabled={agentChat.isPending}>
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder="Chiedi qualcosa... (es: Quanti lead dalla Lombardia negli ultimi 3 giorni?)"
-              className="min-h-[44px] max-h-[120px] resize-none" disabled={agentChat.isPending} />
-            <Button size="icon" onClick={() => handleSend(input)} disabled={!input.trim() || agentChat.isPending} className="shrink-0">
-              {agentChat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
+        <QuickActionsBar
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          isPending={agentChat.isPending}
+          onSend={handleSend}
+          onQuickAction={handleQuickAction}
+          onKeyDown={handleKeyDown}
+        />
       </CardContent>
     </Card>
   );
