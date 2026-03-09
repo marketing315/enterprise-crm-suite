@@ -448,7 +448,13 @@ function MessageBubble({
             : "bg-muted"
         )}
       >
-        <p className="text-sm whitespace-pre-wrap">{message.message_text}</p>
+        {isAI ? (
+          <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown>{message.message_text}</ReactMarkdown>
+          </div>
+        ) : (
+          <p className="text-sm whitespace-pre-wrap">{message.message_text}</p>
+        )}
         <p
           className={cn(
             "text-xs mt-1",
