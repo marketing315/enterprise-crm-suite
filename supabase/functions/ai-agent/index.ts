@@ -829,14 +829,29 @@ async function runAgentLoop(
   }
 
   // Max rounds reached — one final call without tools to get summary
+  console.log(`[ai-agent] Max rounds reached (${maxRounds}), making final summarization call with ${currentMessages.length} messages`);
   const finalResponse = await fetchWithTimeout(AI_GATEWAY_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages, max_tokens: 4096 }),
+    body: JSON.stringify({
+      model: "google/gemini-3.1-pro-preview",
+      messages: [
+        ...currentMessages,
+        { role: "user", content: "Ora riassumi tutti i dati raccolti e fornisci la risposta completa all'utente in italiano. Usa numeri concreti e percentuali." },
+      ],
+      max_tokens: 4096,
+    }),
   });
-  if (!finalResponse.ok) throw new Error(`AI gateway final error: ${finalResponse.status}`);
+  if (!finalResponse.ok) {
+    console.error(`[ai-agent] Final call failed: ${finalResponse.status}`);
+    throw new Error(`AI gateway final error: ${finalResponse.status}`);
+  }
   const finalResult = await finalResponse.json();
   const finalMessage = finalResult?.choices?.[0]?.message?.content || "";
+  console.log(`[ai-agent] Final message length: ${finalMessage.length}`);
+  if (!finalMessage) {
+    console.warn("[ai-agent] Final summarization returned empty, tools used:", allToolsUsed);
+  }
   return { content: finalMessage, toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
 }
 
