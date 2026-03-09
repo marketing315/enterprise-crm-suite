@@ -306,6 +306,8 @@ async function handleToolCall(
       return await getOperatorPerformance(supabase, brandId, (args.period as string) || "7d");
     case "get_ad_performance":
       return await getAdPerformance(supabase, brandId, args);
+    case "get_raw_table_data":
+      return await getRawTableData(supabase, brandId, args);
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
