@@ -807,11 +807,12 @@ async function runAgentLoop(
   const finalResponse = await fetchWithTimeout(AI_GATEWAY_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages }),
+    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages, max_tokens: 1200 }),
   });
   if (!finalResponse.ok) throw new Error(`AI gateway final error: ${finalResponse.status}`);
   const finalResult = await finalResponse.json();
-  return { content: finalResult.choices[0].message.content || "", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
+  const finalMessage = finalResult?.choices?.[0]?.message?.content || "";
+  return { content: finalMessage, toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
 }
 
 // Fetch with timeout + retry
