@@ -829,7 +829,7 @@ async function runAgentLoop(
 
     if (toolCalls.length === 0) {
       // No more tool calls — return final content
-      return { content: assistantMessage.content || "", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
+      return { content: cleanThinkingContent(assistantMessage.content || ""), toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
     }
 
     // Execute tool calls
