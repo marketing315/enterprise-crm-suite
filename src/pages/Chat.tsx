@@ -10,6 +10,23 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   MessageSquare,
   Send,
   Plus,
@@ -19,6 +36,9 @@ import {
   Loader2,
   Sparkles,
   Settings,
+  MoreVertical,
+  Archive,
+  Trash2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -33,6 +53,8 @@ import {
   useUnreadCounts,
   useMarkThreadRead,
   useThreadDisplayTitles,
+  useArchiveThread,
+  useDeleteThread,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
@@ -67,11 +89,30 @@ export default function Chat() {
   const agentChat = useAIAgentChat();
   const createNewAIThread = useCreateNewExecutiveThread();
   const createGroupChat = useCreateGroupChat();
+  const archiveThread = useArchiveThread();
+  const deleteThread = useDeleteThread();
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
   const markRead = useMarkThreadRead();
   const threadIds = threads.map(t => t.id);
   const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
+  const [deleteConfirmThreadId, setDeleteConfirmThreadId] = useState<string | null>(null);
+
+  const handleArchiveThread = (threadId: string) => {
+    if (selectedThreadId === threadId) setSelectedThreadId(null);
+    archiveThread.mutate(threadId);
+  };
+
+  const handleDeleteThread = (threadId: string) => {
+    setDeleteConfirmThreadId(threadId);
+  };
+
+  const confirmDeleteThread = () => {
+    if (!deleteConfirmThreadId) return;
+    if (selectedThreadId === deleteConfirmThreadId) setSelectedThreadId(null);
+    deleteThread.mutate(deleteConfirmThreadId);
+    setDeleteConfirmThreadId(null);
+  };
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId || draftExecutiveThread;
@@ -267,6 +308,8 @@ export default function Chat() {
                           unreadCount={unreadMap.get(thread.id) || 0}
                           displayTitle={titleMap.get(thread.id)}
                           onClick={() => { setSelectedThreadId(thread.id); setDraftExecutiveThread(false); }}
+                          onArchive={() => handleArchiveThread(thread.id)}
+                          onDelete={() => handleDeleteThread(thread.id)}
                         />
                       ))}
                     </div>
@@ -404,6 +447,23 @@ export default function Chat() {
           threadTitle={selectedThread.title || "Gruppo"}
         />
       )}
+
+      <AlertDialog open={!!deleteConfirmThreadId} onOpenChange={(open) => !open && setDeleteConfirmThreadId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questa conversazione?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tutti i messaggi verranno eliminati permanentemente. Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteThread} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -414,20 +474,24 @@ function ThreadItem({
   unreadCount,
   displayTitle,
   onClick,
+  onArchive,
+  onDelete,
 }: {
   thread: ChatThread;
   isSelected: boolean;
   unreadCount: number;
   displayTitle?: string;
   onClick: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        "w-full p-3 text-left hover:bg-muted/50 transition-colors flex gap-3",
+        "w-full p-3 text-left hover:bg-muted/50 transition-colors flex gap-3 cursor-pointer group relative",
         isSelected && "bg-muted"
       )}
+      onClick={onClick}
     >
       <ThreadIcon type={thread.type} />
       <div className="flex-1 min-w-0">
@@ -435,11 +499,35 @@ function ThreadItem({
           <p className={cn("text-sm truncate", unreadCount > 0 && "font-semibold")}>
             {displayTitle || thread.title || getThreadDefaultTitle(thread)}
           </p>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1 text-[10px] shrink-0">
-              {unreadCount}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-[20px] px-1 text-[10px]">
+                {unreadCount}
+              </Badge>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={onArchive}>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archivia
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {getThreadSubtitle(thread)}
@@ -451,7 +539,7 @@ function ThreadItem({
           })}
         </p>
       </div>
-    </button>
+    </div>
   );
 }
 
