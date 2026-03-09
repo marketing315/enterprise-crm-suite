@@ -530,17 +530,27 @@ export function useUnarchiveThread() {
     },
     onMutate: async (threadId: string) => {
       await queryClient.cancelQueries({ queryKey: ["chat-threads-archived"] });
-      const prev = queryClient.getQueryData<ChatThread[]>(["chat-threads-archived"]);
-      if (prev) {
+      await queryClient.cancelQueries({ queryKey: ["chat-threads"] });
+      const prevArchived = queryClient.getQueryData<ChatThread[]>(["chat-threads-archived"]);
+      const prevActive = queryClient.getQueryData<ChatThread[]>(["chat-threads"]);
+      const restoredThread = prevArchived?.find((t) => t.id === threadId);
+      if (prevArchived) {
         queryClient.setQueryData<ChatThread[]>(
           ["chat-threads-archived"],
           (old) => (old || []).filter((t) => t.id !== threadId)
         );
       }
-      return { prev };
+      if (restoredThread) {
+        queryClient.setQueryData<ChatThread[]>(
+          ["chat-threads"],
+          (old) => [restoredThread, ...(old || [])]
+        );
+      }
+      return { prevArchived, prevActive };
     },
     onError: (_err, _threadId, context) => {
-      if (context?.prev) queryClient.setQueryData(["chat-threads-archived"], context.prev);
+      if (context?.prevArchived) queryClient.setQueryData(["chat-threads-archived"], context.prevArchived);
+      if (context?.prevActive) queryClient.setQueryData(["chat-threads"], context.prevActive);
       toast.error("Errore nel ripristino");
     },
     onSuccess: () => {
