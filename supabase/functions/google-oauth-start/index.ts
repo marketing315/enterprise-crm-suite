@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const { data: crmUser } = await serviceClient
       .from("users")
       .select("id")
-      .eq("supabase_auth_id", claims.claims.sub)
+      .eq("supabase_auth_id", userData.user.id)
       .single();
 
     if (!crmUser) {
