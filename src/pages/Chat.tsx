@@ -141,7 +141,7 @@ export default function Chat() {
     }
   };
 
-  const isPending = sendMessage.isPending || sendAIMessage.isPending;
+  const isPending = sendMessage.isPending || sendAIMessage.isPending || agentChat.isPending;
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 6rem)" }}>
