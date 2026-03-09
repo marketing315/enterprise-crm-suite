@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { AgentChatPanel } from "@/components/chat/AgentChatPanel";
 import { CreateGroupChatDialog } from "@/components/chat/CreateGroupChatDialog";
 import { GroupSettingsDrawer } from "@/components/chat/GroupSettingsDrawer";
+import { useAIAgentChat } from "@/hooks/useAIAgent";
 
 export default function Chat() {
   const { user } = useAuth();
