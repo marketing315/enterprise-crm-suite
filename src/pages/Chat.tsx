@@ -106,12 +106,13 @@ export default function Chat() {
         messageText: text,
       });
       try {
+        const aiBrandId = selectedThread?.brand_id || currentBrand.id;
         await sendAIMessage.mutateAsync({
           threadId: selectedThreadId,
           message: text,
           entityType: selectedThread?.entity_type || undefined,
           entityId: selectedThread?.entity_id || undefined,
-          brandId: currentBrand.id,
+          brandId: aiBrandId,
         });
       } catch (error) {
         toast.error("Errore nella risposta AI");
