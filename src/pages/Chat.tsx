@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import ReactMarkdown from "react-markdown";
 import {
   useChatThreads,
   useChatMessages,
