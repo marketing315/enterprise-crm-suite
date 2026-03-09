@@ -65,6 +65,12 @@ export default function Chat() {
   const markRead = useMarkThreadRead();
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
+  const isExecutiveThread = selectedThread?.type === "executive";
+
+  // Auto-enable AI for executive threads
+  useEffect(() => {
+    if (isExecutiveThread) setAskAI(true);
+  }, [selectedThreadId, isExecutiveThread]);
 
   // Build unread map
   const unreadMap = new Map(unreadCounts.map((u) => [u.thread_id, u.unread_count]));
