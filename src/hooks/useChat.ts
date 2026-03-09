@@ -417,3 +417,25 @@ export function useMarkThreadRead() {
     },
   });
 }
+
+// ─── Thread display titles ───
+
+export function useThreadDisplayTitles(threadIds: string[]) {
+  return useQuery({
+    queryKey: ["thread-display-titles", threadIds],
+    queryFn: async (): Promise<Map<string, string>> => {
+      if (threadIds.length === 0) return new Map();
+      const { data, error } = await untypedClient.rpc("get_thread_display_titles", {
+        p_thread_ids: threadIds,
+      });
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of (data || []) as Array<{ thread_id: string; display_title: string }>) {
+        map.set(row.thread_id, row.display_title);
+      }
+      return map;
+    },
+    enabled: threadIds.length > 0,
+    staleTime: 60_000,
+  });
+}

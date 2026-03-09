@@ -32,6 +32,7 @@ import {
   useCreateGroupChat,
   useUnreadCounts,
   useMarkThreadRead,
+  useThreadDisplayTitles,
   ChatThread,
   ChatMessage,
 } from "@/hooks/useChat";
@@ -68,6 +69,8 @@ export default function Chat() {
   const { subscribeToMessages } = useChatRealtime(selectedThreadId);
   const { data: unreadCounts = [] } = useUnreadCounts();
   const markRead = useMarkThreadRead();
+  const threadIds = threads.map(t => t.id);
+  const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId;
@@ -245,6 +248,7 @@ export default function Chat() {
                           thread={thread}
                           isSelected={thread.id === selectedThreadId}
                           unreadCount={unreadMap.get(thread.id) || 0}
+                          displayTitle={titleMap.get(thread.id)}
                           onClick={() => setSelectedThreadId(thread.id)}
                         />
                       ))}
@@ -391,11 +395,13 @@ function ThreadItem({
   thread,
   isSelected,
   unreadCount,
+  displayTitle,
   onClick,
 }: {
   thread: ChatThread;
   isSelected: boolean;
   unreadCount: number;
+  displayTitle?: string;
   onClick: () => void;
 }) {
   return (
@@ -410,7 +416,7 @@ function ThreadItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <p className={cn("text-sm truncate", unreadCount > 0 && "font-semibold")}>
-            {thread.title || getThreadDefaultTitle(thread)}
+            {displayTitle || thread.title || getThreadDefaultTitle(thread)}
           </p>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1 text-[10px] shrink-0">
