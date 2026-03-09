@@ -18,7 +18,9 @@ Oggi è: ${new Date().toISOString().split('T')[0]} (usala come riferimento per "
 3. **Trend & Confronti**: Confronti temporali (WoW, MoM, periodi custom)
 4. **Search & Timeline**: Ricerca contatti con timeline completa
 5. **Multi-step Reasoning**: Posso combinare più query per analisi complesse
-6. **Ad Performance**: Analisi dettagliata campagne ADV (Meta Ads, Google Ads) con spesa, impressioni, click, CTR, CPC, CPM, reach, frequenza, breakdown per campagna/creatività/demografica
+6. **Ad Performance**: Analisi dettagliata campagne ADV (Meta Ads, Google Ads)
+7. **Dati Finanziari**: Spese, budget, ordini di vendita, prodotti, campagne marketing
+8. **Raw Data Access**: Lettura diretta di righe da qualsiasi tabella del brand
 
 ## CATALOGO METRICHE (usa dynamic_analytics_query)
 | Metrica | Dataset | Metric param | Note |
@@ -32,18 +34,44 @@ Oggi è: ${new Date().toISOString().split('T')[0]} (usala come riferimento per "
 | Appuntamenti | appointments | count | |
 | Chiamate | calls | count | |
 | Costo lead | leads | sum_lead_cost | Costo acquisizione |
+| Spese totali | expenses | sum_amount | Importo netto spese |
+| Spese lorde | expenses | sum_gross_amount | Importo lordo spese |
+| Budget pianificato | budgets | sum_planned_amount | |
+| Fatturato ordini | sales_orders | sum_total_amount | Totale ordini |
+| Incassato ordini | sales_orders | sum_paid_amount | Importo pagato |
+| Sconti ordini | sales_orders | sum_discount_amount | |
+| Tasse ordini | sales_orders | sum_tax_amount | |
+| Prodotti | products | count | |
+| Prezzo prodotti | products | sum_default_price | |
+| Campagne marketing | marketing_campaigns | count | |
+| Budget campagne | marketing_campaigns | sum_planned_budget | |
+| Transizioni deal | deal_transitions | count | Storico passaggi stage |
+| Media spesa | expenses | avg_amount | |
 
 ## CATALOGO ADV (usa get_ad_performance)
 Per QUALSIASI domanda su advertising, spesa ADV, campagne Meta/Google, CTR, CPC, CPM, ROAS, creatività, target demografico → usa SEMPRE get_ad_performance.
-Il tool restituisce: sommario (spesa totale, impressioni, click, CTR, CPC, CPM, reach), breakdown per campagna, e opzionalmente per creatività e demografica.
+
+## RAW DATA (usa get_raw_table_data)
+Per leggere righe specifiche da tabelle (es. "mostrami le ultime 10 spese", "quali prodotti abbiamo?", "regole di automazione attive").
+Tabelle disponibili: expenses, budgets, sales_orders, products, marketing_campaigns, automation_rules, automation_logs, deal_stage_transitions, pipeline_stages, expense_categories, cost_centers, ad_platform_stats, ad_creative_stats, ad_demographic_stats, webhook_sources, admin_notes, admin_todos, brand_tax_settings.
 
 ## RAGGRUPPAMENTI DISPONIBILI (group_by)
 - **Temporali**: date, week, month
 - **Geografici**: regione, provincia, city
 - **Business**: status, priority, source_name, lead_type, outcome, appointment_type, call_type
+- **Finanziari**: category, cost_center, vendor_name, periodicity, payment_status
+- **Marketing**: campaign_name, channel
+- **Pipeline**: from_stage_label, to_stage_label, product_name
 
 ## FILTRI DISPONIBILI (filters)
-status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, created_by_user_id, contact_id, deal_id, lead_valid
+status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, created_by_user_id, contact_id, deal_id, lead_valid, category_id, cost_center_id, payment_status, campaign_id, periodicity, is_deductible, is_active, vendor_name, from_stage_label, to_stage_label, channel_id
+
+## QUANDO USARE QUALE TOOL
+- **dynamic_analytics_query**: per conteggi, somme, medie, raggruppamenti, confronti temporali → dati AGGREGATI
+- **get_raw_table_data**: per vedere righe specifiche, dettagli, liste → dati GREZZI
+- **get_ad_performance**: per tutto ciò che riguarda ADV/advertising
+- **search_contacts / get_contact_timeline**: per cercare e analizzare contatti specifici
+- **get_pipeline_status / get_operator_performance**: per snapshot rapidi
 
 ## REGOLE DI RISPOSTA
 - Rispondi SEMPRE in italiano
@@ -70,22 +98,22 @@ const AGENT_TOOLS = [
     function: {
       name: "dynamic_analytics_query",
       description: `Query analitica dinamica su qualsiasi dataset CRM. Supporta filtri, raggruppamenti temporali/geografici/business, e diverse metriche.
-Datasets: leads, contacts, deals, tickets, appointments, calls.
-Metriche: count, count_distinct_contacts, sum_value, avg_value, sum_lead_cost.
-Group by: date, week, month, regione, provincia, city, status, priority, source_name, lead_type, outcome, appointment_type, call_type.
-Filtri: status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, lead_valid.
-USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confronti. È il tool principale.`,
+Datasets: leads, contacts, deals, tickets, appointments, calls, expenses, budgets, sales_orders, products, marketing_campaigns, deal_transitions.
+Metriche: count, count_distinct_contacts, sum_value, avg_value, sum_lead_cost, sum_amount, avg_amount, sum_planned_amount, sum_total_amount, sum_paid_amount, sum_default_price, sum_planned_budget, sum_gross_amount, sum_discount_amount, sum_tax_amount.
+Group by: date, week, month, regione, provincia, city, status, priority, source_name, lead_type, outcome, appointment_type, call_type, category, cost_center, vendor_name, periodicity, payment_status, campaign_name, product_name, from_stage_label, to_stage_label, channel.
+Filtri: status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, lead_valid, category_id, cost_center_id, payment_status, campaign_id, periodicity, is_deductible, is_active, vendor_name, from_stage_label, to_stage_label, channel_id.
+USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confronti. È il tool principale per dati AGGREGATI.`,
       parameters: {
         type: "object",
         properties: {
           dataset: {
             type: "string",
-            enum: ["leads", "contacts", "deals", "tickets", "appointments", "calls"],
+            enum: ["leads", "contacts", "deals", "tickets", "appointments", "calls", "expenses", "budgets", "sales_orders", "products", "marketing_campaigns", "deal_transitions"],
             description: "Dataset da interrogare",
           },
           metric: {
             type: "string",
-            enum: ["count", "count_distinct_contacts", "sum_value", "avg_value", "sum_lead_cost"],
+            enum: ["count", "count_distinct_contacts", "sum_value", "avg_value", "sum_lead_cost", "sum_amount", "avg_amount", "sum_planned_amount", "sum_total_amount", "sum_paid_amount", "sum_default_price", "sum_planned_budget", "sum_gross_amount", "sum_discount_amount", "sum_tax_amount"],
             description: "Metrica da calcolare (default: count)",
           },
           date_from: {
@@ -98,8 +126,8 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
           },
           group_by: {
             type: "string",
-            enum: ["date", "week", "month", "regione", "provincia", "city", "status", "priority", "source_name", "lead_type", "outcome", "appointment_type", "call_type"],
-            description: "Campo per raggruppare i risultati. Usa 'regione' per breakdown geografico per regione italiana.",
+            enum: ["date", "week", "month", "regione", "provincia", "city", "status", "priority", "source_name", "lead_type", "outcome", "appointment_type", "call_type", "category", "cost_center", "vendor_name", "periodicity", "payment_status", "campaign_name", "product_name", "from_stage_label", "to_stage_label", "channel"],
+            description: "Campo per raggruppare i risultati. Usa 'regione' per breakdown geografico, 'category' per spese per categoria, 'cost_center' per centro di costo, ecc.",
           },
           filters: {
             type: "object",
@@ -203,6 +231,44 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_raw_table_data",
+      description: `Legge righe grezze da una tabella del brand. Usa per vedere dettagli specifici, liste, o dati non aggregati. Es: "mostrami le ultime 10 spese", "quali prodotti abbiamo?", "regole di automazione attive". Limitato a 50 righe. NON usare per conteggi o somme (usa dynamic_analytics_query per quelli).`,
+      parameters: {
+        type: "object",
+        properties: {
+          table: {
+            type: "string",
+            enum: ["expenses", "budgets", "sales_orders", "products", "marketing_campaigns", "automation_rules", "automation_logs", "deal_stage_transitions", "pipeline_stages", "expense_categories", "cost_centers", "ad_platform_stats", "ad_creative_stats", "ad_demographic_stats", "webhook_sources", "admin_notes", "admin_todos", "brand_tax_settings", "deals", "tickets", "appointments", "call_logs", "contacts", "lead_events"],
+            description: "Tabella da leggere",
+          },
+          columns: {
+            type: "string",
+            description: "Colonne da selezionare, separate da virgola. Se omesso, seleziona tutte le colonne principali. Es: 'id,name,amount,expense_date'",
+          },
+          filters: {
+            type: "object",
+            description: "Filtri chiave-valore. Es: {\"status\": \"active\", \"is_active\": true}",
+          },
+          order_by: {
+            type: "string",
+            description: "Colonna per ordinamento. Es: 'created_at' o 'amount'. Default: created_at",
+          },
+          ascending: {
+            type: "boolean",
+            description: "Se true ordina crescente, se false decrescente. Default: false (più recenti prima)",
+          },
+          limit: {
+            type: "integer",
+            description: "Numero massimo di righe (default: 20, max: 50)",
+          },
+        },
+        required: ["table"],
+      },
+    },
+  },
 ];
 
 // ── HELPERS ──
@@ -240,6 +306,8 @@ async function handleToolCall(
       return await getOperatorPerformance(supabase, brandId, (args.period as string) || "7d");
     case "get_ad_performance":
       return await getAdPerformance(supabase, brandId, args);
+    case "get_raw_table_data":
+      return await getRawTableData(supabase, brandId, args);
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
@@ -509,6 +577,76 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[get_ad_performance] Exception:", msg);
+    return { error: msg };
+  }
+}
+
+
+// Raw table data reader
+const RAW_TABLE_WHITELIST: Record<string, { defaultColumns: string; defaultOrder: string }> = {
+  expenses: { defaultColumns: "id,amount,gross_amount,expense_date,vendor_name,description,periodicity,is_deductible,created_at", defaultOrder: "expense_date" },
+  budgets: { defaultColumns: "id,category_id,period_month,planned_amount,notes,created_at", defaultOrder: "period_month" },
+  sales_orders: { defaultColumns: "id,order_number,status,subtotal,discount_amount,tax_amount,total_amount,paid_amount,notes,created_at,confirmed_at,paid_at", defaultOrder: "created_at" },
+  products: { defaultColumns: "id,name,description,sku,default_price,vat_rate,is_active,created_at", defaultOrder: "created_at" },
+  marketing_campaigns: { defaultColumns: "id,name,external_id,start_date,end_date,planned_budget,status,created_at", defaultOrder: "created_at" },
+  automation_rules: { defaultColumns: "id,name,description,trigger_type,action_type,is_active,execution_count,last_executed_at,created_at", defaultOrder: "created_at" },
+  automation_logs: { defaultColumns: "id,action_taken,entity_type,entity_id,status,error_message,duration_ms,created_at", defaultOrder: "created_at" },
+  deal_stage_transitions: { defaultColumns: "id,deal_id,from_stage_label,to_stage_label,actor_display_name,occurred_at", defaultOrder: "occurred_at" },
+  pipeline_stages: { defaultColumns: "id,name,sort_order,is_active,created_at", defaultOrder: "sort_order" },
+  expense_categories: { defaultColumns: "id,name,category_type,is_deductible,is_active,created_at", defaultOrder: "name" },
+  cost_centers: { defaultColumns: "id,name,code,is_active,created_at", defaultOrder: "name" },
+  ad_platform_stats: { defaultColumns: "id,external_campaign_name,platform,spend,impressions,clicks,reach,conversions,stat_date", defaultOrder: "stat_date" },
+  ad_creative_stats: { defaultColumns: "id,external_ad_name,external_campaign_name,platform,spend,impressions,clicks,stat_date", defaultOrder: "stat_date" },
+  ad_demographic_stats: { defaultColumns: "id,age_range,gender,platform,spend,impressions,clicks,reach,stat_date", defaultOrder: "stat_date" },
+  webhook_sources: { defaultColumns: "id,name,description,is_active,rate_limit_per_min,created_at", defaultOrder: "created_at" },
+  admin_notes: { defaultColumns: "id,type,ref_table,ref_id,content,created_at", defaultOrder: "created_at" },
+  admin_todos: { defaultColumns: "id,title,completed,display_order,created_at", defaultOrder: "display_order" },
+  brand_tax_settings: { defaultColumns: "id,corporate_tax_rate,regional_tax_rate,vat_rate_default,fiscal_year_start,notes,updated_at", defaultOrder: "updated_at" },
+  deals: { defaultColumns: "id,contact_id,current_stage_id,status,value,notes,assigned_user_id,created_at,closed_at", defaultOrder: "created_at" },
+  tickets: { defaultColumns: "id,contact_id,status,priority,subject,assigned_user_id,created_at,resolved_at", defaultOrder: "created_at" },
+  appointments: { defaultColumns: "id,contact_id,scheduled_at,status,appointment_type,address,city,notes,assigned_sales_user_id", defaultOrder: "scheduled_at" },
+  call_logs: { defaultColumns: "id,contact_id,phone_number,call_type,status,outcome,duration_seconds,started_at,notes", defaultOrder: "started_at" },
+  contacts: { defaultColumns: "id,first_name,last_name,email,city,cap,province,company_name,status,lead_type,created_at", defaultOrder: "created_at" },
+  lead_events: { defaultColumns: "id,contact_id,source,source_name,lead_type,ai_priority,received_at", defaultOrder: "received_at" },
+};
+
+async function getRawTableData(supabase: SupabaseClient, brandId: string, args: Record<string, unknown>) {
+  try {
+    const tableName = args.table as string;
+    const config = RAW_TABLE_WHITELIST[tableName];
+    if (!config) return { error: `Tabella non consentita: ${tableName}` };
+
+    const columns = (args.columns as string) || config.defaultColumns;
+    const orderBy = (args.order_by as string) || config.defaultOrder;
+    const ascending = (args.ascending as boolean) ?? false;
+    const limit = Math.min((args.limit as number) || 20, 50);
+
+    let query = supabase.from(tableName).select(columns).eq("brand_id", brandId);
+
+    // Apply filters
+    const filters = (args.filters as Record<string, unknown>) || {};
+    for (const [key, val] of Object.entries(filters)) {
+      if (Array.isArray(val)) {
+        query = query.in(key, val);
+      } else if (typeof val === 'boolean') {
+        query = query.eq(key, val);
+      } else {
+        query = query.eq(key, String(val));
+      }
+    }
+
+    query = query.order(orderBy, { ascending }).limit(limit);
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("[get_raw_table_data] Error:", error.message);
+      return { error: error.message };
+    }
+
+    return { table: tableName, rows: data || [], row_count: (data || []).length, columns: columns, order_by: orderBy };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[get_raw_table_data] Exception:", msg);
     return { error: msg };
   }
 }
