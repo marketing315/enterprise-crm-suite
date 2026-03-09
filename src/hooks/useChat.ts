@@ -193,10 +193,10 @@ export function useChatThreads() {
       let query = supabase
         .from("chat_threads")
         .select("*")
+        .is("archived_at", null)
         .order("updated_at", { ascending: false });
 
       if (isAllBrandsSelected && allBrandIds.length > 0) {
-        // Include system brand ID so executive threads created under it are visible
         const idsWithSystem = [...allBrandIds, currentBrand?.id].filter(Boolean) as string[];
         query = query.in("brand_id", idsWithSystem);
       } else if (currentBrand) {
