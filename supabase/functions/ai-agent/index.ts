@@ -98,11 +98,11 @@ const AGENT_TOOLS = [
     function: {
       name: "dynamic_analytics_query",
       description: `Query analitica dinamica su qualsiasi dataset CRM. Supporta filtri, raggruppamenti temporali/geografici/business, e diverse metriche.
-Datasets: leads, contacts, deals, tickets, appointments, calls.
-Metriche: count, count_distinct_contacts, sum_value, avg_value, sum_lead_cost.
-Group by: date, week, month, regione, provincia, city, status, priority, source_name, lead_type, outcome, appointment_type, call_type.
-Filtri: status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, lead_valid.
-USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confronti. È il tool principale.`,
+Datasets: leads, contacts, deals, tickets, appointments, calls, expenses, budgets, sales_orders, products, marketing_campaigns, deal_transitions.
+Metriche: count, count_distinct_contacts, sum_value, avg_value, sum_lead_cost, sum_amount, avg_amount, sum_planned_amount, sum_total_amount, sum_paid_amount, sum_default_price, sum_planned_budget, sum_gross_amount, sum_discount_amount, sum_tax_amount.
+Group by: date, week, month, regione, provincia, city, status, priority, source_name, lead_type, outcome, appointment_type, call_type, category, cost_center, vendor_name, periodicity, payment_status, campaign_name, product_name, from_stage_label, to_stage_label, channel.
+Filtri: status, priority, source_name, lead_type, outcome, appointment_type, call_type, assigned_user_id, lead_valid, category_id, cost_center_id, payment_status, campaign_id, periodicity, is_deductible, is_active, vendor_name, from_stage_label, to_stage_label, channel_id.
+USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confronti. È il tool principale per dati AGGREGATI.`,
       parameters: {
         type: "object",
         properties: {
