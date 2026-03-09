@@ -134,7 +134,7 @@ export function AgentChatPanel() {
         timestamp: new Date(), hadFallback: true, deliveryStatus: "failed",
       }]);
     }
-  }, [agentChat, messages, threadId]);
+  }, [agentChat, threadId]);
 
   const handleQuickAction = (prompt: string) => handleSend(prompt);
 
