@@ -112,17 +112,33 @@ export default function Chat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !selectedThreadId || !currentBrand) return;
+    if (!messageInput.trim() || !currentBrand) return;
 
     const text = messageInput.trim();
     setMessageInput("");
 
+    // Draft mode: create thread on first message
+    let activeThreadId = selectedThreadId;
+    if (draftExecutiveThread && !activeThreadId) {
+      try {
+        const newId = await createNewAIThread.mutateAsync();
+        setForceExecutiveThreadId(newId);
+        setSelectedThreadId(newId);
+        setDraftExecutiveThread(false);
+        activeThreadId = newId;
+      } catch {
+        toast.error("Errore nella creazione della conversazione");
+        return;
+      }
+    }
+
+    if (!activeThreadId) return;
+
     if (isExecutiveThread) {
-      // Executive threads: ai-agent already persists the user message, don't send twice
       try {
         await agentChat.mutateAsync({
           message: text,
-          threadId: selectedThreadId,
+          threadId: activeThreadId,
         });
       } catch (error) {
         toast.error("Errore nella risposta AI");
