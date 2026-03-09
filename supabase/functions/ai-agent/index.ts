@@ -18,6 +18,7 @@ Oggi è: ${new Date().toISOString().split('T')[0]} (usala come riferimento per "
 3. **Trend & Confronti**: Confronti temporali (WoW, MoM, periodi custom)
 4. **Search & Timeline**: Ricerca contatti con timeline completa
 5. **Multi-step Reasoning**: Posso combinare più query per analisi complesse
+6. **Ad Performance**: Analisi dettagliata campagne ADV (Meta Ads, Google Ads) con spesa, impressioni, click, CTR, CPC, CPM, reach, frequenza, breakdown per campagna/creatività/demografica
 
 ## CATALOGO METRICHE (usa dynamic_analytics_query)
 | Metrica | Dataset | Metric param | Note |
@@ -31,6 +32,10 @@ Oggi è: ${new Date().toISOString().split('T')[0]} (usala come riferimento per "
 | Appuntamenti | appointments | count | |
 | Chiamate | calls | count | |
 | Costo lead | leads | sum_lead_cost | Costo acquisizione |
+
+## CATALOGO ADV (usa get_ad_performance)
+Per QUALSIASI domanda su advertising, spesa ADV, campagne Meta/Google, CTR, CPC, CPM, ROAS, creatività, target demografico → usa SEMPRE get_ad_performance.
+Il tool restituisce: sommario (spesa totale, impressioni, click, CTR, CPC, CPM, reach), breakdown per campagna, e opzionalmente per creatività e demografica.
 
 ## RAGGRUPPAMENTI DISPONIBILI (group_by)
 - **Temporali**: date, week, month
@@ -46,10 +51,11 @@ status, priority, source_name, lead_type, outcome, appointment_type, call_type, 
 - Per domande geografiche usa group_by=regione o provincia
 - Per periodi custom parsa le date in formato ISO
 - Se dati insufficienti, spiega cosa manca e suggerisci domande alternative
-- Formatta con markdown: tabelle, liste, bold, emoji (📈📉⚠️✅💼🎫🗺️)
+- Formatta con markdown: tabelle, liste, bold, emoji (📈📉⚠️✅💼🎫🗺️💰)
 - Concludi con 1-2 suggerimenti actionable
 - MAI inventare dati: se il tool ritorna vuoto, dillo
 - Per analisi complesse, usa più tool calls in sequenza
+- Per domande su ADV/advertising, usa SEMPRE get_ad_performance
 
 ## STRATEGIA MULTI-STEP
 1. Prima ottieni il totale generale
@@ -163,6 +169,40 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_ad_performance",
+      description: `Analisi performance advertising (Meta Ads, Google Ads). Restituisce dati aggregati su spesa, impressioni, click, CTR, CPC, CPM, reach, frequenza, conversioni. Include breakdown per campagna, per creatività e per demografica. USA QUESTO TOOL per QUALSIASI domanda su: ads, advertising, campagne pubblicitarie, spesa adv, Meta Ads, Google Ads, budget pubblicitario, CTR, CPC, CPM, ROAS, ottimizzazione ads, creatività, target demografico.`,
+      parameters: {
+        type: "object",
+        properties: {
+          date_from: {
+            type: "string",
+            description: "Data inizio in formato ISO 8601 (es: 2026-03-01). Default: ultimi 30 giorni.",
+          },
+          date_to: {
+            type: "string",
+            description: "Data fine in formato ISO 8601 (es: 2026-03-09). Default: oggi.",
+          },
+          platform: {
+            type: "string",
+            enum: ["meta", "google"],
+            description: "Filtra per piattaforma. Se omesso, restituisce tutte.",
+          },
+          include_creatives: {
+            type: "boolean",
+            description: "Se true, include breakdown per creatività/ad singolo. Default: false.",
+          },
+          include_demographics: {
+            type: "boolean",
+            description: "Se true, include breakdown per età e genere. Default: false.",
+          },
+        },
+        required: [],
+      },
+    },
+  },
 ];
 
 // ── HELPERS ──
@@ -198,6 +238,8 @@ async function handleToolCall(
       return await getPipelineStatus(supabase, brandId);
     case "get_operator_performance":
       return await getOperatorPerformance(supabase, brandId, (args.period as string) || "7d");
+    case "get_ad_performance":
+      return await getAdPerformance(supabase, brandId, args);
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
@@ -316,7 +358,162 @@ async function getOperatorPerformance(supabase: SupabaseClient, brandId: string,
   };
 }
 
-// ── MULTI-STEP TOOL LOOP ──
+// Ad Performance tool handler
+async function getAdPerformance(supabase: SupabaseClient, brandId: string, args: Record<string, unknown>) {
+  try {
+    const now = new Date();
+    const dateFrom = (args.date_from as string) || new Date(now.getTime() - 30 * 86400000).toISOString().split('T')[0];
+    const dateTo = (args.date_to as string) || now.toISOString().split('T')[0];
+    const platform = (args.platform as string) || null;
+    const includeCreatives = (args.include_creatives as boolean) || false;
+    const includeDemographics = (args.include_demographics as boolean) || false;
+
+    // 1. Campaign-level aggregated stats
+    let campaignQuery = supabase
+      .from("ad_platform_stats")
+      .select("external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, frequency, conversions, conversions_value, stat_date")
+      .eq("brand_id", brandId)
+      .gte("stat_date", dateFrom)
+      .lte("stat_date", dateTo);
+    if (platform) campaignQuery = campaignQuery.eq("platform", platform);
+
+    const { data: campaignData, error: campaignError } = await campaignQuery;
+    if (campaignError) {
+      console.error("[get_ad_performance] Campaign query error:", campaignError.message);
+      return { error: campaignError.message };
+    }
+
+    // Aggregate by campaign
+    interface CampaignAgg { name: string; platform: string; spend: number; impressions: number; clicks: number; reach: number; conversions: number; conversions_value: number; days: Set<string> }
+    const campaignMap: Record<string, CampaignAgg> = {};
+    let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0, totalConversions = 0, totalConversionsValue = 0;
+
+    for (const row of (campaignData || [])) {
+      const key = `${row.external_campaign_id}_${row.platform}`;
+      if (!campaignMap[key]) {
+        campaignMap[key] = { name: row.external_campaign_name || row.external_campaign_id, platform: row.platform, spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0, conversions_value: 0, days: new Set() };
+      }
+      const c = campaignMap[key];
+      c.spend += row.spend || 0;
+      c.impressions += row.impressions || 0;
+      c.clicks += row.clicks || 0;
+      c.reach += row.reach || 0;
+      c.conversions += row.conversions || 0;
+      c.conversions_value += row.conversions_value || 0;
+      c.days.add(row.stat_date);
+      totalSpend += row.spend || 0;
+      totalImpressions += row.impressions || 0;
+      totalClicks += row.clicks || 0;
+      totalReach += row.reach || 0;
+      totalConversions += row.conversions || 0;
+      totalConversionsValue += row.conversions_value || 0;
+    }
+
+    const campaigns = Object.entries(campaignMap).map(([id, c]) => ({
+      campaign_id: id.split('_')[0],
+      campaign_name: c.name,
+      platform: c.platform,
+      spend: Math.round(c.spend * 100) / 100,
+      impressions: c.impressions,
+      clicks: c.clicks,
+      reach: c.reach,
+      conversions: c.conversions,
+      conversions_value: Math.round(c.conversions_value * 100) / 100,
+      ctr: c.impressions > 0 ? Math.round((c.clicks / c.impressions) * 10000) / 100 : 0,
+      cpc: c.clicks > 0 ? Math.round((c.spend / c.clicks) * 100) / 100 : 0,
+      cpm: c.impressions > 0 ? Math.round((c.spend / c.impressions * 1000) * 100) / 100 : 0,
+      days_active: c.days.size,
+    })).sort((a, b) => b.spend - a.spend);
+
+    const result: Record<string, unknown> = {
+      period: { from: dateFrom, to: dateTo },
+      summary: {
+        total_spend: Math.round(totalSpend * 100) / 100,
+        total_impressions: totalImpressions,
+        total_clicks: totalClicks,
+        total_reach: totalReach,
+        total_conversions: totalConversions,
+        total_conversions_value: Math.round(totalConversionsValue * 100) / 100,
+        avg_ctr: totalImpressions > 0 ? Math.round((totalClicks / totalImpressions) * 10000) / 100 : 0,
+        avg_cpc: totalClicks > 0 ? Math.round((totalSpend / totalClicks) * 100) / 100 : 0,
+        avg_cpm: totalImpressions > 0 ? Math.round((totalSpend / totalImpressions * 1000) * 100) / 100 : 0,
+        campaigns_count: campaigns.length,
+      },
+      campaigns,
+    };
+
+    // 2. Creative-level breakdown (optional)
+    if (includeCreatives) {
+      let creativeQuery = supabase
+        .from("ad_creative_stats")
+        .select("external_ad_id, external_ad_name, external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, thumbnail_url, stat_date")
+        .eq("brand_id", brandId)
+        .gte("stat_date", dateFrom)
+        .lte("stat_date", dateTo);
+      if (platform) creativeQuery = creativeQuery.eq("platform", platform);
+
+      const { data: creativeData } = await creativeQuery;
+      interface CreativeAgg { name: string; campaign: string; platform: string; spend: number; impressions: number; clicks: number; reach: number; thumbnail: string | null }
+      const creativeMap: Record<string, CreativeAgg> = {};
+      for (const row of (creativeData || [])) {
+        const key = row.external_ad_id;
+        if (!creativeMap[key]) {
+          creativeMap[key] = { name: row.external_ad_name || row.external_ad_id, campaign: row.external_campaign_name || '', platform: row.platform, spend: 0, impressions: 0, clicks: 0, reach: 0, thumbnail: row.thumbnail_url };
+        }
+        creativeMap[key].spend += row.spend || 0;
+        creativeMap[key].impressions += row.impressions || 0;
+        creativeMap[key].clicks += row.clicks || 0;
+        creativeMap[key].reach += row.reach || 0;
+      }
+      result.creatives = Object.entries(creativeMap).map(([id, c]) => ({
+        ad_id: id, ad_name: c.name, campaign: c.campaign, platform: c.platform,
+        spend: Math.round(c.spend * 100) / 100, impressions: c.impressions, clicks: c.clicks, reach: c.reach,
+        ctr: c.impressions > 0 ? Math.round((c.clicks / c.impressions) * 10000) / 100 : 0,
+        cpc: c.clicks > 0 ? Math.round((c.spend / c.clicks) * 100) / 100 : 0,
+      })).sort((a, b) => b.spend - a.spend).slice(0, 20);
+    }
+
+    // 3. Demographic breakdown (optional)
+    if (includeDemographics) {
+      let demoQuery = supabase
+        .from("ad_demographic_stats")
+        .select("age_range, gender, spend, impressions, clicks, reach, stat_date")
+        .eq("brand_id", brandId)
+        .gte("stat_date", dateFrom)
+        .lte("stat_date", dateTo);
+      if (platform) demoQuery = demoQuery.eq("platform", platform);
+
+      const { data: demoData } = await demoQuery;
+      interface DemoAgg { spend: number; impressions: number; clicks: number; reach: number }
+      const demoMap: Record<string, DemoAgg> = {};
+      for (const row of (demoData || [])) {
+        const key = `${row.age_range}|${row.gender}`;
+        if (!demoMap[key]) demoMap[key] = { spend: 0, impressions: 0, clicks: 0, reach: 0 };
+        demoMap[key].spend += row.spend || 0;
+        demoMap[key].impressions += row.impressions || 0;
+        demoMap[key].clicks += row.clicks || 0;
+        demoMap[key].reach += row.reach || 0;
+      }
+      result.demographics = Object.entries(demoMap).map(([key, d]) => {
+        const [age, gender] = key.split('|');
+        return {
+          age_range: age, gender,
+          spend: Math.round(d.spend * 100) / 100, impressions: d.impressions, clicks: d.clicks, reach: d.reach,
+          ctr: d.impressions > 0 ? Math.round((d.clicks / d.impressions) * 10000) / 100 : 0,
+          cpc: d.clicks > 0 ? Math.round((d.spend / d.clicks) * 100) / 100 : 0,
+        };
+      }).sort((a, b) => b.spend - a.spend);
+    }
+
+    return result;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[get_ad_performance] Exception:", msg);
+    return { error: msg };
+  }
+}
+
+
 async function runAgentLoop(
   messages: Array<{ role: string; content?: string; tool_calls?: unknown[]; tool_call_id?: string }>,
   supabase: SupabaseClient,
