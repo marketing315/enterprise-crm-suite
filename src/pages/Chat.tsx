@@ -53,6 +53,7 @@ export default function Chat() {
   const [askAI, setAskAI] = useState(false);
   const [activeTab, setActiveTab] = useState<"threads" | "agent">("agent");
   const [forceExecutiveThreadId, setForceExecutiveThreadId] = useState<string | null>(null);
+  const [draftExecutiveThread, setDraftExecutiveThread] = useState(false); // New: draft mode before first message
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -73,7 +74,7 @@ export default function Chat() {
   const { data: titleMap = new Map() } = useThreadDisplayTitles(threadIds);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
-  const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId;
+  const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId || draftExecutiveThread;
 
   // Auto-enable AI for executive threads
   useEffect(() => {
@@ -111,17 +112,33 @@ export default function Chat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !selectedThreadId || !currentBrand) return;
+    if (!messageInput.trim() || !currentBrand) return;
 
     const text = messageInput.trim();
     setMessageInput("");
 
+    // Draft mode: create thread on first message
+    let activeThreadId = selectedThreadId;
+    if (draftExecutiveThread && !activeThreadId) {
+      try {
+        const newId = await createNewAIThread.mutateAsync();
+        setForceExecutiveThreadId(newId);
+        setSelectedThreadId(newId);
+        setDraftExecutiveThread(false);
+        activeThreadId = newId;
+      } catch {
+        toast.error("Errore nella creazione della conversazione");
+        return;
+      }
+    }
+
+    if (!activeThreadId) return;
+
     if (isExecutiveThread) {
-      // Executive threads: ai-agent already persists the user message, don't send twice
       try {
         await agentChat.mutateAsync({
           message: text,
-          threadId: selectedThreadId,
+          threadId: activeThreadId,
         });
       } catch (error) {
         toast.error("Errore nella risposta AI");
@@ -193,10 +210,10 @@ export default function Chat() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={async () => {
-                        const newId = await createNewAIThread.mutateAsync();
-                        setForceExecutiveThreadId(newId);
-                        setSelectedThreadId(newId);
+                      onClick={() => {
+                        setDraftExecutiveThread(true);
+                        setSelectedThreadId(null);
+                        setForceExecutiveThreadId(null);
                         setAskAI(true);
                       }}
                       disabled={createNewAIThread.isPending}
@@ -249,7 +266,7 @@ export default function Chat() {
                           isSelected={thread.id === selectedThreadId}
                           unreadCount={unreadMap.get(thread.id) || 0}
                           displayTitle={titleMap.get(thread.id)}
-                          onClick={() => setSelectedThreadId(thread.id)}
+                          onClick={() => { setSelectedThreadId(thread.id); setDraftExecutiveThread(false); }}
                         />
                       ))}
                     </div>
@@ -260,14 +277,14 @@ export default function Chat() {
 
             {/* Message Panel */}
             <Card className="flex-1 flex flex-col">
-              {selectedThreadId ? (
+              {(selectedThreadId || draftExecutiveThread) ? (
                 <>
                   <CardHeader className="pb-3 border-b">
                     <div className="flex items-center gap-3">
-                      <ThreadIcon type={selectedThread?.type || "direct"} />
+                      <ThreadIcon type={selectedThread?.type || (draftExecutiveThread ? "executive" : "direct")} />
                       <div className="flex-1">
                         <CardTitle className="text-base">
-                          {selectedThread?.title || "Conversazione"}
+                          {draftExecutiveThread && !selectedThreadId ? "Nuova Chat AI" : (selectedThread?.title || "Conversazione")}
                         </CardTitle>
                         {selectedThread?.entity_type && (
                           <Badge variant="outline" className="text-xs mt-1">
