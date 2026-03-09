@@ -185,9 +185,27 @@ export default function Chat() {
                     <MessageSquare className="h-5 w-5" />
                     Chat
                   </CardTitle>
-                  <Button size="icon" variant="ghost" onClick={() => setCreateGroupOpen(true)} title="Nuovo gruppo">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={async () => {
+                        const newId = await createNewAIThread.mutateAsync();
+                        setSelectedThreadId(newId);
+                      }}
+                      disabled={createNewAIThread.isPending}
+                      title="Nuova chat AI"
+                    >
+                      {createNewAIThread.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Bot className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => setCreateGroupOpen(true)} title="Nuovo gruppo">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
 
