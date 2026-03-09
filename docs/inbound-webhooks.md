@@ -246,7 +246,7 @@ Every request is logged with JSON structure:
 {
   "request_id": "uuid",
   "source_id": "uuid",
-  "outcome": "success|invalid_uuid|missing_api_key|invalid_api_key|source_not_found|inactive_source|rate_limited",
+  "outcome": "success|invalid_uuid|missing_credentials|missing_api_key|invalid_api_key|source_not_found|inactive_source|hmac_misconfigured|missing_signature|missing_timestamp|invalid_timestamp_format|replay_detected|invalid_signature_format|invalid_signature|invalid_json|rate_limited|duplicate_suppressed|keplero_forwarded_success|keplero_forwarded_error",
   "status": 200,
   "contact_id": "uuid",
   "lead_event_id": "uuid"
