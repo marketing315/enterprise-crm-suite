@@ -2176,6 +2176,7 @@ export type Database = {
       }
       chat_threads: {
         Row: {
+          archived_at: string | null
           brand_id: string
           created_at: string
           created_by: string | null
@@ -2187,6 +2188,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           brand_id: string
           created_at?: string
           created_by?: string | null
@@ -2198,6 +2200,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           brand_id?: string
           created_at?: string
           created_by?: string | null
