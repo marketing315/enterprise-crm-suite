@@ -126,8 +126,8 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
           },
           group_by: {
             type: "string",
-            enum: ["date", "week", "month", "regione", "provincia", "city", "status", "priority", "source_name", "lead_type", "outcome", "appointment_type", "call_type"],
-            description: "Campo per raggruppare i risultati. Usa 'regione' per breakdown geografico per regione italiana.",
+            enum: ["date", "week", "month", "regione", "provincia", "city", "status", "priority", "source_name", "lead_type", "outcome", "appointment_type", "call_type", "category", "cost_center", "vendor_name", "periodicity", "payment_status", "campaign_name", "product_name", "from_stage_label", "to_stage_label", "channel"],
+            description: "Campo per raggruppare i risultati. Usa 'regione' per breakdown geografico, 'category' per spese per categoria, 'cost_center' per centro di costo, ecc.",
           },
           filters: {
             type: "object",
