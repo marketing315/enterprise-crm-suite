@@ -200,6 +200,12 @@ export function useAIAgentChat() {
       if (variables.threadId) {
         queryClient.invalidateQueries({ queryKey: ["chat-messages", variables.threadId] });
         queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+        // Title is generated async server-side after response; invalidate with delay
+        queryClient.invalidateQueries({ queryKey: ["thread-display-titles"] });
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["thread-display-titles"] });
+          queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+        }, 3000);
       }
     },
     onError: (error: Error) => {

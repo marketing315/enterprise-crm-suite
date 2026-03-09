@@ -436,7 +436,7 @@ export function useThreadDisplayTitles(threadIds: string[]) {
       return map;
     },
     enabled: threadIds.length > 0,
-    staleTime: 60_000,
+    staleTime: 10_000,
   });
 }
 
