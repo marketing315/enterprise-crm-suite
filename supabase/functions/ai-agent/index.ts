@@ -914,7 +914,7 @@ Deno.serve(async (req: Request) => {
     // ── Build messages ──
     const aiMessages: Array<{ role: string; content: string }> = [
       { role: "system", content: EXECUTIVE_AGENT_PROMPT },
-      ...conversationHistory,
+      ...conversationHistoryForAI,
       { role: "user", content: message },
     ];
 
