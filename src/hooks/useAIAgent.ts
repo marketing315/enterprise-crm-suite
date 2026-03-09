@@ -95,12 +95,14 @@ export function useAIAgentChat() {
       let data: AgentResponse | null = null;
       let error: Error | null = null;
       try {
+        const safeHistory = compactConversationHistory(conversationHistory);
+
         const result = await supabase.functions.invoke("ai-agent", {
           body: {
             message,
             threadId,
             brandId: currentBrand.id,
-            conversationHistory,
+            ...(safeHistory.length > 0 ? { conversationHistory: safeHistory } : {}),
           },
         });
         data = result.data;
