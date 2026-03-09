@@ -248,6 +248,7 @@ export default function Chat() {
                           thread={thread}
                           isSelected={thread.id === selectedThreadId}
                           unreadCount={unreadMap.get(thread.id) || 0}
+                          displayTitle={titleMap.get(thread.id)}
                           onClick={() => setSelectedThreadId(thread.id)}
                         />
                       ))}
