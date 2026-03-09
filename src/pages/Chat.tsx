@@ -283,18 +283,23 @@ export default function Chat() {
                     </ScrollArea>
                     <Separator />
                     <form onSubmit={handleSendMessage} className="p-4 space-y-3">
-                      {selectedThread?.type === "entity" && (
+                      {(selectedThread?.type === "entity" || isExecutiveThread) && (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Switch id="ai-mode" checked={askAI} onCheckedChange={setAskAI} />
+                            <Switch
+                              id="ai-mode"
+                              checked={askAI || isExecutiveThread}
+                              onCheckedChange={setAskAI}
+                              disabled={isExecutiveThread}
+                            />
                             <Label htmlFor="ai-mode" className="text-sm flex items-center gap-1.5 cursor-pointer">
-                              <Sparkles className={cn("h-4 w-4", askAI && "text-primary")} />
-                              Chiedi all'AI
+                              <Sparkles className={cn("h-4 w-4", (askAI || isExecutiveThread) && "text-primary")} />
+                              {isExecutiveThread ? "Agente AI Executive" : "Chiedi all'AI"}
                             </Label>
                           </div>
-                          {askAI && (
+                          {(askAI || isExecutiveThread) && (
                             <Badge variant="secondary" className="text-xs">
-                              L'AI analizzerà il contesto
+                              {isExecutiveThread ? "Sempre attivo" : "L'AI analizzerà il contesto"}
                             </Badge>
                           )}
                         </div>
