@@ -1036,7 +1036,9 @@ Deno.serve(async (req: Request) => {
       // ── Auto-generate descriptive thread title on first exchange ──
       try {
         const { data: threadData } = await supabase.from("chat_threads").select("title").eq("id", threadId).single();
-        const needsTitle = !threadData?.title || threadData.title === '' || threadData.title.startsWith('Agente AI Executive');
+        const currentTitle = threadData?.title || '';
+        const needsTitle = !currentTitle || currentTitle.startsWith('Agente AI Executive');
+        console.log(`[ai-agent] Title check: current="${currentTitle}", needsTitle=${needsTitle}, errorOccurred=${errorOccurred}`);
         if (needsTitle && !errorOccurred) {
           const titleResp = await fetch("https://api.lovable.dev/v1/chat/completions", {
             method: "POST",
@@ -1050,12 +1052,19 @@ Deno.serve(async (req: Request) => {
               ],
             }),
           });
+          console.log(`[ai-agent] Title API response status: ${titleResp.status}`);
           if (titleResp.ok) {
             const titleJson = await titleResp.json();
             const generatedTitle = titleJson?.choices?.[0]?.message?.content?.trim();
+            console.log(`[ai-agent] Generated title: "${generatedTitle}"`);
             if (generatedTitle && generatedTitle.length > 0 && generatedTitle.length <= 80) {
-              await supabase.from("chat_threads").update({ title: generatedTitle }).eq("id", threadId);
+              const { error: titleUpdateErr } = await supabase.from("chat_threads").update({ title: generatedTitle }).eq("id", threadId);
+              if (titleUpdateErr) console.error("[ai-agent] Title update error:", titleUpdateErr);
+              else console.log(`[ai-agent] Title updated successfully for thread ${threadId}`);
             }
+          } else {
+            const errText = await titleResp.text();
+            console.error(`[ai-agent] Title API error: ${titleResp.status} - ${errText}`);
           }
         }
       } catch (titleErr) {
