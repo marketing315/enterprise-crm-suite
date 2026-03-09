@@ -109,28 +109,31 @@ export default function Chat() {
     const text = messageInput.trim();
     setMessageInput("");
 
-    if (askAI || isExecutiveThread) {
+    if (isExecutiveThread) {
+      // Executive threads: ai-agent already persists the user message, don't send twice
+      try {
+        await agentChat.mutateAsync({
+          message: text,
+          threadId: selectedThreadId,
+        });
+      } catch (error) {
+        toast.error("Errore nella risposta AI");
+      }
+    } else if (askAI) {
+      // Entity AI: send user message first (ai-chat does NOT persist it)
       await sendMessage.mutateAsync({
         threadId: selectedThreadId,
         messageText: text,
       });
       try {
-        if (isExecutiveThread) {
-          // Use the executive AI agent for executive threads
-          await agentChat.mutateAsync({
-            message: text,
-            threadId: selectedThreadId,
-          });
-        } else {
-          const aiBrandId = selectedThread?.brand_id || currentBrand.id;
-          await sendAIMessage.mutateAsync({
-            threadId: selectedThreadId,
-            message: text,
-            entityType: selectedThread?.entity_type || undefined,
-            entityId: selectedThread?.entity_id || undefined,
-            brandId: aiBrandId,
-          });
-        }
+        const aiBrandId = selectedThread?.brand_id || currentBrand.id;
+        await sendAIMessage.mutateAsync({
+          threadId: selectedThreadId,
+          message: text,
+          entityType: selectedThread?.entity_type || undefined,
+          entityId: selectedThread?.entity_id || undefined,
+          brandId: aiBrandId,
+        });
       } catch (error) {
         toast.error("Errore nella risposta AI");
       }
