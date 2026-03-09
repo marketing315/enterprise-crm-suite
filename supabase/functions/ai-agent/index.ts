@@ -1001,6 +1001,35 @@ Deno.serve(async (req: Request) => {
       }).select("id").single();
       assistantMessageId = aiMsg?.id || null;
       await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+
+      // ── Auto-generate descriptive thread title on first exchange ──
+      try {
+        const { data: threadData } = await supabase.from("chat_threads").select("title").eq("id", threadId).single();
+        const needsTitle = !threadData?.title || threadData.title === '' || threadData.title.startsWith('Agente AI Executive');
+        if (needsTitle && !errorOccurred) {
+          const titleResp = await fetch("https://api.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LOVABLE_API_KEY}` },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              max_tokens: 30,
+              messages: [
+                { role: "system", content: "Genera un titolo brevissimo (max 6 parole, in italiano) che descriva l'argomento della domanda dell'utente. Solo il titolo, senza virgolette né punteggiatura finale." },
+                { role: "user", content: message },
+              ],
+            }),
+          });
+          if (titleResp.ok) {
+            const titleJson = await titleResp.json();
+            const generatedTitle = titleJson?.choices?.[0]?.message?.content?.trim();
+            if (generatedTitle && generatedTitle.length > 0 && generatedTitle.length <= 80) {
+              await supabase.from("chat_threads").update({ title: generatedTitle }).eq("id", threadId);
+            }
+          }
+        }
+      } catch (titleErr) {
+        console.warn("[ai-agent] Title generation failed (non-blocking):", titleErr);
+      }
       if (runId) {
         await supabase.from("ai_chat_runs").update({
           status: errorOccurred ? "failed" : "success", assistant_message_id: assistantMessageId,
