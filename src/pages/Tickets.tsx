@@ -69,7 +69,7 @@ export default function Tickets() {
     (op) => op.supabase_auth_id === supabaseUser?.id
   );
 
-  const isOperator = hasRole("admin") || hasRole("callcenter") || hasRole("operatore_callcenter") || hasRole("responsabile_callcenter");
+  const isOperator = hasRole("admin") || hasRole("operatore_callcenter") || hasRole("responsabile_callcenter");
 
   // Server-side search with cursor pagination
   const { data: searchResult, isLoading } = useTicketsSearch({
