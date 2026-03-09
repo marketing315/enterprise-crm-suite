@@ -455,12 +455,13 @@ async function executeDynamicQuery(supabase: SupabaseClient, brandId: string, ar
 }
 
 async function searchContacts(supabase: SupabaseClient, brandId: string, query: string, limit: number) {
-  const { data } = await supabase
+  let q = supabase
     .from("contacts")
-    .select("id, first_name, last_name, email, phone, city, cap, province, company_name, lead_type, status, created_at")
-    .eq("brand_id", brandId)
-    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%`)
+    .select("id, first_name, last_name, email, phone, city, cap, province, company_name, lead_type, status, created_at");
+  q = applyBrandFilter(q, brandId);
+  q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%`)
     .limit(limit);
+  const { data } = await q;
   return { contacts: data || [], count: (data || []).length };
 }
 
