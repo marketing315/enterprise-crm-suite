@@ -862,7 +862,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { message, threadId, brandId, conversationHistory = [] } = await req.json();
+    const { message, threadId, brandId, conversationHistory: requestConversationHistory = [] } = await req.json();
     if (!message || !brandId) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
