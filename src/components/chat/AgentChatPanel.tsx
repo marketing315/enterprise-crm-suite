@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   Bot,
   Send,
@@ -25,6 +27,10 @@ import {
   Database,
   CheckCircle2,
   Plus,
+  UserPlus,
+  Briefcase,
+  CalendarPlus,
+  TicketPlus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -33,6 +39,7 @@ import { useAIAgentChat, useExecutiveThread, useCreateNewExecutiveThread, AGENT_
 import { useChatMessages, useChatRealtime } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 
 interface Message {
   id: string;
