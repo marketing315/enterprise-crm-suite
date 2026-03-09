@@ -66,7 +66,56 @@ export function useExecutiveThread() {
       return data as string;
     },
     enabled: !!currentBrand && !!session?.user?.id,
-    staleTime: Infinity, // Thread ID doesn't change
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Hook to create a brand-new executive thread, archiving the current one.
+ * The old thread stays in chat_threads (visible in Conversazioni).
+ * The new thread becomes the active executive thread.
+ */
+export function useCreateNewExecutiveThread() {
+  const { currentBrand } = useBrand();
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<string> => {
+      if (!currentBrand || !session?.user?.id) throw new Error("No brand or user");
+
+      // Insert a new executive thread
+      const { data, error } = await supabase
+        .from("chat_threads")
+        .insert({
+          brand_id: currentBrand.id,
+          created_by: session.user.id,
+          type: "executive" as any,
+          title: `Agente AI Executive — ${new Date().toLocaleDateString("it-IT")}`,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      // Add the creator as a participant
+      await supabase.from("chat_thread_participants").insert({
+        thread_id: data.id,
+        user_id: session.user.id,
+      });
+
+      return data.id;
+    },
+    onSuccess: (newThreadId) => {
+      // Update the cached executive thread to point to the new one
+      queryClient.setQueryData(["executive-thread", currentBrand?.id], newThreadId);
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      toast.success("Nuova conversazione AI creata");
+    },
+    onError: (error: Error) => {
+      console.error("Error creating new executive thread:", error);
+      toast.error("Errore nella creazione della conversazione");
+    },
   });
 }
 
