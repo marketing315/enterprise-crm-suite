@@ -231,6 +231,44 @@ USA QUESTO TOOL per qualsiasi domanda su numeri, KPI, analisi, breakdown, confro
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_raw_table_data",
+      description: `Legge righe grezze da una tabella del brand. Usa per vedere dettagli specifici, liste, o dati non aggregati. Es: "mostrami le ultime 10 spese", "quali prodotti abbiamo?", "regole di automazione attive". Limitato a 50 righe. NON usare per conteggi o somme (usa dynamic_analytics_query per quelli).`,
+      parameters: {
+        type: "object",
+        properties: {
+          table: {
+            type: "string",
+            enum: ["expenses", "budgets", "sales_orders", "products", "marketing_campaigns", "automation_rules", "automation_logs", "deal_stage_transitions", "pipeline_stages", "expense_categories", "cost_centers", "ad_platform_stats", "ad_creative_stats", "ad_demographic_stats", "webhook_sources", "admin_notes", "admin_todos", "brand_tax_settings", "deals", "tickets", "appointments", "call_logs", "contacts", "lead_events"],
+            description: "Tabella da leggere",
+          },
+          columns: {
+            type: "string",
+            description: "Colonne da selezionare, separate da virgola. Se omesso, seleziona tutte le colonne principali. Es: 'id,name,amount,expense_date'",
+          },
+          filters: {
+            type: "object",
+            description: "Filtri chiave-valore. Es: {\"status\": \"active\", \"is_active\": true}",
+          },
+          order_by: {
+            type: "string",
+            description: "Colonna per ordinamento. Es: 'created_at' o 'amount'. Default: created_at",
+          },
+          ascending: {
+            type: "boolean",
+            description: "Se true ordina crescente, se false decrescente. Default: false (più recenti prima)",
+          },
+          limit: {
+            type: "integer",
+            description: "Numero massimo di righe (default: 20, max: 50)",
+          },
+        },
+        required: ["table"],
+      },
+    },
+  },
 ];
 
 // ── HELPERS ──
