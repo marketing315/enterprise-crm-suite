@@ -881,6 +881,13 @@ Deno.serve(async (req: Request) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const conversationHistoryForAI = await resolveConversationHistory(
+      supabase,
+      threadId,
+      requestConversationHistory
+    );
+    console.log(`[ai-agent] Context history selected: ${conversationHistoryForAI.length} messages`);
+
     const startTime = Date.now();
 
     // ── Persist user message ──
