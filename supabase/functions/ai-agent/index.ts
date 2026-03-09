@@ -622,8 +622,9 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
     if (includeCreatives) {
       let creativeQuery = supabase
         .from("ad_creative_stats")
-        .select("external_ad_id, external_ad_name, external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, thumbnail_url, stat_date")
-        .eq("brand_id", brandId)
+        .select("external_ad_id, external_ad_name, external_campaign_id, external_campaign_name, platform, spend, impressions, clicks, reach, thumbnail_url, stat_date");
+      creativeQuery = applyBrandFilter(creativeQuery, brandId);
+      creativeQuery = creativeQuery
         .gte("stat_date", dateFrom)
         .lte("stat_date", dateTo);
       if (platform) creativeQuery = creativeQuery.eq("platform", platform);
