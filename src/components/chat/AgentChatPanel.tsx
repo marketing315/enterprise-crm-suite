@@ -118,10 +118,8 @@ export function AgentChatPanel() {
     setOptimisticMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    const conversationHistory = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
-
     try {
-      const response = await agentChat.mutateAsync({ message: text.trim(), threadId, conversationHistory });
+      const response = await agentChat.mutateAsync({ message: text.trim(), threadId });
       // Add assistant response as optimistic until DB syncs
       const assistantMessage: Message = {
         id: `optimistic-${crypto.randomUUID()}`, role: "assistant", content: response.message, timestamp: new Date(),
