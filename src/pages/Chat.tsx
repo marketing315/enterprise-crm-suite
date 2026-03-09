@@ -277,7 +277,7 @@ export default function Chat() {
 
             {/* Message Panel */}
             <Card className="flex-1 flex flex-col">
-              {selectedThreadId ? (
+              {(selectedThreadId || draftExecutiveThread) ? (
                 <>
                   <CardHeader className="pb-3 border-b">
                     <div className="flex items-center gap-3">
