@@ -179,7 +179,7 @@ export function AgentChatPanel() {
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
             <Bot className="h-5 w-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <CardTitle className="text-base flex items-center gap-2">
               Agente AI Executive
               <Badge variant="outline" className="text-[10px] font-normal border-primary/30 text-primary">Premium</Badge>
@@ -188,6 +188,17 @@ export function AgentChatPanel() {
               Query dinamiche • Analisi geo • Multi-step reasoning
             </p>
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => createNewThread.mutate()}
+            disabled={createNewThread.isPending || messages.length === 0}
+            title="Nuova conversazione"
+          >
+            {createNewThread.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">Nuova chat</span>
+          </Button>
         </div>
       </CardHeader>
 
