@@ -49,7 +49,6 @@ export default function Chat() {
   const [messageInput, setMessageInput] = useState("");
   const [askAI, setAskAI] = useState(false);
   const [activeTab, setActiveTab] = useState<"threads" | "agent">("agent");
-  const isExecutiveThread = selectedThread?.type === "executive";
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
