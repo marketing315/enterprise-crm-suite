@@ -793,7 +793,7 @@ async function runAgentLoop(
       body: JSON.stringify({
         model: "google/gemini-3.1-pro-preview",
         messages: currentMessages,
-        max_tokens: 1200,
+        max_tokens: 4096,
         ...(isFirstRound || allToolsUsed.length < 6 ? { tools: AGENT_TOOLS, tool_choice: "auto" } : {}),
       }),
     });
@@ -832,7 +832,7 @@ async function runAgentLoop(
   const finalResponse = await fetchWithTimeout(AI_GATEWAY_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages, max_tokens: 1200 }),
+    body: JSON.stringify({ model: "google/gemini-3.1-pro-preview", messages: currentMessages, max_tokens: 4096 }),
   });
   if (!finalResponse.ok) throw new Error(`AI gateway final error: ${finalResponse.status}`);
   const finalResult = await finalResponse.json();
