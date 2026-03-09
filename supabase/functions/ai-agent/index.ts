@@ -582,6 +582,76 @@ async function getAdPerformance(supabase: SupabaseClient, brandId: string, args:
 }
 
 
+// Raw table data reader
+const RAW_TABLE_WHITELIST: Record<string, { defaultColumns: string; defaultOrder: string }> = {
+  expenses: { defaultColumns: "id,amount,gross_amount,expense_date,vendor_name,description,periodicity,is_deductible,created_at", defaultOrder: "expense_date" },
+  budgets: { defaultColumns: "id,category_id,period_month,planned_amount,notes,created_at", defaultOrder: "period_month" },
+  sales_orders: { defaultColumns: "id,order_number,status,subtotal,discount_amount,tax_amount,total_amount,paid_amount,notes,created_at,confirmed_at,paid_at", defaultOrder: "created_at" },
+  products: { defaultColumns: "id,name,description,sku,default_price,vat_rate,is_active,created_at", defaultOrder: "created_at" },
+  marketing_campaigns: { defaultColumns: "id,name,external_id,start_date,end_date,planned_budget,status,created_at", defaultOrder: "created_at" },
+  automation_rules: { defaultColumns: "id,name,description,trigger_type,action_type,is_active,execution_count,last_executed_at,created_at", defaultOrder: "created_at" },
+  automation_logs: { defaultColumns: "id,action_taken,entity_type,entity_id,status,error_message,duration_ms,created_at", defaultOrder: "created_at" },
+  deal_stage_transitions: { defaultColumns: "id,deal_id,from_stage_label,to_stage_label,actor_display_name,occurred_at", defaultOrder: "occurred_at" },
+  pipeline_stages: { defaultColumns: "id,name,sort_order,is_active,created_at", defaultOrder: "sort_order" },
+  expense_categories: { defaultColumns: "id,name,category_type,is_deductible,is_active,created_at", defaultOrder: "name" },
+  cost_centers: { defaultColumns: "id,name,code,is_active,created_at", defaultOrder: "name" },
+  ad_platform_stats: { defaultColumns: "id,external_campaign_name,platform,spend,impressions,clicks,reach,conversions,stat_date", defaultOrder: "stat_date" },
+  ad_creative_stats: { defaultColumns: "id,external_ad_name,external_campaign_name,platform,spend,impressions,clicks,stat_date", defaultOrder: "stat_date" },
+  ad_demographic_stats: { defaultColumns: "id,age_range,gender,platform,spend,impressions,clicks,reach,stat_date", defaultOrder: "stat_date" },
+  webhook_sources: { defaultColumns: "id,name,description,is_active,rate_limit_per_min,created_at", defaultOrder: "created_at" },
+  admin_notes: { defaultColumns: "id,type,ref_table,ref_id,content,created_at", defaultOrder: "created_at" },
+  admin_todos: { defaultColumns: "id,title,completed,display_order,created_at", defaultOrder: "display_order" },
+  brand_tax_settings: { defaultColumns: "id,corporate_tax_rate,regional_tax_rate,vat_rate_default,fiscal_year_start,notes,updated_at", defaultOrder: "updated_at" },
+  deals: { defaultColumns: "id,contact_id,current_stage_id,status,value,notes,assigned_user_id,created_at,closed_at", defaultOrder: "created_at" },
+  tickets: { defaultColumns: "id,contact_id,status,priority,subject,assigned_user_id,created_at,resolved_at", defaultOrder: "created_at" },
+  appointments: { defaultColumns: "id,contact_id,scheduled_at,status,appointment_type,address,city,notes,assigned_sales_user_id", defaultOrder: "scheduled_at" },
+  call_logs: { defaultColumns: "id,contact_id,phone_number,call_type,status,outcome,duration_seconds,started_at,notes", defaultOrder: "started_at" },
+  contacts: { defaultColumns: "id,first_name,last_name,email,city,cap,province,company_name,status,lead_type,created_at", defaultOrder: "created_at" },
+  lead_events: { defaultColumns: "id,contact_id,source,source_name,lead_type,ai_priority,received_at", defaultOrder: "received_at" },
+};
+
+async function getRawTableData(supabase: SupabaseClient, brandId: string, args: Record<string, unknown>) {
+  try {
+    const tableName = args.table as string;
+    const config = RAW_TABLE_WHITELIST[tableName];
+    if (!config) return { error: `Tabella non consentita: ${tableName}` };
+
+    const columns = (args.columns as string) || config.defaultColumns;
+    const orderBy = (args.order_by as string) || config.defaultOrder;
+    const ascending = (args.ascending as boolean) ?? false;
+    const limit = Math.min((args.limit as number) || 20, 50);
+
+    let query = supabase.from(tableName).select(columns).eq("brand_id", brandId);
+
+    // Apply filters
+    const filters = (args.filters as Record<string, unknown>) || {};
+    for (const [key, val] of Object.entries(filters)) {
+      if (Array.isArray(val)) {
+        query = query.in(key, val);
+      } else if (typeof val === 'boolean') {
+        query = query.eq(key, val);
+      } else {
+        query = query.eq(key, String(val));
+      }
+    }
+
+    query = query.order(orderBy, { ascending }).limit(limit);
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("[get_raw_table_data] Error:", error.message);
+      return { error: error.message };
+    }
+
+    return { table: tableName, rows: data || [], row_count: (data || []).length, columns: columns, order_by: orderBy };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[get_raw_table_data] Exception:", msg);
+    return { error: msg };
+  }
+}
+
+
 async function runAgentLoop(
   messages: Array<{ role: string; content?: string; tool_calls?: unknown[]; tool_call_id?: string }>,
   supabase: SupabaseClient,
