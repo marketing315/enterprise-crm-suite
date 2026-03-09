@@ -238,6 +238,8 @@ async function handleToolCall(
       return await getPipelineStatus(supabase, brandId);
     case "get_operator_performance":
       return await getOperatorPerformance(supabase, brandId, (args.period as string) || "7d");
+    case "get_ad_performance":
+      return await getAdPerformance(supabase, brandId, args);
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
