@@ -38,6 +38,7 @@ import {
   Settings,
   MoreVertical,
   Archive,
+  ArchiveRestore,
   Trash2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
