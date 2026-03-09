@@ -94,8 +94,12 @@ export function AgentChatPanel() {
   }));
 
   // Merge: DB messages are source of truth; optimistic messages that aren't yet in DB are appended
-  const dbMessageIds = new Set(dbMessages.map(m => m.id));
-  const pendingOptimistic = optimisticMessages.filter(m => !dbMessageIds.has(m.id));
+  // Match optimistic messages to DB messages by content+role (since IDs differ)
+  const pendingOptimistic = optimisticMessages.filter((opt) => {
+    return !dbMessages.some(
+      (db) => db.role === opt.role && db.content === opt.content
+    );
+  });
   const messages = [...dbMessages, ...pendingOptimistic];
 
   useEffect(() => {
