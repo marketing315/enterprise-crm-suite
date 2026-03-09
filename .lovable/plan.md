@@ -1,70 +1,47 @@
 
 
-# Scansione Debug Completa - Contatti Infinite Scroll
+# Piano: Accesso completo ai dati per il chatbot Executive
 
-## Bug Identificati
+## Problema
+L'agente AI ha accesso solo a 6 dataset (leads, contacts, deals, tickets, appointments, calls) tramite `dynamic_analytics_query` e pochi tool dedicati. Tabelle importanti come spese, budget, ordini di vendita, prodotti, campagne marketing, eventi e storico pipeline sono inaccessibili.
 
-### Bug 1 (CRITICO): `loadTriggeredRef` viene resettato prematuramente
-In `usePaginatedContactSearch.ts`, linea 56, `loadTriggeredRef.current = false` viene eseguito **incondizionatamente** alla fine dell'`useEffect`. Quando `page` cambia (es. da 0 a 1), React Query crea una nuova query e temporaneamente `pageData` diventa `[]`. L'effetto scatta, nessun branch viene eseguito, ma la guardia viene comunque resettata. Questo permette a `loadMore` di scattare di nuovo prima che i dati della pagina corrente arrivino, saltando pagine.
+## Soluzione
 
-### Bug 2 (MEDIO): Ordine di dichiarazione `handleScrollRef` / `scrollContainerCallbackRef`
-In `ContactsTableWithViews.tsx`, `scrollContainerCallbackRef` (linea 212) fa riferimento a `handleScrollRef.current` (linea 225) che e' dichiarato DOPO. Funziona per via delle closure JS, ma e' fragile e puo' causare problemi con HMR.
+### 1. Estendere la RPC `dynamic_analytics_query` con nuovi dataset
 
-### Bug 3 (MINORE): Warning `forwardRef` su AlertDialog
-Il console log mostra warning di `Function components cannot be given refs` su AlertDialog. Non blocca il funzionamento ma indica un componente non aggiornato.
+Aggiungere alla funzione SQL i seguenti dataset:
 
----
+| Dataset | Tabella | Colonna data | Metriche extra |
+|---------|---------|-------------|----------------|
+| `expenses` | `expenses` | `expense_date` | `sum_amount` |
+| `budgets` | `budgets` | `created_at` | `sum_amount`, `sum_spent` |
+| `sales_orders` | `sales_orders` | `created_at` | `sum_total`, `count` |
+| `products` | `products` | `created_at` | `count`, `sum_price` |
+| `marketing_campaigns` | `marketing_campaigns` | `created_at` | `count` |
+| `events` | `events` | `event_date` | `count` |
+| `deal_transitions` | `deal_stage_transitions` | `occurred_at` | `count` |
 
-## Piano di Fix
+Aggiungere metriche: `sum_amount`, `sum_total`, `sum_price`, `sum_spent`.
 
-### Step 1: Fix `usePaginatedContactSearch.ts`
-- Spostare `loadTriggeredRef.current = false` DENTRO il branch `if (pageData.length > 0)` o dopo la conferma che i dati sono effettivamente arrivati per la pagina corrente
-- Aggiungere un `pageRef` per tracciare quale pagina ha triggerato il load e resettare la guardia solo quando arrivano i dati per quella specifica pagina
+Aggiungere filtri: `category_id`, `cost_center_id`, `payment_status`, `campaign_id`.
 
-```text
-Logica corretta:
-1. loadMore() -> loadTriggeredRef = true, setPage(p+1)
-2. Query parte con nuovo offset
-3. pageData arriva (length > 0) -> appende a allResults -> loadTriggeredRef = false
-4. pageData vuoto (fine lista) -> hasMore = false -> scroll handler bloccato
-```
+Aggiungere group_by: `payment_status`, `category`, `campaign_name`, `product_name`, `from_stage_label`, `to_stage_label`.
 
-### Step 2: Riordinare dichiarazioni in `ContactsTableWithViews.tsx`
-- Spostare `handleScrollRef` PRIMA di `scrollContainerCallbackRef` per eliminare la dipendenza da hoisting delle closure
-- Nessun cambiamento di logica, solo ordine piu' sicuro
+### 2. Aggiungere un tool `get_raw_table_data` generico
 
-### Step 3: (Opzionale) Fix warning AlertDialog
-- Verificare se `AlertDialogContent` nel file `alert-dialog.tsx` necessita di `React.forwardRef`
+Un nuovo tool che consente all'agente di leggere direttamente righe da qualsiasi tabella del brand con filtri base. Implementato con whitelist di tabelle consentite e colonne selezionabili, limitato a 50 righe. Questo copre casi non analitici (es. "mostrami le ultime 10 spese", "quali prodotti abbiamo?").
 
----
+Tabelle whitelistate: `expenses`, `budgets`, `sales_orders`, `products`, `marketing_campaigns`, `events`, `automation_rules`, `automation_logs`, `deal_stage_transitions`, `pipeline_stages`, `expense_categories`, `cost_centers`.
 
-## Dettaglio Tecnico - Fix Principale
+### 3. Aggiornare il System Prompt
 
-Il fix chiave in `usePaginatedContactSearch.ts`:
+Aggiungere al catalogo metriche i nuovi dataset e le nuove metriche. Aggiungere istruzioni su quando usare `get_raw_table_data` vs `dynamic_analytics_query`.
 
-```text
-// PRIMA (buggy):
-useEffect(() => {
-  if (pageData.length > 0) {
-    // append...
-  } else if (page === 0) {
-    setAllResults([]);
-  }
-  loadTriggeredRef.current = false;  // <-- SEMPRE resettato
-}, [pageData, page]);
+### 4. Aggiornare il tool enum nell'Edge Function
 
-// DOPO (corretto):
-useEffect(() => {
-  if (pageData.length > 0) {
-    // append...
-    loadTriggeredRef.current = false;  // <-- solo quando dati arrivano
-  } else if (page === 0) {
-    setAllResults([]);
-    loadTriggeredRef.current = false;  // <-- reset iniziale OK
-  }
-  // NON resettare qui per pagine > 0 senza dati (ancora in caricamento)
-}, [pageData, page]);
-```
+Estendere l'enum `dataset` del tool `dynamic_analytics_query` e aggiungere la definizione del nuovo tool `get_raw_table_data`.
 
-Questo impedisce che il guard venga rimosso durante il transitorio di caricamento, prevenendo il salto di pagine.
+### File modificati
+- **Migration SQL**: nuova migration per estendere `dynamic_analytics_query`
+- **`supabase/functions/ai-agent/index.ts`**: nuovi dataset nell'enum, nuovo tool `get_raw_table_data`, handler, system prompt aggiornato
 
