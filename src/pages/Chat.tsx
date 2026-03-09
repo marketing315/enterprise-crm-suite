@@ -541,15 +541,19 @@ function ThreadItem({
   displayTitle,
   onClick,
   onArchive,
+  onUnarchive,
   onDelete,
+  isArchived = false,
 }: {
   thread: ChatThread;
   isSelected: boolean;
   unreadCount: number;
   displayTitle?: string;
   onClick: () => void;
-  onArchive: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onDelete: () => void;
+  isArchived?: boolean;
 }) {
   return (
     <div
@@ -582,10 +586,17 @@ function ThreadItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuItem onClick={onArchive}>
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archivia
-                </DropdownMenuItem>
+                {isArchived && onUnarchive ? (
+                  <DropdownMenuItem onClick={onUnarchive}>
+                    <ArchiveRestore className="h-4 w-4 mr-2" />
+                    Ripristina
+                  </DropdownMenuItem>
+                ) : onArchive ? (
+                  <DropdownMenuItem onClick={onArchive}>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archivia
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
