@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
 
   // Keplero sends duplicate query params (e.g. phone={{placeholder}}&phone=realNumber)
   // getAll returns all values; we pick the last one that looks like a real value
-  const phoneAll = url.searchParams.getAll("phone");
+  const phoneAll = phoneParams;
   let phoneRaw: string | null = phoneAll.reverse().find(p => p && !p.includes("{{") && !p.includes("}}")) || phoneAll[0] || null;
   let brandSlug: string | null = url.searchParams.get("brand_slug") || url.searchParams.get("brand");
   let brandIdParam: string | null = url.searchParams.get("brand_id");
