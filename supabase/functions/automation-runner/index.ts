@@ -105,16 +105,14 @@ function resolveObject(obj: Record<string, string>, context: Record<string, unkn
 
 function evaluateCondition(condition: Condition | null, payload: Record<string, unknown>): boolean {
   if (!condition) return true;
-  
-  if (condition.all) {
-    return condition.all.every((item) => evaluateConditionItem(item, payload));
-  }
-  
-  if (condition.any) {
-    return condition.any.some((item) => evaluateConditionItem(item, payload));
-  }
-  
-  return true;
+
+  const hasAll = Array.isArray(condition.all) && condition.all.length > 0;
+  const hasAny = Array.isArray(condition.any) && condition.any.length > 0;
+
+  const allMatched = !hasAll || condition.all!.every((item) => evaluateConditionItem(item, payload));
+  const anyMatched = !hasAny || condition.any!.some((item) => evaluateConditionItem(item, payload));
+
+  return allMatched && anyMatched;
 }
 
 function evaluateConditionItem(item: ConditionItem, payload: Record<string, unknown>): boolean {
