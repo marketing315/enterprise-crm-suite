@@ -332,15 +332,7 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // ── GET /catalog ─────────────────────────────────
-  if (req.method === "GET" && path === "catalog") {
-    const { data: servers } = await serviceClient.from("mcp_servers").select("*").eq("kill_switch", false).order("name");
-    const { data: tools } = await serviceClient.from("mcp_tools").select("*").eq("enabled", true).order("name");
-    const { data: resources } = await serviceClient.from("mcp_resources").select("*").eq("enabled", true).order("name");
-    return json({ servers: servers ?? [], tools: tools ?? [], resources: resources ?? [] });
-  }
-
-  // Auth check for mutation endpoints
+  // Auth check for all authenticated endpoints
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return json({ error: "Unauthorized: missing token" }, 401);
