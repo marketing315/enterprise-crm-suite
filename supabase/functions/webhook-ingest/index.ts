@@ -587,7 +587,6 @@ Deno.serve(async (req: Request) => {
   // 2. Early auth gate — reject requests with NO credentials before source lookup
   //    This prevents source enumeration via 404 responses (B01 fix)
   //    Also accept api_key as query parameter for platforms that don't support custom headers (e.g. systeme.io)
-  const apiKeyFromQuery = url.searchParams.get("api_key");
   const hasApiKey = !!(req.headers.get("x-api-key") || apiKeyFromQuery || apiKeyFromPath);
   const hasSignature = !!req.headers.get("x-signature") || !!req.headers.get("x-webhook-signature");
   if (!hasApiKey && !hasSignature) {
