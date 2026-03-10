@@ -9,8 +9,10 @@ import {
   BarChart3,
   Eye,
   MousePointerClick,
+  CalendarCheck,
 } from "lucide-react";
 import type { MarketingSummaryKpi } from "@/types/marketing";
+import type { FunnelMetrics } from "@/hooks/useFunnelMetrics";
 import type { AdPlatformStatSummary } from "@/types/adPlatform";
 
 interface MarketingKpiCardsProps {
