@@ -675,23 +675,65 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // Check if caller can manage this user (must be able to manage at least one of their roles)
-        let canManage = false;
-        for (const targetRole of targetRoles) {
-          const callerRoleInBrand = await getCallerRoleInBrand(adminClient, callerId, targetRole.brand_id);
-          if (callerRoleInBrand && canManageRole(callerRoleInBrand, targetRole.role as AppRole)) {
-            canManage = true;
-            break;
+        // B08 FIX: Caller must be able to manage ALL target roles, not just one.
+        // B09 FIX: Fetch caller context once (system brands + caller roles) to avoid N+1 queries.
+        const { data: systemBrands } = await adminClient
+          .from("brands")
+          .select("id")
+          .eq("is_system", true);
+        const systemBrandIds = new Set([
+          SYSTEM_BRAND_ID,
+          ...(systemBrands || []).map((b: any) => b.id),
+        ]);
+
+        const { data: callerAllRoles } = await adminClient
+          .from("user_roles")
+          .select("role, brand_id")
+          .eq("user_id", callerId)
+          .eq("is_active", true);
+
+        const roleOrder: Record<string, number> = {
+          admin: 100, ceo: 90, amministrazione: 80,
+          responsabile_venditori: 50, responsabile_callcenter: 50,
+          venditore: 10, sales: 10, operatore_callcenter: 10, callcenter: 10
+        };
+
+        // Determine caller's global role (from system brands only)
+        const callerGlobalRoles = (callerAllRoles || []).filter((r: any) => systemBrandIds.has(r.brand_id));
+        let callerGlobalRole: AppRole | null = null;
+        for (const r of callerGlobalRoles) {
+          if (!callerGlobalRole || (roleOrder[r.role] || 0) > (roleOrder[callerGlobalRole] || 0)) {
+            callerGlobalRole = r.role as AppRole;
           }
         }
 
-        // Also check if caller is admin/ceo globally
-        const callerGlobalRole = await getCallerRoleInBrand(adminClient, callerId, "__ALL_BRANDS__");
-        if (callerGlobalRole === "admin" || callerGlobalRole === "ceo") {
-          // Admin can reset anyone except other admins (unless they're admin themselves)
-          const targetHasAdminRole = targetRoles.some(r => r.role === "admin");
-          if (callerGlobalRole === "admin" || !targetHasAdminRole) {
-            canManage = true;
+        // Build a map of caller's highest role per brand
+        const callerRoleByBrand = new Map<string, AppRole>();
+        for (const r of (callerAllRoles || [])) {
+          const existing = callerRoleByBrand.get(r.brand_id);
+          if (!existing || (roleOrder[r.role] || 0) > (roleOrder[existing] || 0)) {
+            callerRoleByBrand.set(r.brand_id, r.role as AppRole);
+          }
+        }
+
+        // Check caller can manage ALL of the target's active roles
+        let canManage = true;
+        for (const targetRole of targetRoles) {
+          let canManageThis = false;
+          // Global admin/ceo check
+          if (callerGlobalRole && canManageRole(callerGlobalRole, targetRole.role as AppRole)) {
+            canManageThis = true;
+          }
+          // Brand-specific check
+          if (!canManageThis) {
+            const callerBrandRole = callerRoleByBrand.get(targetRole.brand_id);
+            if (callerBrandRole && canManageRole(callerBrandRole, targetRole.role as AppRole)) {
+              canManageThis = true;
+            }
+          }
+          if (!canManageThis) {
+            canManage = false;
+            break;
           }
         }
 
