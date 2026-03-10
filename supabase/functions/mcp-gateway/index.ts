@@ -513,6 +513,20 @@ Deno.serve(async (req: Request) => {
       return json({ error: "request_id and uri are required" }, 400);
     }
 
+    // Load and evaluate policies (same as execute-tool)
+    const { data: policies } = await serviceClient
+      .from("mcp_policies")
+      .select("*")
+      .eq("enabled", true)
+      .order("priority", { ascending: false });
+
+    const { decision, policyId } = evaluatePolicy(
+      (policies ?? []) as PolicyRule[],
+      uniqueRoles,
+      body.brand_id ?? null,
+      `resource:${body.uri}`
+    );
+
     const startTime = Date.now();
     const execId = await logExecution(serviceClient, {
       request_id: body.request_id,
@@ -520,9 +534,25 @@ Deno.serve(async (req: Request) => {
       actor_id: internalUserId,
       brand_id: body.brand_id ?? null,
       resource_uri: body.uri,
-      decision: "allow",
-      status: "running",
+      decision,
+      policy_id: policyId,
+      status: decision === "deny" ? "rejected" : decision === "require_approval" ? "pending_approval" : "running",
     });
+
+    // Deny → return immediately
+    if (decision === "deny") {
+      return json({ status: "denied", execution_id: execId, policy_id: policyId }, 403);
+    }
+
+    // Require approval → create approval record and return
+    if (decision === "require_approval") {
+      await serviceClient.from("mcp_approvals").insert({
+        execution_id: execId,
+        required_by_policy: policyId,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+      return json({ status: "pending_approval", execution_id: execId, message: "Awaiting human approval" }, 202);
+    }
 
     try {
       // Resource fetching uses CRM data via userClient (RLS-enforced)
