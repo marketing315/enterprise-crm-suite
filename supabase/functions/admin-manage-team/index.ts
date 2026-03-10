@@ -423,23 +423,38 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (!internalUser) {
-          const { data: newInternalUser, error: createError } = await adminClient
+          // B10 FIX: Use upsert on supabase_auth_id to handle race conditions
+          // (e.g. trigger or parallel invite creating the row concurrently)
+          const { data: upsertedUser, error: createError } = await adminClient
             .from("users")
-            .insert({
-              supabase_auth_id: authUserId,
-              email: email.toLowerCase(),
-              full_name: full_name || email,
-            })
+            .upsert(
+              {
+                supabase_auth_id: authUserId,
+                email: email.toLowerCase(),
+                full_name: full_name || email,
+              },
+              { onConflict: "supabase_auth_id" }
+            )
             .select("id")
             .single();
 
           if (createError) {
-            return new Response(JSON.stringify({ error: `Errore creazione utente: ${createError.message}` }), {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+            // Fallback: re-read in case of unexpected conflict
+            const { data: retryUser } = await adminClient
+              .from("users")
+              .select("id")
+              .eq("supabase_auth_id", authUserId)
+              .maybeSingle();
+            if (!retryUser) {
+              return new Response(JSON.stringify({ error: `Errore creazione utente: ${createError.message}` }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+            internalUser = retryUser;
+          } else {
+            internalUser = upsertedUser;
           }
-          internalUser = newInternalUser;
         }
 
         // Check if user already has a role in this brand

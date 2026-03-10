@@ -67,11 +67,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // Check if requesting user is admin and get their brand scope
+    // B07 FIX: Only consider active admin roles
     const { data: adminRoles, error: roleError } = await adminClient
       .from("user_roles")
       .select("id, brand_id")
       .eq("user_id", internalUser.id)
-      .eq("role", "admin");
+      .eq("role", "admin")
+      .eq("is_active", true);
 
     if (roleError || !adminRoles || adminRoles.length === 0) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {

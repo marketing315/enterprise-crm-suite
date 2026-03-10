@@ -67,11 +67,13 @@ async function verifyAdmin(authHeader: string): Promise<{ adminClient: ReturnTyp
   }
 
   // R02 FIX: Fetch all admin roles with their brand_ids for scoping
+  // B07 FIX: Only consider active admin roles
   const { data: adminRoles, error: roleError } = await adminClient
     .from("user_roles")
     .select("id, brand_id")
     .eq("user_id", internalUser.id)
-    .eq("role", "admin");
+    .eq("role", "admin")
+    .eq("is_active", true);
 
   if (roleError || !adminRoles || adminRoles.length === 0) {
     throw new Error("Admin access required");
