@@ -425,9 +425,12 @@ Deno.serve(async (req: Request) => {
   let bodyText: string;
   try {
     bodyText = await req.text();
-    if (bodyText.length > MAX_BODY_BYTES) {
+    // B05 FIX: Measure actual byte length, not UTF-16 char count, to prevent
+    // multibyte characters bypassing the size limit
+    const actualByteLength = new TextEncoder().encode(bodyText).byteLength;
+    if (actualByteLength > MAX_BODY_BYTES) {
       return new Response(
-        JSON.stringify({ error: "Payload too large", max_bytes: MAX_BODY_BYTES }),
+        JSON.stringify({ error: "Payload too large", max_bytes: MAX_BODY_BYTES, actual_bytes: actualByteLength }),
         { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
