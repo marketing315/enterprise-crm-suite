@@ -38,21 +38,11 @@ Deno.serve(async (req: Request) => {
 
   const url = new URL(req.url);
 
-  // DEBUG: log everything Keplero sends so we can understand the format
-  const allHeaders: Record<string, string> = {};
-  req.headers.forEach((v, k) => { allHeaders[k] = v; });
-  const allQuery: Record<string, string> = {};
-  url.searchParams.forEach((v, k) => { allQuery[k] = v; });
-  let rawBodyText: string | null = null;
-  if (req.method === "POST") {
-    try { rawBodyText = await req.clone().text(); } catch { /* ignore */ }
-  }
-  console.log("[KepleroLookup] RAW REQUEST", JSON.stringify({
+  // Log essential request metadata for troubleshooting (no sensitive data)
+  const phoneParams = url.searchParams.getAll("phone");
+  console.log("[KepleroLookup] Incoming request", JSON.stringify({
     method: req.method,
-    url: req.url,
-    headers: allHeaders,
-    query: allQuery,
-    body: rawBodyText,
+    phoneParamsCount: phoneParams.length,
   }));
 
   // Keplero sends duplicate query params (e.g. phone={{placeholder}}&phone=realNumber)
