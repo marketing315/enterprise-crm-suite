@@ -206,7 +206,8 @@ export default function MarketingDashboard() {
           <MarketingKpiCards
             kpis={summaryKpis}
             advSummary={advSummary}
-            isLoading={summaryLoading || advLoading}
+            funnelMetrics={funnelMetrics}
+            isLoading={summaryLoading || advLoading || funnelLoading}
           />
 
           {/* Mini Funnel */}
