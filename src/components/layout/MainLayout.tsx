@@ -64,6 +64,7 @@ import {
   FileText,
   LineChart,
   Zap,
+  Target,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
