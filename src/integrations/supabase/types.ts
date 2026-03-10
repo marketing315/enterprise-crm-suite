@@ -3500,6 +3500,87 @@ export type Database = {
           },
         ]
       }
+      incident_drills: {
+        Row: {
+          action_items: Json | null
+          brand_id: string
+          completed_at: string | null
+          created_at: string
+          debrief_notes: string | null
+          drill_type: string
+          escalation_correct: boolean | null
+          facilitator_user_id: string | null
+          id: string
+          quarter: string
+          runbook_compliance_pct: number | null
+          scenario_id: string
+          scenario_name: string
+          scheduled_at: string | null
+          started_at: string | null
+          status: string
+          ttd_minutes: number | null
+          ttm_minutes: number | null
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json | null
+          brand_id: string
+          completed_at?: string | null
+          created_at?: string
+          debrief_notes?: string | null
+          drill_type?: string
+          escalation_correct?: boolean | null
+          facilitator_user_id?: string | null
+          id?: string
+          quarter: string
+          runbook_compliance_pct?: number | null
+          scenario_id: string
+          scenario_name: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          ttd_minutes?: number | null
+          ttm_minutes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json | null
+          brand_id?: string
+          completed_at?: string | null
+          created_at?: string
+          debrief_notes?: string | null
+          drill_type?: string
+          escalation_correct?: boolean | null
+          facilitator_user_id?: string | null
+          id?: string
+          quarter?: string
+          runbook_compliance_pct?: number | null
+          scenario_id?: string
+          scenario_name?: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          ttd_minutes?: number | null
+          ttm_minutes?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_drills_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_drills_facilitator_user_id_fkey"
+            columns: ["facilitator_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incoming_calls: {
         Row: {
           brand_id: string
@@ -6032,6 +6113,167 @@ export type Database = {
           {
             foreignKeyName: "sales_targets_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_findings: {
+        Row: {
+          area: string
+          brand_id: string
+          checklist_ref: string | null
+          created_at: string
+          description: string | null
+          id: string
+          owner_user_id: string | null
+          remediated_at: string | null
+          remediation_pr: string | null
+          review_id: string
+          severity: string
+          sla_deadline: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          brand_id: string
+          checklist_ref?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          remediated_at?: string | null
+          remediation_pr?: string | null
+          review_id: string
+          severity?: string
+          sla_deadline?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          brand_id?: string
+          checklist_ref?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          remediated_at?: string | null
+          remediation_pr?: string | null
+          review_id?: string
+          severity?: string
+          sla_deadline?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_findings_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_findings_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_findings_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "security_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_reviews: {
+        Row: {
+          brand_id: string
+          completed_at: string | null
+          created_at: string
+          critical_findings: number | null
+          high_findings: number | null
+          id: string
+          lead_user_id: string | null
+          low_findings: number | null
+          medium_findings: number | null
+          quarter: string
+          review_type: string
+          signed_off_at: string | null
+          signed_off_by: string | null
+          started_at: string | null
+          status: string
+          summary: string | null
+          total_findings: number | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          completed_at?: string | null
+          created_at?: string
+          critical_findings?: number | null
+          high_findings?: number | null
+          id?: string
+          lead_user_id?: string | null
+          low_findings?: number | null
+          medium_findings?: number | null
+          quarter: string
+          review_type?: string
+          signed_off_at?: string | null
+          signed_off_by?: string | null
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          total_findings?: number | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          completed_at?: string | null
+          created_at?: string
+          critical_findings?: number | null
+          high_findings?: number | null
+          id?: string
+          lead_user_id?: string | null
+          low_findings?: number | null
+          medium_findings?: number | null
+          quarter?: string
+          review_type?: string
+          signed_off_at?: string | null
+          signed_off_by?: string | null
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          total_findings?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_reviews_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_reviews_lead_user_id_fkey"
+            columns: ["lead_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_reviews_signed_off_by_fkey"
+            columns: ["signed_off_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
