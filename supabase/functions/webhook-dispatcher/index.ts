@@ -281,7 +281,8 @@ Deno.serve(async (req) => {
   const runStartTime = Date.now();
 
   try {
-    // SECURITY: Validate cron secret OR verify JWT server-side (service_role only)
+    // SECURITY [B01]: Validate cron secret OR verify JWT server-side (service_role ONLY)
+    // CRITICAL: anon tokens are NOT accepted — this function uses SUPABASE_SERVICE_ROLE_KEY
     const cronSecret = Deno.env.get("CRON_SECRET");
     const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
     const providedSecret = req.headers.get("x-cron-secret");
@@ -293,28 +294,23 @@ Deno.serve(async (req) => {
     let hasValidJwt = false;
     if (!hasValidSecret && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
-      // Direct comparison with known cron JWT
-      const cronAnonJwt = Deno.env.get("CRON_ANON_JWT");
-      if (cronAnonJwt && token === cronAnonJwt) {
-        hasValidJwt = true;
-      }
-      // Fallback: getClaims for service_role or authenticated users
-      if (!hasValidJwt) {
-        try {
-          const verifyClient = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_ANON_KEY")!,
-            { global: { headers: { Authorization: authHeader } } }
-          );
-          const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
-          if (!claimsErr && claimsData?.claims) {
-            const role = claimsData.claims.role as string;
-            if (role === "service_role" || role === "anon") {
-              hasValidJwt = true;
-            }
+      try {
+        const verifyClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          { global: { headers: { Authorization: authHeader } } }
+        );
+        const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+        if (!claimsErr && claimsData?.claims) {
+          const role = claimsData.claims.role as string;
+          // B01 FIX: Only service_role is accepted — anon tokens are explicitly rejected
+          if (role === "service_role") {
+            hasValidJwt = true;
+          } else {
+            console.warn(`[AUTH] Rejected JWT with non-privileged role: ${role}`);
           }
-        } catch { /* invalid JWT, fall through */ }
-      }
+        }
+      } catch { /* invalid JWT, fall through */ }
     }
     
     if (!hasValidSecret && !hasValidJwt) {

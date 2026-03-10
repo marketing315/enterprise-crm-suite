@@ -425,9 +425,12 @@ Deno.serve(async (req: Request) => {
   let bodyText: string;
   try {
     bodyText = await req.text();
-    if (bodyText.length > MAX_BODY_BYTES) {
+    // B05 FIX: Measure actual byte length, not UTF-16 char count, to prevent
+    // multibyte characters bypassing the size limit
+    const actualByteLength = new TextEncoder().encode(bodyText).byteLength;
+    if (actualByteLength > MAX_BODY_BYTES) {
       return new Response(
-        JSON.stringify({ error: "Payload too large", max_bytes: MAX_BODY_BYTES }),
+        JSON.stringify({ error: "Payload too large", max_bytes: MAX_BODY_BYTES, actual_bytes: actualByteLength }),
         { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -454,6 +457,21 @@ Deno.serve(async (req: Request) => {
   const afterIngest = ingestIdx >= 0 ? pathParts.slice(ingestIdx + 1) : [pathParts[pathParts.length - 1]];
   const sourceId = afterIngest[0] || "";
   const apiKeyFromPath = afterIngest.length > 1 ? afterIngest[1] : null;
+  
+  // B06: Also check query string for api_key (deprecated but supported for backwards compat)
+  const apiKeyFromQuery = url.searchParams.get("api_key");
+  
+  // B06 FIX: Track if credentials were provided via URL (path or query) for deprecation warning
+  const credentialViaUrl = !!(apiKeyFromPath || apiKeyFromQuery);
+  if (credentialViaUrl) {
+    console.warn(JSON.stringify({
+      level: "warn",
+      message: "DEPRECATED: API key provided via URL (path or query parameter). Prefer x-api-key header.",
+      source_id: sourceId,
+      credential_location: apiKeyFromPath ? "path" : "query",
+      ip: ipAddress,
+    }));
+  }
 
   // Generate request ID for structured logging
   const requestId = crypto.randomUUID();
@@ -569,7 +587,6 @@ Deno.serve(async (req: Request) => {
   // 2. Early auth gate — reject requests with NO credentials before source lookup
   //    This prevents source enumeration via 404 responses (B01 fix)
   //    Also accept api_key as query parameter for platforms that don't support custom headers (e.g. systeme.io)
-  const apiKeyFromQuery = url.searchParams.get("api_key");
   const hasApiKey = !!(req.headers.get("x-api-key") || apiKeyFromQuery || apiKeyFromPath);
   const hasSignature = !!req.headers.get("x-signature") || !!req.headers.get("x-webhook-signature");
   if (!hasApiKey && !hasSignature) {

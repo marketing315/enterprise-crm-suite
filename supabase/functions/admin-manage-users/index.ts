@@ -208,11 +208,31 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // Delete user roles first
-        await adminClient
+        // B04 FIX: Delete auth.users FIRST — if this fails, application data remains intact
+        // and the operation can be safely retried. The reverse order would leave orphaned
+        // auth records if application-level deletes fail.
+        const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(
+          userData.supabase_auth_id
+        );
+
+        if (authDeleteError) {
+          console.error("Error deleting auth user:", authDeleteError);
+          return new Response(JSON.stringify({ error: `Auth deletion failed: ${authDeleteError.message}` }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Now delete application data (auth user is already gone, so safe)
+        // Delete user roles first (FK dependency)
+        const { error: rolesDeleteError } = await adminClient
           .from("user_roles")
           .delete()
           .eq("user_id", user_id);
+
+        if (rolesDeleteError) {
+          console.error("Error deleting user roles (auth user already deleted):", rolesDeleteError);
+        }
 
         // Delete from public.users
         const { error: deleteError } = await adminClient
@@ -221,20 +241,11 @@ Deno.serve(async (req: Request) => {
           .eq("id", user_id);
 
         if (deleteError) {
-          return new Response(JSON.stringify({ error: deleteError.message }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        // Delete from auth.users
-        const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(
-          userData.supabase_auth_id
-        );
-
-        if (authDeleteError) {
-          console.error("Error deleting auth user:", authDeleteError);
-          return new Response(JSON.stringify({ error: `Auth sync failed: ${authDeleteError.message}` }), {
+          console.error("Error deleting public.users (auth user already deleted):", deleteError);
+          return new Response(JSON.stringify({ 
+            error: `Partial deletion: auth user removed but application record cleanup failed: ${deleteError.message}`,
+            auth_deleted: true,
+          }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
