@@ -63,7 +63,7 @@ function mapPacemakerStatus(value: string): string | null {
 function mapAppointmentStatus(esito: string): "scheduled" | "confirmed" | "cancelled" {
   if (!esito) return "scheduled";
   const e = esito.toLowerCase();
-  if (e === "appuntamento_fissato") return "confirmed";
+  if (e === "appuntamento_fissato") return "scheduled";
   if (e === "rifiuto") return "cancelled";
   return "scheduled";
 }
