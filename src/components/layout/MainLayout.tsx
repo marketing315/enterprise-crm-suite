@@ -64,6 +64,7 @@ import {
   FileText,
   LineChart,
   Zap,
+  Target,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -114,6 +115,7 @@ const adminMenuItems: Array<{
   { icon: Webhook, label: 'Webhook Monitor', path: '/admin/webhooks' },
   { icon: AlertTriangle, label: 'DLQ', path: '/admin/dlq' },
   { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi' },
+  { icon: Target, label: 'SLO Board', path: '/admin/slo-board', requiresRole: ['admin', 'ceo'] },
 ];
 
 export function MainLayout() {

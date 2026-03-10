@@ -1,6 +1,6 @@
 // AdminDashboard — v2
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { Shield, Users, Webhook, Ticket, AlertCircle, Kanban, TrendingUp } from 'lucide-react';
+import { Shield, Users, Webhook, Ticket, AlertCircle, Kanban, TrendingUp, Target } from 'lucide-react';
 import { DashboardKpiGrid, KpiItem } from '@/components/dashboard/DashboardKpiGrid';
 import { DashboardTrendChart } from '@/components/dashboard/DashboardTrendChart';
 import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemStatus';
@@ -128,6 +128,14 @@ export default function AdminDashboard() {
             >
               <TrendingUp className="h-4 w-4" />
               AI Performance
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate('/admin/slo-board')}
+            >
+              <Target className="h-4 w-4" />
+              SLO Board
             </Button>
             <Button
               variant="outline"

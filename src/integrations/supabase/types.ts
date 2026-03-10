@@ -7748,6 +7748,10 @@ export type Database = {
           unmapped_count: number
         }[]
       }
+      get_board_slo_metrics: {
+        Args: { p_brand_id?: string; p_month_start?: string }
+        Returns: Json
+      }
       get_brand_operators: {
         Args: { p_brand_id: string }
         Returns: {
