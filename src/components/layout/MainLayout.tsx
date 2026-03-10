@@ -114,6 +114,7 @@ const adminMenuItems: Array<{
   { icon: Webhook, label: 'Webhook Monitor', path: '/admin/webhooks' },
   { icon: AlertTriangle, label: 'DLQ', path: '/admin/dlq' },
   { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi' },
+  { icon: Target, label: 'SLO Board', path: '/admin/slo-board', requiresRole: ['admin', 'ceo'] },
 ];
 
 export function MainLayout() {

@@ -174,6 +174,7 @@ const App = () => (
                   <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
                   <Route path="/admin/analytics" element={<GuardedAdminAnalytics />} />
                   <Route path="/admin/capi" element={<GuardedAdminCapiMonitor />} />
+                  <Route path="/admin/slo-board" element={<AdminSloBoard />} />
                   <Route path="/ceo-dashboard" element={<GuardedCeoDashboard />} />
                 </Route>
                 
