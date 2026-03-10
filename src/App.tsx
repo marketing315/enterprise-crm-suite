@@ -38,6 +38,7 @@ const AdminDlqDashboard = lazy(() => import("@/pages/AdminDlqDashboard"));
 const AdminAnalytics = lazy(() => import("@/pages/AdminAnalytics"));
 const AdminCapiMonitor = lazy(() => import("@/pages/AdminCapiMonitor"));
 const AdminSloBoard = lazy(() => import("@/pages/AdminSloBoard"));
+const AdminSecurityReviews = lazy(() => import("@/pages/AdminSecurityReviews"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Team = lazy(() => import("@/pages/Team"));
@@ -175,6 +176,7 @@ const App = () => (
                   <Route path="/admin/analytics" element={<GuardedAdminAnalytics />} />
                   <Route path="/admin/capi" element={<GuardedAdminCapiMonitor />} />
                   <Route path="/admin/slo-board" element={<AdminSloBoard />} />
+                  <Route path="/admin/security-reviews" element={<AdminSecurityReviews />} />
                   <Route path="/ceo-dashboard" element={<GuardedCeoDashboard />} />
                 </Route>
                 
