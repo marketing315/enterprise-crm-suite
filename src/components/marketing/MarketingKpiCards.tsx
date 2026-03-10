@@ -99,6 +99,13 @@ export function MarketingKpiCards({ kpis, advSummary, funnelMetrics, isLoading }
       accent: "amber",
     },
     {
+      title: "Appuntamenti Fissati",
+      value: funnelMetrics?.appointments,
+      icon: CalendarCheck,
+      format: "number",
+      accent: "green",
+    },
+    {
       title: "Impressions",
       value: advSummary?.total_impressions,
       icon: Eye,
