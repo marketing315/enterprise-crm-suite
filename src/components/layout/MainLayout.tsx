@@ -65,6 +65,7 @@ import {
   LineChart,
   Zap,
   Target,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
