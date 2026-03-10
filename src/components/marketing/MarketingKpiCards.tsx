@@ -9,13 +9,16 @@ import {
   BarChart3,
   Eye,
   MousePointerClick,
+  CalendarCheck,
 } from "lucide-react";
 import type { MarketingSummaryKpi } from "@/types/marketing";
+import type { FunnelMetrics } from "@/hooks/useFunnelMetrics";
 import type { AdPlatformStatSummary } from "@/types/adPlatform";
 
 interface MarketingKpiCardsProps {
   kpis: MarketingSummaryKpi | null;
   advSummary?: AdPlatformStatSummary | null;
+  funnelMetrics?: FunnelMetrics | null;
   isLoading?: boolean;
 }
 
@@ -58,7 +61,7 @@ const accentBg: Record<string, string> = {
   purple: "bg-violet-100/60 dark:bg-violet-900/30",
 };
 
-export function MarketingKpiCards({ kpis, advSummary, isLoading }: MarketingKpiCardsProps) {
+export function MarketingKpiCards({ kpis, advSummary, funnelMetrics, isLoading }: MarketingKpiCardsProps) {
   const cards: KpiCardDef[] = [
     {
       title: "Lead Totali",
@@ -94,6 +97,13 @@ export function MarketingKpiCards({ kpis, advSummary, isLoading }: MarketingKpiC
       icon: Target,
       format: "currency",
       accent: "amber",
+    },
+    {
+      title: "Appuntamenti Fissati",
+      value: funnelMetrics?.appointments,
+      icon: CalendarCheck,
+      format: "number",
+      accent: "green",
     },
     {
       title: "Impressions",
