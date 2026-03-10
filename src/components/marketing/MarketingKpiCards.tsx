@@ -18,6 +18,7 @@ import type { AdPlatformStatSummary } from "@/types/adPlatform";
 interface MarketingKpiCardsProps {
   kpis: MarketingSummaryKpi | null;
   advSummary?: AdPlatformStatSummary | null;
+  funnelMetrics?: FunnelMetrics | null;
   isLoading?: boolean;
 }
 
