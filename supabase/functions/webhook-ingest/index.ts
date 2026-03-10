@@ -822,8 +822,8 @@ Deno.serve(async (req: Request) => {
     
     const brandSlug = brandData?.slug || "";
     const kepleroUrl = `${supabaseUrl}/functions/v1/keplero-webhook?brand=${brandSlug}`;
-    // Use service role key as internal forwarding token (no need for separate KEPLERO_WEBHOOK_SECRET)
-    const internalToken = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    // Use dedicated internal service token for inter-function auth (never pass service role key in headers)
+    const internalToken = Deno.env.get("INTERNAL_SERVICE_TOKEN") || "";
     
     try {
       const kepleroResponse = await fetch(kepleroUrl, {

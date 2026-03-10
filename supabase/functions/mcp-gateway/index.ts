@@ -332,15 +332,7 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // ── GET /catalog ─────────────────────────────────
-  if (req.method === "GET" && path === "catalog") {
-    const { data: servers } = await serviceClient.from("mcp_servers").select("*").eq("kill_switch", false).order("name");
-    const { data: tools } = await serviceClient.from("mcp_tools").select("*").eq("enabled", true).order("name");
-    const { data: resources } = await serviceClient.from("mcp_resources").select("*").eq("enabled", true).order("name");
-    return json({ servers: servers ?? [], tools: tools ?? [], resources: resources ?? [] });
-  }
-
-  // Auth check for mutation endpoints
+  // Auth check for all authenticated endpoints
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return json({ error: "Unauthorized: missing token" }, 401);
@@ -367,6 +359,13 @@ Deno.serve(async (req: Request) => {
   const { data: rolesData } = await serviceClient.from("user_roles").select("role, brand_id").eq("user_id", internalUserId);
   const userRoles = (rolesData ?? []).map((r: any) => r.role as string);
   const uniqueRoles = [...new Set(userRoles)];
+  // ── GET /catalog (auth-gated) ──────────────────────
+  if (req.method === "GET" && path === "catalog") {
+    const { data: servers } = await serviceClient.from("mcp_servers").select("*").eq("kill_switch", false).order("name");
+    const { data: tools } = await serviceClient.from("mcp_tools").select("*").eq("enabled", true).order("name");
+    const { data: resources } = await serviceClient.from("mcp_resources").select("*").eq("enabled", true).order("name");
+    return json({ servers: servers ?? [], tools: tools ?? [], resources: resources ?? [] });
+  }
 
   // ── POST /execute-tool ───────────────────────────
   if (req.method === "POST" && path === "execute-tool") {
@@ -514,6 +513,20 @@ Deno.serve(async (req: Request) => {
       return json({ error: "request_id and uri are required" }, 400);
     }
 
+    // Load and evaluate policies (same as execute-tool)
+    const { data: policies } = await serviceClient
+      .from("mcp_policies")
+      .select("*")
+      .eq("enabled", true)
+      .order("priority", { ascending: false });
+
+    const { decision, policyId } = evaluatePolicy(
+      (policies ?? []) as PolicyRule[],
+      uniqueRoles,
+      body.brand_id ?? null,
+      `resource:${body.uri}`
+    );
+
     const startTime = Date.now();
     const execId = await logExecution(serviceClient, {
       request_id: body.request_id,
@@ -521,9 +534,25 @@ Deno.serve(async (req: Request) => {
       actor_id: internalUserId,
       brand_id: body.brand_id ?? null,
       resource_uri: body.uri,
-      decision: "allow",
-      status: "running",
+      decision,
+      policy_id: policyId,
+      status: decision === "deny" ? "rejected" : decision === "require_approval" ? "pending_approval" : "running",
     });
+
+    // Deny → return immediately
+    if (decision === "deny") {
+      return json({ status: "denied", execution_id: execId, policy_id: policyId }, 403);
+    }
+
+    // Require approval → create approval record and return
+    if (decision === "require_approval") {
+      await serviceClient.from("mcp_approvals").insert({
+        execution_id: execId,
+        required_by_policy: policyId,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+      return json({ status: "pending_approval", execution_id: execId, message: "Awaiting human approval" }, 202);
+    }
 
     try {
       // Resource fetching uses CRM data via userClient (RLS-enforced)

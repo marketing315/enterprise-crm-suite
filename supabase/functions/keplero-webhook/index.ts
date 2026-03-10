@@ -153,13 +153,13 @@ Deno.serve(async (req: Request) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // ── Auth: accept internal forwarding (service role) OR KEPLERO_WEBHOOK_SECRET ──
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  // ── Auth: accept internal forwarding (dedicated token) OR KEPLERO_WEBHOOK_SECRET ──
+  const internalServiceToken = Deno.env.get("INTERNAL_SERVICE_TOKEN") || "";
   const internalForward = req.headers.get("x-internal-forward");
   const kepleroSecret = req.headers.get("x-keplero-secret");
   const expectedSecret = Deno.env.get("KEPLERO_WEBHOOK_SECRET");
 
-  const isInternalCall = internalForward && internalForward === serviceRoleKey;
+  const isInternalCall = internalServiceToken && internalForward && internalForward === internalServiceToken;
   const isDirectCall = expectedSecret && kepleroSecret === expectedSecret;
 
   if (!isInternalCall && !isDirectCall) {
