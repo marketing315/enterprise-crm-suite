@@ -116,6 +116,7 @@ const adminMenuItems: Array<{
   { icon: AlertTriangle, label: 'DLQ', path: '/admin/dlq' },
   { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi' },
   { icon: Target, label: 'SLO Board', path: '/admin/slo-board', requiresRole: ['admin', 'ceo'] },
+  { icon: ShieldCheck, label: 'Security Review', path: '/admin/security-reviews', requiresRole: ['admin', 'ceo'] },
 ];
 
 export function MainLayout() {
