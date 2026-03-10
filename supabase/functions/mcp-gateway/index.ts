@@ -359,6 +359,13 @@ Deno.serve(async (req: Request) => {
   const { data: rolesData } = await serviceClient.from("user_roles").select("role, brand_id").eq("user_id", internalUserId);
   const userRoles = (rolesData ?? []).map((r: any) => r.role as string);
   const uniqueRoles = [...new Set(userRoles)];
+  // ── GET /catalog (auth-gated) ──────────────────────
+  if (req.method === "GET" && path === "catalog") {
+    const { data: servers } = await serviceClient.from("mcp_servers").select("*").eq("kill_switch", false).order("name");
+    const { data: tools } = await serviceClient.from("mcp_tools").select("*").eq("enabled", true).order("name");
+    const { data: resources } = await serviceClient.from("mcp_resources").select("*").eq("enabled", true).order("name");
+    return json({ servers: servers ?? [], tools: tools ?? [], resources: resources ?? [] });
+  }
 
   // ── POST /execute-tool ───────────────────────────
   if (req.method === "POST" && path === "execute-tool") {
