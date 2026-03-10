@@ -7926,7 +7926,11 @@ export type Database = {
           p_to: string
         }
         Returns: {
+          avg_cpc: number
           avg_cpl: number
+          avg_cpm: number
+          avg_ctr: number
+          avg_frequency: number
           total_clicks: number
           total_conversions: number
           total_impressions: number
