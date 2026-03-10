@@ -61,7 +61,7 @@ const accentBg: Record<string, string> = {
   purple: "bg-violet-100/60 dark:bg-violet-900/30",
 };
 
-export function MarketingKpiCards({ kpis, advSummary, isLoading }: MarketingKpiCardsProps) {
+export function MarketingKpiCards({ kpis, advSummary, funnelMetrics, isLoading }: MarketingKpiCardsProps) {
   const cards: KpiCardDef[] = [
     {
       title: "Lead Totali",
