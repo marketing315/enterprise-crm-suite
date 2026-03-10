@@ -457,6 +457,21 @@ Deno.serve(async (req: Request) => {
   const afterIngest = ingestIdx >= 0 ? pathParts.slice(ingestIdx + 1) : [pathParts[pathParts.length - 1]];
   const sourceId = afterIngest[0] || "";
   const apiKeyFromPath = afterIngest.length > 1 ? afterIngest[1] : null;
+  
+  // B06: Also check query string for api_key (deprecated but supported for backwards compat)
+  const apiKeyFromQuery = url.searchParams.get("api_key");
+  
+  // B06 FIX: Track if credentials were provided via URL (path or query) for deprecation warning
+  const credentialViaUrl = !!(apiKeyFromPath || apiKeyFromQuery);
+  if (credentialViaUrl) {
+    console.warn(JSON.stringify({
+      level: "warn",
+      message: "DEPRECATED: API key provided via URL (path or query parameter). Prefer x-api-key header.",
+      source_id: sourceId,
+      credential_location: apiKeyFromPath ? "path" : "query",
+      ip: ipAddress,
+    }));
+  }
 
   // Generate request ID for structured logging
   const requestId = crypto.randomUUID();

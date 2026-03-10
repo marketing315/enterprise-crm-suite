@@ -66,20 +66,23 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Check if requesting user is admin
-    const { data: adminRole, error: roleError } = await adminClient
+    // Check if requesting user is admin and get their brand scope
+    const { data: adminRoles, error: roleError } = await adminClient
       .from("user_roles")
-      .select("id")
+      .select("id, brand_id")
       .eq("user_id", internalUser.id)
-      .eq("role", "admin")
-      .maybeSingle();
+      .eq("role", "admin");
 
-    if (roleError || !adminRole) {
+    if (roleError || !adminRoles || adminRoles.length === 0) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // B02 FIX: Determine caller's administrable brands
+    const callerBrandIds = adminRoles.map(r => r.brand_id);
+    const isGlobalAdmin = callerBrandIds.includes("00000000-0000-0000-0000-000000000000");
 
     const body: CreateUserRequest = await req.json();
     const { email, password, full_name, role } = body;
@@ -92,6 +95,20 @@ Deno.serve(async (req: Request) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // B02 FIX: Validate that all requested brand_ids are within caller's scope
+    if (!isGlobalAdmin) {
+      const unauthorizedBrands = brandIds.filter((bid: string) => !callerBrandIds.includes(bid));
+      if (unauthorizedBrands.length > 0) {
+        return new Response(JSON.stringify({ 
+          error: "Non sei autorizzato a creare utenti per i brand richiesti",
+          unauthorized_count: unauthorizedBrands.length,
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Create auth user

@@ -87,6 +87,10 @@ async function getCallerContext(authHeader: string) {
   return { adminClient, callerId: internalUser.id, authUserId: user.id };
 }
 
+// B03 FIX: Only grant global access if admin/ceo role is on a system/sentinel brand,
+// not on any arbitrary brand. This prevents cross-brand privilege escalation.
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+
 async function getCallerRoleInBrand(
   adminClient: any,
   callerId: string,
@@ -100,16 +104,28 @@ async function getCallerRoleInBrand(
   
   const isAllBrands = brandId === "__ALL_BRANDS__";
   
-  // First check for global admin/ceo roles (any brand)
-  const { data: globalRoles } = await adminClient
+  // Check for global admin/ceo roles ONLY on system brand or brands with is_system=true
+  const { data: systemBrands } = await adminClient
+    .from("brands")
+    .select("id")
+    .eq("is_system", true);
+  
+  const systemBrandIds = new Set([
+    SYSTEM_BRAND_ID,
+    ...(systemBrands || []).map((b: any) => b.id),
+  ]);
+  
+  const { data: adminCeoRoles } = await adminClient
     .from("user_roles")
-    .select("role")
+    .select("role, brand_id")
     .eq("user_id", callerId)
     .in("role", ["admin", "ceo"])
     .eq("is_active", true);
 
-  // If user is admin or CEO anywhere, they have access to all brands
-  if (globalRoles && globalRoles.length > 0) {
+  // Only roles on system brands grant global access
+  const globalRoles = (adminCeoRoles || []).filter((r: any) => systemBrandIds.has(r.brand_id));
+  
+  if (globalRoles.length > 0) {
     let highestGlobalRole = globalRoles[0].role as AppRole;
     for (const r of globalRoles) {
       const rRole = r.role as string;
@@ -120,12 +136,12 @@ async function getCallerRoleInBrand(
     return highestGlobalRole;
   }
 
-  // If requesting all brands but user is not admin/ceo, deny access
+  // If requesting all brands but user has no global role, deny access
   if (isAllBrands) {
     return null;
   }
 
-  // Then check for brand-specific roles
+  // Then check for brand-specific roles (including admin/ceo on this specific brand)
   const { data: brandRoles } = await adminClient
     .from("user_roles")
     .select("role")
