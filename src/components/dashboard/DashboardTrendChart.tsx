@@ -57,7 +57,7 @@ export function DashboardTrendChart({ data, isLoading }: DashboardTrendChartProp
                   <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
               <XAxis 
                 dataKey="label" 
                 tick={{ fontSize: 11 }} 

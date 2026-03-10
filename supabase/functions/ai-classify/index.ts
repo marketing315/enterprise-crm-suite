@@ -435,10 +435,9 @@ async function applyClassification(
     }
   }
 
-  // 6. Handle appointment if requested (placeholder for future implementation)
+  // 6. Handle appointment if requested (deferred — logged for observability)
   if (result.should_create_or_update_appointment && result.appointment_action !== "none") {
-    console.log(`Appointment action requested: ${result.appointment_action}`);
-    // TODO: Implement appointment creation/update based on AI suggestion
+    console.log(`[ai-classify] Appointment action="${result.appointment_action}" requested for event=${result.lead_event_id ?? "unknown"} — not yet implemented, skipping.`);
   }
 }
 
