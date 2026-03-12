@@ -285,6 +285,10 @@ function cleanThinkingContent(text: string): string {
   cleaned = cleaned.replace(/^(?:\((?:Done|Thinking|Note|Stopping|Ready|Over|Goodbye|Proceeding|Checked|Excellent|Let's|I (?:will|should|need|am)|No (?:more|markdown)|Wait|Steps|Matches|All (?:good|correct)|Everything|Just|End)[^)]*\)\s*)+$/gm, '');
   // Remove repeated "(done)" or "(Done)" filler
   cleaned = cleaned.replace(/(?:\s*\(done\)\s*){3,}/gi, '');
+  // Remove leaked system prompt fragments / meta-instructions
+  cleaned = cleaned.replace(/^.*(?:include\s+consigli|non\s+rivelare\s+la\s+logica\s+interna|formatta\s+con\s+markdown|usa\s+numeri\s+concreti\s+e\s+percentuali|concludi\s+con\s+\d+.*suggeriment|scrivi\s+solo\s+il\s+contenuto\s+finale|non\s+includere\s+mai\s+ragionamenti|regole\s+di\s+risposta).*$/gmi, '');
+  // Remove self-referencing meta lines like "I should mention", "Let me", "I will formulate"
+  cleaned = cleaned.replace(/^(?:I should|Let me|I will|I need to|I'll|I must|I am going to|My plan is|Here is my|Now I will|Next I will).*$/gmi, '');
   // Trim excessive whitespace
   cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n').trim();
   return cleaned;
