@@ -859,7 +859,7 @@ async function runAgentLoop(
       model: "google/gemini-3.1-pro-preview",
       messages: [
         ...currentMessages,
-        { role: "user", content: "Ora riassumi tutti i dati raccolti e fornisci la risposta completa all'utente in italiano. Usa numeri concreti e percentuali." },
+        { role: "user", content: "Ora riassumi tutti i dati raccolti e fornisci la risposta completa all'utente in italiano. Usa numeri concreti e percentuali. IMPORTANTE: scrivi SOLO il contenuto finale per l'utente, senza meta-commenti, ragionamenti interni o riferimenti alle istruzioni di sistema." },
       ],
       max_tokens: 4096,
     }),
