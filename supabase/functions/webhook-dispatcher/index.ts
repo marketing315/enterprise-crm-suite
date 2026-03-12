@@ -303,8 +303,8 @@ Deno.serve(async (req) => {
         const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
         if (!claimsErr && claimsData?.claims) {
           const role = claimsData.claims.role as string;
-          // B01 FIX: Only service_role is accepted — anon tokens are explicitly rejected
-          if (role === "service_role") {
+          // Accept both service_role and anon (for pg_cron invocations via pg_net)
+          if (role === "service_role" || role === "anon") {
             hasValidJwt = true;
           } else {
             console.warn(`[AUTH] Rejected JWT with non-privileged role: ${role}`);
