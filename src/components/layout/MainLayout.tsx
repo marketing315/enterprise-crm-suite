@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback, memo } from 'react';
 import type { AppRole } from '@/types/database';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -154,16 +154,15 @@ export function MainLayout() {
   // Check if any marketing path is active
   const isMarketingActive = location.pathname.startsWith('/marketing');
 
-  // Filter admin menu items based on role requirements
-  const filteredAdminItems = adminMenuItems.filter(item => {
-    if (!item.requiresRole) return true; // No role requirement
-    // Check if user has any of the required roles
+  // Filter admin menu items based on role requirements (memoized)
+  const filteredAdminItems = useMemo(() => adminMenuItems.filter(item => {
+    if (!item.requiresRole) return true;
     return item.requiresRole.some(role => {
       if (role === 'admin') return isAdmin;
       if (role === 'ceo') return isCeo;
       return currentBrand && hasRole(role as AppRole, currentBrand.id);
     });
-  });
+  }), [isAdmin, isCeo, currentBrand, hasRole]);
 
   // Reset badge when viewing tickets page
   useEffect(() => {
@@ -172,10 +171,10 @@ export function MainLayout() {
     }
   }, [location.pathname, resetCounts]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await signOut();
     navigate('/login');
-  };
+  }, [signOut, navigate]);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
