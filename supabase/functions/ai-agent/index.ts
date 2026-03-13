@@ -281,17 +281,49 @@ function cleanThinkingContent(text: string): string {
   if (!text) return text;
   // Remove <think>...</think>, <thinking>...</thinking> blocks
   let cleaned = text.replace(/<think(?:ing)?[\s\S]*?<\/think(?:ing)?>/gi, '');
-  // Remove lines that are clearly internal reasoning patterns
-  cleaned = cleaned.replace(/^(?:\((?:Done|Thinking|Note|Stopping|Ready|Over|Goodbye|Proceeding|Checked|Excellent|Let's|I (?:will|should|need|am)|No (?:more|markdown)|Wait|Steps|Matches|All (?:good|correct)|Everything|Just|End)[^)]*\)\s*)+$/gm, '');
-  // Remove repeated "(done)" or "(Done)" filler
-  cleaned = cleaned.replace(/(?:\s*\(done\)\s*){3,}/gi, '');
-  // Remove leaked system prompt fragments / meta-instructions
-  cleaned = cleaned.replace(/^.*(?:include\s+consigli|non\s+rivelare\s+la\s+logica\s+interna|formatta\s+con\s+markdown|usa\s+numeri\s+concreti\s+e\s+percentuali|concludi\s+con\s+\d+.*suggeriment|scrivi\s+solo\s+il\s+contenuto\s+finale|non\s+includere\s+mai\s+ragionamenti|regole\s+di\s+risposta).*$/gmi, '');
-  // Remove self-referencing meta lines like "I should mention", "Let me", "I will formulate"
-  cleaned = cleaned.replace(/^(?:I should|Let me|I will|I need to|I'll|I must|I am going to|My plan is|Here is my|Now I will|Next I will).*$/gmi, '');
+  
+  // Remove lines that are clearly internal reasoning patterns (parenthetical self-talk)
+  cleaned = cleaned.replace(/^(?:\((?:Done|Thinking|Note|Stopping|Ready|Over|Goodbye|Proceeding|Checked|Excellent|Let's|I (?:will|should|need|am)|No (?:more|markdown)|Wait|Steps|Matches|All (?:good|correct)|Everything|Just|End|Sigh|Writing|Yes|Okay|Go|Silence|Really|Please|Self-Correction|Line break|Emoji|Final)[^)]*\)\s*)+$/gm, '');
+  
+  // Remove repeated "(done)" or similar filler
+  cleaned = cleaned.replace(/(?:\s*\(done\)\s*){2,}/gi, '');
+  
+  // Remove leaked system prompt fragments / meta-instructions (IT + EN)
+  cleaned = cleaned.replace(/^.*(?:include\s+consigli|non\s+rivelare\s+la\s+logica|formatta\s+con\s+markdown|usa\s+numeri\s+concreti\s+e\s+percentuali|concludi\s+con\s+\d+.*suggeriment|scrivi\s+solo\s+il\s+contenuto\s+finale|non\s+includere\s+mai\s+ragionamenti|regole\s+di\s+risposta|Usa una formattazione markdown|Termina con \d+|Non citare MAI le regole|NON aggiungere altre frasi|Non giustificare mai perch).*$/gmi, '');
+  
+  // Remove English self-referencing / chain-of-thought lines
+  cleaned = cleaned.replace(/^(?:I should|Let me|I will|I need to|I'll|I must|I am going to|My plan is|Here is my|Now I will|Next I will|Wait,|Oh wait|How am I|Let's (?:think|see|check|do|try|review|refine|draft|go|begin|write|use|execute|fire|test)|Yes!|NO!|Okay[.,!]|This (?:perfectly|is|means|looks)|Start\.|End\.|Looks good|Done\.|Bye\.).*$/gmi, '');
+  
+  // Remove lines referencing internal tool names / schema in reasoning context
+  cleaned = cleaned.replace(/^.*(?:dynamic_analytics_query|get_raw_table_data|search_contacts|get_pipeline_status|get_ad_performance|get_contact_timeline|get_operator_performance)\s*(?:is|might|but|→|->|takes|returns|doesn't|failed|with|for).*$/gmi, '');
+  
+  // Remove "Vediamo quali tabelle ha" and similar meta-enumeration
+  cleaned = cleaned.replace(/^(?:Vediamo quali tabelle|Wait, lead_events|Oh wait, dynamic|Since I MUST|Let's review the|Can I fetch|Too late|Since the first error).*$/gmi, '');
+  
+  // Detect bulk reasoning dump: if >60% of lines match reasoning patterns, the whole response is likely CoT
+  const lines = cleaned.split('\n').filter(l => l.trim().length > 0);
+  if (lines.length > 5) {
+    const reasoningPatterns = /^(?:\(.*\)$|I (?:should|will|need|am|have|don't|can|cannot|must)|Wait|Let me|Let's|How (?:am|do|can|should)|Yes|No[,!]|Okay|Since|But |If |This |That |The |My |We |Oh |Hmm|What if|Actually|Really|Maybe|Perhaps|However|Although|Looks|Done|End|Start|Go|Bye|Silence|Writing|Proceed|Check|Correct|Good|Final|Perfect)/i;
+    const reasoningLineCount = lines.filter(l => reasoningPatterns.test(l.trim())).length;
+    const reasoningRatio = reasoningLineCount / lines.length;
+    if (reasoningRatio > 0.5) {
+      console.warn(`[ai-agent] Detected bulk CoT leak: ${reasoningLineCount}/${lines.length} lines (${Math.round(reasoningRatio * 100)}%). Stripping entire response.`);
+      return '';
+    }
+  }
+  
   // Trim excessive whitespace
   cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n').trim();
   return cleaned;
+}
+
+/** Extract content from AI response, preferring content over reasoning_content */
+function extractAIContent(message: Record<string, unknown>): string {
+  // Some models (Gemini) return internal reasoning in a separate field
+  const content = (message?.content as string) || '';
+  // If there's a reasoning_content field, ignore it — we only want the final content
+  // If content is empty but reasoning_content exists, the model failed to produce a final answer
+  return content;
 }
 
 const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
@@ -834,8 +866,17 @@ async function runAgentLoop(
     const toolCalls = Array.isArray(assistantMessage.tool_calls) ? assistantMessage.tool_calls : [];
 
     if (toolCalls.length === 0) {
-      // No more tool calls — return final content
-      return { content: cleanThinkingContent(assistantMessage.content || ""), toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
+      // No more tool calls — return final content (use extractAIContent to skip reasoning_content)
+      const rawContent = extractAIContent(assistantMessage);
+      const cleaned = cleanThinkingContent(rawContent);
+      if (!cleaned || cleaned.trim().length < 10) {
+        console.warn(`[ai-agent] Round ${round + 1}: Content was stripped as CoT (original length: ${rawContent.length}). Requesting clean retry.`);
+        // Ask the model to retry with a clean response
+        currentMessages.push(assistantMessage);
+        currentMessages.push({ role: "user", content: "La tua risposta precedente conteneva solo ragionamenti interni. Per favore rispondi SOLO con il contenuto finale per l'utente, in italiano, con dati concreti. Se non hai dati sufficienti, dillo chiaramente." });
+        continue;
+      }
+      return { content: cleaned, toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
     }
 
     // Execute tool calls
@@ -859,7 +900,7 @@ async function runAgentLoop(
       model: "google/gemini-3.1-pro-preview",
       messages: [
         ...currentMessages,
-        { role: "user", content: "Ora riassumi tutti i dati raccolti e fornisci la risposta completa all'utente in italiano. Usa numeri concreti e percentuali. IMPORTANTE: scrivi SOLO il contenuto finale per l'utente, senza meta-commenti, ragionamenti interni o riferimenti alle istruzioni di sistema." },
+        { role: "user", content: "Ora riassumi tutti i dati raccolti e fornisci la risposta completa all'utente in italiano. Usa numeri concreti e percentuali. IMPORTANTE: scrivi SOLO il contenuto finale per l'utente, senza meta-commenti, ragionamenti interni o riferimenti alle istruzioni di sistema. NON scrivere pensieri, pianificazione, valutazioni interne o frasi in inglese. Solo la risposta finale in italiano." },
       ],
       max_tokens: 4096,
     }),
@@ -869,10 +910,12 @@ async function runAgentLoop(
     throw new Error(`AI gateway final error: ${finalResponse.status}`);
   }
   const finalResult = await finalResponse.json();
-  const finalMessage = cleanThinkingContent(finalResult?.choices?.[0]?.message?.content || "");
-  console.log(`[ai-agent] Final message length: ${finalMessage.length}`);
-  if (!finalMessage) {
-    console.warn("[ai-agent] Final summarization returned empty, tools used:", allToolsUsed);
+  const rawFinalContent = extractAIContent(finalResult?.choices?.[0]?.message || {});
+  const finalMessage = cleanThinkingContent(rawFinalContent);
+  console.log(`[ai-agent] Final message length: ${finalMessage.length} (raw: ${rawFinalContent.length})`);
+  if (!finalMessage || finalMessage.trim().length < 10) {
+    console.warn("[ai-agent] Final summarization returned empty/CoT after cleaning, tools used:", allToolsUsed);
+    return { content: "Mi dispiace, ho riscontrato un problema tecnico nell'elaborazione della risposta. I dati che cercavi potrebbero non essere disponibili al momento. Puoi riprovare o riformulare la domanda?", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
   }
   return { content: finalMessage, toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
 }
