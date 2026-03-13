@@ -65,12 +65,15 @@ export function useAssignableSalespersons() {
 
       if (error) throw error;
       
-      return (data || []).map((item) => ({
-        id: (item.users as any)?.id,
-        full_name: (item.users as any)?.full_name,
-        email: (item.users as any)?.email,
-        role: item.role,
-      }));
+      return (data || []).map((item) => {
+        const user = item.users as unknown as { id: string; full_name: string | null; email: string } | null;
+        return {
+          id: user?.id,
+          full_name: user?.full_name,
+          email: user?.email,
+          role: item.role,
+        };
+      });
     },
     enabled: !!currentBrand,
   });
