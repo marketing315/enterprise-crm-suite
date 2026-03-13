@@ -900,7 +900,7 @@ async function runAgentLoop(
       model: "google/gemini-3.1-pro-preview",
       messages: [
         ...currentMessages,
-        { role: "user", content: "Ora riassumi tutti i dati raccolti e fornisci la risposta completa all'utente in italiano. Usa numeri concreti e percentuali. IMPORTANTE: scrivi SOLO il contenuto finale per l'utente, senza meta-commenti, ragionamenti interni o riferimenti alle istruzioni di sistema." },
+        { role: "user", content: "Ora riassumi tutti i dati raccolti e fornisci la risposta completa all'utente in italiano. Usa numeri concreti e percentuali. IMPORTANTE: scrivi SOLO il contenuto finale per l'utente, senza meta-commenti, ragionamenti interni o riferimenti alle istruzioni di sistema. NON scrivere pensieri, pianificazione, valutazioni interne o frasi in inglese. Solo la risposta finale in italiano." },
       ],
       max_tokens: 4096,
     }),
@@ -910,10 +910,12 @@ async function runAgentLoop(
     throw new Error(`AI gateway final error: ${finalResponse.status}`);
   }
   const finalResult = await finalResponse.json();
-  const finalMessage = cleanThinkingContent(finalResult?.choices?.[0]?.message?.content || "");
-  console.log(`[ai-agent] Final message length: ${finalMessage.length}`);
-  if (!finalMessage) {
-    console.warn("[ai-agent] Final summarization returned empty, tools used:", allToolsUsed);
+  const rawFinalContent = extractAIContent(finalResult?.choices?.[0]?.message || {});
+  const finalMessage = cleanThinkingContent(rawFinalContent);
+  console.log(`[ai-agent] Final message length: ${finalMessage.length} (raw: ${rawFinalContent.length})`);
+  if (!finalMessage || finalMessage.trim().length < 10) {
+    console.warn("[ai-agent] Final summarization returned empty/CoT after cleaning, tools used:", allToolsUsed);
+    return { content: "Mi dispiace, ho riscontrato un problema tecnico nell'elaborazione della risposta. I dati che cercavi potrebbero non essere disponibili al momento. Puoi riprovare o riformulare la domanda?", toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
   }
   return { content: finalMessage, toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
 }
