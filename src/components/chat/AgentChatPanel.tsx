@@ -93,34 +93,22 @@ export function AgentChatPanel() {
     deliveryStatus: (m as any).delivery_status || "sent",
   }));
 
-  const pendingOptimistic = optimisticMessages.filter((opt) =>
-    !dbMessages.some((db) => db.role === opt.role && db.content === opt.content)
-  );
-  const messages = [...dbMessages, ...pendingOptimistic];
-
-  // Auto-scroll
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
-  }, []);
-
-  useEffect(() => { scrollToBottom(); }, [messages.length, scrollToBottom]);
-
+  // Clean up optimistic messages that are now persisted in DB
+  const dbContentSet = useRef(new Set<string>());
   useEffect(() => {
-    if (persistedMessages && persistedMessages.length > 0) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-      }, 100);
+    const newSet = new Set(dbMessages.map((m) => `${m.role}::${m.content}`));
+    const hadMatches = optimisticMessages.some((opt) => newSet.has(`${opt.role}::${opt.content}`));
+    if (hadMatches) {
+      setOptimisticMessages((prev) => prev.filter((opt) => !newSet.has(`${opt.role}::${opt.content}`)));
     }
-  }, [threadId, persistedMessages?.length]);
+    dbContentSet.current = newSet;
+  }, [dbMessages.length]);
 
-  // Clean up optimistic
-  useEffect(() => {
-    if (pendingOptimistic.length < optimisticMessages.length) {
-      setOptimisticMessages(pendingOptimistic);
-    }
-  }, [pendingOptimistic.length, optimisticMessages.length]);
+  // Merge: DB messages first, then only truly pending optimistic
+  const messages = [
+    ...dbMessages,
+    ...optimisticMessages.filter((opt) => !dbContentSet.current.has(`${opt.role}::${opt.content}`)),
+  ];
 
   const handleSend = useCallback(async (text: string) => {
     if (!text.trim() || agentChat.isPending) return;
