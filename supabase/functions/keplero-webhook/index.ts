@@ -359,6 +359,9 @@ async function handleKepleroPayload(
     p_brand_id: brandId,
     p_contact_id: contactId,
   });
+  if (dealError) {
+    console.error("[Keplero] Deal find/create failed:", dealError.message);
+  }
 
   // ── Create appointment (always new if date present) ──
   const dateStr = parseDate(args.data_appuntamento || "");
