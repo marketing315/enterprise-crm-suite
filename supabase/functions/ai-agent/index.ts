@@ -866,8 +866,17 @@ async function runAgentLoop(
     const toolCalls = Array.isArray(assistantMessage.tool_calls) ? assistantMessage.tool_calls : [];
 
     if (toolCalls.length === 0) {
-      // No more tool calls — return final content
-      return { content: cleanThinkingContent(assistantMessage.content || ""), toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
+      // No more tool calls — return final content (use extractAIContent to skip reasoning_content)
+      const rawContent = extractAIContent(assistantMessage);
+      const cleaned = cleanThinkingContent(rawContent);
+      if (!cleaned || cleaned.trim().length < 10) {
+        console.warn(`[ai-agent] Round ${round + 1}: Content was stripped as CoT (original length: ${rawContent.length}). Requesting clean retry.`);
+        // Ask the model to retry with a clean response
+        currentMessages.push(assistantMessage);
+        currentMessages.push({ role: "user", content: "La tua risposta precedente conteneva solo ragionamenti interni. Per favore rispondi SOLO con il contenuto finale per l'utente, in italiano, con dati concreti. Se non hai dati sufficienti, dillo chiaramente." });
+        continue;
+      }
+      return { content: cleaned, toolsUsed: allToolsUsed, totalLatencyMs: Date.now() - startTime };
     }
 
     // Execute tool calls
