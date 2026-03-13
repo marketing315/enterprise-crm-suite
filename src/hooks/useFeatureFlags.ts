@@ -47,8 +47,8 @@ export function useFeatureFlags() {
     queryKey: ["feature-flags", currentBrand?.id],
     queryFn: async () => {
       if (!currentBrand?.id) return [];
-      const { data, error } = await (supabase
-        .from("feature_flags") as any)
+      const { data, error } = await supabase
+        .from("feature_flags")
         .select("*")
         .eq("brand_id", currentBrand.id);
       if (error) throw error;
