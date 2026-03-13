@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RefreshCw, Copy } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
-import { useMetaApps, MetaApp, generateVerifyToken } from "@/hooks/useMetaApps";
+import { useMetaApps, MetaApp, MetaAppFormData, generateVerifyToken } from "@/hooks/useMetaApps";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 
