@@ -99,7 +99,7 @@ export function useTrackModuleUsage() {
       trackedRef.current.add(key);
 
       // Fire and forget
-      (supabase.from("module_usage_events") as any)
+      supabase.from("module_usage_events")
         .insert({
           brand_id: currentBrand.id,
           module_key: moduleKey,
