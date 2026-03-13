@@ -136,7 +136,7 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           capi_token_key: data.capi_token_key || null,
           capi_enabled: data.capi_enabled,
           capi_test_event_code: data.capi_test_event_code || null,
-        } as any);
+        } as Record<string, unknown>);
       } else {
         await createMetaApp.mutateAsync({
           brand_id: currentBrand.id,
