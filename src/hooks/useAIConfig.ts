@@ -265,7 +265,7 @@ export function useCreateAIFeedback() {
           user_id: params.user_id,
           brand_id: params.brand_id,
           label: params.label,
-          corrected_output_json: params.corrected_output_json ?? null,
+          corrected_output_json: (params.corrected_output_json ?? null) as unknown as import("@/integrations/supabase/types").Json,
           note: params.note ?? null,
         })
         .select()

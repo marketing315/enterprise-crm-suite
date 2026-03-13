@@ -70,7 +70,7 @@ export function useCreateCampaignGroup() {
           brand_id: brandId,
           name: input.name,
           priority: input.priority ?? 0,
-          match_rules: input.match_rules as Record<string, unknown>,
+          match_rules: input.match_rules as unknown as import("@/integrations/supabase/types").Json,
           campaign_ids: input.campaign_ids ?? [],
           is_active: input.is_active ?? true,
         })
