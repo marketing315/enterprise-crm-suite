@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
           cap,
           brands!inner(name),
           contact_phones(phone_raw, phone_normalized, is_primary),
-          deals(id, current_stage_id, pipeline_stages!deals_current_stage_id_fkey(name))
+          deals(id, current_stage_id, pipeline_stages!deals_current_stage_id_fkey(name, order_index))
         )
       `)
       .gte("created_at", windowStart.toISOString())
