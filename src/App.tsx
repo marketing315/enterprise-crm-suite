@@ -13,6 +13,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { withModuleGuard } from "@/components/layout/withModuleGuard";
 import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 // Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
@@ -108,88 +109,90 @@ const App = () => (
       <Toaster />
       <Sonner />
       <ErrorConsolePanel />
-      <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
-        <AuthProvider>
-          <BrandProvider>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/install" element={<GuardedInstall />} />
-                <Route path="/installa" element={<Navigate to="/install" replace />} />
-                
-                {/* Brand selection (requires auth) */}
-                <Route
-                  path="/select-brand"
-                  element={
-                    <ProtectedRoute>
-                      <SelectBrand />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                {/* Protected routes with layout */}
-                <Route
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route path="/dashboard" element={<DashboardRedirect />} />
-                  <Route path="/dashboard/overview" element={<Dashboard />} />
-                  <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                  <Route path="/dashboard/ceo" element={<CeoDashboardView />} />
-                  <Route path="/dashboard/responsabile-callcenter" element={<CallcenterManagerDashboard />} />
-                  <Route path="/dashboard/responsabile-venditori" element={<SalesManagerDashboard />} />
-                  <Route path="/dashboard/callcenter" element={<CallcenterOperatorDashboard />} />
-                  <Route path="/dashboard/venditore" element={<SalespersonDashboard />} />
-                  <Route path="/contacts" element={<Contacts />} />
-                  <Route path="/pipeline" element={<Pipeline />} />
-                  <Route path="/sales" element={<Sales />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/events" element={<Events />} />
-                  <Route path="/appointments" element={<Appointments />} />
-                  <Route path="/tickets" element={<Tickets />} />
-                  <Route path="/chat" element={<GuardedChat />} />
-                  <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/azienda" element={<GuardedCompanyOverview />} />
-                  <Route path="/azienda/costi" element={<GuardedCompanyExpenses />} />
-                  <Route path="/azienda/budget" element={<GuardedCompanyBudget />} />
-                  <Route path="/azienda/report" element={<GuardedCompanyReports />} />
+      <ErrorBoundary label="Applicazione">
+        <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <AuthProvider>
+            <BrandProvider>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/install" element={<GuardedInstall />} />
+                  <Route path="/installa" element={<Navigate to="/install" replace />} />
                   
-                  <Route path="/marketing" element={<MarketingDashboard />} />
-                  <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
-                  <Route path="/marketing/costi" element={<MarketingCosts />} />
-                  <Route path="/marketing/report" element={<MarketingReports />} />
-                  <Route path="/marketing/leads" element={<MarketingLeads />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/team" element={<Team />} />
-                  <Route path="/team/salespersons" element={<SalespersonKpi />} />
-                  <Route path="/admin/ai" element={<AdminAI />} />
-                  <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
-                  <Route path="/admin/callcenter-kpi" element={<GuardedAdminCallcenterKpi />} />
-                  <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
-                  <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
-                  <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
-                  <Route path="/admin/analytics" element={<GuardedAdminAnalytics />} />
-                  <Route path="/admin/capi" element={<GuardedAdminCapiMonitor />} />
-                  <Route path="/admin/slo-board" element={<AdminSloBoard />} />
-                  <Route path="/admin/security-reviews" element={<AdminSecurityReviews />} />
-                  <Route path="/ceo-dashboard" element={<GuardedCeoDashboard />} />
-                </Route>
-                
-                {/* Redirects */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrandProvider>
-        </AuthProvider>
-      </BrowserRouter>
+                  {/* Brand selection (requires auth) */}
+                  <Route
+                    path="/select-brand"
+                    element={
+                      <ProtectedRoute>
+                        <SelectBrand />
+                      </ProtectedRoute>
+                    }
+                  />
+                  
+                  {/* Protected routes with layout */}
+                  <Route
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route path="/dashboard" element={<DashboardRedirect />} />
+                    <Route path="/dashboard/overview" element={<Dashboard />} />
+                    <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                    <Route path="/dashboard/ceo" element={<CeoDashboardView />} />
+                    <Route path="/dashboard/responsabile-callcenter" element={<CallcenterManagerDashboard />} />
+                    <Route path="/dashboard/responsabile-venditori" element={<SalesManagerDashboard />} />
+                    <Route path="/dashboard/callcenter" element={<CallcenterOperatorDashboard />} />
+                    <Route path="/dashboard/venditore" element={<SalespersonDashboard />} />
+                    <Route path="/contacts" element={<Contacts />} />
+                    <Route path="/pipeline" element={<Pipeline />} />
+                    <Route path="/sales" element={<Sales />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/events" element={<Events />} />
+                    <Route path="/appointments" element={<Appointments />} />
+                    <Route path="/tickets" element={<Tickets />} />
+                    <Route path="/chat" element={<GuardedChat />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/azienda" element={<GuardedCompanyOverview />} />
+                    <Route path="/azienda/costi" element={<GuardedCompanyExpenses />} />
+                    <Route path="/azienda/budget" element={<GuardedCompanyBudget />} />
+                    <Route path="/azienda/report" element={<GuardedCompanyReports />} />
+                    
+                    <Route path="/marketing" element={<MarketingDashboard />} />
+                    <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
+                    <Route path="/marketing/costi" element={<MarketingCosts />} />
+                    <Route path="/marketing/report" element={<MarketingReports />} />
+                    <Route path="/marketing/leads" element={<MarketingLeads />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/team" element={<Team />} />
+                    <Route path="/team/salespersons" element={<SalespersonKpi />} />
+                    <Route path="/admin/ai" element={<AdminAI />} />
+                    <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
+                    <Route path="/admin/callcenter-kpi" element={<GuardedAdminCallcenterKpi />} />
+                    <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
+                    <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
+                    <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
+                    <Route path="/admin/analytics" element={<GuardedAdminAnalytics />} />
+                    <Route path="/admin/capi" element={<GuardedAdminCapiMonitor />} />
+                    <Route path="/admin/slo-board" element={<AdminSloBoard />} />
+                    <Route path="/admin/security-reviews" element={<AdminSecurityReviews />} />
+                    <Route path="/ceo-dashboard" element={<GuardedCeoDashboard />} />
+                  </Route>
+                  
+                  {/* Redirects */}
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  
+                  {/* 404 */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrandProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ErrorBoundary>
     </TooltipProvider>
   </PersistQueryClientProvider>
 );

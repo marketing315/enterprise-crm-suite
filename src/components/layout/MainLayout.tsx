@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useCallback, memo } from 'react';
 import type { AppRole } from '@/types/database';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useHasMarketingAccess, useCanSeeMarketingSubmenu } from '@/hooks/useMarketingAccess';
@@ -351,7 +352,9 @@ export function MainLayout() {
             )}
           </header>
           <main className="flex-1 overflow-hidden p-3 md:p-6">
-            <Outlet />
+            <ErrorBoundary label="Pagina">
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </SidebarInset>
       </div>
