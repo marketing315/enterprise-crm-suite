@@ -509,11 +509,15 @@ async function executeDynamicQuery(supabase: SupabaseClient, brandId: string, ar
 }
 
 async function searchContacts(supabase: SupabaseClient, brandId: string, query: string, limit: number) {
+  // Sanitize query to prevent PostgREST filter injection
+  const sanitized = query.replace(/[%_\\'"(),.*]/g, '').trim();
+  if (!sanitized) return { contacts: [], count: 0 };
+  
   let q = supabase
     .from("contacts")
     .select("id, first_name, last_name, email, phone, city, cap, province, company_name, lead_type, status, created_at");
   q = applyBrandFilter(q, brandId);
-  q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%`)
+  q = q.or(`first_name.ilike.%${sanitized}%,last_name.ilike.%${sanitized}%,email.ilike.%${sanitized}%,phone.ilike.%${sanitized}%,company_name.ilike.%${sanitized}%`)
     .limit(limit);
   const { data } = await q;
   return { contacts: data || [], count: (data || []).length };
@@ -883,7 +887,14 @@ async function runAgentLoop(
     currentMessages.push(assistantMessage);
     for (const toolCall of toolCalls) {
       const toolName = toolCall.function.name;
-      const toolArgs = JSON.parse(toolCall.function.arguments || "{}");
+      let toolArgs: Record<string, unknown>;
+      try {
+        toolArgs = JSON.parse(toolCall.function.arguments || "{}");
+      } catch (parseErr) {
+        console.error(`[ai-agent] Failed to parse tool arguments for ${toolName}:`, toolCall.function.arguments);
+        currentMessages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify({ error: "Invalid tool arguments" }) });
+        continue;
+      }
       console.log(`[ai-agent] Round ${round + 1}: Executing tool ${toolName}`, JSON.stringify(toolArgs));
       allToolsUsed.push(toolName);
       const toolResult = await handleToolCall(supabase, brandId, toolName, toolArgs);
@@ -978,7 +989,11 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: userBrandRole } = await supabase.from("user_roles").select("id").eq("user_id", crmUser.id).eq("brand_id", brandId).limit(1).maybeSingle();
+    // For all-brands (system) mode, check any role; otherwise check specific brand
+    const isSystemBrand = isAllBrandsMode(brandId);
+    let roleQuery = supabase.from("user_roles").select("id").eq("user_id", crmUser.id).limit(1);
+    if (!isSystemBrand) roleQuery = roleQuery.eq("brand_id", brandId);
+    const { data: userBrandRole } = await roleQuery.maybeSingle();
     if (!userBrandRole) {
       return new Response(JSON.stringify({ error: "Access denied" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -998,10 +1013,11 @@ Deno.serve(async (req: Request) => {
     // ── Persist user message ──
     let userMessageId: string | null = null;
     if (threadId) {
-      const { data: userMsg } = await supabase.from("chat_messages").insert({
+      const { data: userMsg, error: userMsgError } = await supabase.from("chat_messages").insert({
         thread_id: threadId, brand_id: brandId, sender_user_id: crmUser.id,
         sender_type: "user", message_text: message, delivery_status: "sent",
       }).select("id").single();
+      if (userMsgError) console.error("[ai-agent] Failed to persist user message:", userMsgError.message);
       userMessageId = userMsg?.id || null;
       await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
     }
@@ -1089,7 +1105,7 @@ Deno.serve(async (req: Request) => {
         const needsTitle = !currentTitle || currentTitle.startsWith('Agente AI Executive');
         console.log(`[ai-agent] Title check: current="${currentTitle}", needsTitle=${needsTitle}, errorOccurred=${errorOccurred}`);
         if (needsTitle && !errorOccurred) {
-          const titleResp = await fetch("https://api.lovable.dev/v1/chat/completions", {
+          const titleResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LOVABLE_API_KEY}` },
             body: JSON.stringify({
