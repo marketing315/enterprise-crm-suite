@@ -989,7 +989,11 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: userBrandRole } = await supabase.from("user_roles").select("id").eq("user_id", crmUser.id).eq("brand_id", brandId).limit(1).maybeSingle();
+    // For all-brands (system) mode, check any role; otherwise check specific brand
+    const isSystemBrand = isAllBrandsMode(brandId);
+    let roleQuery = supabase.from("user_roles").select("id").eq("user_id", crmUser.id).limit(1);
+    if (!isSystemBrand) roleQuery = roleQuery.eq("brand_id", brandId);
+    const { data: userBrandRole } = await roleQuery.maybeSingle();
     if (!userBrandRole) {
       return new Response(JSON.stringify({ error: "Access denied" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
