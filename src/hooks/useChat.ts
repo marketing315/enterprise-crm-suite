@@ -474,7 +474,7 @@ export function useArchiveThread() {
 
   return useMutation({
     mutationFn: async (threadId: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("chat_threads")
         .update({ archived_at: new Date().toISOString() })
         .eq("id", threadId);
