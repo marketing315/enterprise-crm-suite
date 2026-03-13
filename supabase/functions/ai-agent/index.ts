@@ -509,11 +509,15 @@ async function executeDynamicQuery(supabase: SupabaseClient, brandId: string, ar
 }
 
 async function searchContacts(supabase: SupabaseClient, brandId: string, query: string, limit: number) {
+  // Sanitize query to prevent PostgREST filter injection
+  const sanitized = query.replace(/[%_\\'"(),.*]/g, '').trim();
+  if (!sanitized) return { contacts: [], count: 0 };
+  
   let q = supabase
     .from("contacts")
     .select("id, first_name, last_name, email, phone, city, cap, province, company_name, lead_type, status, created_at");
   q = applyBrandFilter(q, brandId);
-  q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%`)
+  q = q.or(`first_name.ilike.%${sanitized}%,last_name.ilike.%${sanitized}%,email.ilike.%${sanitized}%,phone.ilike.%${sanitized}%,company_name.ilike.%${sanitized}%`)
     .limit(limit);
   const { data } = await q;
   return { contacts: data || [], count: (data || []).length };
