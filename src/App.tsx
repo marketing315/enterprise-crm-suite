@@ -13,6 +13,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { withModuleGuard } from "@/components/layout/withModuleGuard";
 import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 // Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
