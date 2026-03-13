@@ -69,12 +69,9 @@ export function VOIspeedSettings() {
     mutationFn: async (newConfig: VOIspeedConfig) => {
       if (!currentBrand?.id) throw new Error("No brand selected");
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any;
-
       if (config?.id) {
         // Update existing
-        const { error } = await client
+        const { error } = await supabase
           .from("voispeed_configs")
           .update({
             base_url: newConfig.base_url,
