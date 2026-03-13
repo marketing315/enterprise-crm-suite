@@ -96,7 +96,7 @@ export function useCreateNewExecutiveThread() {
         .insert({
           brand_id: currentBrand.id,
           created_by: internalUserId,
-          type: "executive" as any,
+          type: "executive",
           title: `Agente AI Executive — ${new Date().toLocaleDateString("it-IT")}`,
         })
         .select("id")
