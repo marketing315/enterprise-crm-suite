@@ -338,11 +338,14 @@ async function handleKepleroPayload(
   // ── Add secondary phone as alias ──
   if (args.telefono_secondario) {
     const secondaryNormalized = normalizePhone(args.telefono_secondario);
-    await supabaseAdmin.rpc("add_contact_phone", {
+    const { error: secondaryPhoneError } = await supabaseAdmin.rpc("add_contact_phone", {
       p_contact_id: contactId,
       p_phone_raw: secondaryNormalized.raw,
       p_is_primary: false,
-    }).catch(() => {});
+    });
+    if (secondaryPhoneError) {
+      console.error("[Keplero] Failed to add secondary phone:", secondaryPhoneError.message);
+    }
   }
 
   // ── Find or create deal ──
