@@ -92,7 +92,7 @@ export function McpTestConsole() {
           .select("role")
           .eq("user_id", userData?.id ?? "");
 
-        const userRoles = (roles ?? []).map((r) => r.role);
+        const userRoles: string[] = (roles ?? []).map((r) => r.role);
 
         // Simple policy match simulation
         let decision = "deny";
