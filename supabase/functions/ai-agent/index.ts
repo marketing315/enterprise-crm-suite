@@ -1013,10 +1013,11 @@ Deno.serve(async (req: Request) => {
     // ── Persist user message ──
     let userMessageId: string | null = null;
     if (threadId) {
-      const { data: userMsg } = await supabase.from("chat_messages").insert({
+      const { data: userMsg, error: userMsgError } = await supabase.from("chat_messages").insert({
         thread_id: threadId, brand_id: brandId, sender_user_id: crmUser.id,
         sender_type: "user", message_text: message, delivery_status: "sent",
       }).select("id").single();
+      if (userMsgError) console.error("[ai-agent] Failed to persist user message:", userMsgError.message);
       userMessageId = userMsg?.id || null;
       await supabase.from("chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
     }
