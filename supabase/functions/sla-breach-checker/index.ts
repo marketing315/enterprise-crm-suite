@@ -6,6 +6,10 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
+  const correlationId = crypto.randomUUID();
+  const log = (level: string, msg: string, extra?: Record<string, unknown>) =>
+    console[level as "log" | "error"]?.(JSON.stringify({ ts: new Date().toISOString(), correlation_id: correlationId, fn: "sla-breach-checker", level, msg, ...extra }));
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -64,7 +68,7 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase.rpc("check_all_brands_sla_breaches");
 
     if (error) {
-      console.error("Error checking SLA breaches:", error);
+      log("error", "Error checking SLA breaches", { error: error.message });
       return new Response(
         JSON.stringify({ success: false, error: error.message }),
         { 
@@ -74,7 +78,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("SLA breach check completed:", JSON.stringify(data));
+    log("log", "SLA breach check completed", { result: data });
 
     return new Response(
       JSON.stringify({ success: true, result: data }),
@@ -84,7 +88,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
-    console.error("Unexpected error in SLA breach checker:", err);
+    log("error", "Unexpected error in SLA breach checker", { error: String(err) });
     return new Response(
       JSON.stringify({ success: false, error: String(err) }),
       { 

@@ -11,6 +11,9 @@ const corsHeaders = {
  * that may have been missed by the primary ai-classify flow.
  */
 Deno.serve(async (req: Request) => {
+  const correlationId = crypto.randomUUID();
+  const log = (level: string, msg: string, extra?: Record<string, unknown>) =>
+    console[level as "log" | "error"]?.(JSON.stringify({ ts: new Date().toISOString(), correlation_id: correlationId, fn: "ticket-assign-recovery", level, msg, ...extra }));
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -95,7 +98,7 @@ Deno.serve(async (req: Request) => {
       );
 
       if (assignError) {
-        console.error(`Error assigning tickets for brand ${brand.name}:`, assignError);
+        log("error", `Error assigning tickets for brand ${brand.name}`, { error: assignError.message });
         results.push({ brand: brand.name, assigned: 0 });
       } else {
         const assigned = count as number;
@@ -103,7 +106,7 @@ Deno.serve(async (req: Request) => {
         results.push({ brand: brand.name, assigned });
         
         if (assigned > 0) {
-          console.log(`Assigned ${assigned} tickets for brand ${brand.name}`);
+          log("log", `Assigned ${assigned} tickets for brand ${brand.name}`, { brand: brand.name, assigned });
         }
       }
     }
@@ -118,7 +121,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error("ticket-assign-recovery error:", error);
+    log("error", "ticket-assign-recovery error", { error: error instanceof Error ? error.message : String(error) });
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
