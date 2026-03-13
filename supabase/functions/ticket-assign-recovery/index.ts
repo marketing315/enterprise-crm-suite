@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error("ticket-assign-recovery error:", error);
+    log("error", "ticket-assign-recovery error", { error: error instanceof Error ? error.message : String(error) });
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
