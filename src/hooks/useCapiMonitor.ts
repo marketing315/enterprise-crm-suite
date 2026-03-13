@@ -66,7 +66,7 @@ export function useCapiEventsList(
   return useQuery({
     queryKey: ["capi-events", getQueryKeyBrand(), from, to, status, eventName],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("list_capi_events" as any, {
+      const { data, error } = await supabase.rpc("list_capi_events", {
         p_brand_ids: brandIds,
         p_from: from,
         p_to: to,
