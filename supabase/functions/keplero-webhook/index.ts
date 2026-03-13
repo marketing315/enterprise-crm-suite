@@ -306,7 +306,7 @@ async function handleKepleroPayload(
   const hasDevice = parseHasDevice(args.ha_gia_dispositivo);
 
   // Requester person
-  const { data: requesterPersonId } = await supabaseAdmin.rpc("find_or_link_household_person", {
+  const { data: requesterPersonId, error: requesterError } = await supabaseAdmin.rpc("find_or_link_household_person", {
     p_contact_id: contactId,
     p_brand_id: brandId,
     p_role: "requester",
