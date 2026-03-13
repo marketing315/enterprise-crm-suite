@@ -10,6 +10,7 @@ import { useWebhookMetrics24h } from '@/hooks/useWebhookMetrics';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
