@@ -571,9 +571,9 @@ export function useDeleteThread() {
   return useMutation({
     mutationFn: async (threadId: string) => {
       await supabase.from("chat_messages").delete().eq("thread_id", threadId);
-      await (supabase as any).from("chat_message_reads").delete().eq("message_id", threadId);
-      await (supabase as any).from("chat_thread_members").delete().eq("thread_id", threadId);
-      await (supabase as any).from("ai_chat_runs").delete().eq("thread_id", threadId);
+      await supabase.from("chat_message_reads").delete().eq("message_id", threadId);
+      await supabase.from("chat_thread_members").delete().eq("thread_id", threadId);
+      await supabase.from("ai_chat_runs").delete().eq("thread_id", threadId);
       const { error } = await supabase.from("chat_threads").delete().eq("id", threadId);
       if (error) throw error;
     },

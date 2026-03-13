@@ -430,7 +430,7 @@ export function useCreateTicket() {
           created_by: "user",
           opened_at: new Date().toISOString(),
           source_context: input.sourceContext || null,
-        } as any)
+        })
         .select("id")
         .single();
 

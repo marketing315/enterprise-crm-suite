@@ -183,8 +183,9 @@ export function useAIAgentChat() {
       }
 
       // FR3: Even if server returns error field, check for fallback message
-      if ((data as any)?.error && !(data as any)?.message) {
-        throw new Error((data as any).error);
+      const responseData = data as Record<string, unknown> | null;
+      if (responseData?.error && !responseData?.message) {
+        throw new Error(String(responseData.error));
       }
 
       // If server returned both error and message (fallback), use the message

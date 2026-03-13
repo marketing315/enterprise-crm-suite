@@ -180,9 +180,7 @@ export function useDismissIncomingCall() {
 
   return useMutation({
     mutationFn: async (callId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any;
-      const { error } = await client
+      const { error } = await supabase
         .from("incoming_calls")
         .update({
           status: "dismissed",

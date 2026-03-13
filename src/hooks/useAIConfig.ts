@@ -258,9 +258,8 @@ export function useCreateAIFeedback() {
       corrected_output_json?: Record<string, unknown>;
       note?: string;
     }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase
-        .from("ai_feedback") as any)
+      const { data, error } = await supabase
+        .from("ai_feedback")
         .insert({
           ai_decision_id: params.ai_decision_id,
           user_id: params.user_id,

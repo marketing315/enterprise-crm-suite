@@ -44,7 +44,7 @@ export function useCeoOperationalKpis(from: Date, to: Date) {
         params.p_brand_ids = allBrandIds;
       }
 
-      const { data, error } = await supabase.rpc('get_ceo_operational_kpis', params as any);
+      const { data, error } = await supabase.rpc('get_ceo_operational_kpis', params as Record<string, unknown>);
 
       if (error) throw error;
       return data as unknown as CeoOperationalData;

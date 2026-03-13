@@ -75,7 +75,7 @@ export function useCapiEventsList(
         p_limit: 200,
       });
       if (error) throw error;
-      return (data as any as CapiEvent[]) ?? [];
+      return (data as unknown as CapiEvent[]) ?? [];
     },
     enabled: isQueryEnabled(),
   });

@@ -175,10 +175,9 @@ export function useUpdateTableView() {
         is_default: boolean;
       }>;
     }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from("contact_table_views")
-        .update(params.updates as any)
+        .update(params.updates as Record<string, unknown>)
         .eq("id", params.id)
         .select()
         .single();
