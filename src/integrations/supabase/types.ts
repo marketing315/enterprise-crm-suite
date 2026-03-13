@@ -7745,33 +7745,19 @@ export type Database = {
         Args: { p_brand_id?: string }
         Returns: number
       }
-      dynamic_analytics_query:
-        | {
-            Args: {
-              p_brand_id: string
-              p_dataset: string
-              p_date_from?: string
-              p_date_to?: string
-              p_filters?: Json
-              p_group_by?: string
-              p_limit?: number
-              p_metric?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_brand_id?: string
-              p_dataset: string
-              p_date_from?: string
-              p_date_to?: string
-              p_filters?: Json
-              p_group_by?: string
-              p_limit?: number
-              p_metric?: string
-            }
-            Returns: Json
-          }
+      dynamic_analytics_query: {
+        Args: {
+          p_brand_id?: string
+          p_dataset: string
+          p_date_from?: string
+          p_date_to?: string
+          p_filters?: Json
+          p_group_by?: string
+          p_limit?: number
+          p_metric?: string
+        }
+        Returns: Json
+      }
       enqueue_webhook_delivery: {
         Args: {
           p_brand_id: string
