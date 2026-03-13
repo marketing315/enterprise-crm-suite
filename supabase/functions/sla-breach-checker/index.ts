@@ -6,6 +6,10 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
+  const correlationId = crypto.randomUUID();
+  const log = (level: string, msg: string, extra?: Record<string, unknown>) =>
+    console[level as "log" | "error"]?.(JSON.stringify({ ts: new Date().toISOString(), correlation_id: correlationId, fn: "sla-breach-checker", level, msg, ...extra }));
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
