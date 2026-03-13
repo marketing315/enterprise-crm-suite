@@ -2,34 +2,34 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 
-// ── Mock auth context ──────────────────────────────────────────
-const mockAuth = {
-  user: null as any,
-  userRoles: [] as any[],
-  isLoading: false,
-  isAdmin: false,
-  isCeo: false,
-  session: null,
-  supabaseUser: null,
-  signIn: vi.fn(),
-  signUp: vi.fn(),
-  signOut: vi.fn(),
-  hasRole: vi.fn().mockReturnValue(false),
-};
+// ── Hoisted mocks ──────────────────────────────────────────────
+const { mockAuth, mockSupabase } = vi.hoisted(() => ({
+  mockAuth: {
+    user: null as any,
+    userRoles: [] as any[],
+    isLoading: false,
+    isAdmin: false,
+    isCeo: false,
+    session: null,
+    supabaseUser: null,
+    signIn: vi.fn(),
+    signUp: vi.fn(),
+    signOut: vi.fn(),
+    hasRole: vi.fn().mockReturnValue(false),
+  },
+  mockSupabase: {
+    from: vi.fn(),
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+    },
+  },
+}));
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => mockAuth,
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-
-// ── Mock supabase ──────────────────────────────────────────────
-const mockSupabase = {
-  from: vi.fn(),
-  auth: {
-    getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
-    onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
-  },
-};
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: mockSupabase,
@@ -63,7 +63,6 @@ describe("BrandContext", () => {
       { id: "brand-1", name: "Brand A", slug: "a", is_system: false },
       { id: "brand-2", name: "Brand B", slug: "b", is_system: false },
     ];
-
     mockAuth.user = { id: "user-1" };
     mockSupabase.from.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -81,7 +80,6 @@ describe("BrandContext", () => {
       { id: SYSTEM_BRAND_ID, name: "System", slug: "system", is_system: true },
       { id: "brand-1", name: "Brand A", slug: "a", is_system: false },
     ];
-
     mockAuth.user = { id: "user-1" };
     mockSupabase.from.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -91,7 +89,7 @@ describe("BrandContext", () => {
 
     const { result } = renderHook(() => useBrand(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.brands).toHaveLength(1); // Only regular
+    expect(result.current.brands).toHaveLength(1);
     expect(result.current.systemBrand?.id).toBe(SYSTEM_BRAND_ID);
   });
 
@@ -99,7 +97,6 @@ describe("BrandContext", () => {
     const mockBrands = [
       { id: "brand-1", name: "Brand A", slug: "a", is_system: false },
     ];
-
     localStorage.setItem("crm_selected_brand_id", "brand-1");
     mockAuth.user = { id: "user-1" };
     mockSupabase.from.mockReturnValue({

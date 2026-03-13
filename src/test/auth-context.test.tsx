@@ -2,30 +2,32 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import React from "react";
 
-// ── Supabase mock ──────────────────────────────────────────────
-const mockUnsubscribe = vi.fn();
-let authChangeCallback: ((event: string, session: any) => void) | null = null;
-
-const mockSupabase = {
-  auth: {
-    getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
-    onAuthStateChange: vi.fn().mockImplementation((cb) => {
-      authChangeCallback = cb;
-      return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
-    }),
-    signInWithPassword: vi.fn().mockResolvedValue({ data: {}, error: null }),
-    signUp: vi.fn().mockResolvedValue({ data: {}, error: null }),
-    signOut: vi.fn().mockResolvedValue({ error: null }),
-  },
-  from: vi.fn().mockReturnValue({
-    select: vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+// ── Supabase mock (hoisted) ────────────────────────────────────
+const { mockSupabase, mockUnsubscribe } = vi.hoisted(() => {
+  const mockUnsubscribe = vi.fn();
+  return {
+    mockUnsubscribe,
+    mockSupabase: {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+        onAuthStateChange: vi.fn().mockImplementation((cb: any) => {
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+        }),
+        signInWithPassword: vi.fn().mockResolvedValue({ data: {}, error: null }),
+        signUp: vi.fn().mockResolvedValue({ data: {}, error: null }),
+        signOut: vi.fn().mockResolvedValue({ error: null }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
       }),
-      order: vi.fn().mockResolvedValue({ data: [], error: null }),
-    }),
-  }),
-};
+    },
+  };
+});
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: mockSupabase,
@@ -39,14 +41,12 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  authChangeCallback = null;
   mockSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
 });
 
 describe("AuthContext", () => {
   it("starts with isLoading=true and resolves to false", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
-    // Initially loading
     expect(result.current.isLoading).toBe(true);
     await waitFor(() => expect(result.current.isLoading).toBe(false));
   });
@@ -66,7 +66,7 @@ describe("AuthContext", () => {
 
   it("unsubscribes on unmount", async () => {
     const { unmount } = renderHook(() => useAuth(), { wrapper });
-    await waitFor(() => expect(mockUnsubscribe).not.toHaveBeenCalled());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     unmount();
     expect(mockUnsubscribe).toHaveBeenCalledOnce();
   });
@@ -83,11 +83,9 @@ describe("AuthContext", () => {
   it("signIn calls supabase auth", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-
     await act(async () => {
       await result.current.signIn("test@example.com", "password123");
     });
-
     expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalledWith({
       email: "test@example.com",
       password: "password123",
@@ -97,11 +95,9 @@ describe("AuthContext", () => {
   it("signOut clears all state", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-
     await act(async () => {
       await result.current.signOut();
     });
-
     expect(mockSupabase.auth.signOut).toHaveBeenCalled();
     expect(result.current.user).toBeNull();
     expect(result.current.userRoles).toEqual([]);
@@ -111,11 +107,9 @@ describe("AuthContext", () => {
   it("signUp passes fullName in metadata", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-
     await act(async () => {
       await result.current.signUp("test@example.com", "password123", "Mario Rossi");
     });
-
     expect(mockSupabase.auth.signUp).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "test@example.com",
@@ -129,11 +123,8 @@ describe("AuthContext", () => {
 
   it("handles getSession error gracefully (B2 fix)", async () => {
     mockSupabase.auth.getSession.mockRejectedValueOnce(new Error("Network error"));
-
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    // Should gracefully recover: no crash, state reset
     expect(result.current.session).toBeNull();
     expect(result.current.user).toBeNull();
   });
