@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase.rpc("check_all_brands_sla_breaches");
 
     if (error) {
-      console.error("Error checking SLA breaches:", error);
+      log("error", "Error checking SLA breaches", { error: error.message });
       return new Response(
         JSON.stringify({ success: false, error: error.message }),
         { 
