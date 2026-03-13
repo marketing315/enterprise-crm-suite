@@ -235,13 +235,14 @@ export function useUpsertMcpPolicy() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (policy: Partial<McpPolicy> & { role: string; tool_pattern: string; action: McpPolicyAction }) => {
+      const payload = { ...policy, updated_at: new Date().toISOString() } as Record<string, unknown>;
       if (policy.id) {
         const { error } = await supabase.from("mcp_policies")
-          .update({ ...policy, updated_at: new Date().toISOString() })
+          .update(payload)
           .eq("id", policy.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("mcp_policies").insert(policy);
+        const { error } = await supabase.from("mcp_policies").insert(payload as never);
         if (error) throw error;
       }
     },
