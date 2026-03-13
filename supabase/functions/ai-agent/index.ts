@@ -887,7 +887,14 @@ async function runAgentLoop(
     currentMessages.push(assistantMessage);
     for (const toolCall of toolCalls) {
       const toolName = toolCall.function.name;
-      const toolArgs = JSON.parse(toolCall.function.arguments || "{}");
+      let toolArgs: Record<string, unknown>;
+      try {
+        toolArgs = JSON.parse(toolCall.function.arguments || "{}");
+      } catch (parseErr) {
+        console.error(`[ai-agent] Failed to parse tool arguments for ${toolName}:`, toolCall.function.arguments);
+        currentMessages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify({ error: "Invalid tool arguments" }) });
+        continue;
+      }
       console.log(`[ai-agent] Round ${round + 1}: Executing tool ${toolName}`, JSON.stringify(toolArgs));
       allToolsUsed.push(toolName);
       const toolResult = await handleToolCall(supabase, brandId, toolName, toolArgs);
