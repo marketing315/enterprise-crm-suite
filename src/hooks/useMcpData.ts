@@ -190,13 +190,14 @@ export function useUpsertMcpServer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (server: Partial<McpServer> & { name: string }) => {
+      const payload = { ...server, updated_at: new Date().toISOString() } as Record<string, unknown>;
       if (server.id) {
         const { error } = await supabase.from("mcp_servers")
-          .update({ ...server, updated_at: new Date().toISOString() })
+          .update(payload)
           .eq("id", server.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("mcp_servers").insert(server);
+        const { error } = await supabase.from("mcp_servers").insert(payload as never);
         if (error) throw error;
       }
     },
