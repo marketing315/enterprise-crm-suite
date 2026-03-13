@@ -366,14 +366,21 @@ Deno.serve(async (req) => {
         cap: string | null;
         brands: { name: string } | null;
         contact_phones: { phone_raw: string | null; phone_normalized: string | null; is_primary: boolean }[] | null;
-        deals: { id: string; current_stage_id: string | null; pipeline_stages: { name: string } | null }[] | null;
+        deals: { id: string; current_stage_id: string | null; pipeline_stages: { name: string; order_index: number } | null }[] | null;
       };
       const primaryPhone = contact.contact_phones?.find(p => p.is_primary);
       const phoneDisplay = primaryPhone?.phone_raw || primaryPhone?.phone_normalized || contact.phone || contact.phone_normalized || null;
 
       // Determine if this is a Keplero "fissato" (appointment set) rather than a new lead
+      // A deal is considered "fissato" if its current stage order_index >= the "Fissato" stage order_index
+      // This covers deals that have progressed past "Fissato" (e.g. "Confermato", "Venduto")
       const isKepleroFissato = lead.source_name === "keplero" &&
-        contact.deals?.some(d => d.pipeline_stages?.name?.toLowerCase() === "fissato");
+        contact.deals?.some(d => {
+          const stageName = d.pipeline_stages?.name?.toLowerCase();
+          const stageOrder = d.pipeline_stages?.order_index ?? -1;
+          // Direct match or stage is at/beyond "Fissato" (order_index >= 2, the typical Fissato order)
+          return stageName === "fissato" || stageOrder >= 2;
+        });
 
       return {
         full_name: [contact.first_name, contact.last_name].filter(Boolean).join(" ") || null,
