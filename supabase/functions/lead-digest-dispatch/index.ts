@@ -237,6 +237,16 @@ Deno.serve(async (req) => {
 
     console.log(`[lead-digest-dispatch] Window: ${windowStart.toISOString()} → ${windowEnd.toISOString()}`);
 
+    // ── Lookup "Fissato" stage order_index for accurate classification ──
+    const { data: fissatoStage } = await supabase
+      .from("pipeline_stages")
+      .select("order_index")
+      .eq("name", "Fissato")
+      .is("brand_id", null)
+      .eq("is_active", true)
+      .maybeSingle();
+    const fissatoOrderIndex = fissatoStage?.order_index ?? 2;
+
     // ── Query leads in window ──
     // Deduplicate by contact_id, then phone_normalized, then email
     const { data: rawLeads, error: leadsErr } = await supabase
