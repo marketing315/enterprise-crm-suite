@@ -237,6 +237,16 @@ Deno.serve(async (req) => {
 
     console.log(`[lead-digest-dispatch] Window: ${windowStart.toISOString()} → ${windowEnd.toISOString()}`);
 
+    // ── Lookup "Fissato" stage order_index for accurate classification ──
+    const { data: fissatoStage } = await supabase
+      .from("pipeline_stages")
+      .select("order_index")
+      .eq("name", "Fissato")
+      .is("brand_id", null)
+      .eq("is_active", true)
+      .maybeSingle();
+    const fissatoOrderIndex = fissatoStage?.order_index ?? 2;
+
     // ── Query leads in window ──
     // Deduplicate by contact_id, then phone_normalized, then email
     const { data: rawLeads, error: leadsErr } = await supabase
@@ -257,7 +267,7 @@ Deno.serve(async (req) => {
           cap,
           brands!inner(name),
           contact_phones(phone_raw, phone_normalized, is_primary),
-          deals(id, current_stage_id, pipeline_stages!deals_current_stage_id_fkey(name))
+          deals(id, current_stage_id, pipeline_stages!deals_current_stage_id_fkey(name, order_index))
         )
       `)
       .gte("created_at", windowStart.toISOString())
@@ -366,14 +376,21 @@ Deno.serve(async (req) => {
         cap: string | null;
         brands: { name: string } | null;
         contact_phones: { phone_raw: string | null; phone_normalized: string | null; is_primary: boolean }[] | null;
-        deals: { id: string; current_stage_id: string | null; pipeline_stages: { name: string } | null }[] | null;
+        deals: { id: string; current_stage_id: string | null; pipeline_stages: { name: string; order_index: number } | null }[] | null;
       };
       const primaryPhone = contact.contact_phones?.find(p => p.is_primary);
       const phoneDisplay = primaryPhone?.phone_raw || primaryPhone?.phone_normalized || contact.phone || contact.phone_normalized || null;
 
       // Determine if this is a Keplero "fissato" (appointment set) rather than a new lead
+      // A deal is considered "fissato" if its current stage order_index >= the "Fissato" stage order_index
+      // This covers deals that have progressed past "Fissato" (e.g. "Confermato", "Venduto")
       const isKepleroFissato = lead.source_name === "keplero" &&
-        contact.deals?.some(d => d.pipeline_stages?.name?.toLowerCase() === "fissato");
+        contact.deals?.some(d => {
+          const stageName = d.pipeline_stages?.name?.toLowerCase();
+          const stageOrder = d.pipeline_stages?.order_index ?? -1;
+          // Direct match or stage is at/beyond "Fissato" by order_index
+          return stageName === "fissato" || stageOrder >= fissatoOrderIndex;
+        });
 
       return {
         full_name: [contact.first_name, contact.last_name].filter(Boolean).join(" ") || null,
