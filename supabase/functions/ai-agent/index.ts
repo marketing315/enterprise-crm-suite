@@ -1089,7 +1089,7 @@ Deno.serve(async (req: Request) => {
         const needsTitle = !currentTitle || currentTitle.startsWith('Agente AI Executive');
         console.log(`[ai-agent] Title check: current="${currentTitle}", needsTitle=${needsTitle}, errorOccurred=${errorOccurred}`);
         if (needsTitle && !errorOccurred) {
-          const titleResp = await fetch("https://api.lovable.dev/v1/chat/completions", {
+          const titleResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LOVABLE_API_KEY}` },
             body: JSON.stringify({
