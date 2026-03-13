@@ -83,14 +83,20 @@ export default function AdminDashboard() {
 
       {/* Charts row */}
       <div className="grid gap-4 md:grid-cols-2">
-        <DashboardTrendChart data={trendData} isLoading={isTrendLoading} />
-        <DashboardSystemStatus />
+        <ErrorBoundary compact label="Trend Chart">
+          <DashboardTrendChart data={trendData} isLoading={isTrendLoading} />
+        </ErrorBoundary>
+        <ErrorBoundary compact label="Stato Sistema">
+          <DashboardSystemStatus />
+        </ErrorBoundary>
       </div>
 
       {/* Webhook Monitor + Quick Actions */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <WebhookDeliveriesCompact />
+          <ErrorBoundary compact label="Webhook Monitor">
+            <WebhookDeliveriesCompact />
+          </ErrorBoundary>
         </div>
         <Card>
           <CardHeader>

@@ -352,7 +352,9 @@ export function MainLayout() {
             )}
           </header>
           <main className="flex-1 overflow-hidden p-3 md:p-6">
-            <Outlet />
+            <ErrorBoundary label="Pagina">
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </SidebarInset>
       </div>
