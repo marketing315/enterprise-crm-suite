@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("SLA breach check completed:", JSON.stringify(data));
+    log("log", "SLA breach check completed", { result: data });
 
     return new Response(
       JSON.stringify({ success: true, result: data }),
