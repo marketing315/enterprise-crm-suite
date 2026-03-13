@@ -65,7 +65,7 @@ describe("AuthContext", () => {
   });
 
   it("unsubscribes on unmount", async () => {
-    const { unmount } = renderHook(() => useAuth(), { wrapper });
+    const { result, unmount } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     unmount();
     expect(mockUnsubscribe).toHaveBeenCalledOnce();
