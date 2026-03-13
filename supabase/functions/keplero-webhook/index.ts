@@ -182,6 +182,27 @@ Deno.serve(async (req: Request) => {
   }
   console.log("[Keplero] Payload received:", JSON.stringify(payload));
 
+  // ── Global try/catch to prevent unhandled 500s ──
+  try {
+    return await handleKepleroPayload(supabaseAdmin, req, payload);
+  } catch (err) {
+    console.error("[Keplero] UNHANDLED ERROR:", err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorStack = err instanceof Error ? err.stack : undefined;
+    console.error("[Keplero] Stack:", errorStack);
+    return new Response(
+      JSON.stringify({ error: "Internal processing error", detail: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+
+// ─── Extracted handler for global error boundary ───────────────
+async function handleKepleroPayload(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  req: Request,
+  payload: Record<string, unknown>,
+): Promise<Response> {
   const args = (payload.args || payload) as KepleroArgs;
   const config = (payload.config || {}) as Record<string, unknown>;
 
@@ -538,8 +559,16 @@ Deno.serve(async (req: Request) => {
 
   console.log("[Keplero] Success:", JSON.stringify(result));
 
+  // Update inbound event status to processed
+  if (inboundEvent?.id) {
+    await supabaseAdmin
+      .from("webhook_inbound_events")
+      .update({ status: "processed", processed_at: new Date().toISOString() })
+      .eq("id", inboundEvent.id);
+  }
+
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-});
+}
