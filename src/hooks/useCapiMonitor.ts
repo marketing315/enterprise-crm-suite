@@ -47,7 +47,7 @@ export function useCapiEventsSummary(from: string, to: string) {
         p_to: to,
       });
       if (error) throw error;
-      const row = (data as any)?.[0] ?? data;
+      const row = Array.isArray(data) ? data[0] : data;
       return row as CapiSummary;
     },
     enabled: isQueryEnabled(),
