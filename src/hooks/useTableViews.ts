@@ -142,10 +142,9 @@ export function useCreateTableView() {
         is_default: params.is_default || false,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from("contact_table_views")
-        .insert(insertData as any)
+        .insert(insertData as Record<string, unknown>)
         .select()
         .single();
 
