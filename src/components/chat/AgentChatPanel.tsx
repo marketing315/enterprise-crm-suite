@@ -90,7 +90,7 @@ export function AgentChatPanel() {
     toolsUsed: (m.ai_context as Record<string, unknown> | null)?.tools_used as string[] | undefined,
     latencyMs: (m.ai_context as Record<string, unknown> | null)?.latency_ms as number | undefined,
     hadFallback: (m.ai_context as Record<string, unknown> | null)?.had_fallback === true,
-    deliveryStatus: (m as Record<string, unknown>).delivery_status as string || "sent",
+    deliveryStatus: (m as unknown as Record<string, unknown>).delivery_status as string || "sent",
   }));
 
   // Clean up optimistic messages that are now persisted in DB
