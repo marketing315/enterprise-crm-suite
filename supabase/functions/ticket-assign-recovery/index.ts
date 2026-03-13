@@ -11,6 +11,9 @@ const corsHeaders = {
  * that may have been missed by the primary ai-classify flow.
  */
 Deno.serve(async (req: Request) => {
+  const correlationId = crypto.randomUUID();
+  const log = (level: string, msg: string, extra?: Record<string, unknown>) =>
+    console[level as "log" | "error"]?.(JSON.stringify({ ts: new Date().toISOString(), correlation_id: correlationId, fn: "ticket-assign-recovery", level, msg, ...extra }));
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
