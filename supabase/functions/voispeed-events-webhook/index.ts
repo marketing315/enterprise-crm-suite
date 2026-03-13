@@ -359,6 +359,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (error) {
     console.error("[VOIspeed] Unhandled webhook error:", error);
-    return new Response("Error logged", { status: 200 });
+    return new Response("Internal error", { status: 500 });
   }
 });

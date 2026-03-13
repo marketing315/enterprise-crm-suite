@@ -491,6 +491,9 @@ async function handleKepleroPayload(
       logistics_notes: args.disponibilita_orarie || null,
     })
     .select("id").single();
+  if (leadEventError) {
+    console.error("[Keplero] Lead event insert failed:", leadEventError.message);
+  }
 
   // ── Create keplero_interaction record (append-only, idempotent) ──
   const { data: interaction, error: interactionError } = await supabaseAdmin
