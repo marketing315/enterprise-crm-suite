@@ -18,6 +18,7 @@ import {
   useSendChatMessage,
   useSendAIMessage,
   useChatRealtime,
+  useCreateGroupChat,
   useUnreadCounts,
   useMarkThreadRead,
   useThreadDisplayTitles,
@@ -49,12 +50,14 @@ export default function Chat() {
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [deleteConfirmThreadId, setDeleteConfirmThreadId] = useState<string | null>(null);
 
+  // Data hooks
   const { data: threads = [], isLoading: threadsLoading } = useChatThreads();
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(selectedThreadId || "");
   const sendMessage = useSendChatMessage();
   const sendAIMessage = useSendAIMessage();
   const agentChat = useAIAgentChat();
   const createNewAIThread = useCreateNewExecutiveThread();
+  const createGroupChat = useCreateGroupChat();
   const archiveThread = useArchiveThread();
   const deleteThread = useDeleteThread();
   const unarchiveThread = useUnarchiveThread();
@@ -68,14 +71,17 @@ export default function Chat() {
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const isExecutiveThread = selectedThread?.type === "executive" || selectedThreadId === forceExecutiveThreadId || draftExecutiveThread;
 
+  // Auto-enable AI for executive threads
   useEffect(() => {
     if (isExecutiveThread) setAskAI(true);
   }, [selectedThreadId, isExecutiveThread]);
 
+  // Mark read on select
   useEffect(() => {
     if (selectedThreadId) markRead.mutate(selectedThreadId);
   }, [selectedThreadId]);
 
+  // Realtime subscription
   useEffect(() => {
     const unsubscribe = subscribeToMessages();
     return () => unsubscribe();
@@ -86,6 +92,12 @@ export default function Chat() {
     setSelectedThreadId(null);
     setForceExecutiveThreadId(null);
     setAskAI(true);
+  };
+
+  const handleCreateGroup = async (title: string, memberIds: string[]) => {
+    const threadId = await createGroupChat.mutateAsync({ title, memberIds });
+    setCreateGroupOpen(false);
+    setSelectedThreadId(threadId);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -206,13 +218,12 @@ export default function Chat() {
         </TabsContent>
       </Tabs>
 
+      {/* Dialogs */}
       <CreateGroupChatDialog
         open={createGroupOpen}
         onOpenChange={setCreateGroupOpen}
-        onCreateGroup={async (title, memberIds) => {
-          // Need to use the hook differently - will fix
-          setCreateGroupOpen(false);
-        }}
+        onCreateGroup={handleCreateGroup}
+        isPending={createGroupChat.isPending}
       />
 
       {selectedThread?.type === "group" && selectedThreadId && (
@@ -224,7 +235,6 @@ export default function Chat() {
         />
       )}
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirmThreadId} onOpenChange={(open) => !open && setDeleteConfirmThreadId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
