@@ -317,6 +317,9 @@ async function handleKepleroPayload(
     p_pacemaker_status: isSamePerson ? pacemakerStatus : null,
     p_has_device: isSamePerson ? hasDevice : null,
   });
+  if (requesterError) {
+    console.error("[Keplero] Requester household link failed:", requesterError.message);
+  }
 
   // Beneficiary person (only if different from requester)
   let beneficiaryPersonId: string | null = null;
