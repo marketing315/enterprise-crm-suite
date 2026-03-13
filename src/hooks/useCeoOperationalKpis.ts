@@ -34,17 +34,17 @@ export function useCeoOperationalKpis(from: Date, to: Date) {
     queryFn: async () => {
       if (!brandId) throw new Error('No brand selected');
 
-      const params: Record<string, unknown> = {
+      const rpcParams: { p_brand_id: string; p_from?: string; p_to?: string; p_brand_ids?: string[] } = {
         p_brand_id: brandId,
         p_from: from.toISOString().split('T')[0],
         p_to: to.toISOString().split('T')[0],
       };
 
       if (isAllBrandsSelected && allBrandIds.length > 0) {
-        params.p_brand_ids = allBrandIds;
+        rpcParams.p_brand_ids = allBrandIds;
       }
 
-      const { data, error } = await supabase.rpc('get_ceo_operational_kpis', params as any);
+      const { data, error } = await supabase.rpc('get_ceo_operational_kpis', rpcParams);
 
       if (error) throw error;
       return data as unknown as CeoOperationalData;

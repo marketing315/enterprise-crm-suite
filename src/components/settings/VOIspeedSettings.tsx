@@ -34,9 +34,7 @@ export function VOIspeedSettings() {
     queryFn: async () => {
       if (!currentBrand?.id) return null;
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any;
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from("voispeed_configs")
         .select("*")
         .eq("brand_id", currentBrand.id)
@@ -71,12 +69,9 @@ export function VOIspeedSettings() {
     mutationFn: async (newConfig: VOIspeedConfig) => {
       if (!currentBrand?.id) throw new Error("No brand selected");
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any;
-
       if (config?.id) {
         // Update existing
-        const { error } = await client
+        const { error } = await supabase
           .from("voispeed_configs")
           .update({
             base_url: newConfig.base_url,
@@ -88,7 +83,7 @@ export function VOIspeedSettings() {
         if (error) throw error;
       } else {
         // Insert new
-        const { error } = await client
+        const { error } = await supabase
           .from("voispeed_configs")
           .insert({
             brand_id: currentBrand.id,

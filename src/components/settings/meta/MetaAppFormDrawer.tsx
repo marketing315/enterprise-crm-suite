@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RefreshCw, Copy } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
-import { useMetaApps, MetaApp, generateVerifyToken } from "@/hooks/useMetaApps";
+import { useMetaApps, MetaApp, MetaAppFormData, generateVerifyToken } from "@/hooks/useMetaApps";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 
@@ -88,12 +88,12 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           page_id: editingApp.page_id || "",
           access_token: editingApp.access_token,
           is_active: editingApp.is_active,
-          ad_account_id: (editingApp as any).ad_account_id || "",
-          stats_enabled: (editingApp as any).stats_enabled || false,
-          pixel_id: (editingApp as any).pixel_id || "",
-          capi_token_key: (editingApp as any).capi_token_key || "",
-          capi_enabled: (editingApp as any).capi_enabled || false,
-          capi_test_event_code: (editingApp as any).capi_test_event_code || "",
+          ad_account_id: (editingApp as unknown as Record<string, unknown>).ad_account_id as string || "",
+          stats_enabled: (editingApp as unknown as Record<string, unknown>).stats_enabled === true,
+          pixel_id: (editingApp as unknown as Record<string, unknown>).pixel_id as string || "",
+          capi_token_key: (editingApp as unknown as Record<string, unknown>).capi_token_key as string || "",
+          capi_enabled: (editingApp as unknown as Record<string, unknown>).capi_enabled === true,
+          capi_test_event_code: (editingApp as unknown as Record<string, unknown>).capi_test_event_code as string || "",
         });
       } else if (isOpening) {
         // Only generate new token when opening fresh (not editing)
@@ -136,7 +136,7 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           capi_token_key: data.capi_token_key || null,
           capi_enabled: data.capi_enabled,
           capi_test_event_code: data.capi_test_event_code || null,
-        } as any);
+        } as unknown as Parameters<typeof updateMetaApp.mutateAsync>[0]);
       } else {
         await createMetaApp.mutateAsync({
           brand_id: currentBrand.id,
@@ -152,7 +152,7 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           capi_token_key: data.capi_token_key || undefined,
           capi_enabled: data.capi_enabled,
           capi_test_event_code: data.capi_test_event_code || undefined,
-        } as any);
+        } as unknown as MetaAppFormData);
       }
       onOpenChange(false);
     } catch (error) {

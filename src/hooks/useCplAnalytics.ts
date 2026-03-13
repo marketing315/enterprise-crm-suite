@@ -40,7 +40,7 @@ export function useCplAnalytics(params: {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return [];
 
-      const { data, error } = await supabase.rpc("get_cpl_analytics" as any, {
+      const { data, error } = await supabase.rpc("get_cpl_analytics", {
         p_brand_id: brandIds[0],
         p_from: params.from?.toISOString() ?? null,
         p_to: params.to?.toISOString() ?? null,
@@ -71,7 +71,7 @@ export function useAttributionSummary(params: {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return null;
 
-      const { data, error } = await supabase.rpc("get_attribution_summary" as any, {
+      const { data, error } = await supabase.rpc("get_attribution_summary", {
         p_brand_id: brandIds[0],
         p_from: params.from?.toISOString() ?? null,
         p_to: params.to?.toISOString() ?? null,

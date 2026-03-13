@@ -47,8 +47,8 @@ export function useFeatureFlags() {
     queryKey: ["feature-flags", currentBrand?.id],
     queryFn: async () => {
       if (!currentBrand?.id) return [];
-      const { data, error } = await (supabase
-        .from("feature_flags") as any)
+      const { data, error } = await supabase
+        .from("feature_flags")
         .select("*")
         .eq("brand_id", currentBrand.id);
       if (error) throw error;
@@ -99,7 +99,7 @@ export function useTrackModuleUsage() {
       trackedRef.current.add(key);
 
       // Fire and forget
-      (supabase.from("module_usage_events") as any)
+      supabase.from("module_usage_events")
         .insert({
           brand_id: currentBrand.id,
           module_key: moduleKey,
@@ -152,8 +152,8 @@ export function useUpdateFeatureFlag() {
 
   return useMutation({
     mutationFn: async (params: { id: string; status: ModuleStatus; frozen_message?: string }) => {
-      const { error } = await (supabase
-        .from("feature_flags") as any)
+      const { error } = await supabase
+        .from("feature_flags")
         .update({
           status: params.status,
           frozen_message: params.frozen_message,

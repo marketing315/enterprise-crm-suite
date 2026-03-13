@@ -41,13 +41,13 @@ export function useCapiEventsSummary(from: string, to: string) {
   return useQuery({
     queryKey: ["capi-summary", getQueryKeyBrand(), from, to],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("capi_events_summary" as any, {
+      const { data, error } = await supabase.rpc("capi_events_summary", {
         p_brand_ids: brandIds,
         p_from: from,
         p_to: to,
       });
       if (error) throw error;
-      const row = (data as any)?.[0] ?? data;
+      const row = Array.isArray(data) ? data[0] : data;
       return row as CapiSummary;
     },
     enabled: isQueryEnabled(),
@@ -66,7 +66,7 @@ export function useCapiEventsList(
   return useQuery({
     queryKey: ["capi-events", getQueryKeyBrand(), from, to, status, eventName],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("list_capi_events" as any, {
+      const { data, error } = await supabase.rpc("list_capi_events", {
         p_brand_ids: brandIds,
         p_from: from,
         p_to: to,
@@ -75,7 +75,7 @@ export function useCapiEventsList(
         p_limit: 200,
       });
       if (error) throw error;
-      return (data as any as CapiEvent[]) ?? [];
+      return (data as unknown as CapiEvent[]) ?? [];
     },
     enabled: isQueryEnabled(),
   });

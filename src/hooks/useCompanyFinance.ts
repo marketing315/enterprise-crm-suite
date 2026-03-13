@@ -18,7 +18,7 @@ export function useHasFinanceAccess() {
   
   // Check for amministrazione role in current brand
   if (currentBrand) {
-    return hasRole('amministrazione' as any, currentBrand.id);
+    return hasRole('amministrazione', currentBrand.id);
   }
   
   return false;

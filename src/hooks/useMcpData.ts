@@ -103,7 +103,7 @@ export function useMcpServers() {
   return useQuery({
     queryKey: ["mcp-servers"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("mcp_servers") as any)
+      const { data, error } = await supabase.from("mcp_servers")
         .select("*")
         .order("name");
       if (error) throw error;
@@ -117,7 +117,7 @@ export function useMcpTools(serverId?: string) {
   return useQuery({
     queryKey: ["mcp-tools", serverId],
     queryFn: async () => {
-      let q = (supabase.from("mcp_tools") as any).select("*").order("name");
+      let q = supabase.from("mcp_tools").select("*").order("name");
       if (serverId) q = q.eq("server_id", serverId);
       const { data, error } = await q;
       if (error) throw error;
@@ -131,7 +131,7 @@ export function useMcpResources(serverId?: string) {
   return useQuery({
     queryKey: ["mcp-resources", serverId],
     queryFn: async () => {
-      let q = (supabase.from("mcp_resources") as any).select("*").order("name");
+      let q = supabase.from("mcp_resources").select("*").order("name");
       if (serverId) q = q.eq("server_id", serverId);
       const { data, error } = await q;
       if (error) throw error;
@@ -145,7 +145,7 @@ export function useMcpPolicies() {
   return useQuery({
     queryKey: ["mcp-policies"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("mcp_policies") as any)
+      const { data, error } = await supabase.from("mcp_policies")
         .select("*")
         .order("priority", { ascending: false });
       if (error) throw error;
@@ -159,7 +159,7 @@ export function useMcpExecutions(limit = 50) {
   return useQuery({
     queryKey: ["mcp-executions", limit],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("mcp_executions") as any)
+      const { data, error } = await supabase.from("mcp_executions")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -174,7 +174,7 @@ export function useMcpPendingApprovals() {
   return useQuery({
     queryKey: ["mcp-approvals-pending"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("mcp_approvals") as any)
+      const { data, error } = await supabase.from("mcp_approvals")
         .select("*, mcp_executions(*)")
         .is("decision", null)
         .order("created_at", { ascending: false });
@@ -190,13 +190,14 @@ export function useUpsertMcpServer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (server: Partial<McpServer> & { name: string }) => {
+      const payload = { ...server, updated_at: new Date().toISOString() } as Record<string, unknown>;
       if (server.id) {
-        const { error } = await (supabase.from("mcp_servers") as any)
-          .update({ ...server, updated_at: new Date().toISOString() })
+        const { error } = await supabase.from("mcp_servers")
+          .update(payload)
           .eq("id", server.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("mcp_servers") as any).insert(server);
+        const { error } = await supabase.from("mcp_servers").insert(payload as never);
         if (error) throw error;
       }
     },
@@ -208,7 +209,7 @@ export function useToggleMcpServerKillSwitch() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, kill_switch }: { id: string; kill_switch: boolean }) => {
-      const { error } = await (supabase.from("mcp_servers") as any)
+      const { error } = await supabase.from("mcp_servers")
         .update({ kill_switch, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
@@ -221,7 +222,7 @@ export function useToggleMcpTool() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
-      const { error } = await (supabase.from("mcp_tools") as any)
+      const { error } = await supabase.from("mcp_tools")
         .update({ enabled, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
@@ -234,13 +235,14 @@ export function useUpsertMcpPolicy() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (policy: Partial<McpPolicy> & { role: string; tool_pattern: string; action: McpPolicyAction }) => {
+      const payload = { ...policy, updated_at: new Date().toISOString() } as Record<string, unknown>;
       if (policy.id) {
-        const { error } = await (supabase.from("mcp_policies") as any)
-          .update({ ...policy, updated_at: new Date().toISOString() })
+        const { error } = await supabase.from("mcp_policies")
+          .update(payload)
           .eq("id", policy.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from("mcp_policies") as any).insert(policy);
+        const { error } = await supabase.from("mcp_policies").insert(payload as never);
         if (error) throw error;
       }
     },
@@ -253,7 +255,7 @@ export function useDecideMcpApproval() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, decision, reason }: { id: string; decision: McpApprovalDecision; reason?: string }) => {
-      const { error } = await (supabase.from("mcp_approvals") as any)
+      const { error } = await supabase.from("mcp_approvals")
         .update({
           decision,
           reason: reason || null,

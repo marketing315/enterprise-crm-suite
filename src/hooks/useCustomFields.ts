@@ -174,12 +174,11 @@ export function useUpsertFieldValues() {
         value: v.value === undefined ? null : v.value,
       }));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase.rpc("upsert_contact_field_values", {
         p_contact_id: params.contactId,
         p_brand_id: currentBrand.id,
-        p_values: jsonValues,
-      } as any);
+        p_values: jsonValues as unknown as import("@/integrations/supabase/types").Json,
+      });
 
       if (error) throw error;
       return data;
@@ -227,10 +226,9 @@ export function useCreateFieldDefinition() {
         display_order: params.display_order ?? 0,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from("contact_field_definitions")
-        .insert(insertData as any)
+        .insert(insertData as unknown as import("@/integrations/supabase/types").Database["public"]["Tables"]["contact_field_definitions"]["Insert"])
         .select()
         .single();
 

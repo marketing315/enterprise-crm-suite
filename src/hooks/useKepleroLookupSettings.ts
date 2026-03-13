@@ -28,14 +28,12 @@ export function useKepleroLookupSettings() {
   return useQuery({
     queryKey: ["keplero-lookup-settings", currentBrand?.id],
     queryFn: async () => {
-      // Fetch global + brand-specific settings
-      let query = (supabase as any)
+      const { data, error } = await supabase
         .from("keplero_lookup_settings")
         .select("*")
         .or(`brand_id.is.null${currentBrand?.id ? `,brand_id.eq.${currentBrand.id}` : ""}`)
         .order("brand_id", { ascending: false, nullsFirst: false });
 
-      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as KepleroLookupSetting[];
     },
@@ -49,14 +47,13 @@ export function useKepleroLookupSecrets() {
   return useQuery({
     queryKey: ["keplero-lookup-secrets", currentBrand?.id],
     queryFn: async () => {
-      let query = (supabase as any)
+      const { data, error } = await supabase
         .from("keplero_lookup_secrets")
         .select("id, brand_id, is_active, created_at, rotated_at")
         .or(`brand_id.is.null${currentBrand?.id ? `,brand_id.eq.${currentBrand.id}` : ""}`)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
-      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as KepleroLookupSecret[];
     },
@@ -70,7 +67,7 @@ export function useToggleKepleroLookup() {
 
   return useMutation({
     mutationFn: async ({ enabled, brandId }: { enabled: boolean; brandId: string | null }) => {
-      let existingQuery = (supabase as any)
+      let existingQuery = supabase
         .from("keplero_lookup_settings")
         .select("id");
 
@@ -79,13 +76,13 @@ export function useToggleKepleroLookup() {
       const { data: existing } = await existingQuery.maybeSingle();
 
       if (existing) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("keplero_lookup_settings")
           .update({ is_enabled: enabled, updated_at: new Date().toISOString() })
           .eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("keplero_lookup_settings")
           .insert({ brand_id: brandId, is_enabled: enabled });
         if (error) throw error;
@@ -95,7 +92,7 @@ export function useToggleKepleroLookup() {
       queryClient.invalidateQueries({ queryKey: ["keplero-lookup-settings"] });
       toast.success("Impostazione aggiornata");
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -118,7 +115,7 @@ export function useGenerateKepleroSecret() {
       const secretHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
       // Deactivate old secrets for this brand
-      let deactivateQuery = (supabase as any)
+      let deactivateQuery = supabase
         .from("keplero_lookup_secrets")
         .update({ is_active: false, rotated_at: new Date().toISOString() })
         .eq("is_active", true);
@@ -134,7 +131,7 @@ export function useGenerateKepleroSecret() {
       if (authError) throw authError;
 
       // Insert new secret
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("keplero_lookup_secrets")
         .insert({
           brand_id: brandId,
@@ -150,7 +147,7 @@ export function useGenerateKepleroSecret() {
       queryClient.invalidateQueries({ queryKey: ["keplero-lookup-secrets"] });
       toast.success("Nuovo secret generato");
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 

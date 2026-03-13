@@ -77,7 +77,7 @@ export function McpTestConsole() {
 
         // For dry-run we just show what the policy engine would do
         // We check policies client-side for now
-        const { data: policies } = await (supabase.from("mcp_policies") as any)
+        const { data: policies } = await supabase.from("mcp_policies")
           .select("*")
           .eq("enabled", true)
           .order("priority", { ascending: false });
@@ -88,19 +88,19 @@ export function McpTestConsole() {
           .eq("supabase_auth_id", session.session.user.id)
           .maybeSingle();
 
-        const { data: roles } = await (supabase.from("user_roles") as any)
+        const { data: roles } = await supabase.from("user_roles")
           .select("role")
-          .eq("user_id", userData?.id);
+          .eq("user_id", userData?.id ?? "");
 
-        const userRoles = (roles ?? []).map((r: any) => r.role);
+        const userRoles: string[] = (roles ?? []).map((r) => r.role);
 
         // Simple policy match simulation
         let decision = "deny";
         let matchedPolicyId: string | null = null;
-        const sorted = [...(policies ?? [])].sort((a: any, b: any) => b.priority - a.priority);
+        const sorted = [...(policies ?? [])].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
         for (const p of sorted) {
-          if (p.role !== "*" && !userRoles.includes(p.role)) continue;
+          if (p.role !== "*" && !userRoles.includes(p.role as string)) continue;
           if (p.brand_scope && p.brand_scope !== brandId) continue;
           const pattern = p.tool_pattern === "*" ? ".*" : p.tool_pattern.replace(/\*/g, ".*");
           if (!new RegExp(`^${pattern}$`).test(toolName)) continue;

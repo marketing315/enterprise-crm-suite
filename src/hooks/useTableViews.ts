@@ -135,17 +135,16 @@ export function useCreateTableView() {
       const insertData = {
         owner_user_id: user.id,
         brand_scope: "all_accessible" as const,
-        brand_id: null,
+        brand_id: null as string | null,
         name: params.name,
-        columns: params.columns,
-        filters: params.filters || {},
+        columns: params.columns as unknown as import("@/integrations/supabase/types").Json,
+        filters: (params.filters || {}) as unknown as import("@/integrations/supabase/types").Json,
         is_default: params.is_default || false,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from("contact_table_views")
-        .insert(insertData as any)
+        .insert(insertData)
         .select()
         .single();
 
@@ -176,10 +175,9 @@ export function useUpdateTableView() {
         is_default: boolean;
       }>;
     }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from("contact_table_views")
-        .update(params.updates as any)
+        .update(params.updates as unknown as import("@/integrations/supabase/types").Database["public"]["Tables"]["contact_table_views"]["Update"])
         .eq("id", params.id)
         .select()
         .single();

@@ -309,7 +309,7 @@ export function DealDetailSheet({
                     Assegnato a
                   </h4>
                   <SalespersonAssignmentSelect
-                    value={(deal as any).assigned_user_id || null}
+                    value={(deal as unknown as Record<string, unknown>).assigned_user_id as string || null}
                     onChange={handleAssignmentChange}
                     disabled={assignDeal.isPending || !canEdit}
                   />

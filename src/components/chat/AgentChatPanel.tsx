@@ -87,10 +87,10 @@ export function AgentChatPanel() {
     role: m.sender_type === "user" ? "user" as const : "assistant" as const,
     content: m.message_text,
     timestamp: new Date(m.created_at),
-    toolsUsed: (m.ai_context as any)?.tools_used || undefined,
-    latencyMs: (m.ai_context as any)?.latency_ms || undefined,
-    hadFallback: (m.ai_context as any)?.had_fallback || false,
-    deliveryStatus: (m as any).delivery_status || "sent",
+    toolsUsed: (m.ai_context as Record<string, unknown> | null)?.tools_used as string[] | undefined,
+    latencyMs: (m.ai_context as Record<string, unknown> | null)?.latency_ms as number | undefined,
+    hadFallback: (m.ai_context as Record<string, unknown> | null)?.had_fallback === true,
+    deliveryStatus: (m as unknown as Record<string, unknown>).delivery_status as string || "sent",
   }));
 
   // Clean up optimistic messages that are now persisted in DB

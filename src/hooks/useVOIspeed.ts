@@ -37,10 +37,7 @@ export function useVOIspeedConfig() {
     queryFn: async () => {
       if (!currentBrand?.id) return null;
 
-      // Use untyped client for new table (not yet in generated types)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any;
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from("voispeed_configs")
         .select("id, brand_id, base_url, domain, enabled")
         .eq("brand_id", currentBrand.id)
@@ -183,9 +180,7 @@ export function useDismissIncomingCall() {
 
   return useMutation({
     mutationFn: async (callId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any;
-      const { error } = await client
+      const { error } = await supabase
         .from("incoming_calls")
         .update({
           status: "dismissed",
