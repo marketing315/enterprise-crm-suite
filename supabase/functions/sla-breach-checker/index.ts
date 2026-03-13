@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
-    console.error("Unexpected error in SLA breach checker:", err);
+    log("error", "Unexpected error in SLA breach checker", { error: String(err) });
     return new Response(
       JSON.stringify({ success: false, error: String(err) }),
       { 
