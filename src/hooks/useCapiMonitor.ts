@@ -41,7 +41,7 @@ export function useCapiEventsSummary(from: string, to: string) {
   return useQuery({
     queryKey: ["capi-summary", getQueryKeyBrand(), from, to],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("capi_events_summary" as any, {
+      const { data, error } = await supabase.rpc("capi_events_summary", {
         p_brand_ids: brandIds,
         p_from: from,
         p_to: to,
