@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
       );
 
       if (assignError) {
-        console.error(`Error assigning tickets for brand ${brand.name}:`, assignError);
+        log("error", `Error assigning tickets for brand ${brand.name}`, { error: assignError.message });
         results.push({ brand: brand.name, assigned: 0 });
       } else {
         const assigned = count as number;
