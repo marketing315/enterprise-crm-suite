@@ -355,7 +355,7 @@ async function handleKepleroPayload(
   }
 
   // ── Find or create deal ──
-  const { data: dealId } = await supabaseAdmin.rpc("find_or_create_deal", {
+  const { data: dealId, error: dealError } = await supabaseAdmin.rpc("find_or_create_deal", {
     p_brand_id: brandId,
     p_contact_id: contactId,
   });
