@@ -88,12 +88,12 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           page_id: editingApp.page_id || "",
           access_token: editingApp.access_token,
           is_active: editingApp.is_active,
-          ad_account_id: (editingApp as any).ad_account_id || "",
-          stats_enabled: (editingApp as any).stats_enabled || false,
-          pixel_id: (editingApp as any).pixel_id || "",
-          capi_token_key: (editingApp as any).capi_token_key || "",
-          capi_enabled: (editingApp as any).capi_enabled || false,
-          capi_test_event_code: (editingApp as any).capi_test_event_code || "",
+          ad_account_id: (editingApp as Record<string, unknown>).ad_account_id as string || "",
+          stats_enabled: (editingApp as Record<string, unknown>).stats_enabled === true,
+          pixel_id: (editingApp as Record<string, unknown>).pixel_id as string || "",
+          capi_token_key: (editingApp as Record<string, unknown>).capi_token_key as string || "",
+          capi_enabled: (editingApp as Record<string, unknown>).capi_enabled === true,
+          capi_test_event_code: (editingApp as Record<string, unknown>).capi_test_event_code as string || "",
         });
       } else if (isOpening) {
         // Only generate new token when opening fresh (not editing)
