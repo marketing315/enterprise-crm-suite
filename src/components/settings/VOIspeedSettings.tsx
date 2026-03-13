@@ -83,7 +83,7 @@ export function VOIspeedSettings() {
         if (error) throw error;
       } else {
         // Insert new
-        const { error } = await client
+        const { error } = await supabase
           .from("voispeed_configs")
           .insert({
             brand_id: currentBrand.id,

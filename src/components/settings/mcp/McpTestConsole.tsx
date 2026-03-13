@@ -88,11 +88,11 @@ export function McpTestConsole() {
           .eq("supabase_auth_id", session.session.user.id)
           .maybeSingle();
 
-        const { data: roles } = await (supabase.from("user_roles") as any)
+        const { data: roles } = await supabase.from("user_roles")
           .select("role")
-          .eq("user_id", userData?.id);
+          .eq("user_id", userData?.id ?? "");
 
-        const userRoles = (roles ?? []).map((r: any) => r.role);
+        const userRoles = (roles ?? []).map((r) => r.role);
 
         // Simple policy match simulation
         let decision = "deny";
