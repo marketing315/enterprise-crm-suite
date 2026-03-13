@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useCallback, memo } from 'react';
 import type { AppRole } from '@/types/database';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useHasMarketingAccess, useCanSeeMarketingSubmenu } from '@/hooks/useMarketingAccess';
