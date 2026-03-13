@@ -77,7 +77,7 @@ export function McpTestConsole() {
 
         // For dry-run we just show what the policy engine would do
         // We check policies client-side for now
-        const { data: policies } = await (supabase.from("mcp_policies") as any)
+        const { data: policies } = await supabase.from("mcp_policies")
           .select("*")
           .eq("enabled", true)
           .order("priority", { ascending: false });
