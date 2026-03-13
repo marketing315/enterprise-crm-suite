@@ -335,6 +335,9 @@ async function handleKepleroPayload(
       p_pacemaker_status: pacemakerStatus,
       p_has_device: hasDevice,
     });
+    if (beneficiaryError) {
+      console.error("[Keplero] Beneficiary household link failed:", beneficiaryError.message);
+    }
     beneficiaryPersonId = bpId;
   }
 
