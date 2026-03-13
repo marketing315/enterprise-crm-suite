@@ -152,7 +152,7 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
           capi_token_key: data.capi_token_key || undefined,
           capi_enabled: data.capi_enabled,
           capi_test_event_code: data.capi_test_event_code || undefined,
-        } as any);
+        } as Record<string, unknown>);
       }
       onOpenChange(false);
     } catch (error) {
