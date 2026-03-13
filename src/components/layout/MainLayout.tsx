@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import type { AppRole } from '@/types/database';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
@@ -160,7 +161,7 @@ export function MainLayout() {
     return item.requiresRole.some(role => {
       if (role === 'admin') return isAdmin;
       if (role === 'ceo') return isCeo;
-      return currentBrand && hasRole(role as any, currentBrand.id);
+      return currentBrand && hasRole(role as AppRole, currentBrand.id);
     });
   });
 
