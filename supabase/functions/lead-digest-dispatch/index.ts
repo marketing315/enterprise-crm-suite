@@ -388,8 +388,8 @@ Deno.serve(async (req) => {
         contact.deals?.some(d => {
           const stageName = d.pipeline_stages?.name?.toLowerCase();
           const stageOrder = d.pipeline_stages?.order_index ?? -1;
-          // Direct match or stage is at/beyond "Fissato" (order_index >= 2, the typical Fissato order)
-          return stageName === "fissato" || stageOrder >= 2;
+          // Direct match or stage is at/beyond "Fissato" by order_index
+          return stageName === "fissato" || stageOrder >= fissatoOrderIndex;
         });
 
       return {
