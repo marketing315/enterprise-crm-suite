@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
         results.push({ brand: brand.name, assigned });
         
         if (assigned > 0) {
-          console.log(`Assigned ${assigned} tickets for brand ${brand.name}`);
+          log("log", `Assigned ${assigned} tickets for brand ${brand.name}`, { brand: brand.name, assigned });
         }
       }
     }
