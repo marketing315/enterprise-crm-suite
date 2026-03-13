@@ -34,9 +34,7 @@ export function VOIspeedSettings() {
     queryFn: async () => {
       if (!currentBrand?.id) return null;
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = supabase as any;
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from("voispeed_configs")
         .select("*")
         .eq("brand_id", currentBrand.id)
