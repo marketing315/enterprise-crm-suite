@@ -306,7 +306,7 @@ async function handleKepleroPayload(
   const hasDevice = parseHasDevice(args.ha_gia_dispositivo);
 
   // Requester person
-  const { data: requesterPersonId } = await supabaseAdmin.rpc("find_or_link_household_person", {
+  const { data: requesterPersonId, error: requesterError } = await supabaseAdmin.rpc("find_or_link_household_person", {
     p_contact_id: contactId,
     p_brand_id: brandId,
     p_role: "requester",
@@ -317,11 +317,14 @@ async function handleKepleroPayload(
     p_pacemaker_status: isSamePerson ? pacemakerStatus : null,
     p_has_device: isSamePerson ? hasDevice : null,
   });
+  if (requesterError) {
+    console.error("[Keplero] Requester household link failed:", requesterError.message);
+  }
 
   // Beneficiary person (only if different from requester)
   let beneficiaryPersonId: string | null = null;
   if (!isSamePerson && beneficiaryPhone) {
-    const { data: bpId } = await supabaseAdmin.rpc("find_or_link_household_person", {
+    const { data: bpId, error: beneficiaryError } = await supabaseAdmin.rpc("find_or_link_household_person", {
       p_contact_id: contactId,
       p_brand_id: brandId,
       p_role: "beneficiary",
@@ -332,24 +335,33 @@ async function handleKepleroPayload(
       p_pacemaker_status: pacemakerStatus,
       p_has_device: hasDevice,
     });
+    if (beneficiaryError) {
+      console.error("[Keplero] Beneficiary household link failed:", beneficiaryError.message);
+    }
     beneficiaryPersonId = bpId;
   }
 
   // ── Add secondary phone as alias ──
   if (args.telefono_secondario) {
     const secondaryNormalized = normalizePhone(args.telefono_secondario);
-    await supabaseAdmin.rpc("add_contact_phone", {
+    const { error: secondaryPhoneError } = await supabaseAdmin.rpc("add_contact_phone", {
       p_contact_id: contactId,
       p_phone_raw: secondaryNormalized.raw,
       p_is_primary: false,
-    }).catch(() => {});
+    });
+    if (secondaryPhoneError) {
+      console.error("[Keplero] Failed to add secondary phone:", secondaryPhoneError.message);
+    }
   }
 
   // ── Find or create deal ──
-  const { data: dealId } = await supabaseAdmin.rpc("find_or_create_deal", {
+  const { data: dealId, error: dealError } = await supabaseAdmin.rpc("find_or_create_deal", {
     p_brand_id: brandId,
     p_contact_id: contactId,
   });
+  if (dealError) {
+    console.error("[Keplero] Deal find/create failed:", dealError.message);
+  }
 
   // ── Create appointment (always new if date present) ──
   const dateStr = parseDate(args.data_appuntamento || "");
@@ -461,7 +473,7 @@ async function handleKepleroPayload(
   }
 
   // ── Create lead_event (append-only) ──
-  const { data: leadEvent } = await supabaseAdmin
+  const { data: leadEvent, error: leadEventError } = await supabaseAdmin
     .from("lead_events")
     .insert({
       brand_id: brandId,
@@ -479,6 +491,9 @@ async function handleKepleroPayload(
       logistics_notes: args.disponibilita_orarie || null,
     })
     .select("id").single();
+  if (leadEventError) {
+    console.error("[Keplero] Lead event insert failed:", leadEventError.message);
+  }
 
   // ── Create keplero_interaction record (append-only, idempotent) ──
   const { data: interaction, error: interactionError } = await supabaseAdmin
