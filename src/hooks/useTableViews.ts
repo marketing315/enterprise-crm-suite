@@ -177,7 +177,7 @@ export function useUpdateTableView() {
     }) => {
       const { data, error } = await supabase
         .from("contact_table_views")
-        .update(params.updates as Record<string, unknown>)
+        .update(params.updates as unknown as import("@/integrations/supabase/types").Database["public"]["Tables"]["contact_table_views"]["Update"])
         .eq("id", params.id)
         .select()
         .single();
