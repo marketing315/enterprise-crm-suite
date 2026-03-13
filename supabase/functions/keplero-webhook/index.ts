@@ -559,8 +559,16 @@ async function handleKepleroPayload(
 
   console.log("[Keplero] Success:", JSON.stringify(result));
 
+  // Update inbound event status to processed
+  if (inboundEvent?.id) {
+    await supabaseAdmin
+      .from("webhook_inbound_events")
+      .update({ status: "processed", processed_at: new Date().toISOString() })
+      .eq("id", inboundEvent.id);
+  }
+
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-});
+}
