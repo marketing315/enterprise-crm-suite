@@ -473,7 +473,7 @@ async function handleKepleroPayload(
   }
 
   // ── Create lead_event (append-only) ──
-  const { data: leadEvent } = await supabaseAdmin
+  const { data: leadEvent, error: leadEventError } = await supabaseAdmin
     .from("lead_events")
     .insert({
       brand_id: brandId,
