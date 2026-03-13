@@ -324,7 +324,7 @@ async function handleKepleroPayload(
   // Beneficiary person (only if different from requester)
   let beneficiaryPersonId: string | null = null;
   if (!isSamePerson && beneficiaryPhone) {
-    const { data: bpId } = await supabaseAdmin.rpc("find_or_link_household_person", {
+    const { data: bpId, error: beneficiaryError } = await supabaseAdmin.rpc("find_or_link_household_person", {
       p_contact_id: contactId,
       p_brand_id: brandId,
       p_role: "beneficiary",
