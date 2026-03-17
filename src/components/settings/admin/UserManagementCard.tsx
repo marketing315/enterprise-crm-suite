@@ -594,8 +594,9 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleEditUser(entry.user)}
+                        onClick={() => handleEditUser(entry.user ?? null)}
                         title="Modifica utente"
+                        disabled={!entry.user}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
