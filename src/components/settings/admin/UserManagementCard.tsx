@@ -321,6 +321,31 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setEditDialogOpen(true);
   };
 
+  const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+  const systemBrandOption = {
+    id: SYSTEM_BRAND_ID,
+    name: "🏢 Azienda Intera",
+    slug: "azienda-intera",
+    created_at: "",
+    updated_at: "",
+    auto_assign_enabled: false,
+    funnel_lost_threshold_days: 0,
+    sales_visibility_callcenter: "all",
+    sla_thresholds_minutes: {},
+    alert_thresholds: null,
+    parent_brand_id: null,
+    is_system: true,
+  } as Brand;
+
+  const nonSystemBrands = brands.filter(b => b.id !== SYSTEM_BRAND_ID);
+  const systemBrand = brands.find(b => b.id === SYSTEM_BRAND_ID);
+  const allBrandsForSelection = [systemBrand ? { ...systemBrand, name: "🏢 Azienda Intera" } : systemBrandOption, ...nonSystemBrands];
+
+  const getBrandDisplayName = (brandId: string, fallbackName?: string) => {
+    if (brandId === SYSTEM_BRAND_ID) return "🏢 Azienda Intera";
+    return brands.find(b => b.id === brandId)?.name || fallbackName || "—";
+  };
+
   const getAvailableBrandsForEdit = () => {
     if (!editingUser) return [];
     const assignedBrandIds = editingUser.roles.map(r => r.brand_id);
@@ -336,14 +361,6 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     if (!editingUser) return;
     updateUserMutation.mutate({ user_id: editingUser.id, full_name: editUserFullName, email: editUserEmail });
   };
-
-  const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
-  const nonSystemBrands = brands.filter(b => b.id !== SYSTEM_BRAND_ID);
-  const systemBrand = brands.find(b => b.id === SYSTEM_BRAND_ID);
-  const allBrandsForSelection = [
-    ...(systemBrand ? [{ ...systemBrand, name: "🏢 Azienda Intera" }] : []),
-    ...nonSystemBrands,
-  ];
 
   return (
     <div className="space-y-6">
@@ -438,7 +455,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tutti i brand</SelectItem>
-            {nonSystemBrands.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+            {allBrandsForSelection.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -753,7 +770,6 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
 
                 <div className="space-y-2">
                   {editingUser.roles.map(role => {
-                    const brand = brands.find(b => b.id === role.brand_id);
                     const roleConfig = ROLE_CONFIG[role.role];
                     const RoleIcon = roleConfig?.icon || Users;
                     return (
@@ -762,7 +778,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                           <RoleIcon className="h-3.5 w-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{brand?.name || role.brand_name}</p>
+                          <p className="text-sm font-medium truncate">{getBrandDisplayName(role.brand_id, role.brand_name)}</p>
                         </div>
                         <Select
                           value={role.role}
