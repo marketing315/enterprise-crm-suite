@@ -26,11 +26,11 @@ interface UserRoleEntry {
     id: string;
     email: string;
     full_name: string | null;
-  };
+  } | null;
   brand: {
     id: string;
     name: string;
-  };
+  } | null;
 }
 
 const roleLabels: Record<AppRole, string> = {
@@ -286,13 +286,17 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     });
   };
 
-  const handleEditUser = (user: { id: string; email: string; full_name: string | null }) => {
+  const handleEditUser = (user: { id: string; email: string; full_name: string | null } | null) => {
+    if (!user) {
+      toast.error("Utente non disponibile per questo ruolo");
+      return;
+    }
     setEditingUser(user);
     setEditUserFullName(user.full_name || "");
     setEditUserEmail(user.email);
     // Populate user's current roles
     const userRoles = usersWithRoles
-      ?.filter((entry) => entry.user.id === user.id)
+      ?.filter((entry) => entry.user?.id === user.id)
       .map((entry) => ({ id: entry.id, brand_id: entry.brand_id, role: entry.role as AppRole })) || [];
     setEditUserRoles(userRoles);
     setEditAddBrandId("");
@@ -589,8 +593,9 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleEditUser(entry.user)}
+                        onClick={() => handleEditUser(entry.user ?? null)}
                         title="Modifica utente"
+                        disabled={!entry.user}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
