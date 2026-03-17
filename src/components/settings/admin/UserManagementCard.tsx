@@ -273,6 +273,17 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     onError: (error: Error) => toast.error(`Errore: ${error.message}`),
   });
 
+  const resendConfirmationMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "resend_confirmation", user_id: userId } });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => toast.success("Email di conferma inviata"),
+    onError: (error: Error) => toast.error(`Errore: ${error.message}`),
+  });
+
   // --- Helpers ---
   const resetCreateForm = () => {
     setNewUserEmail("");
