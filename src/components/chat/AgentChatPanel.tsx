@@ -12,6 +12,7 @@ import {
   Bot, Send, Loader2, User, Sparkles, BarChart3, TrendingUp, Ticket, Users,
   Target, ArrowUpDown, Kanban, AlertCircle, Clock, ChevronDown, ChevronUp,
   Database, CheckCircle2, Plus, UserPlus, Briefcase, CalendarPlus, TicketPlus,
+  ArrowDown, RotateCcw, Wifi, WifiOff,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -67,7 +68,9 @@ const OPERATIONAL_ACTIONS = [
 export function AgentChatPanel() {
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [isNearBottom, setIsNearBottom] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const agentChat = useAIAgentChat();
   const createNewThread = useCreateNewExecutiveThread();
 
@@ -110,6 +113,26 @@ export function AgentChatPanel() {
     ...optimisticMessages.filter((opt) => !dbContentSet.current.has(`${opt.role}::${opt.content}`)),
   ];
 
+  // Smart auto-scroll: only scroll when user is near bottom
+  useEffect(() => {
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages.length, isNearBottom]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollViewportRef.current;
+    if (!el) return;
+    const threshold = 120;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    setIsNearBottom(nearBottom);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setIsNearBottom(true);
+  }, []);
+
   const handleSend = useCallback(async (text: string) => {
     if (!text.trim() || agentChat.isPending) return;
 
@@ -118,6 +141,7 @@ export function AgentChatPanel() {
     };
     setOptimisticMessages((prev) => [...prev, userMessage]);
     setInput("");
+    scrollToBottom();
 
     try {
       const response = await agentChat.mutateAsync({ message: text.trim(), threadId });
@@ -134,7 +158,20 @@ export function AgentChatPanel() {
         timestamp: new Date(), hadFallback: true, deliveryStatus: "failed",
       }]);
     }
-  }, [agentChat, threadId]);
+  }, [agentChat, threadId, scrollToBottom]);
+
+  const handleRetry = useCallback((failedMessage: Message) => {
+    // Find the user message that preceded the failed assistant message
+    const idx = messages.findIndex(m => m.id === failedMessage.id);
+    if (idx > 0) {
+      const prevUserMsg = messages[idx - 1];
+      if (prevUserMsg.role === "user") {
+        // Remove the failed message and retry
+        setOptimisticMessages(prev => prev.filter(m => m.id !== failedMessage.id));
+        handleSend(prevUserMsg.content);
+      }
+    }
+  }, [messages, handleSend]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(input); }
@@ -143,11 +180,11 @@ export function AgentChatPanel() {
   if (threadLoading) {
     return (
       <div className="flex-1 flex items-center justify-center h-full rounded-xl border border-border/50 bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3 animate-in fade-in-0 duration-500">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center ring-1 ring-primary/10">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground">Caricamento agente...</p>
+          <p className="text-sm text-muted-foreground">Inizializzazione agente...</p>
         </div>
       </div>
     );
@@ -156,8 +193,8 @@ export function AgentChatPanel() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden rounded-xl border border-border/50 bg-background">
       {/* Header */}
-      <div className="px-5 py-3.5 border-b border-border/50 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-1 ring-primary/10">
+      <div className="px-5 py-3.5 border-b border-border/50 flex items-center gap-3 bg-card/30 backdrop-blur-sm">
+        <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">
           <Bot className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1">
@@ -166,6 +203,7 @@ export function AgentChatPanel() {
             <Badge variant="outline" className="text-[9px] font-normal border-primary/20 text-primary px-1.5 py-0">
               Premium
             </Badge>
+            <ConnectionIndicator />
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">
             Query dinamiche · Analisi geo · Multi-step reasoning
@@ -185,21 +223,43 @@ export function AgentChatPanel() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-5">
-          {messages.length === 0 ? (
-            <WelcomeState onQuickAction={(p) => handleSend(p)} isPending={agentChat.isPending} />
-          ) : (
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <AgentMessageBubble key={message.id} message={message} />
-              ))}
-              {agentChat.isPending && <ThinkingIndicator />}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+      <div className="relative flex-1 min-h-0">
+        <ScrollArea className="h-full" onScrollCapture={handleScroll}>
+          <div className="p-5" ref={scrollViewportRef}>
+            {messages.length === 0 ? (
+              <WelcomeState onQuickAction={(p) => handleSend(p)} isPending={agentChat.isPending} />
+            ) : (
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <AgentMessageBubble
+                    key={message.id}
+                    message={message}
+                    onRetry={message.hadFallback ? () => handleRetry(message) : undefined}
+                  />
+                ))}
+                {agentChat.isPending && <ThinkingIndicator />}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Scroll to bottom FAB */}
+        {!isNearBottom && messages.length > 0 && (
+          <button
+            onClick={scrollToBottom}
+            className={cn(
+              "absolute bottom-3 right-5 h-9 w-9 rounded-full",
+              "bg-background/95 border border-border shadow-lg backdrop-blur-sm",
+              "flex items-center justify-center",
+              "hover:bg-accent transition-all duration-200",
+              "animate-in fade-in-0 slide-in-from-bottom-2 duration-200"
+            )}
+          >
+            <ArrowDown className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
 
       {/* Input Area */}
       <InputBar
@@ -215,14 +275,52 @@ export function AgentChatPanel() {
   );
 }
 
+// ─── Connection Indicator ───
+
+function ConnectionIndicator() {
+  const [online, setOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  if (online) {
+    return (
+      <span className="flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      </span>
+    );
+  }
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex items-center gap-1 text-[9px] text-destructive">
+            <WifiOff className="h-2.5 w-2.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">Connessione assente</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 // ─── Welcome State ───
 
 function WelcomeState({ onQuickAction, isPending }: { onQuickAction: (p: string) => void; isPending: boolean }) {
   return (
-    <div className="space-y-8 py-4">
+    <div className="space-y-8 py-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
       {/* Hero */}
       <div className="text-center">
-        <div className="h-16 w-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-4 ring-1 ring-primary/10">
+        <div className="h-16 w-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-4 ring-1 ring-primary/10 shadow-sm">
           <Bot className="h-8 w-8 text-primary" />
         </div>
         <h3 className="text-lg font-semibold tracking-tight">Il tuo assistente executive</h3>
@@ -246,16 +344,18 @@ function WelcomeState({ onQuickAction, isPending }: { onQuickAction: (p: string)
       <div className="space-y-2.5">
         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1">Inizia con</p>
         <div className="grid grid-cols-2 gap-2">
-          {AGENT_QUICK_ACTIONS.map((action) => {
+          {AGENT_QUICK_ACTIONS.map((action, i) => {
             const Icon = iconMap[action.icon] || Bot;
             return (
               <button
                 key={action.id}
                 className={cn(
                   "flex items-center gap-2.5 text-left rounded-xl border border-border/50 px-3.5 py-3",
-                  "bg-card hover:bg-accent/50 hover:border-border transition-all duration-150",
-                  "disabled:opacity-50"
+                  "bg-card hover:bg-accent/50 hover:border-border transition-all duration-200",
+                  "hover:shadow-sm active:scale-[0.98]",
+                  "disabled:opacity-50 animate-in fade-in-0 slide-in-from-bottom-2"
                 )}
+                style={{ animationDelay: `${i * 50}ms`, animationFillMode: "both" }}
                 onClick={() => onQuickAction(action.prompt)}
                 disabled={isPending}
               >
@@ -273,6 +373,13 @@ function WelcomeState({ onQuickAction, isPending }: { onQuickAction: (p: string)
 // ─── Thinking Indicator ───
 
 function ThinkingIndicator() {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <div className="flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
       <Avatar className="h-7 w-7 shrink-0 mt-0.5">
@@ -280,13 +387,15 @@ function ThinkingIndicator() {
           <Bot className="h-3.5 w-3.5 text-primary" />
         </AvatarFallback>
       </Avatar>
-      <div className="bg-muted/50 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2.5">
+      <div className="bg-muted/50 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-3">
         <div className="flex gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "0ms" }} />
           <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "150ms" }} />
           <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }} />
         </div>
-        <span className="text-xs text-muted-foreground">Analisi in corso...</span>
+        <span className="text-xs text-muted-foreground">
+          Analisi in corso{elapsed > 3 ? ` (${elapsed}s)` : "..."}
+        </span>
       </div>
     </div>
   );
@@ -294,7 +403,7 @@ function ThinkingIndicator() {
 
 // ─── Agent Message Bubble ───
 
-function AgentMessageBubble({ message }: { message: Message }) {
+function AgentMessageBubble({ message, onRetry }: { message: Message; onRetry?: () => void }) {
   const isUser = message.role === "user";
   const [toolsOpen, setToolsOpen] = useState(false);
   const hasDynamicQuery = message.toolsUsed?.includes("dynamic_analytics_query");
@@ -315,7 +424,7 @@ function AgentMessageBubble({ message }: { message: Message }) {
 
       <div className={cn("max-w-[82%] space-y-1", isUser && "items-end")}>
         <div className={cn(
-          "rounded-2xl px-4 py-3",
+          "rounded-2xl px-4 py-3 transition-colors",
           isUser ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted/60 rounded-bl-md",
           message.hadFallback && !isUser && "border border-destructive/20 bg-destructive/5"
         )}>
@@ -348,6 +457,14 @@ function AgentMessageBubble({ message }: { message: Message }) {
                 h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
                 h2: ({ children }) => <h2 className="text-sm font-bold mb-1.5 mt-2.5 first:mt-0">{children}</h2>,
                 h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-2 first:mt-0">{children}</h3>,
+                code: ({ children, className }) => {
+                  const isInline = !className;
+                  return isInline ? (
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
+                  ) : (
+                    <code className={cn("block bg-muted p-3 rounded-lg text-xs font-mono overflow-x-auto", className)}>{children}</code>
+                  );
+                },
               }}>{message.content}</ReactMarkdown>
             </div>
           )}
@@ -359,7 +476,7 @@ function AgentMessageBubble({ message }: { message: Message }) {
             {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: it })}
           </span>
           {!isUser && !message.hadFallback && message.toolsUsed && message.toolsUsed.length > 0 && (
-            <span className="text-[10px] text-primary/70 flex items-center gap-0.5">
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
               <CheckCircle2 className="h-2.5 w-2.5" /> Completa
             </span>
           )}
@@ -367,6 +484,18 @@ function AgentMessageBubble({ message }: { message: Message }) {
             <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
               <Clock className="h-2.5 w-2.5" />{(message.latencyMs / 1000).toFixed(1)}s
             </span>
+          )}
+          {/* Retry button */}
+          {message.hadFallback && !isUser && onRetry && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 px-2 text-[10px] text-muted-foreground hover:text-foreground gap-1"
+              onClick={onRetry}
+            >
+              <RotateCcw className="h-2.5 w-2.5" />
+              Riprova
+            </Button>
           )}
           {message.toolsUsed && message.toolsUsed.length > 0 && (
             <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
@@ -415,7 +544,7 @@ function InputBar({
   const navigate = useNavigate();
 
   return (
-    <div className="border-t border-border/50">
+    <div className="border-t border-border/50 bg-card/30 backdrop-blur-sm">
       {/* Actions row */}
       <div className="px-5 pt-3 pb-1 flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
         <TooltipProvider delayDuration={300}>
@@ -425,7 +554,7 @@ function InputBar({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="shrink-0 h-7 gap-1 text-[11px] rounded-lg border-dashed"
+                  className="shrink-0 h-7 gap-1 text-[11px] rounded-lg border-dashed hover:shadow-sm transition-all"
                   onClick={() => navigate(action.route)}
                 >
                   <action.icon className="h-3 w-3" />
@@ -479,7 +608,10 @@ function InputBar({
           size="icon"
           onClick={() => onSend(input)}
           disabled={!input.trim() || isPending}
-          className="shrink-0 rounded-xl h-11 w-11"
+          className={cn(
+            "shrink-0 rounded-xl h-11 w-11 transition-all duration-200",
+            input.trim() && !isPending && "shadow-md hover:shadow-lg"
+          )}
         >
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
