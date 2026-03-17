@@ -26,11 +26,11 @@ interface UserRoleEntry {
     id: string;
     email: string;
     full_name: string | null;
-  };
+  } | null;
   brand: {
     id: string;
     name: string;
-  };
+  } | null;
 }
 
 const roleLabels: Record<AppRole, string> = {
