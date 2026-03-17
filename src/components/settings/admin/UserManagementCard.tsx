@@ -652,6 +652,10 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                   <p className="text-xs text-destructive">Minimo 6 caratteri</p>
                 )}
               </div>
+
+              <Separator />
+
+              {/* Roles section */}
               <div className="space-y-3">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ruoli assegnati</Label>
                 <ScrollArea className="max-h-48">
