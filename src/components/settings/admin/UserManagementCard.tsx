@@ -723,7 +723,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                       }
                     }}
                   >
-                    <MailIcon className="h-3.5 w-3.5" />
+                    <Mail className="h-3.5 w-3.5" />
                     {resendConfirmationMutation.isPending ? "Invio..." : "Reinvia"}
                   </Button>
                 </div>
