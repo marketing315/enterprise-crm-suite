@@ -455,7 +455,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tutti i brand</SelectItem>
-            {nonSystemBrands.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+            {allBrandsForSelection.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
