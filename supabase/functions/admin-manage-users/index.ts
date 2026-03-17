@@ -43,7 +43,12 @@ interface ResetPasswordRequest {
   new_password: string;
 }
 
-type RequestBody = UpdateUserRequest | DeleteUserRequest | UpdateRoleRequest | DeleteRoleRequest | AddRoleRequest | ResetPasswordRequest;
+interface ResendConfirmationRequest {
+  action: "resend_confirmation";
+  user_id: string;
+}
+
+type RequestBody = UpdateUserRequest | DeleteUserRequest | UpdateRoleRequest | DeleteRoleRequest | AddRoleRequest | ResetPasswordRequest | ResendConfirmationRequest;
 
 async function verifyAdmin(authHeader: string): Promise<{ adminClient: ReturnType<typeof createClient>; callerBrandIds: string[] }> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
