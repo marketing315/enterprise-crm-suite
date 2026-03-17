@@ -770,7 +770,6 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
 
                 <div className="space-y-2">
                   {editingUser.roles.map(role => {
-                    const brand = brands.find(b => b.id === role.brand_id);
                     const roleConfig = ROLE_CONFIG[role.role];
                     const RoleIcon = roleConfig?.icon || Users;
                     return (
@@ -779,7 +778,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                           <RoleIcon className="h-3.5 w-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{brand?.name || role.brand_name}</p>
+                          <p className="text-sm font-medium truncate">{getBrandDisplayName(role.brand_id, role.brand_name)}</p>
                         </div>
                         <Select
                           value={role.role}
