@@ -622,9 +622,36 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Roles section */}
+              {/* Password reset */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-user-password">Nuova Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-user-password"
+                    type="password"
+                    value={editNewPassword}
+                    onChange={e => setEditNewPassword(e.target.value)}
+                    placeholder="Lascia vuoto per non cambiare"
+                    className="flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    disabled={!editNewPassword || editNewPassword.length < 6 || resetPasswordMutation.isPending}
+                    onClick={() => {
+                      if (editingUser) {
+                        resetPasswordMutation.mutate({ user_id: editingUser.id, new_password: editNewPassword });
+                      }
+                    }}
+                  >
+                    {resetPasswordMutation.isPending ? "..." : "Aggiorna"}
+                  </Button>
+                </div>
+                {editNewPassword && editNewPassword.length < 6 && (
+                  <p className="text-xs text-destructive">Minimo 6 caratteri</p>
+                )}
+              </div>
               <div className="space-y-3">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ruoli assegnati</Label>
                 <ScrollArea className="max-h-48">
