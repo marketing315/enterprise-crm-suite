@@ -37,7 +37,13 @@ interface AddRoleRequest {
   role: AppRole;
 }
 
-type RequestBody = UpdateUserRequest | DeleteUserRequest | UpdateRoleRequest | DeleteRoleRequest | AddRoleRequest;
+interface ResetPasswordRequest {
+  action: "reset_password";
+  user_id: string;
+  new_password: string;
+}
+
+type RequestBody = UpdateUserRequest | DeleteUserRequest | UpdateRoleRequest | DeleteRoleRequest | AddRoleRequest | ResetPasswordRequest;
 
 async function verifyAdmin(authHeader: string): Promise<{ adminClient: ReturnType<typeof createClient>; callerBrandIds: string[] }> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
