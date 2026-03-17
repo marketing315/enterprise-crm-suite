@@ -174,6 +174,7 @@ function canManageRole(managerRole: AppRole, targetRole: AppRole): boolean {
 
 function getAssignableRolesForRole(managerRole: AppRole): { value: AppRole; label: string }[] {
   const allRoles: { value: AppRole; label: string }[] = [
+    { value: "admin", label: "Admin" },
     { value: "ceo", label: "CEO" },
     { value: "amministrazione", label: "Amministrazione" },
     { value: "responsabile_venditori", label: "Responsabile Venditori" },
