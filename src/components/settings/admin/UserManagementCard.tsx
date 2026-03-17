@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -108,6 +109,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
   const [editAddBrandId, setEditAddBrandId] = useState("");
   const [editAddRole, setEditAddRole] = useState<AppRole>("operatore_callcenter");
   const [editNewPassword, setEditNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Fetch users with roles
   const { data: usersWithRoles, isLoading } = useQuery({
@@ -302,6 +304,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setEditAddBrandId("");
     setEditAddRole("operatore_callcenter");
     setEditNewPassword("");
+    setShowPassword(false);
     setEditDialogOpen(true);
   };
 
@@ -627,14 +630,25 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
               <div className="space-y-2">
                 <Label htmlFor="edit-user-password">Nuova Password</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="edit-user-password"
-                    type="password"
-                    value={editNewPassword}
-                    onChange={e => setEditNewPassword(e.target.value)}
-                    placeholder="Lascia vuoto per non cambiare"
-                    className="flex-1"
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      id="edit-user-password"
+                      type={showPassword ? "text" : "password"}
+                      value={editNewPassword}
+                      onChange={e => setEditNewPassword(e.target.value)}
+                      placeholder="Lascia vuoto per non cambiare"
+                      className="pr-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full w-9 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword(v => !v)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
