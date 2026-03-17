@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -193,9 +193,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
       return data;
     },
     onSuccess: () => {
-      toast.success("Utente aggiornato");
-      setEditDialogOpen(false);
-      setEditingUser(null);
+      toast.success("Salvato");
       queryClient.invalidateQueries({ queryKey: ["admin-users-roles"] });
     },
     onError: (error: Error) => toast.error(`Errore: ${error.message}`),
@@ -320,6 +318,19 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setShowPassword(false);
     setEditDialogOpen(true);
   };
+
+  // Auto-save user data on blur
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveUser = useCallback(() => {
+    if (!editingUser) return;
+    const nameChanged = editUserFullName !== (editingUser.full_name || "");
+    const emailChanged = editUserEmail !== editingUser.email;
+    if (!nameChanged && !emailChanged) return;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      updateUserMutation.mutate({ user_id: editingUser.id, full_name: editUserFullName, email: editUserEmail });
+    }, 300);
+  }, [editingUser, editUserFullName, editUserEmail, updateUserMutation]);
 
   const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
   const systemBrandOption = {
@@ -661,11 +672,11 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-user-name" className="text-xs">Nome Completo</Label>
-                    <Input id="edit-user-name" value={editUserFullName} onChange={e => setEditUserFullName(e.target.value)} className="h-9" />
+                    <Input id="edit-user-name" value={editUserFullName} onChange={e => setEditUserFullName(e.target.value)} onBlur={autoSaveUser} className="h-9" />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-user-email" className="text-xs">Email</Label>
-                    <Input id="edit-user-email" type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} className="h-9" />
+                    <Input id="edit-user-email" type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} onBlur={autoSaveUser} className="h-9" />
                   </div>
                 </div>
               </section>
@@ -877,10 +888,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Annulla</Button>
-            <Button onClick={handleUpdateUser} disabled={updateUserMutation.isPending}>
-              {updateUserMutation.isPending ? "Salvataggio..." : "Salva Modifiche"}
-            </Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Chiudi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
