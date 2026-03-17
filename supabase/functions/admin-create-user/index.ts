@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const authUserId = user.id;
+    const callerAuthUserId = user.id;
 
     // Use service role to check admin status (to avoid RLS issues)
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
