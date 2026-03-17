@@ -201,6 +201,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
+        is_existing_user: isExistingUser,
         user: {
           id: publicUser.id,
           email: publicUser.email,
