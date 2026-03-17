@@ -181,15 +181,17 @@ Deno.serve(async (req: Request) => {
       role,
     }));
 
+    // Use upsert to handle cases where roles already exist
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
-      .insert(roleInserts);
+      .upsert(roleInserts, { ignoreDuplicates: true });
 
     if (roleInsertError) {
       console.error("Error assigning roles:", roleInsertError);
-      // Rollback
-      await adminClient.from("users").delete().eq("id", publicUser.id);
-      await adminClient.auth.admin.deleteUser(authUser.user.id);
+      if (!isExistingUser) {
+        await adminClient.from("users").delete().eq("id", publicUser!.id);
+        await adminClient.auth.admin.deleteUser(authUserId);
+      }
       return new Response(JSON.stringify({ error: roleInsertError.message }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
