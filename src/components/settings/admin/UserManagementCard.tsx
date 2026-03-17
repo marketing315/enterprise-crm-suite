@@ -324,7 +324,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
   const getAvailableBrandsForEdit = () => {
     if (!editingUser) return [];
     const assignedBrandIds = editingUser.roles.map(r => r.brand_id);
-    return brands.filter(b => !assignedBrandIds.includes(b.id));
+    return allBrandsForSelection.filter(b => !assignedBrandIds.includes(b.id));
   };
 
   const handleAddRoleToEditUser = () => {
