@@ -1,109 +1,79 @@
 project_id = "qmqcjtmcxfqahhubpaea"
 
-[functions.meta-leads-webhook]
-verify_jwt = false
-
-[functions.webhook-ingest]
-verify_jwt = false
-
-[functions.ai-classify]
-verify_jwt = false
-
-[functions.sla-breach-checker]
-verify_jwt = false
-
-[functions.ticket-assign-recovery]
-verify_jwt = false
-
-[functions.webhook-dispatcher]
-verify_jwt = false
-
-[functions.sheets-export]
-verify_jwt = false
-
-[functions.admin-create-user]
-verify_jwt = false
-
-[functions.admin-manage-users]
-verify_jwt = false
-
-[functions.sheets-kpi-refresh]
-verify_jwt = false
-
-[functions.ai-chat]
-verify_jwt = false
-
-[functions.meta-subscribe-page]
-verify_jwt = false
-
-[functions.meta-create-test-lead]
-verify_jwt = false
-
-[functions.ai-agent]
-verify_jwt = false
-
-[functions.ai-tag-deals]
-verify_jwt = false
-
-[functions.create-test-user]
-verify_jwt = false
-
-[functions.ads-stats-meta]
-verify_jwt = false
-
-[functions.capi-event-sender]
-verify_jwt = false
-
-[functions.voispeed-call-request]
-verify_jwt = false
-
-[functions.voispeed-events-webhook]
-verify_jwt = false
-
-[functions.keplero-webhook]
-verify_jwt = false
-
-[functions.automation-runner]
-verify_jwt = false
-
-[functions.ai-generate-automation]
-verify_jwt = false
-
-[functions.automation-jobs-dispatcher]
-verify_jwt = false
-
-[functions.admin-manage-team]
-verify_jwt = false
-
-[functions.generate-weekly-report]
-verify_jwt = false
-
-[functions.send-n8n-webhook]
-verify_jwt = false
-
-[functions.sheets-leads-export]
-verify_jwt = false
-
-[functions.google-oauth-start]
-verify_jwt = false
-
-[functions.google-oauth-callback]
-verify_jwt = false
-
-[functions.google-ads-sync]
-verify_jwt = false
-
-[functions.meta-oauth-start]
-verify_jwt = false
-
-[functions.meta-oauth-callback]
-verify_jwt = false
-
-[functions.lead-digest-dispatch]
-verify_jwt = false
-
-[functions.lead-digest-retry-dispatcher]
-verify_jwt = false
-
-[functions.keplero-contact-lookup]
-verify_jwt = false
+[functions]
+  [functions.admin-create-user]
+    verify_jwt = false
+  [functions.admin-manage-team]
+    verify_jwt = false
+  [functions.admin-manage-users]
+    verify_jwt = false
+  [functions.ads-stats-meta]
+    verify_jwt = false
+  [functions.ai-agent]
+    verify_jwt = false
+  [functions.ai-chat]
+    verify_jwt = false
+  [functions.ai-classify]
+    verify_jwt = false
+  [functions.ai-generate-automation]
+    verify_jwt = false
+  [functions.ai-tag-deals]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.automation-jobs-dispatcher]
+    verify_jwt = false
+  [functions.automation-runner]
+    verify_jwt = false
+  [functions.capi-event-sender]
+    verify_jwt = false
+  [functions.create-test-user]
+    verify_jwt = false
+  [functions.generate-weekly-report]
+    verify_jwt = false
+  [functions.google-ads-sync]
+    verify_jwt = false
+  [functions.google-oauth-callback]
+    verify_jwt = false
+  [functions.google-oauth-start]
+    verify_jwt = false
+  [functions.keplero-contact-lookup]
+    verify_jwt = false
+  [functions.keplero-webhook]
+    verify_jwt = false
+  [functions.lead-digest-dispatch]
+    verify_jwt = false
+  [functions.lead-digest-retry-dispatcher]
+    verify_jwt = false
+  [functions.meta-create-test-lead]
+    verify_jwt = false
+  [functions.meta-leads-webhook]
+    verify_jwt = false
+  [functions.meta-oauth-callback]
+    verify_jwt = false
+  [functions.meta-oauth-start]
+    verify_jwt = false
+  [functions.meta-subscribe-page]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.send-n8n-webhook]
+    verify_jwt = false
+  [functions.sheets-export]
+    verify_jwt = false
+  [functions.sheets-kpi-refresh]
+    verify_jwt = false
+  [functions.sheets-leads-export]
+    verify_jwt = false
+  [functions.sla-breach-checker]
+    verify_jwt = false
+  [functions.ticket-assign-recovery]
+    verify_jwt = false
+  [functions.voispeed-call-request]
+    verify_jwt = false
+  [functions.voispeed-events-webhook]
+    verify_jwt = false
+  [functions.webhook-dispatcher]
+    verify_jwt = false
+  [functions.webhook-ingest]
+    verify_jwt = false
