@@ -107,6 +107,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
   const [editUserEmail, setEditUserEmail] = useState("");
   const [editAddBrandId, setEditAddBrandId] = useState("");
   const [editAddRole, setEditAddRole] = useState<AppRole>("operatore_callcenter");
+  const [editNewPassword, setEditNewPassword] = useState("");
 
   // Fetch users with roles
   const { data: usersWithRoles, isLoading } = useQuery({
@@ -255,6 +256,20 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     onError: (error: Error) => toast.error(`Errore: ${error.message}`),
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ user_id, new_password }: { user_id: string; new_password: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "reset_password", user_id, new_password } });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Password aggiornata con successo");
+      setEditNewPassword("");
+    },
+    onError: (error: Error) => toast.error(`Errore: ${error.message}`),
+  });
+
   // --- Helpers ---
   const resetCreateForm = () => {
     setNewUserEmail("");
@@ -286,6 +301,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setEditUserEmail(user.email);
     setEditAddBrandId("");
     setEditAddRole("operatore_callcenter");
+    setEditNewPassword("");
     setEditDialogOpen(true);
   };
 
@@ -605,6 +621,37 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                   <Label htmlFor="edit-user-email">Email</Label>
                   <Input id="edit-user-email" type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} />
                 </div>
+              </div>
+
+              {/* Password reset */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-user-password">Nuova Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-user-password"
+                    type="password"
+                    value={editNewPassword}
+                    onChange={e => setEditNewPassword(e.target.value)}
+                    placeholder="Lascia vuoto per non cambiare"
+                    className="flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    disabled={!editNewPassword || editNewPassword.length < 6 || resetPasswordMutation.isPending}
+                    onClick={() => {
+                      if (editingUser) {
+                        resetPasswordMutation.mutate({ user_id: editingUser.id, new_password: editNewPassword });
+                      }
+                    }}
+                  >
+                    {resetPasswordMutation.isPending ? "..." : "Aggiorna"}
+                  </Button>
+                </div>
+                {editNewPassword && editNewPassword.length < 6 && (
+                  <p className="text-xs text-destructive">Minimo 6 caratteri</p>
+                )}
               </div>
 
               <Separator />
