@@ -303,7 +303,6 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setEditAddRole("callcenter");
     setEditDialogOpen(true);
   };
-  };
 
   // Get brands not yet assigned to the editing user
   const getAvailableBrandsForEdit = () => {
