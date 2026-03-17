@@ -286,18 +286,23 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     });
   };
 
-  const handleEditUser = (user: { id: string; email: string; full_name: string | null }) => {
+  const handleEditUser = (user: { id: string; email: string; full_name: string | null } | null) => {
+    if (!user) {
+      toast.error("Utente non disponibile per questo ruolo");
+      return;
+    }
     setEditingUser(user);
     setEditUserFullName(user.full_name || "");
     setEditUserEmail(user.email);
     // Populate user's current roles
     const userRoles = usersWithRoles
-      ?.filter((entry) => entry.user.id === user.id)
+      ?.filter((entry) => entry.user?.id === user.id)
       .map((entry) => ({ id: entry.id, brand_id: entry.brand_id, role: entry.role as AppRole })) || [];
     setEditUserRoles(userRoles);
     setEditAddBrandId("");
     setEditAddRole("callcenter");
     setEditDialogOpen(true);
+  };
   };
 
   // Get brands not yet assigned to the editing user
