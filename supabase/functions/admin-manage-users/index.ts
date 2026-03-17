@@ -349,6 +349,48 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      case "reset_password": {
+        const { user_id, new_password } = body as ResetPasswordRequest;
+        await assertCanManageUser(user_id);
+
+        if (!new_password || new_password.length < 6) {
+          return new Response(JSON.stringify({ error: "La password deve essere di almeno 6 caratteri" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { data: userData, error: userFetchError } = await adminClient
+          .from("users")
+          .select("supabase_auth_id")
+          .eq("id", user_id)
+          .single();
+
+        if (userFetchError || !userData) {
+          return new Response(JSON.stringify({ error: "User not found" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(
+          userData.supabase_auth_id,
+          { password: new_password }
+        );
+
+        if (authUpdateError) {
+          return new Response(JSON.stringify({ error: `Password reset failed: ${authUpdateError.message}` }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Invalid action" }), {
           status: 400,
