@@ -107,6 +107,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
   const [editUserEmail, setEditUserEmail] = useState("");
   const [editAddBrandId, setEditAddBrandId] = useState("");
   const [editAddRole, setEditAddRole] = useState<AppRole>("operatore_callcenter");
+  const [editNewPassword, setEditNewPassword] = useState("");
 
   // Fetch users with roles
   const { data: usersWithRoles, isLoading } = useQuery({
