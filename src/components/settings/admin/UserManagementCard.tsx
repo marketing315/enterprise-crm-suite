@@ -321,6 +321,19 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setEditDialogOpen(true);
   };
 
+  // Auto-save user data on blur
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveUser = useCallback(() => {
+    if (!editingUser) return;
+    const nameChanged = editUserFullName !== (editingUser.full_name || "");
+    const emailChanged = editUserEmail !== editingUser.email;
+    if (!nameChanged && !emailChanged) return;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      updateUserMutation.mutate({ user_id: editingUser.id, full_name: editUserFullName, email: editUserEmail });
+    }, 300);
+  }, [editingUser, editUserFullName, editUserEmail, updateUserMutation]);
+
   const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
   const systemBrandOption = {
     id: SYSTEM_BRAND_ID,
