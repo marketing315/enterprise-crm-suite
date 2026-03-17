@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import {
   Users, UserPlus, Pencil, Trash2, Plus, Search,
   Shield, Crown, Headphones, TrendingUp, Building2,
-  ChevronDown, ChevronUp, MoreHorizontal
+  ChevronDown, ChevronUp, MoreHorizontal, Mail
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -270,6 +270,17 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
       toast.success("Password aggiornata con successo");
       setEditNewPassword("");
     },
+    onError: (error: Error) => toast.error(`Errore: ${error.message}`),
+  });
+
+  const resendConfirmationMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "resend_confirmation", user_id: userId } });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => toast.success("Email di conferma inviata"),
     onError: (error: Error) => toast.error(`Errore: ${error.message}`),
   });
 
@@ -695,6 +706,27 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                     {resetPasswordMutation.isPending ? "Aggiornamento..." : "Aggiorna Password"}
                   </Button>
                 )}
+
+                <Separator className="my-2" />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium">Email di conferma</p>
+                    <p className="text-xs text-muted-foreground">Reinvia il link di verifica all'utente</p>
+                  </div>
+                  <Button
+                    size="sm" variant="outline" className="gap-2"
+                    disabled={resendConfirmationMutation.isPending}
+                    onClick={() => {
+                      if (editingUser) {
+                        resendConfirmationMutation.mutate(editingUser.id);
+                      }
+                    }}
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    {resendConfirmationMutation.isPending ? "Invio..." : "Reinvia"}
+                  </Button>
+                </div>
               </section>
 
               <Separator />
