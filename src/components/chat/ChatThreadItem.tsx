@@ -64,7 +64,7 @@ export function ChatThreadItem({
     <div
       className={cn(
         "w-full px-3 py-2.5 flex gap-3 cursor-pointer group relative transition-all duration-150",
-        "hover:bg-accent/50",
+        "hover:bg-accent/50 active:bg-accent/70",
         isSelected && "bg-accent border-l-2 border-l-primary",
         !isSelected && "border-l-2 border-l-transparent"
       )}
@@ -82,7 +82,7 @@ export function ChatThreadItem({
           </p>
           <div className="flex items-center gap-1 shrink-0">
             {unreadCount > 0 && (
-              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-medium px-1.5">
+              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-medium px-1.5 animate-in zoom-in-50 duration-200">
                 {unreadCount}
               </span>
             )}
@@ -121,7 +121,7 @@ export function ChatThreadItem({
           <span className="text-[11px] text-muted-foreground">
             {getThreadSubtitle(thread)}
           </span>
-          <span className="text-[10px] text-muted-foreground/60">·</span>
+          <span className="text-[10px] text-muted-foreground/40">·</span>
           <span className="text-[10px] text-muted-foreground/60">
             {formatDistanceToNow(new Date(thread.updated_at), { addSuffix: true, locale: it })}
           </span>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Bot, MessageSquare } from "lucide-react";
+import { ArrowLeft, Bot, MessageSquare } from "lucide-react";
 import {
   useChatThreads,
   useChatMessages,
@@ -36,6 +37,7 @@ import { GroupSettingsDrawer } from "@/components/chat/GroupSettingsDrawer";
 import { ChatThreadList } from "@/components/chat/ChatThreadList";
 import { ChatMessagePanel } from "@/components/chat/ChatMessagePanel";
 import { useAIAgentChat, useCreateNewExecutiveThread } from "@/hooks/useAIAgent";
+import { cn } from "@/lib/utils";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -49,6 +51,7 @@ export default function Chat() {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [deleteConfirmThreadId, setDeleteConfirmThreadId] = useState<string | null>(null);
+  const [mobileShowMessages, setMobileShowMessages] = useState(false);
 
   // Data hooks
   const { data: threads = [], isLoading: threadsLoading } = useChatThreads();
@@ -92,12 +95,24 @@ export default function Chat() {
     setSelectedThreadId(null);
     setForceExecutiveThreadId(null);
     setAskAI(true);
+    setMobileShowMessages(true);
+  };
+
+  const handleSelectThread = (id: string) => {
+    setSelectedThreadId(id);
+    setDraftExecutiveThread(false);
+    setMobileShowMessages(true);
+  };
+
+  const handleMobileBack = () => {
+    setMobileShowMessages(false);
   };
 
   const handleCreateGroup = async (title: string, memberIds: string[]) => {
     const threadId = await createGroupChat.mutateAsync({ title, memberIds });
     setCreateGroupOpen(false);
     setSelectedThreadId(threadId);
+    setMobileShowMessages(true);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -167,7 +182,7 @@ export default function Chat() {
               <MessageSquare className="h-4 w-4" />
               <span>Conversazioni</span>
               {unreadCounts.length > 0 && (
-                <Badge className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px] bg-primary">
+                <Badge className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px] bg-primary animate-in zoom-in-50 duration-200">
                   {unreadCounts.reduce((sum, u) => sum + u.unread_count, 0)}
                 </Badge>
               )}
@@ -183,37 +198,65 @@ export default function Chat() {
         {/* Conversations Tab */}
         <TabsContent value="threads" className="flex-1 min-h-0 mt-0">
           <div className="h-full flex rounded-xl border border-border/50 overflow-hidden bg-background">
-            <ChatThreadList
-              threads={threads}
-              archivedThreads={archivedThreads}
-              threadsLoading={threadsLoading}
-              archivedLoading={archivedLoading}
-              selectedThreadId={selectedThreadId}
-              unreadCounts={unreadCounts}
-              titleMap={titleMap}
-              onSelectThread={(id) => { setSelectedThreadId(id); setDraftExecutiveThread(false); }}
-              onArchive={(id) => { if (selectedThreadId === id) setSelectedThreadId(null); archiveThread.mutate(id); }}
-              onUnarchive={(id) => unarchiveThread.mutate(id)}
-              onDelete={(id) => setDeleteConfirmThreadId(id)}
-              onCreateGroup={() => setCreateGroupOpen(true)}
-              onNewAIChat={handleNewAIChat}
-              isCreatingAI={createNewAIThread.isPending}
-            />
-            <ChatMessagePanel
-              thread={selectedThread || null}
-              messages={messages}
-              messagesLoading={messagesLoading}
-              userId={user?.id || null}
-              messageInput={messageInput}
-              setMessageInput={setMessageInput}
-              askAI={askAI}
-              setAskAI={setAskAI}
-              isExecutiveThread={isExecutiveThread}
-              isPending={isPending}
-              isDraftMode={draftExecutiveThread}
-              onSend={handleSendMessage}
-              onGroupSettings={() => setGroupSettingsOpen(true)}
-            />
+            {/* Thread list - hidden on mobile when viewing messages */}
+            <div className={cn(
+              "flex-shrink-0 w-80",
+              "max-md:w-full max-md:flex-1",
+              mobileShowMessages && "max-md:hidden"
+            )}>
+              <ChatThreadList
+                threads={threads}
+                archivedThreads={archivedThreads}
+                threadsLoading={threadsLoading}
+                archivedLoading={archivedLoading}
+                selectedThreadId={selectedThreadId}
+                unreadCounts={unreadCounts}
+                titleMap={titleMap}
+                onSelectThread={handleSelectThread}
+                onArchive={(id) => { if (selectedThreadId === id) { setSelectedThreadId(null); setMobileShowMessages(false); } archiveThread.mutate(id); }}
+                onUnarchive={(id) => unarchiveThread.mutate(id)}
+                onDelete={(id) => setDeleteConfirmThreadId(id)}
+                onCreateGroup={() => setCreateGroupOpen(true)}
+                onNewAIChat={handleNewAIChat}
+                isCreatingAI={createNewAIThread.isPending}
+              />
+            </div>
+
+            {/* Message panel - hidden on mobile when viewing thread list */}
+            <div className={cn(
+              "flex-1 min-w-0 flex flex-col",
+              !mobileShowMessages && "max-md:hidden"
+            )}>
+              {/* Mobile back button */}
+              {mobileShowMessages && (
+                <div className="md:hidden px-3 py-2 border-b border-border/50">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs rounded-lg"
+                    onClick={handleMobileBack}
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Conversazioni
+                  </Button>
+                </div>
+              )}
+              <ChatMessagePanel
+                thread={selectedThread || null}
+                messages={messages}
+                messagesLoading={messagesLoading}
+                userId={user?.id || null}
+                messageInput={messageInput}
+                setMessageInput={setMessageInput}
+                askAI={askAI}
+                setAskAI={setAskAI}
+                isExecutiveThread={isExecutiveThread}
+                isPending={isPending}
+                isDraftMode={draftExecutiveThread}
+                onSend={handleSendMessage}
+                onGroupSettings={() => setGroupSettingsOpen(true)}
+              />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
@@ -248,7 +291,10 @@ export default function Chat() {
             <AlertDialogAction
               onClick={() => {
                 if (!deleteConfirmThreadId) return;
-                if (selectedThreadId === deleteConfirmThreadId) setSelectedThreadId(null);
+                if (selectedThreadId === deleteConfirmThreadId) {
+                  setSelectedThreadId(null);
+                  setMobileShowMessages(false);
+                }
                 deleteThread.mutate(deleteConfirmThreadId);
                 setDeleteConfirmThreadId(null);
               }}
