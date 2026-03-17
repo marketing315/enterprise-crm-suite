@@ -674,11 +674,11 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-user-name" className="text-xs">Nome Completo</Label>
-                    <Input id="edit-user-name" value={editUserFullName} onChange={e => setEditUserFullName(e.target.value)} className="h-9" />
+                    <Input id="edit-user-name" value={editUserFullName} onChange={e => setEditUserFullName(e.target.value)} onBlur={autoSaveUser} className="h-9" />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-user-email" className="text-xs">Email</Label>
-                    <Input id="edit-user-email" type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} className="h-9" />
+                    <Input id="edit-user-email" type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} onBlur={autoSaveUser} className="h-9" />
                   </div>
                 </div>
               </section>
