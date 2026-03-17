@@ -48,6 +48,11 @@ interface ResendConfirmationRequest {
   user_id: string;
 }
 
+interface ConfirmEmailRequest {
+  action: "confirm_email";
+  user_id: string;
+}
+
 type RequestBody = UpdateUserRequest | DeleteUserRequest | UpdateRoleRequest | DeleteRoleRequest | AddRoleRequest | ResetPasswordRequest | ResendConfirmationRequest;
 
 async function verifyAdmin(authHeader: string): Promise<{ adminClient: ReturnType<typeof createClient>; callerBrandIds: string[] }> {
