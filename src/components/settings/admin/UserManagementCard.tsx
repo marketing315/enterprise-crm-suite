@@ -193,9 +193,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
       return data;
     },
     onSuccess: () => {
-      toast.success("Utente aggiornato");
-      setEditDialogOpen(false);
-      setEditingUser(null);
+      toast.success("Salvato");
       queryClient.invalidateQueries({ queryKey: ["admin-users-roles"] });
     },
     onError: (error: Error) => toast.error(`Errore: ${error.message}`),
