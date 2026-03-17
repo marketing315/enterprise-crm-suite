@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const authUserId = user.id;
+    const callerAuthUserId = user.id;
 
     // Use service role to check admin status (to avoid RLS issues)
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
     const { data: internalUser, error: internalError } = await adminClient
       .from("users")
       .select("id")
-      .eq("supabase_auth_id", authUserId)
+      .eq("supabase_auth_id", callerAuthUserId)
       .single();
     
     if (internalError || !internalUser) {
