@@ -629,14 +629,25 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
               <div className="space-y-2">
                 <Label htmlFor="edit-user-password">Nuova Password</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="edit-user-password"
-                    type="password"
-                    value={editNewPassword}
-                    onChange={e => setEditNewPassword(e.target.value)}
-                    placeholder="Lascia vuoto per non cambiare"
-                    className="flex-1"
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      id="edit-user-password"
+                      type={showPassword ? "text" : "password"}
+                      value={editNewPassword}
+                      onChange={e => setEditNewPassword(e.target.value)}
+                      placeholder="Lascia vuoto per non cambiare"
+                      className="pr-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full w-9 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword(v => !v)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
