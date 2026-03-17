@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
     const { data: internalUser, error: internalError } = await adminClient
       .from("users")
       .select("id")
-      .eq("supabase_auth_id", authUserId)
+      .eq("supabase_auth_id", callerAuthUserId)
       .single();
     
     if (internalError || !internalUser) {
