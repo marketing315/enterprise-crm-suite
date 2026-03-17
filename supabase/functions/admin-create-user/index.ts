@@ -184,7 +184,7 @@ Deno.serve(async (req: Request) => {
     // Use upsert to handle cases where roles already exist
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
-      .upsert(roleInserts, { ignoreDuplicates: true });
+      .upsert(roleInserts, { onConflict: "user_id,brand_id,role", ignoreDuplicates: true });
 
     if (roleInsertError) {
       console.error("Error assigning roles:", roleInsertError);
