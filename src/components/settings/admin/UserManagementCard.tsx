@@ -675,14 +675,23 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-user-confirm-password" className="text-xs">Conferma Password</Label>
-                    <Input
-                      id="edit-user-confirm-password"
-                      type={showPassword ? "text" : "password"}
-                      value={editConfirmPassword}
-                      onChange={e => setEditConfirmPassword(e.target.value)}
-                      placeholder="Ripeti la password"
-                      className="h-9"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="edit-user-confirm-password"
+                        type={showPassword ? "text" : "password"}
+                        value={editConfirmPassword}
+                        onChange={e => setEditConfirmPassword(e.target.value)}
+                        placeholder="Ripeti la password"
+                        className="h-9 pr-9"
+                      />
+                      <Button
+                        type="button" variant="ghost" size="icon"
+                        className="absolute right-0 top-0 h-full w-9 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPassword(v => !v)}
+                      >
+                        {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 {editNewPassword && editNewPassword.length < 6 && (
@@ -691,21 +700,19 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                 {editNewPassword && editConfirmPassword && editNewPassword !== editConfirmPassword && (
                   <p className="text-xs text-destructive">Le password non coincidono</p>
                 )}
-                {editNewPassword.length >= 6 && editNewPassword === editConfirmPassword && (
-                  <Button
-                    size="sm" variant="outline" className="gap-2"
-                    disabled={resetPasswordMutation.isPending}
-                    onClick={() => {
-                      if (editingUser) {
-                        resetPasswordMutation.mutate({ user_id: editingUser.id, new_password: editNewPassword });
-                        setEditConfirmPassword("");
-                      }
-                    }}
-                  >
-                    <Shield className="h-3.5 w-3.5" />
-                    {resetPasswordMutation.isPending ? "Aggiornamento..." : "Aggiorna Password"}
-                  </Button>
-                )}
+                <Button
+                  size="sm" variant="outline" className="gap-2"
+                  disabled={!editNewPassword || editNewPassword.length < 6 || editNewPassword !== editConfirmPassword || resetPasswordMutation.isPending}
+                  onClick={() => {
+                    if (editingUser) {
+                      resetPasswordMutation.mutate({ user_id: editingUser.id, new_password: editNewPassword });
+                      setEditConfirmPassword("");
+                    }
+                  }}
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  {resetPasswordMutation.isPending ? "Aggiornamento..." : "Aggiorna Password"}
+                </Button>
 
                 <Separator className="my-2" />
 
