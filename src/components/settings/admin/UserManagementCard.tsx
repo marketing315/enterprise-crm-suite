@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import {
   Users, UserPlus, Pencil, Trash2, Plus, Search,
   Shield, Crown, Headphones, TrendingUp, Building2,
-  ChevronDown, ChevronUp, MoreHorizontal
+  ChevronDown, ChevronUp, MoreHorizontal, Mail
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
