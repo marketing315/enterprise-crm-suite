@@ -48,6 +48,11 @@ interface ResendConfirmationRequest {
   user_id: string;
 }
 
+interface ConfirmEmailRequest {
+  action: "confirm_email";
+  user_id: string;
+}
+
 type RequestBody = UpdateUserRequest | DeleteUserRequest | UpdateRoleRequest | DeleteRoleRequest | AddRoleRequest | ResetPasswordRequest | ResendConfirmationRequest;
 
 async function verifyAdmin(authHeader: string): Promise<{ adminClient: ReturnType<typeof createClient>; callerBrandIds: string[] }> {
@@ -445,6 +450,41 @@ Deno.serve(async (req: Request) => {
         }
 
         return new Response(JSON.stringify({ success: true, email_sent: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "confirm_email": {
+        const { user_id } = body as ConfirmEmailRequest;
+        await assertCanManageUser(user_id);
+
+        const { data: userData, error: userFetchError } = await adminClient
+          .from("users")
+          .select("supabase_auth_id")
+          .eq("id", user_id)
+          .single();
+
+        if (userFetchError || !userData) {
+          return new Response(JSON.stringify({ error: "User not found" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: confirmError } = await adminClient.auth.admin.updateUserById(
+          userData.supabase_auth_id,
+          { email_confirm: true }
+        );
+
+        if (confirmError) {
+          return new Response(JSON.stringify({ error: `Confirm failed: ${confirmError.message}` }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
