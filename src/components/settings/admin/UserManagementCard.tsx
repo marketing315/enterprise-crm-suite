@@ -706,6 +706,27 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                     {resetPasswordMutation.isPending ? "Aggiornamento..." : "Aggiorna Password"}
                   </Button>
                 )}
+
+                <Separator className="my-2" />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium">Email di conferma</p>
+                    <p className="text-xs text-muted-foreground">Reinvia il link di verifica all'utente</p>
+                  </div>
+                  <Button
+                    size="sm" variant="outline" className="gap-2"
+                    disabled={resendConfirmationMutation.isPending}
+                    onClick={() => {
+                      if (editingUser) {
+                        resendConfirmationMutation.mutate(editingUser.id);
+                      }
+                    }}
+                  >
+                    <MailIcon className="h-3.5 w-3.5" />
+                    {resendConfirmationMutation.isPending ? "Invio..." : "Reinvia"}
+                  </Button>
+                </div>
               </section>
 
               <Separator />
