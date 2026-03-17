@@ -255,6 +255,20 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     onError: (error: Error) => toast.error(`Errore: ${error.message}`),
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ user_id, new_password }: { user_id: string; new_password: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "reset_password", user_id, new_password } });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Password aggiornata con successo");
+      setEditNewPassword("");
+    },
+    onError: (error: Error) => toast.error(`Errore: ${error.message}`),
+  });
+
   // --- Helpers ---
   const resetCreateForm = () => {
     setNewUserEmail("");
