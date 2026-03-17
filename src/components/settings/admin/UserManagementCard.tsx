@@ -596,127 +596,165 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
 
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifica Utente</DialogTitle>
-            <DialogDescription>Aggiorna i dati e i ruoli dell&apos;utente</DialogDescription>
+            <DialogDescription className="sr-only">Aggiorna dati, password e ruoli</DialogDescription>
           </DialogHeader>
           {editingUser && (
-            <div className="space-y-5 py-2">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11">
-                  <AvatarFallback className="text-sm font-medium bg-primary/10 text-primary">
+            <div className="space-y-6 py-1">
+              {/* User identity header */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/50">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
                     {getInitials(editingUser.full_name, editingUser.email)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="font-medium text-sm">{editingUser.full_name || editingUser.email}</p>
-                  <p className="text-xs text-muted-foreground">{editingUser.email}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-sm truncate">{editingUser.full_name || "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{editingUser.email}</p>
+                  <div className="flex gap-1 mt-1.5 flex-wrap">
+                    {[...new Set(editingUser.roles.map(r => r.role))].map(role => (
+                      <RoleBadge key={role} role={role} />
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              {/* Dati personali */}
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dati Personali</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-user-name" className="text-xs">Nome Completo</Label>
+                    <Input id="edit-user-name" value={editUserFullName} onChange={e => setEditUserFullName(e.target.value)} className="h-9" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-user-email" className="text-xs">Email</Label>
+                    <Input id="edit-user-email" type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} className="h-9" />
+                  </div>
+                </div>
+              </section>
 
               <Separator />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-user-name">Nome Completo</Label>
-                  <Input id="edit-user-name" value={editUserFullName} onChange={e => setEditUserFullName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-user-email">Email</Label>
-                  <Input id="edit-user-email" type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)} />
-                </div>
-              </div>
-
-              {/* Password reset */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-user-password">Nuova Password</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="edit-user-password"
-                      type={showPassword ? "text" : "password"}
-                      value={editNewPassword}
-                      onChange={e => setEditNewPassword(e.target.value)}
-                      placeholder="Lascia vuoto per non cambiare"
-                      className="pr-9"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full w-9 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword(v => !v)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
+              {/* Sicurezza — Password */}
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sicurezza</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-user-password" className="text-xs">Nuova Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="edit-user-password"
+                        type={showPassword ? "text" : "password"}
+                        value={editNewPassword}
+                        onChange={e => setEditNewPassword(e.target.value)}
+                        placeholder="Min. 6 caratteri"
+                        className="h-9 pr-9"
+                      />
+                      <Button
+                        type="button" variant="ghost" size="icon"
+                        className="absolute right-0 top-0 h-full w-9 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPassword(v => !v)}
+                      >
+                        {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-user-confirm-password" className="text-xs">Conferma Password</Label>
+                    <Input
+                      id="edit-user-confirm-password"
+                      type={showPassword ? "text" : "password"}
+                      value={editConfirmPassword}
+                      onChange={e => setEditConfirmPassword(e.target.value)}
+                      placeholder="Ripeti la password"
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+                {editNewPassword && editNewPassword.length < 6 && (
+                  <p className="text-xs text-destructive">La password deve essere di almeno 6 caratteri</p>
+                )}
+                {editNewPassword && editConfirmPassword && editNewPassword !== editConfirmPassword && (
+                  <p className="text-xs text-destructive">Le password non coincidono</p>
+                )}
+                {editNewPassword.length >= 6 && editNewPassword === editConfirmPassword && (
                   <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0"
-                    disabled={!editNewPassword || editNewPassword.length < 6 || resetPasswordMutation.isPending}
+                    size="sm" variant="outline" className="gap-2"
+                    disabled={resetPasswordMutation.isPending}
                     onClick={() => {
                       if (editingUser) {
                         resetPasswordMutation.mutate({ user_id: editingUser.id, new_password: editNewPassword });
+                        setEditConfirmPassword("");
                       }
                     }}
                   >
-                    {resetPasswordMutation.isPending ? "..." : "Aggiorna"}
+                    <Shield className="h-3.5 w-3.5" />
+                    {resetPasswordMutation.isPending ? "Aggiornamento..." : "Aggiorna Password"}
                   </Button>
-                </div>
-                {editNewPassword && editNewPassword.length < 6 && (
-                  <p className="text-xs text-destructive">Minimo 6 caratteri</p>
                 )}
-              </div>
+              </section>
 
               <Separator />
 
-              {/* Roles section */}
-              <div className="space-y-3">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ruoli assegnati</Label>
-                <ScrollArea className="max-h-48">
-                  <div className="space-y-2">
-                    {editingUser.roles.map(role => {
-                      const brand = brands.find(b => b.id === role.brand_id);
-                      return (
-                        <div key={role.id} className="flex items-center gap-2 p-2.5 border rounded-lg bg-muted/30">
-                          <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="flex-1 text-sm truncate">{brand?.name || role.brand_name}</span>
-                          <Select
-                            value={role.role}
-                            onValueChange={v => updateRoleMutation.mutate({ role_id: role.id, role: v as AppRole })}
-                          >
-                            <SelectTrigger className="w-36 h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {AVAILABLE_ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => deleteRoleMutation.mutate(role.id)}
-                            disabled={deleteRoleMutation.isPending}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+              {/* Ruoli assegnati */}
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ruoli & Brand</h3>
+                  <span className="text-xs text-muted-foreground">{editingUser.roles.length} assegnazion{editingUser.roles.length === 1 ? "e" : "i"}</span>
+                </div>
+
+                <div className="space-y-2">
+                  {editingUser.roles.map(role => {
+                    const brand = brands.find(b => b.id === role.brand_id);
+                    const roleConfig = ROLE_CONFIG[role.role];
+                    const RoleIcon = roleConfig?.icon || Users;
+                    return (
+                      <div key={role.id} className="group flex items-center gap-3 rounded-lg border border-border/60 bg-background px-3 py-2.5 transition-colors hover:border-border">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${roleConfig?.color || "bg-muted text-muted-foreground"}`}>
+                          <RoleIcon className="h-3.5 w-3.5" />
                         </div>
-                      );
-                    })}
-                    {editingUser.roles.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-3">Nessun ruolo assegnato</p>
-                    )}
-                  </div>
-                </ScrollArea>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{brand?.name || role.brand_name}</p>
+                        </div>
+                        <Select
+                          value={role.role}
+                          onValueChange={v => updateRoleMutation.mutate({ role_id: role.id, role: v as AppRole })}
+                        >
+                          <SelectTrigger className="w-40 h-8 text-xs border-border/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                          onClick={() => deleteRoleMutation.mutate(role.id)}
+                          disabled={deleteRoleMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {editingUser.roles.length === 0 && (
+                    <div className="flex items-center justify-center py-6 rounded-lg border border-dashed border-border/60 bg-muted/20">
+                      <p className="text-sm text-muted-foreground">Nessun ruolo assegnato</p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Add new role */}
                 {getAvailableBrandsForEdit().length > 0 && (
-                  <div className="flex items-end gap-2 pt-1">
+                  <div className="flex items-end gap-2 pt-1 rounded-lg border border-dashed border-border/40 p-3 bg-muted/10">
                     <div className="flex-1 space-y-1">
-                      <Label className="text-xs">Brand</Label>
+                      <Label className="text-xs text-muted-foreground">Aggiungi a brand</Label>
                       <Select value={editAddBrandId} onValueChange={setEditAddBrandId}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Seleziona brand" /></SelectTrigger>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Seleziona..." /></SelectTrigger>
                         <SelectContent>
                           {getAvailableBrandsForEdit().map(brand => (
                             <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
@@ -724,8 +762,8 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="w-36 space-y-1">
-                      <Label className="text-xs">Ruolo</Label>
+                    <div className="w-40 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Con ruolo</Label>
                       <Select value={editAddRole} onValueChange={v => setEditAddRole(v as AppRole)}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -733,44 +771,48 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleAddRoleToEditUser} disabled={!editAddBrandId || addRoleMutation.isPending}>
+                    <Button size="sm" className="h-9 gap-1.5" onClick={handleAddRoleToEditUser} disabled={!editAddBrandId || addRoleMutation.isPending}>
                       <Plus className="h-3.5 w-3.5" />
+                      Aggiungi
                     </Button>
                   </div>
                 )}
-              </div>
+              </section>
 
               <Separator />
 
               {/* Danger zone */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive gap-2">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Elimina Utente
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Eliminare l&apos;utente?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Questa azione eliminerà definitivamente &quot;{editingUser.full_name || editingUser.email}&quot; e tutti i suoi ruoli.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annulla</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => {
-                        deleteUserMutation.mutate(editingUser.id);
-                        setEditDialogOpen(false);
-                      }}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Elimina
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <section className="space-y-2">
+                <h3 className="text-xs font-semibold text-destructive/70 uppercase tracking-wider">Zona Pericolosa</h3>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full text-destructive border-destructive/20 hover:bg-destructive/5 hover:border-destructive/40 gap-2">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Elimina Utente Definitivamente
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Eliminare l&apos;utente?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Questa azione eliminerà definitivamente &quot;{editingUser.full_name || editingUser.email}&quot; e tutti i suoi ruoli. Non è reversibile.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          deleteUserMutation.mutate(editingUser.id);
+                          setEditDialogOpen(false);
+                        }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Elimina
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </section>
             </div>
           )}
           <DialogFooter>
