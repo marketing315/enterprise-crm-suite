@@ -337,7 +337,13 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     updateUserMutation.mutate({ user_id: editingUser.id, full_name: editUserFullName, email: editUserEmail });
   };
 
-  const nonSystemBrands = brands.filter(b => b.id !== "00000000-0000-0000-0000-000000000000");
+  const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+  const nonSystemBrands = brands.filter(b => b.id !== SYSTEM_BRAND_ID);
+  const systemBrand = brands.find(b => b.id === SYSTEM_BRAND_ID);
+  const allBrandsForSelection = [
+    ...(systemBrand ? [{ ...systemBrand, name: "🏢 Azienda Intera" }] : []),
+    ...nonSystemBrands,
+  ];
 
   return (
     <div className="space-y-6">
