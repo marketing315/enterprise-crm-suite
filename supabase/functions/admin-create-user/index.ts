@@ -113,7 +113,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Create auth user
+    // Try to create auth user; if already exists, look them up
+    let authUserId: string;
+    let isExistingUser = false;
+
     const { data: authUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -122,40 +125,50 @@ Deno.serve(async (req: Request) => {
     });
 
     if (createError) {
-      console.error("Error creating auth user:", createError);
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (createError.message?.includes("already been registered") || (createError as any).code === "email_exists") {
+        // User already exists in auth — look them up
+        const { data: listData, error: listError } = await adminClient.auth.admin.listUsers();
+        const existingAuthUser = listData?.users?.find(u => u.email === email);
+        if (listError || !existingAuthUser) {
+          return new Response(JSON.stringify({ error: "Utente esistente ma non trovato in auth" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        authUserId = existingAuthUser.id;
+        isExistingUser = true;
+      } else {
+        console.error("Error creating auth user:", createError);
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      authUserId = authUser.user.id;
     }
 
-    // H07 FIX: Wait for trigger on_auth_user_created to insert into public.users,
-    // then fetch the row instead of doing a duplicate insert
-    await new Promise(resolve => setTimeout(resolve, 500));
-
+    // Wait for trigger on_auth_user_created to insert into public.users, then fetch
     let publicUser: { id: string; email: string; full_name: string } | null = null;
-    // Retry up to 3 times waiting for trigger
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const { data, error: fetchErr } = await adminClient
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data } = await adminClient
         .from("users")
         .select("id, email, full_name")
-        .eq("supabase_auth_id", authUser.user.id)
+        .eq("supabase_auth_id", authUserId)
         .maybeSingle();
       
       if (data) {
         publicUser = data;
         break;
       }
-      if (attempt < 2) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     if (!publicUser) {
-      console.error("Trigger did not create public.users row for auth user:", authUser.user.id);
-      // Rollback: delete auth user
-      await adminClient.auth.admin.deleteUser(authUser.user.id);
-      return new Response(JSON.stringify({ error: "User record was not created by trigger" }), {
+      if (!isExistingUser) {
+        await adminClient.auth.admin.deleteUser(authUserId);
+      }
+      return new Response(JSON.stringify({ error: "Record utente non trovato" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -168,15 +181,17 @@ Deno.serve(async (req: Request) => {
       role,
     }));
 
+    // Use upsert to handle cases where roles already exist
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
-      .insert(roleInserts);
+      .upsert(roleInserts, { ignoreDuplicates: true });
 
     if (roleInsertError) {
       console.error("Error assigning roles:", roleInsertError);
-      // Rollback
-      await adminClient.from("users").delete().eq("id", publicUser.id);
-      await adminClient.auth.admin.deleteUser(authUser.user.id);
+      if (!isExistingUser) {
+        await adminClient.from("users").delete().eq("id", publicUser!.id);
+        await adminClient.auth.admin.deleteUser(authUserId);
+      }
       return new Response(JSON.stringify({ error: roleInsertError.message }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -186,6 +201,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
+        is_existing_user: isExistingUser,
         user: {
           id: publicUser.id,
           email: publicUser.email,
