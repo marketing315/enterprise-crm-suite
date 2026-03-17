@@ -890,10 +890,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Annulla</Button>
-            <Button onClick={handleUpdateUser} disabled={updateUserMutation.isPending}>
-              {updateUserMutation.isPending ? "Salvataggio..." : "Salva Modifiche"}
-            </Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Chiudi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
