@@ -304,6 +304,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     setEditAddBrandId("");
     setEditAddRole("operatore_callcenter");
     setEditNewPassword("");
+    setShowPassword(false);
     setEditDialogOpen(true);
   };
 
