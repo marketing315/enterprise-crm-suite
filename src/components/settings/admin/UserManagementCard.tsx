@@ -324,7 +324,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
   const getAvailableBrandsForEdit = () => {
     if (!editingUser) return [];
     const assignedBrandIds = editingUser.roles.map(r => r.brand_id);
-    return brands.filter(b => !assignedBrandIds.includes(b.id));
+    return allBrandsForSelection.filter(b => !assignedBrandIds.includes(b.id));
   };
 
   const handleAddRoleToEditUser = () => {
@@ -337,7 +337,13 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
     updateUserMutation.mutate({ user_id: editingUser.id, full_name: editUserFullName, email: editUserEmail });
   };
 
-  const nonSystemBrands = brands.filter(b => b.id !== "00000000-0000-0000-0000-000000000000");
+  const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
+  const nonSystemBrands = brands.filter(b => b.id !== SYSTEM_BRAND_ID);
+  const systemBrand = brands.find(b => b.id === SYSTEM_BRAND_ID);
+  const allBrandsForSelection = [
+    ...(systemBrand ? [{ ...systemBrand, name: "🏢 Azienda Intera" }] : []),
+    ...nonSystemBrands,
+  ];
 
   return (
     <div className="space-y-6">
@@ -377,7 +383,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
               <div className="space-y-2">
                 <Label>Brand</Label>
                 <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/30 p-3 max-h-36 overflow-y-auto">
-                  {nonSystemBrands.map(brand => (
+                  {allBrandsForSelection.map(brand => (
                     <label key={brand.id} className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 transition-colors hover:bg-accent">
                       <Checkbox checked={newUserBrandIds.includes(brand.id)} onCheckedChange={() => toggleBrandSelection(brand.id)} />
                       <span className="text-sm">{brand.name}</span>
