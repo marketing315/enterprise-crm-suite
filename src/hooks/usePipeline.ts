@@ -153,7 +153,8 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
           brand:brands!deals_brand_id_fkey(id, name, slug)
         `)
         .eq("brand_id", currentBrand.id)
-        .order("updated_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .limit(500);
 
       if (status) {
         query = query.eq("status", status);
