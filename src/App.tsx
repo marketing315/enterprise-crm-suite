@@ -162,11 +162,11 @@ const App = () => (
                     <Route path="/azienda/budget" element={<GuardedCompanyBudget />} />
                     <Route path="/azienda/report" element={<GuardedCompanyReports />} />
                     
-                    <Route path="/marketing" element={<MarketingDashboard />} />
-                    <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
-                    <Route path="/marketing/costi" element={<MarketingCosts />} />
-                    <Route path="/marketing/report" element={<MarketingReports />} />
-                    <Route path="/marketing/leads" element={<MarketingLeads />} />
+                    <Route path="/marketing" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><MarketingDashboard /></RoleGuard>} />
+                    <Route path="/marketing/campagne" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingCampaigns /></RoleGuard>} />
+                    <Route path="/marketing/costi" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingCosts /></RoleGuard>} />
+                    <Route path="/marketing/report" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingReports /></RoleGuard>} />
+                    <Route path="/marketing/leads" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><MarketingLeads /></RoleGuard>} />
                     <Route path="/settings" element={<RoleGuard allowedRoles={['admin', 'ceo']}><Settings /></RoleGuard>} />
                     <Route path="/team" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'responsabile_callcenter']}><Team /></RoleGuard>} />
                     <Route path="/team/salespersons" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalespersonKpi /></RoleGuard>} />

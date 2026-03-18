@@ -33,6 +33,8 @@ export function useProducts(options: UseProductsOptions = { activeOnly: true }) 
         query = query.eq("is_active", true);
       }
 
+      query = query.limit(500);
+
       const { data, error } = await query;
 
       if (error) throw error;

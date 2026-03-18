@@ -151,7 +151,7 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, userId]);
+  }, [queryClient, internalUserId]);
 }
 
 // =============================================

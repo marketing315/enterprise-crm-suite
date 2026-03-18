@@ -69,6 +69,8 @@ export function useSalesOrders(options: UseSalesOrdersOptions = {}) {
         query = query.lte("created_at", to.toISOString());
       }
 
+      query = query.limit(500);
+
       const { data, error } = await query;
 
       if (error) throw error;
