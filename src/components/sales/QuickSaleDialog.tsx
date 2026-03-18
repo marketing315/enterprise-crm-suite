@@ -266,15 +266,8 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
       const userData = { id: user.id };
       const orderNumber = `QS-${Date.now().toString(36).toUpperCase()}`;
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const { createClient } = await import("@supabase/supabase-js");
-      const untypedClient = createClient(supabaseUrl, supabaseKey);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await untypedClient.auth.setSession(session);
-      }
+      // Use the shared untyped client (same auth session as the typed one)
+      const { untypedClient } = await import("@/integrations/supabase/untypedClient");
 
       const { data: order, error: orderError } = await untypedClient
         .from("sales_orders")
