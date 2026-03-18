@@ -107,10 +107,18 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
   const onNewRef = React.useRef(onNewNotification);
   onNewRef.current = onNewNotification;
 
-  // Get current user id for filtering
-  const [userId, setUserId] = React.useState<string | null>(null);
+  // Resolve internal user_id (public.users.id) from auth UUID
+  const [internalUserId, setInternalUserId] = React.useState<string | null>(null);
   React.useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("supabase_auth_id", data.user.id)
+        .single();
+      setInternalUserId(userData?.id ?? null);
+    });
   }, []);
 
   React.useEffect(() => {
