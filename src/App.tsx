@@ -142,12 +142,12 @@ const App = () => (
                   >
                     <Route path="/dashboard" element={<DashboardRedirect />} />
                     <Route path="/dashboard/overview" element={<Dashboard />} />
-                    <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                    <Route path="/dashboard/ceo" element={<CeoDashboardView />} />
-                    <Route path="/dashboard/responsabile-callcenter" element={<CallcenterManagerDashboard />} />
-                    <Route path="/dashboard/responsabile-venditori" element={<SalesManagerDashboard />} />
-                    <Route path="/dashboard/callcenter" element={<CallcenterOperatorDashboard />} />
-                    <Route path="/dashboard/venditore" element={<SalespersonDashboard />} />
+                    <Route path="/dashboard/admin" element={<RoleGuard allowedRoles={['admin']}><AdminDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/ceo" element={<RoleGuard allowedRoles={['admin', 'ceo']}><CeoDashboardView /></RoleGuard>} />
+                    <Route path="/dashboard/responsabile-callcenter" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter']}><CallcenterManagerDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/responsabile-venditori" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalesManagerDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/callcenter" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter', 'operatore_callcenter']}><CallcenterOperatorDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/venditore" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'venditore']}><SalespersonDashboard /></RoleGuard>} />
                     <Route path="/contacts" element={<Contacts />} />
                     <Route path="/pipeline" element={<Pipeline />} />
                     <Route path="/sales" element={<Sales />} />
