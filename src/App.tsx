@@ -170,17 +170,17 @@ const App = () => (
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/team" element={<Team />} />
                     <Route path="/team/salespersons" element={<SalespersonKpi />} />
-                    <Route path="/admin/ai" element={<AdminAI />} />
-                    <Route path="/admin/ai-metrics" element={<AdminAIMetrics />} />
-                    <Route path="/admin/callcenter-kpi" element={<GuardedAdminCallcenterKpi />} />
-                    <Route path="/admin/ticket-trend" element={<AdminTicketTrend />} />
-                    <Route path="/admin/webhooks" element={<AdminWebhooksDashboard />} />
-                    <Route path="/admin/dlq" element={<AdminDlqDashboard />} />
-                    <Route path="/admin/analytics" element={<GuardedAdminAnalytics />} />
-                    <Route path="/admin/capi" element={<GuardedAdminCapiMonitor />} />
-                    <Route path="/admin/slo-board" element={<AdminSloBoard />} />
-                    <Route path="/admin/security-reviews" element={<AdminSecurityReviews />} />
-                    <Route path="/ceo-dashboard" element={<GuardedCeoDashboard />} />
+                    <Route path="/admin/ai" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminAI /></RoleGuard>} />
+                    <Route path="/admin/ai-metrics" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminAIMetrics /></RoleGuard>} />
+                    <Route path="/admin/callcenter-kpi" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter']}><GuardedAdminCallcenterKpi /></RoleGuard>} />
+                    <Route path="/admin/ticket-trend" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminTicketTrend /></RoleGuard>} />
+                    <Route path="/admin/webhooks" element={<RoleGuard allowedRoles={['admin']}><AdminWebhooksDashboard /></RoleGuard>} />
+                    <Route path="/admin/dlq" element={<RoleGuard allowedRoles={['admin']}><AdminDlqDashboard /></RoleGuard>} />
+                    <Route path="/admin/analytics" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminAnalytics /></RoleGuard>} />
+                    <Route path="/admin/capi" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminCapiMonitor /></RoleGuard>} />
+                    <Route path="/admin/slo-board" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSloBoard /></RoleGuard>} />
+                    <Route path="/admin/security-reviews" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSecurityReviews /></RoleGuard>} />
+                    <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>
                   
                   {/* Redirects */}
