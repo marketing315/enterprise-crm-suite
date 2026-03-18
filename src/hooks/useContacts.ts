@@ -3,11 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
 import type { Contact, ContactWithPhones, ContactStatus } from '@/types/database';
 
-export function useContacts(status?: ContactStatus) {
+/**
+ * Default page size for contacts listing.
+ * Supabase caps at 1000 rows per request — using an explicit limit
+ * prevents silent data truncation for large brands.
+ */
+const CONTACTS_PAGE_SIZE = 1000;
+
+export function useContacts(status?: ContactStatus, limit: number = CONTACTS_PAGE_SIZE) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
 
   return useQuery({
-    queryKey: ['contacts', isAllBrandsSelected ? 'all' : currentBrand?.id, status],
+    queryKey: ['contacts', isAllBrandsSelected ? 'all' : currentBrand?.id, status, limit],
     queryFn: async () => {
       if (!isAllBrandsSelected && !currentBrand?.id) return [];
       if (isAllBrandsSelected && allBrandIds.length === 0) return [];
@@ -17,8 +24,9 @@ export function useContacts(status?: ContactStatus) {
         .select(`
           *,
           contact_phones (*)
-        `)
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
       if (isAllBrandsSelected) {
         query = query.in('brand_id', allBrandIds);
@@ -30,8 +38,15 @@ export function useContacts(status?: ContactStatus) {
         query = query.eq('status', status);
       }
 
-      const { data, error } = await query;
+      const { data, count, error } = await query;
       if (error) throw error;
+
+      if (count !== null && count > limit) {
+        console.warn(
+          `[useContacts] Fetched ${limit}/${count} contacts — results are truncated. Consider paginating.`
+        );
+      }
+
       return data as ContactWithPhones[];
     },
     enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id,
