@@ -329,16 +329,20 @@ export function useAddTicketComment() {
       if (!userData) throw new Error("User not found");
 
       // Get the ticket's brand_id to use for the comment
-      const { data: ticket } = await supabase
+      const { data: ticket, error: ticketError } = await supabase
         .from("tickets")
         .select("brand_id")
         .eq("id", ticketId)
         .single();
 
+      if (ticketError || !ticket?.brand_id) {
+        throw new Error("Ticket non trovato o brand_id mancante");
+      }
+
       const { error } = await supabase
         .from("ticket_comments")
         .insert({
-          brand_id: ticket?.brand_id,
+          brand_id: ticket.brand_id,
           ticket_id: ticketId,
           author_user_id: userData.id,
           body,
