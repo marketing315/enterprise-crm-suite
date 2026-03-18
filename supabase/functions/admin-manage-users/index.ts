@@ -5,7 +5,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type AppRole = "admin" | "ceo" | "callcenter" | "sales";
+type AppRole = 
+  | "admin" 
+  | "ceo" 
+  | "amministrazione"
+  | "responsabile_venditori" 
+  | "responsabile_callcenter" 
+  | "venditore" 
+  | "operatore_callcenter"
+  | "callcenter" 
+  | "sales";
 
 interface UpdateUserRequest {
   action: "update";

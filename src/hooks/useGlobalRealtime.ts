@@ -48,6 +48,10 @@ const TABLE_QUERY_MAP: Record<string, InvalidationEntry[]> = {
     { key: ['dashboard-total-contacts'] },
   ],
   tickets: [
+    { key: ['tickets'] },
+    { key: ['ticket'] },
+    { key: ['ticket-queue-counts'] },
+    { key: ['ticket-comments'] },
     { key: ['dashboard-open-tickets'] },
     { key: ['dashboard-sla-breached'] },
     { key: ['dashboard-trend'] },

@@ -11,7 +11,7 @@ interface CreateUserRequest {
   full_name: string;
   brand_ids: string[];  // Support multiple brands
   brand_id?: string;    // Legacy support for single brand
-  role: "admin" | "ceo" | "callcenter" | "sales";
+  role: "admin" | "ceo" | "amministrazione" | "responsabile_venditori" | "responsabile_callcenter" | "venditore" | "operatore_callcenter" | "callcenter" | "sales";
 }
 
 Deno.serve(async (req: Request) => {
