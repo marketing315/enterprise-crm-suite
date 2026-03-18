@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { withModuleGuard } from "@/components/layout/withModuleGuard";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
