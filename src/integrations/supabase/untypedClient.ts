@@ -1,20 +1,15 @@
 /**
- * Shared untyped Supabase client for tables not yet in generated types.
- * 
- * DO NOT create separate createClient() instances in hooks.
- * Import this instead:
- * 
+ * Re-exports the main Supabase client cast to `any` for tables
+ * not yet present in the generated types.
+ *
+ * IMPORTANT: This is intentionally the SAME client instance used by the
+ * typed import (`@/integrations/supabase/client`).  A second
+ * `createClient()` would create an independent auth session that
+ * drifts out of sync after token refresh (~1 h), causing silent 401s.
+ *
  *   import { untypedClient } from "@/integrations/supabase/untypedClient";
  */
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-export const untypedClient = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const untypedClient = supabase as any;
