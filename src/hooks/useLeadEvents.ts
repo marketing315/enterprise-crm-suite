@@ -158,14 +158,25 @@ export function useLeadEvents(params: UseLeadEventsParams = {}) {
   });
 }
 
-// Hook for archiving/unarchiving events via RPC (no direct UPDATE)
+// Hook for archiving/unarchiving events via RPC with proper cache invalidation
 export function useArchiveEvent() {
-  return async (eventId: string, archived: boolean) => {
-    const { error } = await supabase.rpc("set_lead_event_archived", {
-      p_event_id: eventId,
-      p_archived: archived,
-    });
+  const queryClient = useQueryClient();
 
-    if (error) throw error;
-  };
+  return useMutation({
+    mutationFn: async ({ eventId, archived }: { eventId: string; archived: boolean }) => {
+      const { error } = await supabase.rpc("set_lead_event_archived", {
+        p_event_id: eventId,
+        p_archived: archived,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lead-events-rpc"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-events"] });
+      queryClient.invalidateQueries({ queryKey: ["contact-lead-events"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-leads-today"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-leads-week"] });
+    },
+  });
 }
