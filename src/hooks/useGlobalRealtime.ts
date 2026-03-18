@@ -31,6 +31,8 @@ const TABLE_QUERY_MAP: Record<string, InvalidationEntry[]> = {
   deal_stage_history: [{ key: ['deals'] }],
   lead_events: [
     { key: ['lead-events'] },
+    { key: ['lead-events-rpc'] },
+    { key: ['contact-lead-events'] },
     { key: ['contact'] },
     { key: ['dashboard-leads-today'] },
     { key: ['dashboard-leads-week'] },
