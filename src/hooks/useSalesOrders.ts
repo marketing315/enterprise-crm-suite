@@ -160,15 +160,22 @@ export function useUpdateSalesOrderStatus() {
 
       if (error) throw error;
 
-      // Log to history
-      await untypedClient
-        .from("sales_order_history")
-        .insert({
-          order_id: orderId,
-          action: "status_change",
-          new_status: status,
-          changed_by_user_id: user?.id,
-        });
+      // Log to history (best-effort — don't fail the mutation if history insert fails)
+      try {
+        const { error: historyError } = await untypedClient
+          .from("sales_order_history")
+          .insert({
+            order_id: orderId,
+            action: "status_change",
+            new_status: status,
+            changed_by_user_id: user?.id,
+          });
+        if (historyError) {
+          console.error("[useUpdateSalesOrderStatus] History insert failed:", historyError);
+        }
+      } catch (histErr) {
+        console.error("[useUpdateSalesOrderStatus] History insert exception:", histErr);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
