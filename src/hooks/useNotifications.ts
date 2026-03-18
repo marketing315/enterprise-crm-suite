@@ -122,17 +122,17 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
   }, []);
 
   React.useEffect(() => {
-    if (!userId) return;
+    if (!internalUserId) return;
 
     const channel = supabase
-      .channel(`notifications-realtime-${userId}`)
+      .channel(`notifications-realtime-${internalUserId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "notifications",
-          filter: `user_id=eq.${userId}`,
+          filter: `user_id=eq.${internalUserId}`,
         },
         (payload) => {
           const notification = payload.new as Notification;
