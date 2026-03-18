@@ -101,7 +101,8 @@ export function useTickets(status?: TicketStatus) {
           assigned_by:assigned_by_user_id (id, full_name, email)
         `)
         .eq("brand_id", currentBrand.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(500);
 
       if (status) {
         query = query.eq("status", status);

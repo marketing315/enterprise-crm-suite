@@ -142,12 +142,12 @@ const App = () => (
                   >
                     <Route path="/dashboard" element={<DashboardRedirect />} />
                     <Route path="/dashboard/overview" element={<Dashboard />} />
-                    <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                    <Route path="/dashboard/ceo" element={<CeoDashboardView />} />
-                    <Route path="/dashboard/responsabile-callcenter" element={<CallcenterManagerDashboard />} />
-                    <Route path="/dashboard/responsabile-venditori" element={<SalesManagerDashboard />} />
-                    <Route path="/dashboard/callcenter" element={<CallcenterOperatorDashboard />} />
-                    <Route path="/dashboard/venditore" element={<SalespersonDashboard />} />
+                    <Route path="/dashboard/admin" element={<RoleGuard allowedRoles={['admin']}><AdminDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/ceo" element={<RoleGuard allowedRoles={['admin', 'ceo']}><CeoDashboardView /></RoleGuard>} />
+                    <Route path="/dashboard/responsabile-callcenter" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter']}><CallcenterManagerDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/responsabile-venditori" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalesManagerDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/callcenter" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter', 'operatore_callcenter']}><CallcenterOperatorDashboard /></RoleGuard>} />
+                    <Route path="/dashboard/venditore" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'venditore']}><SalespersonDashboard /></RoleGuard>} />
                     <Route path="/contacts" element={<Contacts />} />
                     <Route path="/pipeline" element={<Pipeline />} />
                     <Route path="/sales" element={<Sales />} />
@@ -162,11 +162,11 @@ const App = () => (
                     <Route path="/azienda/budget" element={<GuardedCompanyBudget />} />
                     <Route path="/azienda/report" element={<GuardedCompanyReports />} />
                     
-                    <Route path="/marketing" element={<MarketingDashboard />} />
-                    <Route path="/marketing/campagne" element={<MarketingCampaigns />} />
-                    <Route path="/marketing/costi" element={<MarketingCosts />} />
-                    <Route path="/marketing/report" element={<MarketingReports />} />
-                    <Route path="/marketing/leads" element={<MarketingLeads />} />
+                    <Route path="/marketing" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><MarketingDashboard /></RoleGuard>} />
+                    <Route path="/marketing/campagne" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingCampaigns /></RoleGuard>} />
+                    <Route path="/marketing/costi" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingCosts /></RoleGuard>} />
+                    <Route path="/marketing/report" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingReports /></RoleGuard>} />
+                    <Route path="/marketing/leads" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><MarketingLeads /></RoleGuard>} />
                     <Route path="/settings" element={<RoleGuard allowedRoles={['admin', 'ceo']}><Settings /></RoleGuard>} />
                     <Route path="/team" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'responsabile_callcenter']}><Team /></RoleGuard>} />
                     <Route path="/team/salespersons" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalespersonKpi /></RoleGuard>} />

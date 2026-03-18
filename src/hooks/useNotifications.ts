@@ -107,24 +107,32 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
   const onNewRef = React.useRef(onNewNotification);
   onNewRef.current = onNewNotification;
 
-  // Get current user id for filtering
-  const [userId, setUserId] = React.useState<string | null>(null);
+  // Resolve internal user_id (public.users.id) from auth UUID
+  const [internalUserId, setInternalUserId] = React.useState<string | null>(null);
   React.useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("supabase_auth_id", data.user.id)
+        .single();
+      setInternalUserId(userData?.id ?? null);
+    });
   }, []);
 
   React.useEffect(() => {
-    if (!userId) return;
+    if (!internalUserId) return;
 
     const channel = supabase
-      .channel(`notifications-realtime-${userId}`)
+      .channel(`notifications-realtime-${internalUserId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "notifications",
-          filter: `user_id=eq.${userId}`,
+          filter: `user_id=eq.${internalUserId}`,
         },
         (payload) => {
           const notification = payload.new as Notification;
@@ -143,7 +151,7 @@ export function useNotificationRealtime(onNewNotification?: (notification: Notif
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, userId]);
+  }, [queryClient, internalUserId]);
 }
 
 // =============================================
