@@ -137,9 +137,10 @@ export default function Notifications() {
     setOffset((prev) => prev + limit);
   };
 
-  // Reset offset when filters change
+  // Reset offset and accumulated data when filters change
   useEffect(() => {
     setOffset(0);
+    setAccumulated([]);
   }, [typeFilter, unreadOnly, brandId]);
 
   return (
