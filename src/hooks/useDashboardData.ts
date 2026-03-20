@@ -8,7 +8,7 @@ import { STALE, GC } from "@/lib/queryCache";
 export function useDashboardData() {
   const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
-  // KPI: Lead oggi (contatti unici, non eventi)
+  // KPI: Lead oggi (solo contatti nuovi, non aggiornamenti)
   const leadsToday = useQuery({
     queryKey: ["dashboard-leads-today", getQueryKeyBrand()],
     queryFn: async () => {
@@ -16,33 +16,20 @@ export function useDashboardData() {
       if (brandIds.length === 0) return 0;
       const today = new Date();
 
-      // Get unique contact_ids from lead_events for today
-      let query = supabase
-        .from("lead_events")
-        .select("contact_id")
-        .gte("received_at", startOfDay(today).toISOString())
-        .lte("received_at", endOfDay(today).toISOString())
-        .not("contact_id", "is", null);
-
-      if (brandIds.length === 1) {
-        query = query.eq("brand_id", brandIds[0]);
-      } else {
-        query = query.in("brand_id", brandIds);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc("count_new_leads_in_range", {
+        p_brand_ids: brandIds,
+        p_from: startOfDay(today).toISOString(),
+        p_to: endOfDay(today).toISOString(),
+      });
       if (error) throw error;
-      
-      // Count unique contacts
-      const uniqueContacts = new Set(data?.map(e => e.contact_id) || []);
-      return uniqueContacts.size;
+      return (data as number) ?? 0;
     },
     enabled: isQueryEnabled(),
     staleTime: STALE.CRITICAL,
     gcTime: GC.SHORT,
   });
 
-  // KPI: Lead ultimi 7 giorni (contatti unici, non eventi)
+  // KPI: Lead ultimi 7 giorni (solo contatti nuovi, non aggiornamenti)
   const leadsWeek = useQuery({
     queryKey: ["dashboard-leads-week", getQueryKeyBrand()],
     queryFn: async () => {
@@ -50,25 +37,13 @@ export function useDashboardData() {
       if (brandIds.length === 0) return 0;
       const weekAgo = subDays(new Date(), 7);
 
-      let query = supabase
-        .from("lead_events")
-        .select("contact_id")
-        .gte("received_at", weekAgo.toISOString())
-        .lte("received_at", endOfDay(new Date()).toISOString())
-        .not("contact_id", "is", null);
-
-      if (brandIds.length === 1) {
-        query = query.eq("brand_id", brandIds[0]);
-      } else {
-        query = query.in("brand_id", brandIds);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc("count_new_leads_in_range", {
+        p_brand_ids: brandIds,
+        p_from: weekAgo.toISOString(),
+        p_to: endOfDay(new Date()).toISOString(),
+      });
       if (error) throw error;
-      
-      // Count unique contacts
-      const uniqueContacts = new Set(data?.map(e => e.contact_id) || []);
-      return uniqueContacts.size;
+      return (data as number) ?? 0;
     },
     enabled: isQueryEnabled(),
     staleTime: STALE.CRITICAL,
