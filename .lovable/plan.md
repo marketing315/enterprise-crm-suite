@@ -1,70 +1,24 @@
 
 
-# Scansione Debug Completa - Contatti Infinite Scroll
+# Revert useArchiveEvent al codice originale
 
-## Bug Identificati
+## Contesto
 
-### Bug 1 (CRITICO): `loadTriggeredRef` viene resettato prematuramente
-In `usePaginatedContactSearch.ts`, linea 56, `loadTriggeredRef.current = false` viene eseguito **incondizionatamente** alla fine dell'`useEffect`. Quando `page` cambia (es. da 0 a 1), React Query crea una nuova query e temporaneamente `pageData` diventa `[]`. L'effetto scatta, nessun branch viene eseguito, ma la guardia viene comunque resettata. Questo permette a `loadMore` di scattare di nuovo prima che i dati della pagina corrente arrivino, saltando pagine.
+Il Fix #3 ha refactorato `useArchiveEvent` da una funzione asincrona semplice a `useMutation` con `onSuccess` per invalidare le cache. Il codice attuale in `src/hooks/useLeadEvents.ts` (righe 161-182) **è già la versione refactorata** con `useMutation`.
 
-### Bug 2 (MEDIO): Ordine di dichiarazione `handleScrollRef` / `scrollContainerCallbackRef`
-In `ContactsTableWithViews.tsx`, `scrollContainerCallbackRef` (linea 212) fa riferimento a `handleScrollRef.current` (linea 225) che e' dichiarato DOPO. Funziona per via delle closure JS, ma e' fragile e puo' causare problemi con HMR.
+## Problema
 
-### Bug 3 (MINORE): Warning `forwardRef` su AlertDialog
-Il console log mostra warning di `Function components cannot be given refs` su AlertDialog. Non blocca il funzionamento ma indica un componente non aggiornato.
+Guardando il codice attuale, `useArchiveEvent` usa già `useMutation` con cache invalidation — che è esattamente il risultato del Fix #3. Non c'è nulla da revertire perché il codice "prima del fix" non è più disponibile nel file.
 
----
+**Nota:** Il codice mostrato nel file corrente È il codice del Fix #3. La versione originale (pre-fix) avrebbe usato una chiamata `supabase.rpc()` diretta senza `useMutation` e senza `onSuccess` per invalidare le cache.
 
-## Piano di Fix
+## Chiarimento necessario
 
-### Step 1: Fix `usePaginatedContactSearch.ts`
-- Spostare `loadTriggeredRef.current = false` DENTRO il branch `if (pageData.length > 0)` o dopo la conferma che i dati sono effettivamente arrivati per la pagina corrente
-- Aggiungere un `pageRef` per tracciare quale pagina ha triggerato il load e resettare la guardia solo quando arrivano i dati per quella specifica pagina
+Vuoi che:
 
-```text
-Logica corretta:
-1. loadMore() -> loadTriggeredRef = true, setPage(p+1)
-2. Query parte con nuovo offset
-3. pageData arriva (length > 0) -> appende a allResults -> loadTriggeredRef = false
-4. pageData vuoto (fine lista) -> hasMore = false -> scroll handler bloccato
-```
+1. **Rimuova la cache invalidation** dal `onSuccess` (tornando a una versione senza invalidazione automatica)?
+2. **Rimuova completamente `useMutation`** e usi una funzione async semplice?
+3. **Altro** — specifica cosa non funziona o cosa vuoi cambiare
 
-### Step 2: Riordinare dichiarazioni in `ContactsTableWithViews.tsx`
-- Spostare `handleScrollRef` PRIMA di `scrollContainerCallbackRef` per eliminare la dipendenza da hoisting delle closure
-- Nessun cambiamento di logica, solo ordine piu' sicuro
-
-### Step 3: (Opzionale) Fix warning AlertDialog
-- Verificare se `AlertDialogContent` nel file `alert-dialog.tsx` necessita di `React.forwardRef`
-
----
-
-## Dettaglio Tecnico - Fix Principale
-
-Il fix chiave in `usePaginatedContactSearch.ts`:
-
-```text
-// PRIMA (buggy):
-useEffect(() => {
-  if (pageData.length > 0) {
-    // append...
-  } else if (page === 0) {
-    setAllResults([]);
-  }
-  loadTriggeredRef.current = false;  // <-- SEMPRE resettato
-}, [pageData, page]);
-
-// DOPO (corretto):
-useEffect(() => {
-  if (pageData.length > 0) {
-    // append...
-    loadTriggeredRef.current = false;  // <-- solo quando dati arrivano
-  } else if (page === 0) {
-    setAllResults([]);
-    loadTriggeredRef.current = false;  // <-- reset iniziale OK
-  }
-  // NON resettare qui per pagine > 0 senza dati (ancora in caricamento)
-}, [pageData, page]);
-```
-
-Questo impedisce che il guard venga rimosso durante il transitorio di caricamento, prevenendo il salto di pagine.
+Il codice attuale sembra corretto e funzionale. Se c'è un problema specifico causato da questo refactor (es. troppe invalidazioni, loop di refetch), indicamelo così posso proporre il fix giusto.
 
