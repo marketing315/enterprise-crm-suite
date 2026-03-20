@@ -7709,6 +7709,17 @@ export type Database = {
         Args: { p_contact_id: string; p_new_phone: string; p_old_phone: string }
         Returns: Json
       }
+      count_new_leads_by_day: {
+        Args: { p_brand_ids: string[]; p_from: string; p_to: string }
+        Returns: {
+          day: string
+          new_leads: number
+        }[]
+      }
+      count_new_leads_in_range: {
+        Args: { p_brand_ids: string[]; p_from: string; p_to: string }
+        Returns: number
+      }
       create_appointment: {
         Args: {
           p_address?: string
