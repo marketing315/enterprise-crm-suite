@@ -97,6 +97,56 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // DEBUG: If phone is the special test number 3333333333, return random data
+  // This helps Keplero's team diagnose caching issues on their platform
+  const testNumber = "3333333333";
+  if (normalizedPhone === testNumber || digitsOnly === testNumber || digitsOnly === `39${testNumber}`) {
+    const randomStatuses = ["new", "active", "qualified", "unqualified"];
+    const randomData = {
+      id: crypto.randomUUID(),
+      first_name: "Test",
+      last_name: "CacheDebug",
+      full_name: "Test CacheDebug",
+      email: "",
+      phone: testNumber,
+      status: randomStatuses[Math.floor(Math.random() * randomStatuses.length)],
+      city: "",
+      cap: "",
+      address: "",
+      province: "",
+      country: "",
+      lead_type: "",
+      lead_message: "",
+      lead_note: "",
+      esito_chiamata: "",
+      notes: "",
+      ha_appuntamento: Math.random() > 0.5,
+      prossimo_appuntamento: Math.random() > 0.5
+        ? {
+            data: new Date(Date.now() + Math.floor(Math.random() * 7 * 86400000)).toISOString(),
+            stato: Math.random() > 0.5 ? "scheduled" : "confirmed",
+            tipo: "visita",
+            note: `Random test at ${new Date().toISOString()}`,
+          }
+        : null,
+      custom_fields: {},
+      _debug: {
+        generated_at: new Date().toISOString(),
+        random_seed: Math.random(),
+        note: "This is random test data for cache debugging",
+      },
+    };
+    console.log("[KepleroLookup] DEBUG test number detected, returning random data", {
+      generated_at: randomData._debug.generated_at,
+      status: randomData.status,
+      ha_appuntamento: randomData.ha_appuntamento,
+    });
+    return new Response(JSON.stringify(randomData), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
