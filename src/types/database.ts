@@ -75,6 +75,7 @@ export interface UserRole {
   user_id: string;
   brand_id: string;
   role: AppRole;
+  is_active: boolean;
   created_at: string;
 }
 
