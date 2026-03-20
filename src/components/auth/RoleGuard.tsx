@@ -17,8 +17,11 @@ interface RoleGuardProps {
  * which handles authentication; this component handles **authorization**.
  */
 export function RoleGuard({ allowedRoles, children, fallback = '/dashboard' }: RoleGuardProps) {
-  const { hasRole, isAdmin, isCeo } = useAuth();
+  const { hasRole, isAdmin, isCeo, isLoading } = useAuth();
   const { currentBrand } = useBrand();
+
+  // Wait for auth to finish loading before making access decisions
+  if (isLoading) return null;
 
   const hasAccess = allowedRoles.some((role) => {
     if (role === 'admin') return isAdmin;

@@ -66,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('*')
-        .eq('user_id', userData.id);
+        .eq('user_id', userData.id)
+        .eq('is_active', true);
 
       // Final stale check before setting roles
       if (currentAuthIdRef.current !== authUserId) return;

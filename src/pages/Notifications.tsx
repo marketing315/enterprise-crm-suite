@@ -64,6 +64,7 @@ export default function Notifications() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [accumulated, setAccumulated] = useState<Notification[]>([]);
   const limit = 30;
 
   const brandId = isAllBrandsSelected ? undefined : currentBrand?.id;
@@ -76,11 +77,26 @@ export default function Notifications() {
     offset,
   });
 
+  // Accumulate pages instead of replacing
+  useEffect(() => {
+    if (data?.data) {
+      if (offset === 0) {
+        setAccumulated(data.data);
+      } else {
+        setAccumulated((prev) => {
+          const existingIds = new Set(prev.map((n) => n.id));
+          const newItems = data.data.filter((n: Notification) => !existingIds.has(n.id));
+          return [...prev, ...newItems];
+        });
+      }
+    }
+  }, [data, offset]);
+
   const markAllRead = useMarkAllNotificationsRead();
   const deleteRead = useDeleteReadNotifications();
   const markRead = useMarkNotificationsRead();
 
-  const notifications = data?.data || [];
+  const notifications = accumulated;
   const total = data?.total || 0;
   const hasMore = offset + limit < total;
 
@@ -121,9 +137,10 @@ export default function Notifications() {
     setOffset((prev) => prev + limit);
   };
 
-  // Reset offset when filters change
+  // Reset offset and accumulated data when filters change
   useEffect(() => {
     setOffset(0);
+    setAccumulated([]);
   }, [typeFilter, unreadOnly, brandId]);
 
   return (
@@ -226,7 +243,7 @@ export default function Notifications() {
               {isFetching ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              Carica altre ({total - offset - notifications.length} rimanenti)
+              Carica altre ({Math.max(0, total - notifications.length)} rimanenti)
             </Button>
           </div>
         )}
