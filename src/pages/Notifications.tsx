@@ -243,7 +243,7 @@ export default function Notifications() {
               {isFetching ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              Carica altre ({total - offset - notifications.length} rimanenti)
+              Carica altre ({Math.max(0, total - notifications.length)} rimanenti)
             </Button>
           </div>
         )}
