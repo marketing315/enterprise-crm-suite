@@ -185,7 +185,7 @@ export function useDashboardData() {
     enabled: isQueryEnabled(),
   });
 
-  // Trend data (7 giorni) - optimized: 2 queries instead of 14
+  // Trend data (7 giorni) - uses RPC for accurate new-lead counts
   const trendData = useQuery({
     queryKey: ["dashboard-trend", getQueryKeyBrand()],
     queryFn: async () => {
@@ -196,25 +196,77 @@ export function useDashboardData() {
       const todayEnd = endOfDay(new Date());
 
       // Use RPC for accurate new-lead-only counts per day
-      const { data: leadsByDay, error: leadsByDayError } = await supabase.rpc("count_new_leads_by_day", {
+      const leadsRpcPromise = supabase.rpc("count_new_leads_by_day", {
         p_brand_ids: brandIds,
         p_from: startOfDay(weekAgo).toISOString(),
         p_to: todayEnd.toISOString(),
       });
 
-      // Batch query: get all lead events for CPL denominator (unique contacts per day)
-      let leadsQuery = supabase
-        .from("lead_events")
-        .select("contact_id, received_at")
-        .gte("received_at", startOfDay(weekAgo).toISOString())
-        .lte("received_at", todayEnd.toISOString())
-        .not("contact_id", "is", null);
+      // Batch query: get all tickets for the 7-day range
+      let ticketsQuery = supabase
+        .from("tickets")
+        .select("created_at")
+        .gte("created_at", startOfDay(weekAgo).toISOString())
+        .lte("created_at", todayEnd.toISOString());
 
       if (brandIds.length === 1) {
-        leadsQuery = leadsQuery.eq("brand_id", brandIds[0]);
+        ticketsQuery = ticketsQuery.eq("brand_id", brandIds[0]);
       } else {
-        leadsQuery = leadsQuery.in("brand_id", brandIds);
+        ticketsQuery = ticketsQuery.in("brand_id", brandIds);
       }
+
+      // Batch query: marketing costs for CPL calculation
+      let costsQuery = supabase
+        .from("marketing_costs")
+        .select("amount, cost_date")
+        .gte("cost_date", format(weekAgo, "yyyy-MM-dd"))
+        .lte("cost_date", format(new Date(), "yyyy-MM-dd"));
+
+      if (brandIds.length === 1) {
+        costsQuery = costsQuery.eq("brand_id", brandIds[0]);
+      } else {
+        costsQuery = costsQuery.in("brand_id", brandIds);
+      }
+
+      // Batch query: ad platform spend for CPL calculation
+      let adSpendQuery = supabase
+        .from("ad_platform_stats")
+        .select("spend, stat_date")
+        .gte("stat_date", format(weekAgo, "yyyy-MM-dd"))
+        .lte("stat_date", format(new Date(), "yyyy-MM-dd"));
+
+      if (brandIds.length === 1) {
+        adSpendQuery = adSpendQuery.eq("brand_id", brandIds[0]);
+      } else {
+        adSpendQuery = adSpendQuery.in("brand_id", brandIds);
+      }
+
+      const [leadsRpcResult, ticketsResult, costsResult, adSpendResult] = await Promise.all([
+        leadsRpcPromise, ticketsQuery, costsQuery, adSpendQuery,
+      ]);
+
+      if (leadsRpcResult.error) throw leadsRpcResult.error;
+      if (ticketsResult.error) throw ticketsResult.error;
+      const costsData = costsResult.error ? [] : (costsResult.data || []);
+      const adSpendData = adSpendResult.error ? [] : (adSpendResult.data || []);
+
+      // Build a map from the RPC result: day -> new_leads count
+      const leadsMap = new Map<string, number>();
+      for (const row of (leadsRpcResult.data || []) as { day: string; new_leads: number }[]) {
+        leadsMap.set(row.day, Number(row.new_leads));
+      }
+
+      // Group by day client-side
+      const days: { date: string; label: string; leads: number; tickets: number; cpl: number | null }[] = [];
+
+      for (let i = 6; i >= 0; i--) {
+        const date = subDays(new Date(), i);
+        const dateStr = format(date, "yyyy-MM-dd");
+        const label = format(date, "EEE", { locale: it });
+        const dayStart = startOfDay(date);
+        const dayEnd = endOfDay(date);
+
+        const leadCount = leadsMap.get(dateStr) || 0;
 
         // Count tickets for this day
         const dayTickets = (ticketsResult.data || []).filter(t => {
@@ -230,7 +282,6 @@ export function useDashboardData() {
           .filter(a => a.stat_date === dateStr)
           .reduce((sum, a) => sum + (a.spend || 0), 0);
         const totalSpend = dayCosts + dayAdSpend;
-        const leadCount = uniqueContacts.size;
 
         days.push({
           date: dateStr,
