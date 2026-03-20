@@ -195,7 +195,14 @@ export function useDashboardData() {
       const weekAgo = subDays(new Date(), 6);
       const todayEnd = endOfDay(new Date());
 
-      // Batch query: get all lead events for the 7-day range
+      // Use RPC for accurate new-lead-only counts per day
+      const { data: leadsByDay, error: leadsByDayError } = await supabase.rpc("count_new_leads_by_day", {
+        p_brand_ids: brandIds,
+        p_from: startOfDay(weekAgo).toISOString(),
+        p_to: todayEnd.toISOString(),
+      });
+
+      // Batch query: get all lead events for CPL denominator (unique contacts per day)
       let leadsQuery = supabase
         .from("lead_events")
         .select("contact_id, received_at")
@@ -208,72 +215,6 @@ export function useDashboardData() {
       } else {
         leadsQuery = leadsQuery.in("brand_id", brandIds);
       }
-
-      // Batch query: get all tickets for the 7-day range
-      let ticketsQuery = supabase
-        .from("tickets")
-        .select("created_at")
-        .gte("created_at", startOfDay(weekAgo).toISOString())
-        .lte("created_at", todayEnd.toISOString());
-
-      if (brandIds.length === 1) {
-        ticketsQuery = ticketsQuery.eq("brand_id", brandIds[0]);
-      } else {
-        ticketsQuery = ticketsQuery.in("brand_id", brandIds);
-      }
-
-      // Batch query: marketing costs for CPL calculation
-      let costsQuery = supabase
-        .from("marketing_costs")
-        .select("amount, cost_date")
-        .gte("cost_date", format(weekAgo, "yyyy-MM-dd"))
-        .lte("cost_date", format(new Date(), "yyyy-MM-dd"));
-
-      if (brandIds.length === 1) {
-        costsQuery = costsQuery.eq("brand_id", brandIds[0]);
-      } else {
-        costsQuery = costsQuery.in("brand_id", brandIds);
-      }
-
-      // Batch query: ad platform spend for CPL calculation
-      let adSpendQuery = supabase
-        .from("ad_platform_stats")
-        .select("spend, stat_date")
-        .gte("stat_date", format(weekAgo, "yyyy-MM-dd"))
-        .lte("stat_date", format(new Date(), "yyyy-MM-dd"));
-
-      if (brandIds.length === 1) {
-        adSpendQuery = adSpendQuery.eq("brand_id", brandIds[0]);
-      } else {
-        adSpendQuery = adSpendQuery.in("brand_id", brandIds);
-      }
-
-      const [leadsResult, ticketsResult, costsResult, adSpendResult] = await Promise.all([
-        leadsQuery, ticketsQuery, costsQuery, adSpendQuery,
-      ]);
-
-      if (leadsResult.error) throw leadsResult.error;
-      if (ticketsResult.error) throw ticketsResult.error;
-      // costs are non-critical — don't throw on error
-      const costsData = costsResult.error ? [] : (costsResult.data || []);
-      const adSpendData = adSpendResult.error ? [] : (adSpendResult.data || []);
-
-      // Group by day client-side
-      const days: { date: string; label: string; leads: number; tickets: number; cpl: number | null }[] = [];
-
-      for (let i = 6; i >= 0; i--) {
-        const date = subDays(new Date(), i);
-        const dateStr = format(date, "yyyy-MM-dd");
-        const label = format(date, "EEE", { locale: it });
-        const dayStart = startOfDay(date);
-        const dayEnd = endOfDay(date);
-
-        // Count unique contacts for this day
-        const dayLeads = (leadsResult.data || []).filter(e => {
-          const t = new Date(e.received_at);
-          return t >= dayStart && t <= dayEnd;
-        });
-        const uniqueContacts = new Set(dayLeads.map(e => e.contact_id));
 
         // Count tickets for this day
         const dayTickets = (ticketsResult.data || []).filter(t => {
