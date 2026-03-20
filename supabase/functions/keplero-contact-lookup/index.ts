@@ -100,7 +100,8 @@ Deno.serve(async (req: Request) => {
   // DEBUG: If phone is the special test number 3333333333, return random data
   // This helps Keplero's team diagnose caching issues on their platform
   const testNumber = "3333333333";
-  if (normalizedPhone === testNumber || digitsOnly === testNumber || digitsOnly === `39${testNumber}`) {
+  const normalizedForTest = normalizePhone(phoneRaw);
+  if (normalizedForTest === testNumber || digitsOnly === testNumber || digitsOnly === `39${testNumber}`) {
     const randomStatuses = ["new", "active", "qualified", "unqualified"];
     const randomData = {
       id: crypto.randomUUID(),
