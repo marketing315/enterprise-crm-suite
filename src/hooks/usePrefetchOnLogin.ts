@@ -30,16 +30,12 @@ export function usePrefetchOnLogin() {
     queryClient.prefetchQuery({
       queryKey: ['dashboard-leads-today', brandKey],
       queryFn: async () => {
-        let q = supabase
-          .from('lead_events')
-          .select('contact_id')
-          .gte('received_at', startOfDay(today).toISOString())
-          .lte('received_at', endOfDay(today).toISOString())
-          .not('contact_id', 'is', null);
-        if (brandIds.length === 1) q = q.eq('brand_id', brandIds[0]);
-        else q = q.in('brand_id', brandIds);
-        const { data } = await q;
-        return new Set(data?.map(e => e.contact_id) || []).size;
+        const { data } = await supabase.rpc('count_new_leads_in_range', {
+          p_brand_ids: brandIds,
+          p_from: startOfDay(today).toISOString(),
+          p_to: endOfDay(today).toISOString(),
+        });
+        return (data as number) ?? 0;
       },
       staleTime: 30_000,
     });
