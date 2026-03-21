@@ -2,17 +2,18 @@
  import { supabase } from "@/integrations/supabase/client";
  import { useBrand } from "@/contexts/BrandContext";
  
- export interface InboundSource {
-   id: string;
-   name: string;
-   description: string | null;
-   is_active: boolean;
-   rate_limit_per_min: number;
-   hmac_enabled: boolean;
-   replay_window_seconds: number;
-   created_at: string;
-   updated_at: string;
- }
+export interface InboundSource {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  rate_limit_per_min: number;
+  hmac_enabled: boolean;
+  replay_window_seconds: number;
+  counts_as_new_lead: boolean;
+  created_at: string;
+  updated_at: string;
+}
  
 export function useInboundSources() {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
