@@ -2,17 +2,18 @@
  import { supabase } from "@/integrations/supabase/client";
  import { useBrand } from "@/contexts/BrandContext";
  
- export interface InboundSource {
-   id: string;
-   name: string;
-   description: string | null;
-   is_active: boolean;
-   rate_limit_per_min: number;
-   hmac_enabled: boolean;
-   replay_window_seconds: number;
-   created_at: string;
-   updated_at: string;
- }
+export interface InboundSource {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  rate_limit_per_min: number;
+  hmac_enabled: boolean;
+  replay_window_seconds: number;
+  counts_as_new_lead: boolean;
+  created_at: string;
+  updated_at: string;
+}
  
 export function useInboundSources() {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
@@ -25,7 +26,7 @@ export function useInboundSources() {
 
       let query = supabase
         .from("webhook_sources_safe")
-        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, counts_as_new_lead, created_at, updated_at")
         .order("name", { ascending: true });
 
       if (isAllBrandsSelected) {

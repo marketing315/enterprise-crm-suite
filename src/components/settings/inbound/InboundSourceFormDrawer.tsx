@@ -36,6 +36,7 @@ const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
   description: z.string().max(500).optional(),
   rate_limit_per_min: z.coerce.number().min(1).max(1000).default(60),
+  counts_as_new_lead: z.boolean().default(true),
   hmac_enabled: z.boolean().default(false),
   replay_window_seconds: z.coerce.number().min(60).max(3600).default(300),
 });
@@ -50,6 +51,7 @@ interface InboundSourceFormDrawerProps {
     name: string;
     description: string | null;
     rate_limit_per_min: number;
+    counts_as_new_lead?: boolean;
     hmac_enabled?: boolean;
     replay_window_seconds?: number;
   } | null;
@@ -91,6 +93,7 @@ export function InboundSourceFormDrawer({
       name: "",
       description: "",
       rate_limit_per_min: 60,
+      counts_as_new_lead: true,
       hmac_enabled: false,
       replay_window_seconds: 300,
     },
@@ -102,6 +105,7 @@ export function InboundSourceFormDrawer({
         name: editingSource.name,
         description: editingSource.description || "",
         rate_limit_per_min: editingSource.rate_limit_per_min,
+        counts_as_new_lead: editingSource.counts_as_new_lead ?? true,
         hmac_enabled: editingSource.hmac_enabled ?? false,
         replay_window_seconds: editingSource.replay_window_seconds ?? 300,
       });
@@ -110,6 +114,7 @@ export function InboundSourceFormDrawer({
         name: "",
         description: "",
         rate_limit_per_min: 60,
+        counts_as_new_lead: true,
         hmac_enabled: false,
         replay_window_seconds: 300,
       });
@@ -141,6 +146,7 @@ export function InboundSourceFormDrawer({
         name: values.name,
         description: values.description || null,
         rate_limit_per_min: values.rate_limit_per_min,
+        counts_as_new_lead: values.counts_as_new_lead,
         api_key_hash: apiKeyHash,
         is_active: true,
         hmac_enabled: values.hmac_enabled,
@@ -172,6 +178,7 @@ export function InboundSourceFormDrawer({
           name: values.name,
           description: values.description || null,
           rate_limit_per_min: values.rate_limit_per_min,
+          counts_as_new_lead: values.counts_as_new_lead,
           hmac_enabled: values.hmac_enabled,
           replay_window_seconds: values.replay_window_seconds,
         })
@@ -394,6 +401,29 @@ export function InboundSourceFormDrawer({
                       Massimo numero di richieste al minuto
                     </FormDescription>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="counts_as_new_lead"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        Conta come nuovo lead
+                      </FormLabel>
+                      <FormDescription>
+                        Se disattivato, i lead da questa sorgente non verranno conteggiati nei KPI
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

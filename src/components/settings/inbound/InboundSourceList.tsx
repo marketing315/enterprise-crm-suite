@@ -22,6 +22,7 @@ interface WebhookSource {
   rate_limit_per_min: number;
   hmac_enabled: boolean;
   replay_window_seconds: number;
+  counts_as_new_lead: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -42,7 +43,7 @@ export function InboundSourceList() {
       if (!currentBrand?.id) return [];
       const { data, error } = await supabase
         .from("webhook_sources_safe")
-        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, counts_as_new_lead, created_at, updated_at")
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -145,6 +146,11 @@ export function InboundSourceList() {
                       <Badge variant="outline" className="gap-1">
                         <Shield className="h-3 w-3" />
                         HMAC
+                      </Badge>
+                    )}
+                    {!source.counts_as_new_lead && (
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        Non conta come lead
                       </Badge>
                     )}
                   </div>

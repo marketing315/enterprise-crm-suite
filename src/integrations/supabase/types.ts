@@ -7313,6 +7313,7 @@ export type Database = {
         Row: {
           api_key_hash: string
           brand_id: string
+          counts_as_new_lead: boolean
           created_at: string
           description: string | null
           handler: string | null
@@ -7330,6 +7331,7 @@ export type Database = {
         Insert: {
           api_key_hash: string
           brand_id: string
+          counts_as_new_lead?: boolean
           created_at?: string
           description?: string | null
           handler?: string | null
@@ -7347,6 +7349,7 @@ export type Database = {
         Update: {
           api_key_hash?: string
           brand_id?: string
+          counts_as_new_lead?: boolean
           created_at?: string
           description?: string | null
           handler?: string | null
@@ -7423,6 +7426,7 @@ export type Database = {
       webhook_sources_safe: {
         Row: {
           brand_id: string | null
+          counts_as_new_lead: boolean | null
           created_at: string | null
           description: string | null
           hmac_enabled: boolean | null
@@ -7435,6 +7439,7 @@ export type Database = {
         }
         Insert: {
           brand_id?: string | null
+          counts_as_new_lead?: boolean | null
           created_at?: string | null
           description?: string | null
           hmac_enabled?: boolean | null
@@ -7447,6 +7452,7 @@ export type Database = {
         }
         Update: {
           brand_id?: string | null
+          counts_as_new_lead?: boolean | null
           created_at?: string | null
           description?: string | null
           hmac_enabled?: boolean | null
