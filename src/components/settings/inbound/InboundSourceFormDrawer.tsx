@@ -36,6 +36,7 @@ const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
   description: z.string().max(500).optional(),
   rate_limit_per_min: z.coerce.number().min(1).max(1000).default(60),
+  counts_as_new_lead: z.boolean().default(true),
   hmac_enabled: z.boolean().default(false),
   replay_window_seconds: z.coerce.number().min(60).max(3600).default(300),
 });
