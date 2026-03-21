@@ -26,7 +26,7 @@ export function useInboundSources() {
 
       let query = supabase
         .from("webhook_sources_safe")
-        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, created_at, updated_at")
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, counts_as_new_lead, created_at, updated_at")
         .order("name", { ascending: true });
 
       if (isAllBrandsSelected) {

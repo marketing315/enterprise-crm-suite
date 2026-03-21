@@ -148,6 +148,11 @@ export function InboundSourceList() {
                         HMAC
                       </Badge>
                     )}
+                    {!source.counts_as_new_lead && (
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        Non conta come lead
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
