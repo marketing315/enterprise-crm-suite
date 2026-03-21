@@ -1,24 +1,81 @@
 
 
-# Revert useArchiveEvent al codice originale
+# Conteggio Lead Configurabile per Inbound Source
 
-## Contesto
+## Problema attuale
 
-Il Fix #3 ha refactorato `useArchiveEvent` da una funzione asincrona semplice a `useMutation` con `onSuccess` per invalidare le cache. Il codice attuale in `src/hooks/useLeadEvents.ts` (righe 161-182) **è già la versione refactorata** con `useMutation`.
+Le RPC `count_new_leads_in_range` e `count_new_leads_by_day` contano come "nuovo lead" ogni contatto il cui primo evento cade nel range. Ma alcuni webhook (es. "Keplero - Appuntamento fissato (Update)") non rappresentano nuovi lead — sono aggiornamenti/appuntamenti e devono essere esclusi dal conteggio lead.
 
-## Problema
+## Soluzione
 
-Guardando il codice attuale, `useArchiveEvent` usa già `useMutation` con cache invalidation — che è esattamente il risultato del Fix #3. Non c'è nulla da revertire perché il codice "prima del fix" non è più disponibile nel file.
+Aggiungere un flag `counts_as_new_lead` (boolean, default `true`) alla tabella `webhook_sources`. I webhook con questo flag a `false` verranno esclusi dal conteggio nuovi lead nelle RPC. L'admin può configurare questa opzione dal pannello Inbound Sources.
 
-**Nota:** Il codice mostrato nel file corrente È il codice del Fix #3. La versione originale (pre-fix) avrebbe usato una chiamata `supabase.rpc()` diretta senza `useMutation` e senza `onSuccess` per invalidare le cache.
+## Modifiche
 
-## Chiarimento necessario
+### 1. Migration SQL — Nuova colonna + Aggiornamento RPC
 
-Vuoi che:
+**Colonna**: `ALTER TABLE webhook_sources ADD COLUMN counts_as_new_lead boolean NOT NULL DEFAULT true;`
 
-1. **Rimuova la cache invalidation** dal `onSuccess` (tornando a una versione senza invalidazione automatica)?
-2. **Rimuova completamente `useMutation`** e usi una funzione async semplice?
-3. **Altro** — specifica cosa non funziona o cosa vuoi cambiare
+**Aggiornamento view**: `webhook_sources_safe` deve esporre il nuovo campo.
 
-Il codice attuale sembra corretto e funzionale. Se c'è un problema specifico causato da questo refactor (es. troppe invalidazioni, loop di refetch), indicamelo così posso proporre il fix giusto.
+**Aggiornamento RPC `count_new_leads_in_range`**: Filtrare i lead_events la cui `source_name` corrisponde a un webhook_source con `counts_as_new_lead = false`. Il join avviene su `lead_events.source_name = webhook_sources.name AND lead_events.brand_id = webhook_sources.brand_id`.
+
+**Aggiornamento RPC `count_new_leads_by_day`**: Stesso filtro.
+
+**Impostare il flag a `false`** per il webhook "Keplero - Appuntamento fissato (Update)" già esistente.
+
+**Logica dedup same-day**: Tutti i lead dello stesso contatto nello stesso giorno contano come 1 (questo è già gestito dal `DISTINCT contact_id`).
+
+### 2. Frontend — Form Inbound Source
+
+**InboundSourceFormDrawer.tsx**: Aggiungere un campo Switch "Conta come nuovo lead" nel form, mappato su `counts_as_new_lead`. Default: attivo.
+
+**InboundSourceList.tsx**: Mostrare un badge "Non conta come lead" accanto ai source con `counts_as_new_lead = false`.
+
+**useInboundSources.ts**: Aggiungere `counts_as_new_lead` all'interfaccia `InboundSource` e alla query select.
+
+### 3. Nessuna modifica ai hook dashboard
+
+Le RPC gestiscono tutto lato DB — `useDashboardData.ts` e `usePrefetchOnLogin.ts` non cambiano.
+
+## Dettaglio tecnico RPC
+
+```sql
+-- count_new_leads_in_range: esclude source_name di webhook con counts_as_new_lead = false
+SELECT count(DISTINCT le.contact_id)
+FROM lead_events le
+WHERE le.brand_id = ANY(p_brand_ids)
+  AND le.contact_id IS NOT NULL
+  AND le.received_at >= p_from
+  AND le.received_at <= p_to
+  -- Escludi webhook marcati come "non conta come lead"
+  AND NOT EXISTS (
+    SELECT 1 FROM webhook_sources ws
+    WHERE ws.name = le.source_name
+      AND ws.brand_id = le.brand_id
+      AND ws.counts_as_new_lead = false
+  )
+  -- Escludi contatti già visti prima del range (solo da source che contano)
+  AND NOT EXISTS (
+    SELECT 1 FROM lead_events older
+    WHERE older.contact_id = le.contact_id
+      AND older.brand_id = le.brand_id
+      AND older.received_at < p_from
+      AND NOT EXISTS (
+        SELECT 1 FROM webhook_sources ws2
+        WHERE ws2.name = older.source_name
+          AND ws2.brand_id = older.brand_id
+          AND ws2.counts_as_new_lead = false
+      )
+  );
+```
+
+## File coinvolti
+
+| File | Modifica |
+|------|----------|
+| Migration SQL | Nuova colonna + view + 2 RPC aggiornate + UPDATE dato esistente |
+| `src/hooks/useInboundSources.ts` | Aggiungere `counts_as_new_lead` a interfaccia e select |
+| `src/components/settings/inbound/InboundSourceFormDrawer.tsx` | Switch nel form |
+| `src/components/settings/inbound/InboundSourceList.tsx` | Badge visivo |
 
