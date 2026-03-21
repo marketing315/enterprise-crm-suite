@@ -105,6 +105,7 @@ export function InboundSourceFormDrawer({
         name: editingSource.name,
         description: editingSource.description || "",
         rate_limit_per_min: editingSource.rate_limit_per_min,
+        counts_as_new_lead: editingSource.counts_as_new_lead ?? true,
         hmac_enabled: editingSource.hmac_enabled ?? false,
         replay_window_seconds: editingSource.replay_window_seconds ?? 300,
       });
