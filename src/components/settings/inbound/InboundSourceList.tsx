@@ -22,6 +22,7 @@ interface WebhookSource {
   rate_limit_per_min: number;
   hmac_enabled: boolean;
   replay_window_seconds: number;
+  counts_as_new_lead: boolean;
   created_at: string;
   updated_at: string;
 }
