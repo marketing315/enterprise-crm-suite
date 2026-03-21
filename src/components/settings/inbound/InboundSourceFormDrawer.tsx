@@ -405,6 +405,29 @@ export function InboundSourceFormDrawer({
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="counts_as_new_lead"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        Conta come nuovo lead
+                      </FormLabel>
+                      <FormDescription>
+                        Se disattivato, i lead da questa sorgente non verranno conteggiati nei KPI
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
               <Separator className="my-4" />
 
               <div className="space-y-4">
