@@ -51,6 +51,7 @@ interface InboundSourceFormDrawerProps {
     name: string;
     description: string | null;
     rate_limit_per_min: number;
+    counts_as_new_lead?: boolean;
     hmac_enabled?: boolean;
     replay_window_seconds?: number;
   } | null;
