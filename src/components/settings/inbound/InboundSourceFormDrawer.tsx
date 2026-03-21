@@ -114,6 +114,7 @@ export function InboundSourceFormDrawer({
         name: "",
         description: "",
         rate_limit_per_min: 60,
+        counts_as_new_lead: true,
         hmac_enabled: false,
         replay_window_seconds: 300,
       });
