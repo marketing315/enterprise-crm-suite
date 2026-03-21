@@ -178,6 +178,7 @@ export function InboundSourceFormDrawer({
           name: values.name,
           description: values.description || null,
           rate_limit_per_min: values.rate_limit_per_min,
+          counts_as_new_lead: values.counts_as_new_lead,
           hmac_enabled: values.hmac_enabled,
           replay_window_seconds: values.replay_window_seconds,
         })
