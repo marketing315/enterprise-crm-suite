@@ -154,6 +154,10 @@ export default function MarketingDashboard() {
             <Users2 className="h-4 w-4" />
             Demographics
           </TabsTrigger>
+          <TabsTrigger value="website" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Sito Web
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
