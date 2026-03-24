@@ -357,6 +357,10 @@ export default function MarketingDashboard() {
         <TabsContent value="demographics" className="mt-6">
           <AdDemographicsTab />
         </TabsContent>
+
+        <TabsContent value="website" className="mt-6">
+          <Ga4StatsTab fromDate={dateRange.from} toDate={dateRange.to} />
+        </TabsContent>
       </Tabs>
     </div>
   );
