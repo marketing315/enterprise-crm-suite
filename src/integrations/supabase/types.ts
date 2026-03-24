@@ -3524,6 +3524,68 @@ export type Database = {
           },
         ]
       }
+      ga4_stats: {
+        Row: {
+          avg_session_duration: number
+          bounce_rate: number
+          brand_id: string
+          conversion_events: Json | null
+          conversions: number
+          id: string
+          imported_at: string
+          new_users: number
+          pageviews: number
+          sessions: number
+          stat_date: string
+          top_campaigns: Json | null
+          top_pages: Json | null
+          top_sources: Json | null
+          users: number
+        }
+        Insert: {
+          avg_session_duration?: number
+          bounce_rate?: number
+          brand_id: string
+          conversion_events?: Json | null
+          conversions?: number
+          id?: string
+          imported_at?: string
+          new_users?: number
+          pageviews?: number
+          sessions?: number
+          stat_date: string
+          top_campaigns?: Json | null
+          top_pages?: Json | null
+          top_sources?: Json | null
+          users?: number
+        }
+        Update: {
+          avg_session_duration?: number
+          bounce_rate?: number
+          brand_id?: string
+          conversion_events?: Json | null
+          conversions?: number
+          id?: string
+          imported_at?: string
+          new_users?: number
+          pageviews?: number
+          sessions?: number
+          stat_date?: string
+          top_campaigns?: Json | null
+          top_pages?: Json | null
+          top_sources?: Json | null
+          users?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ga4_stats_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_people: {
         Row: {
           brand_id: string
