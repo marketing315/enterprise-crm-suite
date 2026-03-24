@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, CalendarIcon, Megaphone, BarChart3, Image as ImageIcon, Users2 } from "lucide-react";
+import { AlertCircle, CalendarIcon, Megaphone, BarChart3, Image as ImageIcon, Users2, Globe } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import { MarketingMiniFunnel } from "@/components/marketing/MarketingMiniFunnel"
 import { AdStatsTab } from "@/components/marketing/AdStatsTab";
 import { AdCreativesTab } from "@/components/marketing/AdCreativesTab";
 import { AdDemographicsTab } from "@/components/marketing/AdDemographicsTab";
+import { Ga4StatsTab } from "@/components/marketing/Ga4StatsTab";
 import { formatPercent, getPercentColorClass } from "@/lib/formatKpi";
 import {
   BarChart,
@@ -153,6 +154,10 @@ export default function MarketingDashboard() {
           <TabsTrigger value="demographics" className="flex items-center gap-2">
             <Users2 className="h-4 w-4" />
             Demographics
+          </TabsTrigger>
+          <TabsTrigger value="website" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Sito Web
           </TabsTrigger>
         </TabsList>
 
@@ -352,6 +357,10 @@ export default function MarketingDashboard() {
 
         <TabsContent value="demographics" className="mt-6">
           <AdDemographicsTab />
+        </TabsContent>
+
+        <TabsContent value="website" className="mt-6">
+          <Ga4StatsTab fromDate={dateRange.from} toDate={dateRange.to} />
         </TabsContent>
       </Tabs>
     </div>
