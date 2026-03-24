@@ -421,7 +421,7 @@ async function handleKepleroPayload(
   }
 
   // ── fissato_keplero → auto-stage deal to "Fissato" ──
-  const isFissato = parseBooleanish(args.fissato_keplero);
+  const isFissato = isFissatoFlag;
   if (isFissato && dealId) {
     // Find the "Fissato" global stage
     const { data: fissatoStage } = await supabaseAdmin
