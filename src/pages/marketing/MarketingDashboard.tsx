@@ -21,6 +21,7 @@ import { MarketingMiniFunnel } from "@/components/marketing/MarketingMiniFunnel"
 import { AdStatsTab } from "@/components/marketing/AdStatsTab";
 import { AdCreativesTab } from "@/components/marketing/AdCreativesTab";
 import { AdDemographicsTab } from "@/components/marketing/AdDemographicsTab";
+import { Ga4StatsTab } from "@/components/marketing/Ga4StatsTab";
 import { formatPercent, getPercentColorClass } from "@/lib/formatKpi";
 import {
   BarChart,
