@@ -265,10 +265,13 @@ async function handleKepleroPayload(
 
   // ── Emit inbound event ──
   const esito = args.esito_chiamata?.toLowerCase() || "";
+  const isFissatoFlag = parseBooleanish(args.fissato_keplero);
   let eventType = "keplero.lead";
   if (esito === "da_ricontattare" || esito.includes("ricontatt")) eventType = "keplero.ricontatto";
   else if (esito === "appuntamento_fissato") eventType = "keplero.appuntamento";
   else if (esito === "rifiuto") eventType = "keplero.rifiuto";
+  // Fallback: se fissato_keplero=true, forza appuntamento indipendentemente dall'esito
+  if (isFissatoFlag && eventType === "keplero.lead") eventType = "keplero.appuntamento";
 
   const { data: inboundEvent } = await supabaseAdmin
     .from("webhook_inbound_events")
