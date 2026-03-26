@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { usePipelineStages } from "@/hooks/usePipeline";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 import {
@@ -30,13 +31,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Copy, Key, Shield } from "lucide-react";
- import { LinkedAutomationsSection } from "@/components/settings/webhooks/LinkedAutomationsSection";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LinkedAutomationsSection } from "@/components/settings/webhooks/LinkedAutomationsSection";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
   description: z.string().max(500).optional(),
   rate_limit_per_min: z.coerce.number().min(1).max(1000).default(60),
   counts_as_new_lead: z.boolean().default(true),
+  default_pipeline_stage_id: z.string().nullable().optional(),
   hmac_enabled: z.boolean().default(false),
   replay_window_seconds: z.coerce.number().min(60).max(3600).default(300),
 });
@@ -52,6 +55,7 @@ interface InboundSourceFormDrawerProps {
     description: string | null;
     rate_limit_per_min: number;
     counts_as_new_lead?: boolean;
+    default_pipeline_stage_id?: string | null;
     hmac_enabled?: boolean;
     replay_window_seconds?: number;
   } | null;
