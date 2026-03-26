@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check } from "lucide-react";
+import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check, GitBranch, Timer, Repeat, Globe } from "lucide-react";
 import {
   useCreateAutomationRule,
   useUpdateAutomationRule,
@@ -32,6 +32,8 @@ import {
   type Conditions,
   type ConditionItem,
   type TriggerType,
+  type DelayUnit,
+  type HttpMethod,
   CONDITION_OPERATORS,
 } from "@/hooks/useAutomationRules";
  import { useAutomationEventTypes } from "@/hooks/useInboundSources";
