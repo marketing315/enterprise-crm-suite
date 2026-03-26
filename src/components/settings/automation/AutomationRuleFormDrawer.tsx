@@ -504,73 +504,57 @@ interface Props {
 
           <Separator />
 
-          {/* Actions */}
+          {/* Workflow Builder */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-base">Azioni *</Label>
-              <Button variant="outline" size="sm" onClick={handleAddAction}>
-                <Plus className="h-4 w-4 mr-1" />
-                Aggiungi
-              </Button>
+              <div>
+                <Label className="text-base">Workflow *</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Trascina i nodi per costruire il flusso di automazione
+                </p>
+              </div>
             </div>
 
-            {actions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aggiungi almeno un'azione da eseguire
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {actions.map((action, index) => (
-                  <Card key={index}>
-                    <CardHeader className="p-3 pb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          <Badge variant="outline">{index + 1}</Badge>
-                          <Select
-                            value={action.type}
-                            onValueChange={(v) => handleActionChange(index, { type: v as Action["type"] })}
-                          >
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ACTION_TYPES.map((at) => (
-                                <SelectItem key={at.value} value={at.value}>
-                                  {at.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveAction(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      <ActionFields
-                        action={action}
-                        onChange={(updates) => handleActionChange(index, updates)}
-                      />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            {/* Visual workflow flow */}
+            <div className="relative">
+              {actions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border/50 rounded-xl bg-muted/20">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                    <Plus className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium mb-1">Aggiungi il primo nodo</p>
+                  <p className="text-xs text-muted-foreground mb-3">Scegli un'azione per iniziare il workflow</p>
+                  <WorkflowNodePicker onSelect={(type) => setActions([{ type }])} />
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  {actions.map((action, index) => (
+                    <WorkflowNodeCard
+                      key={index}
+                      action={action}
+                      index={index}
+                      isLast={index === actions.length - 1}
+                      onChange={(updates) => handleActionChange(index, updates)}
+                      onRemove={() => handleRemoveAction(index)}
+                    />
+                  ))}
+                  {/* Add node button after last node */}
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="w-px h-4 bg-border" />
+                    <WorkflowNodePicker onSelect={(type) => setActions([...actions, { type }])} />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Submit */}
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          <div className="flex gap-2 pt-4 sticky bottom-0 bg-background pb-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading} className="flex-1">
               Annulla
             </Button>
-            <Button onClick={handleSubmit} disabled={isLoading}>
-              {isLoading ? "Salvataggio..." : editingRule ? "Salva Modifiche" : "Crea Regola"}
+            <Button onClick={handleSubmit} disabled={isLoading} className="flex-1">
+              {isLoading ? "Salvataggio..." : editingRule ? "Salva Modifiche" : "Crea Workflow"}
             </Button>
           </div>
         </div>
