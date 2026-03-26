@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { usePipelineStages } from "@/hooks/usePipeline";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 import {
@@ -30,13 +31,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Copy, Key, Shield } from "lucide-react";
- import { LinkedAutomationsSection } from "@/components/settings/webhooks/LinkedAutomationsSection";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LinkedAutomationsSection } from "@/components/settings/webhooks/LinkedAutomationsSection";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
   description: z.string().max(500).optional(),
   rate_limit_per_min: z.coerce.number().min(1).max(1000).default(60),
   counts_as_new_lead: z.boolean().default(true),
+  default_pipeline_stage_id: z.string().nullable().optional(),
   hmac_enabled: z.boolean().default(false),
   replay_window_seconds: z.coerce.number().min(60).max(3600).default(300),
 });
@@ -52,6 +55,7 @@ interface InboundSourceFormDrawerProps {
     description: string | null;
     rate_limit_per_min: number;
     counts_as_new_lead?: boolean;
+    default_pipeline_stage_id?: string | null;
     hmac_enabled?: boolean;
     replay_window_seconds?: number;
   } | null;
@@ -79,6 +83,7 @@ export function InboundSourceFormDrawer({
   editingSource,
 }: InboundSourceFormDrawerProps) {
   const { currentBrand } = useBrand();
+  const { data: pipelineStages } = usePipelineStages();
   const queryClient = useQueryClient();
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     sourceId: string;
@@ -94,6 +99,7 @@ export function InboundSourceFormDrawer({
       description: "",
       rate_limit_per_min: 60,
       counts_as_new_lead: true,
+      default_pipeline_stage_id: null,
       hmac_enabled: false,
       replay_window_seconds: 300,
     },
@@ -106,6 +112,7 @@ export function InboundSourceFormDrawer({
         description: editingSource.description || "",
         rate_limit_per_min: editingSource.rate_limit_per_min,
         counts_as_new_lead: editingSource.counts_as_new_lead ?? true,
+        default_pipeline_stage_id: editingSource.default_pipeline_stage_id ?? null,
         hmac_enabled: editingSource.hmac_enabled ?? false,
         replay_window_seconds: editingSource.replay_window_seconds ?? 300,
       });
@@ -115,6 +122,7 @@ export function InboundSourceFormDrawer({
         description: "",
         rate_limit_per_min: 60,
         counts_as_new_lead: true,
+        default_pipeline_stage_id: null,
         hmac_enabled: false,
         replay_window_seconds: 300,
       });
@@ -147,11 +155,12 @@ export function InboundSourceFormDrawer({
         description: values.description || null,
         rate_limit_per_min: values.rate_limit_per_min,
         counts_as_new_lead: values.counts_as_new_lead,
+        default_pipeline_stage_id: values.default_pipeline_stage_id || null,
         api_key_hash: apiKeyHash,
         is_active: true,
         hmac_enabled: values.hmac_enabled,
-        hmac_secret: hmacSecret, // Plain text for signature verification
-        hmac_secret_hash: hmacSecretHash, // Hash for backward compatibility
+        hmac_secret: hmacSecret,
+        hmac_secret_hash: hmacSecretHash,
         replay_window_seconds: values.replay_window_seconds,
       }).select("id").single();
 
@@ -179,6 +188,7 @@ export function InboundSourceFormDrawer({
           description: values.description || null,
           rate_limit_per_min: values.rate_limit_per_min,
           counts_as_new_lead: values.counts_as_new_lead,
+          default_pipeline_stage_id: values.default_pipeline_stage_id || null,
           hmac_enabled: values.hmac_enabled,
           replay_window_seconds: values.replay_window_seconds,
         })
@@ -424,6 +434,38 @@ export function InboundSourceFormDrawer({
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="default_pipeline_stage_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fase pipeline iniziale</FormLabel>
+                    <Select
+                      value={field.value || "auto"}
+                      onValueChange={(val) => field.onChange(val === "auto" ? null : val)}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Classificazione automatica" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="auto">Automatica (AI/default)</SelectItem>
+                        {pipelineStages?.map((stage) => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Fase in cui verrà inserito il deal da questa sorgente. Se "Automatica", verrà usata la classificazione standard.
+                    </FormDescription>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
