@@ -169,14 +169,22 @@ export function InboundSourceList() {
                         HMAC
                       </Badge>
                     )}
-                    <Badge
-                      variant={source.counts_as_new_lead ? "outline" : "secondary"}
-                      className="gap-1 text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                    <button
+                      type="button"
                       onClick={() => toggleCountsAsLeadMutation.mutate({ id: source.id, counts_as_new_lead: !source.counts_as_new_lead })}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-200 border cursor-pointer ${
+                        source.counts_as_new_lead
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-400/30"
+                          : "bg-muted text-muted-foreground border-border hover:bg-accent"
+                      }`}
                       title={source.counts_as_new_lead ? "Clicca per non contare come lead" : "Clicca per contare come lead"}
+                      disabled={toggleCountsAsLeadMutation.isPending}
                     >
-                      {source.counts_as_new_lead ? "✓ Conta come lead" : "✗ Non conta come lead"}
-                    </Badge>
+                      <span className={`inline-block h-1.5 w-1.5 rounded-full transition-colors ${
+                        source.counts_as_new_lead ? "bg-emerald-500 dark:bg-emerald-400" : "bg-muted-foreground/50"
+                      }`} />
+                      {source.counts_as_new_lead ? "Conta come lead" : "Non conta come lead"}
+                    </button>
                     {source.default_pipeline_stage_id && pipelineStages && (() => {
                       const stage = pipelineStages.find(s => s.id === source.default_pipeline_stage_id);
                       return stage ? (
