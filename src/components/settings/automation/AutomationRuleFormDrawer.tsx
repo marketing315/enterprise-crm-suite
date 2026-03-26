@@ -776,7 +776,7 @@ function NestedActionList({
 }) {
   if (depth > 3) return <p className="text-xs text-destructive">Nidificazione massima raggiunta (3 livelli)</p>;
 
-  const handleAdd = () => onChange([...actions, { type: "upsert_contact" }]);
+  const handleAdd = (type: Action["type"]) => onChange([...actions, { type }]);
   const handleRemove = (i: number) => onChange(actions.filter((_, idx) => idx !== i));
   const handleChange = (i: number, updates: Partial<Action>) => {
     const updated = [...actions];
@@ -785,43 +785,52 @@ function NestedActionList({
   };
 
   return (
-    <div className={cn("space-y-2 border-l-2 border-muted pl-3", depth > 1 && "ml-2")}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <Button variant="ghost" size="sm" type="button" onClick={handleAdd} className="h-6 px-2">
-          <Plus className="h-3 w-3 mr-1" />
-          Aggiungi
-        </Button>
-      </div>
+    <div className={cn(
+      "rounded-lg border border-dashed border-border/60 p-2.5 space-y-0",
+      depth > 1 && "ml-1"
+    )}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+        {label}
+      </p>
       {actions.map((action, i) => (
-        <Card key={i} className="p-2">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1">
-              <Badge variant="outline" className="text-[10px] px-1">{i + 1}</Badge>
-              <Select
-                value={action.type}
-                onValueChange={(v) => handleChange(i, { type: v as Action["type"] })}
-              >
-                <SelectTrigger className="w-[180px] h-7 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTION_TYPES.map((at) => (
-                    <SelectItem key={at.value} value={at.value}>{at.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div key={i} className="relative">
+          {i > 0 && (
+            <div className="flex justify-center h-2">
+              <div className="w-px bg-border" />
             </div>
-            <Button variant="ghost" size="icon" type="button" className="h-6 w-6" onClick={() => handleRemove(i)}>
-              <Trash2 className="h-3 w-3 text-destructive" />
-            </Button>
+          )}
+          <div className="rounded-lg border bg-card p-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <WorkflowNodeIcon type={action.type} size="sm" />
+                <Select
+                  value={action.type}
+                  onValueChange={(v) => handleChange(i, { type: v as Action["type"] })}
+                >
+                  <SelectTrigger className="w-[160px] h-6 text-[11px] border-none shadow-none px-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTION_TYPES.map((at) => (
+                      <SelectItem key={at.value} value={at.value}>{at.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="ghost" size="icon" type="button" className="h-5 w-5" onClick={() => handleRemove(i)}>
+                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </Button>
+            </div>
+            <ActionFields action={action} onChange={(u) => handleChange(i, u)} depth={depth} />
           </div>
-          <ActionFields action={action} onChange={(u) => handleChange(i, u)} depth={depth} />
-        </Card>
+        </div>
       ))}
       {actions.length === 0 && (
-        <p className="text-xs text-muted-foreground italic">Nessuna azione</p>
+        <p className="text-[10px] text-muted-foreground italic text-center py-2">Nessuna azione</p>
       )}
+      <div className="flex justify-center pt-2">
+        <WorkflowNodePicker onSelect={(type) => handleAdd(type)} />
+      </div>
     </div>
   );
 }
