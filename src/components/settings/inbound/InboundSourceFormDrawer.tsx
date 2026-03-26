@@ -83,6 +83,7 @@ export function InboundSourceFormDrawer({
   editingSource,
 }: InboundSourceFormDrawerProps) {
   const { currentBrand } = useBrand();
+  const { data: pipelineStages } = usePipelineStages();
   const queryClient = useQueryClient();
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     sourceId: string;
@@ -98,6 +99,7 @@ export function InboundSourceFormDrawer({
       description: "",
       rate_limit_per_min: 60,
       counts_as_new_lead: true,
+      default_pipeline_stage_id: null,
       hmac_enabled: false,
       replay_window_seconds: 300,
     },
@@ -110,6 +112,7 @@ export function InboundSourceFormDrawer({
         description: editingSource.description || "",
         rate_limit_per_min: editingSource.rate_limit_per_min,
         counts_as_new_lead: editingSource.counts_as_new_lead ?? true,
+        default_pipeline_stage_id: editingSource.default_pipeline_stage_id ?? null,
         hmac_enabled: editingSource.hmac_enabled ?? false,
         replay_window_seconds: editingSource.replay_window_seconds ?? 300,
       });
@@ -119,6 +122,7 @@ export function InboundSourceFormDrawer({
         description: "",
         rate_limit_per_min: 60,
         counts_as_new_lead: true,
+        default_pipeline_stage_id: null,
         hmac_enabled: false,
         replay_window_seconds: 300,
       });
