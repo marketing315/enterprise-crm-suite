@@ -1,68 +1,71 @@
 
 
-## Evoluzione Automazioni → Workflow con Step Avanzati (stile n8n)
+## Redesign Completo: Creazione Regola Automazione → Wizard Multi-Step C-Level
 
-### Situazione Attuale
-Il motore di automazione esegue una lista lineare di azioni sequenziali (`multi_action`). Non supporta branching condizionale, delay, loop o HTTP request generici. Il backend (`automation-runner`) itera gli step uno dopo l'altro con `stop_on_failure`.
+### Problema
+Il form attuale è un unico pannello Sheet lungo e denso con tutti i campi visibili insieme: trigger, condizioni, azioni, impostazioni avanzate. Non è intuitivo — sembra un form tecnico, non un workflow builder.
 
-### Cosa Cambia
-Evoluzione del sistema da "lista di azioni" a "workflow con nodi tipizzati" che supporta IF/ELSE, Delay, Loop e HTTP Request — mantenendo la UI a lista (non canvas).
-
-### Modello Dati — Nuovi Tipi di Nodo
-
-Estendere il tipo `Action` (salvato nel campo JSON `actions` della tabella `automation_rules`) con 4 nuovi tipi:
+### Soluzione
+Sostituire il Sheet monolitico con un **wizard a step guidati** (stepper orizzontale) che divide la creazione in 4 fasi chiare, ciascuna con una UI pulita e focalizzata. Stile Apple-like, spaziatura generosa, animazioni fluide.
 
 ```text
-Tipo Nodo          Comportamento
-─────────────────  ──────────────────────────────────────
-if_else            Valuta condizioni → esegue branch "then" o "else"
-                   Campi: conditions, then_actions[], else_actions[]
-delay              Pausa il workflow per N secondi/minuti/ore
-                   Campi: delay_value, delay_unit (seconds|minutes|hours)
-loop               Itera su un array del payload, esegue sub-actions per ogni item
-                   Campi: items_path, loop_actions[]
-http_request       Chiamata HTTP generica configurabile
-                   Campi: url, method, headers, body (con template {{...}})
+┌─────────────────────────────────────────────────────┐
+│  ① Trigger  →  ② Condizioni  →  ③ Workflow  →  ④ Review  │
+│─────────────────────────────────────────────────────│
+│                                                     │
+│   [Contenuto step corrente]                        │
+│                                                     │
+│                           ← Indietro    Avanti →   │
+└─────────────────────────────────────────────────────┘
 ```
 
-Non serve migrazione DB: tutto è nel campo JSON `actions`.
+### I 4 Step
 
-### Piano di Implementazione
+**Step 1 — Trigger ("Quando")**
+- Card selezionabili grandi per tipo trigger (Webhook / Cron) con icona e descrizione
+- Sotto la selezione: evento webhook come card-grid categorizzate (Keplero, Meta, VOIspeed, Inbound) oppure cron picker
+- AI generator come banner in cima ("Descrivi in linguaggio naturale...")
+- Nome e descrizione inline, auto-suggeriti dopo la selezione trigger
 
-**1. Estendere i tipi frontend** (`src/hooks/useAutomationRules.ts`)
-- Aggiungere i 4 nuovi valori a `ActionType`
-- Aggiungere i campi specifici all'interfaccia `Action` (conditions, then_actions, else_actions, delay_value, delay_unit, items_path, loop_actions, url, method, headers, body)
-- Aggiungere le nuove entry in `ACTION_TYPES`
+**Step 2 — Condizioni ("Filtri")**  
+- Opzionale, skip-pabile con un toggle "Applica solo se..."
+- Builder condizioni con chip visuali: `Campo` `Operatore` `Valore` in una riga pulita
+- Pulsante "+ Aggiungi filtro" minimalista
+- Testo esplicativo in linguaggio naturale sotto ogni riga (es. "Esegui solo se Nome esiste")
 
-**2. Aggiungere i form dei nuovi nodi** (`AutomationRuleFormDrawer.tsx`)
-- `ActionFields` per `if_else`: editor condizioni + due liste azioni nidificate (then/else) con indentazione visiva
-- `ActionFields` per `delay`: input numerico + select unità
-- `ActionFields` per `loop`: input path array + lista sub-actions nidificata
-- `ActionFields` per `http_request`: input URL, select metodo (GET/POST/PUT/DELETE), editor headers key-value, textarea body con supporto template
-- Le liste nidificate (then/else/loop) riutilizzano lo stesso componente azione con un livello di indentazione
+**Step 3 — Workflow ("Cosa fare")**
+- Il workflow builder attuale (nodi con connettori verticali) ma migliorato:
+  - Empty state con 3-4 template rapidi preconfigurati ("Crea contatto e tagga", "Invia webhook", etc.)
+  - Nodo picker come grid di card colorate invece che dropdown
+  - Drag handle visibile per riordinare
+  - Preview in linguaggio naturale sotto ogni nodo collassato
 
-**3. Aggiornare il backend** (`supabase/functions/automation-runner/index.ts`)
-- Aggiungere executor per `if_else`: valuta condizioni con `evaluateCondition`, poi esegue ricorsivamente `then_actions` o `else_actions`
-- Aggiungere executor per `delay`: `await new Promise(r => setTimeout(r, ms))` (max 30 secondi per edge function; delay più lunghi schedulano un `automation_job`)
-- Aggiungere executor per `loop`: risolve `items_path` dal payload, itera ed esegue `loop_actions` per ogni elemento
-- Aggiungere executor per `http_request`: fetch con URL/method/headers/body risolti via template, salva status code e response nel step log
-- Rendere l'esecuzione degli step ricorsiva per supportare nidificazione
-
-**4. Aggiornare log e preview**
-- `getActionsPreview` in `LinkedAutomationsSection` e `AutomationSettings` per mostrare i nuovi tipi
-- `StepLog` già supporta action_type arbitrari, nessuna modifica necessaria
+**Step 4 — Review ("Riepilogo")**
+- Vista read-only del workflow completo come flow visivo compatto
+- Toggle Attiva/Disattiva, Stop su errore, Priorità come impostazioni secondarie
+- Pulsante "Crea Workflow" prominente
 
 ### Dettagli Tecnici
 
-- **Nidificazione massima**: 3 livelli (es. IF → loop → azione) per evitare complessità eccessiva
-- **Delay lungo**: Se > 25 secondi, il delay crea un `automation_job` con `run_at` futuro e interrompe l'esecuzione corrente. Il job dispatcher riprende il workflow dallo step successivo.
-- **HTTP Request**: Timeout 10 secondi, response salvata in `step_log.result`
-- **Loop**: Max 50 iterazioni per evitare timeout edge function
+**File da modificare:**
+1. `src/components/settings/automation/AutomationRuleFormDrawer.tsx` — Riscrittura completa: sostituire il form monolitico con un componente stepper che renderizza 4 sub-componenti
+2. Creare 4 nuovi componenti:
+   - `AutomationWizardTrigger.tsx` — Step 1
+   - `AutomationWizardConditions.tsx` — Step 2  
+   - `AutomationWizardWorkflow.tsx` — Step 3 (riusa WorkflowNodeCard, WorkflowNodePicker, NestedActionList, ActionFields)
+   - `AutomationWizardReview.tsx` — Step 4
 
-### File Modificati
-1. `src/hooks/useAutomationRules.ts` — tipi e costanti
-2. `src/components/settings/automation/AutomationRuleFormDrawer.tsx` — UI form per i 4 nuovi nodi
-3. `supabase/functions/automation-runner/index.ts` — executor backend ricorsivo
-4. `src/components/settings/automation/AutomationSettings.tsx` — preview label
-5. `src/components/settings/webhooks/LinkedAutomationsSection.tsx` — preview label
+**Pattern UI:**
+- Stepper orizzontale con numeri/check e linea di connessione
+- Transizione fade tra step
+- Sheet mantiene `sm:max-w-3xl` per dare più spazio
+- Bottoni "Indietro / Avanti" fissi in basso con validazione per step
+- Step completati mostrano un check verde nella barra
+
+**Logica:**
+- Lo state rimane nel componente padre (AutomationRuleFormDrawer)
+- Ogni step riceve props e callbacks per aggiornare lo state
+- Validazione per step: Step 1 richiede trigger, Step 3 richiede almeno 1 azione
+- Il form AI resta nello Step 1 come opzione alternativa
+- In modalità edit, tutti gli step sono navigabili liberamente
 
