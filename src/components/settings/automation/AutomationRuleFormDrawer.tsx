@@ -37,6 +37,7 @@ import {
   CONDITION_OPERATORS,
 } from "@/hooks/useAutomationRules";
  import { useAutomationEventTypes } from "@/hooks/useInboundSources";
+import { WorkflowNodeIcon, getNodeConfig } from "./WorkflowNodeIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
