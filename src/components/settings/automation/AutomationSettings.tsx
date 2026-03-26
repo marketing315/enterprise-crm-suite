@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Zap, Play, Trash2, Edit2, History, Clock, Copy } from "lucide-react";
+import { Plus, Zap, Play, Trash2, Edit2, History, Clock, Copy, ChevronRight } from "lucide-react";
 import {
   useAutomationRules,
   useUpdateAutomationRule,
@@ -20,6 +20,7 @@ import { AutomationLogsTable } from "./AutomationLogsTable";
 import { InboundEventsTable } from "./InboundEventsTable";
 import { AutomationJobsTable } from "./AutomationJobsTable";
 import { DuplicateRuleDialog } from "./DuplicateRuleDialog";
+import { WorkflowFlowPreview } from "./WorkflowFlowPreview";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,7 +93,7 @@ export function AutomationSettings() {
           <TabsList>
             <TabsTrigger value="rules" className="gap-2">
               <Zap className="h-4 w-4" />
-              Regole
+              Workflow
               {rules?.length ? (
                 <Badge variant="secondary" className="ml-1">
                   {rules.length}
@@ -126,7 +127,7 @@ export function AutomationSettings() {
           {activeTab === "rules" && (
             <Button onClick={() => setFormOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Nuova Regola
+              Nuovo Workflow
             </Button>
           )}
         </div>
@@ -135,34 +136,53 @@ export function AutomationSettings() {
           {rulesLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-24" />
+                <Skeleton key={i} className="h-28" />
               ))}
             </div>
           ) : rules?.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Zap className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground text-center">
-                  Nessuna regola di automazione configurata.
-                  <br />
-                  Crea la prima per iniziare ad automatizzare i webhook.
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Zap className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-1">Nessun workflow configurato</h3>
+                <p className="text-muted-foreground text-center text-sm max-w-md mb-6">
+                  Crea il tuo primo workflow per automatizzare la gestione dei lead.
+                  Supporta branching IF/ELSE, delay, loop e HTTP request.
                 </p>
+                <Button onClick={() => setFormOpen(true)} size="lg">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crea Workflow
+                </Button>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
               {rules?.map((rule) => (
-                <Card key={rule.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <CardTitle className="text-base">{rule.name}</CardTitle>
-                        <Badge variant={rule.is_active ? "default" : "secondary"}>
-                          {rule.is_active ? "Attiva" : "Inattiva"}
-                        </Badge>
-                        <Badge variant="outline">{rule.trigger_event_type}</Badge>
+                <Card
+                  key={rule.id}
+                  className="group hover:shadow-md transition-all duration-200 cursor-pointer border-border/60"
+                  onClick={() => handleEdit(rule)}
+                >
+                  <div className="p-4">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2.5 mb-1">
+                          <h3 className="font-semibold text-sm truncate">{rule.name}</h3>
+                          <Badge
+                            variant={rule.is_active ? "default" : "secondary"}
+                            className="shrink-0 text-[10px] px-1.5 py-0"
+                          >
+                            {rule.is_active ? "Attivo" : "Inattivo"}
+                          </Badge>
+                        </div>
+                        {rule.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">{rule.description}</p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      <div className="flex items-center gap-1 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
                         <Switch
                           checked={rule.is_active}
                           onCheckedChange={() => handleToggleActive(rule)}
@@ -171,45 +191,55 @@ export function AutomationSettings() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleEdit(rule)}
-                          title="Modifica"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => setDuplicatingRule(rule)}
                           title="Duplica"
                         >
-                          <Copy className="h-4 w-4" />
+                          <Copy className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => handleDelete(rule)}
                           title="Elimina"
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/40 ml-1" />
                       </div>
                     </div>
-                    {rule.description && (
-                      <CardDescription>{rule.description}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent className="pt-2">
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>Priorità: {rule.priority}</span>
-                      <span>Azioni: {rule.actions?.length || 0}</span>
-                      <span>Esecuzioni: {rule.execution_count}</span>
+
+                    {/* Visual workflow preview */}
+                    <div className="mb-3">
+                      <WorkflowFlowPreview
+                        actions={rule.actions || []}
+                        triggerLabel={rule.trigger_event_type || undefined}
+                        compact
+                      />
+                    </div>
+
+                    {/* Footer stats */}
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-2 border-t border-border/40">
+                      <span className="flex items-center gap-1">
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 font-normal">
+                          P{rule.priority}
+                        </Badge>
+                      </span>
+                      <span>{rule.actions?.length || 0} nodi</span>
+                      <span>{rule.execution_count} esecuzioni</span>
                       {rule.last_executed_at && (
                         <span>
-                          Ultima: {new Date(rule.last_executed_at).toLocaleString("it-IT")}
+                          Ultima: {new Date(rule.last_executed_at).toLocaleString("it-IT", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                       )}
                     </div>
-                  </CardContent>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -248,9 +278,9 @@ export function AutomationSettings() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare questa regola?</AlertDialogTitle>
+            <AlertDialogTitle>Eliminare questo workflow?</AlertDialogTitle>
             <AlertDialogDescription>
-              La regola "{deletingRule?.name}" verrà eliminata permanentemente. Questa azione non può essere annullata.
+              Il workflow "{deletingRule?.name}" verrà eliminato permanentemente. Questa azione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
