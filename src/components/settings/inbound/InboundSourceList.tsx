@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 import { Plus, Copy, Trash2, Edit2, Key, Webhook, Shield } from "lucide-react";
@@ -84,6 +85,23 @@ export function InboundSourceList() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["inbound-sources"] });
       toast.success(variables.counts_as_new_lead ? "Conta come nuovo lead" : "Non conta come nuovo lead");
+    },
+    onError: (error) => {
+      toast.error(`Errore: ${error.message}`);
+    },
+  });
+
+  const updatePipelineStageMutation = useMutation({
+    mutationFn: async ({ id, stage_id }: { id: string; stage_id: string | null }) => {
+      const { error } = await supabase
+        .from("webhook_sources")
+        .update({ default_pipeline_stage_id: stage_id })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inbound-sources"] });
+      toast.success("Fase pipeline aggiornata");
     },
     onError: (error) => {
       toast.error(`Errore: ${error.message}`);
@@ -182,14 +200,34 @@ export function InboundSourceList() {
                       />
                       <span className="text-muted-foreground">Conta come lead</span>
                     </label>
-                    {source.default_pipeline_stage_id && pipelineStages && (() => {
-                      const stage = pipelineStages.find(s => s.id === source.default_pipeline_stage_id);
-                      return stage ? (
-                        <Badge variant="outline" className="gap-1 text-xs" style={{ borderColor: stage.color, color: stage.color }}>
-                          📍 {stage.name}
-                        </Badge>
-                      ) : null;
-                    })()}
+                    <Select
+                      value={source.default_pipeline_stage_id || "auto"}
+                      onValueChange={(val) =>
+                        updatePipelineStageMutation.mutate({
+                          id: source.id,
+                          stage_id: val === "auto" ? null : val,
+                        })
+                      }
+                      disabled={updatePipelineStageMutation.isPending}
+                    >
+                      <SelectTrigger className="h-7 w-auto min-w-[140px] text-xs gap-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">🤖 Automatica (AI)</SelectItem>
+                        {pipelineStages?.filter(s => s.is_active).map((stage) => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: stage.color }}
+                              />
+                              {stage.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
