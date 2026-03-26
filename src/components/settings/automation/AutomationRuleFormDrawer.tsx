@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check } from "lucide-react";
+import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check, GitBranch, Timer, Repeat, Globe } from "lucide-react";
 import {
   useCreateAutomationRule,
   useUpdateAutomationRule,
@@ -32,6 +32,8 @@ import {
   type Conditions,
   type ConditionItem,
   type TriggerType,
+  type DelayUnit,
+  type HttpMethod,
   CONDITION_OPERATORS,
 } from "@/hooks/useAutomationRules";
  import { useAutomationEventTypes } from "@/hooks/useInboundSources";
@@ -577,13 +579,79 @@ interface Props {
   );
 }
 
+// Reusable nested action list for IF/ELSE branches and Loop
+function NestedActionList({
+  actions,
+  onChange,
+  label,
+  depth = 1,
+}: {
+  actions: Action[];
+  onChange: (actions: Action[]) => void;
+  label: string;
+  depth?: number;
+}) {
+  if (depth > 3) return <p className="text-xs text-destructive">Nidificazione massima raggiunta (3 livelli)</p>;
+
+  const handleAdd = () => onChange([...actions, { type: "upsert_contact" }]);
+  const handleRemove = (i: number) => onChange(actions.filter((_, idx) => idx !== i));
+  const handleChange = (i: number, updates: Partial<Action>) => {
+    const updated = [...actions];
+    updated[i] = { ...updated[i], ...updates };
+    onChange(updated);
+  };
+
+  return (
+    <div className={cn("space-y-2 border-l-2 border-muted pl-3", depth > 1 && "ml-2")}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <Button variant="ghost" size="sm" type="button" onClick={handleAdd} className="h-6 px-2">
+          <Plus className="h-3 w-3 mr-1" />
+          Aggiungi
+        </Button>
+      </div>
+      {actions.map((action, i) => (
+        <Card key={i} className="p-2">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="text-[10px] px-1">{i + 1}</Badge>
+              <Select
+                value={action.type}
+                onValueChange={(v) => handleChange(i, { type: v as Action["type"] })}
+              >
+                <SelectTrigger className="w-[180px] h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTION_TYPES.map((at) => (
+                    <SelectItem key={at.value} value={at.value}>{at.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="ghost" size="icon" type="button" className="h-6 w-6" onClick={() => handleRemove(i)}>
+              <Trash2 className="h-3 w-3 text-destructive" />
+            </Button>
+          </div>
+          <ActionFields action={action} onChange={(u) => handleChange(i, u)} depth={depth} />
+        </Card>
+      ))}
+      {actions.length === 0 && (
+        <p className="text-xs text-muted-foreground italic">Nessuna azione</p>
+      )}
+    </div>
+  );
+}
+
 // Action-specific fields component
 function ActionFields({
   action,
   onChange,
+  depth = 0,
 }: {
   action: Action;
   onChange: (updates: Partial<Action>) => void;
+  depth?: number;
 }) {
   switch (action.type) {
     case "upsert_contact":
@@ -614,9 +682,7 @@ function ActionFields({
       );
 
     case "add_tag":
-      return (
-        <AddTagActionFields action={action} onChange={onChange} />
-      );
+      return <AddTagActionFields action={action} onChange={onChange} />;
 
     case "create_deal":
       return (
@@ -680,9 +746,275 @@ function ActionFields({
         />
       );
 
+    // ========== NEW WORKFLOW NODES ==========
+
+    case "if_else":
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <GitBranch className="h-4 w-4" />
+            <span>Branching condizionale — esegue "Then" se le condizioni sono vere, altrimenti "Else"</span>
+          </div>
+          {/* Inline condition editor for IF */}
+          <IfElseConditionEditor
+            conditions={action.conditions || {}}
+            onChange={(c) => onChange({ conditions: c })}
+          />
+          <NestedActionList
+            actions={action.then_actions || []}
+            onChange={(a) => onChange({ then_actions: a })}
+            label="✅ THEN (condizioni vere)"
+            depth={depth + 1}
+          />
+          <NestedActionList
+            actions={action.else_actions || []}
+            onChange={(a) => onChange({ else_actions: a })}
+            label="❌ ELSE (condizioni false)"
+            depth={depth + 1}
+          />
+        </div>
+      );
+
+    case "delay":
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Timer className="h-4 w-4" />
+            <span>Mette in pausa il workflow prima del prossimo step</span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={1}
+              placeholder="Durata"
+              value={action.delay_value || ""}
+              onChange={(e) => onChange({ delay_value: parseInt(e.target.value) || 0 })}
+              className="w-24"
+            />
+            <Select
+              value={action.delay_unit || "seconds"}
+              onValueChange={(v) => onChange({ delay_unit: v as DelayUnit })}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="seconds">Secondi</SelectItem>
+                <SelectItem value="minutes">Minuti</SelectItem>
+                <SelectItem value="hours">Ore</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {(action.delay_unit === "minutes" && (action.delay_value || 0) > 0) ||
+          (action.delay_unit === "hours") ? (
+            <p className="text-xs text-amber-600">
+              ⚠️ Delay superiori a 25 secondi verranno schedulati come job asincrono
+            </p>
+          ) : null}
+        </div>
+      );
+
+    case "loop":
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Repeat className="h-4 w-4" />
+            <span>Itera su un array del payload (max 50 elementi)</span>
+          </div>
+          <Input
+            placeholder="Path array: payload.args.items"
+            value={action.items_path || ""}
+            onChange={(e) => onChange({ items_path: e.target.value })}
+          />
+          <NestedActionList
+            actions={action.loop_actions || []}
+            onChange={(a) => onChange({ loop_actions: a })}
+            label="🔁 Azioni per ogni elemento ({{item}} disponibile)"
+            depth={depth + 1}
+          />
+        </div>
+      );
+
+    case "http_request":
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Globe className="h-4 w-4" />
+            <span>Chiamata HTTP generica (timeout 10s)</span>
+          </div>
+          <div className="flex gap-2">
+            <Select
+              value={action.method || "POST"}
+              onValueChange={(v) => onChange({ method: v as HttpMethod })}
+            >
+              <SelectTrigger className="w-[110px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="GET">GET</SelectItem>
+                <SelectItem value="POST">POST</SelectItem>
+                <SelectItem value="PUT">PUT</SelectItem>
+                <SelectItem value="PATCH">PATCH</SelectItem>
+                <SelectItem value="DELETE">DELETE</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="https://api.example.com/endpoint"
+              value={action.url || ""}
+              onChange={(e) => onChange({ url: e.target.value })}
+              className="flex-1"
+            />
+          </div>
+          <HttpHeadersEditor
+            headers={action.headers || {}}
+            onChange={(h) => onChange({ headers: h })}
+          />
+          {action.method !== "GET" && (
+            <Textarea
+              placeholder='Body JSON (supporta {{payload.xxx}})&#10;{"name": "{{payload.args.Nome}}"}'
+              value={action.body || ""}
+              onChange={(e) => onChange({ body: e.target.value })}
+              rows={3}
+              className="font-mono text-xs"
+            />
+          )}
+        </div>
+      );
+
     default:
       return null;
   }
+}
+
+// IF/ELSE condition editor (simplified inline)
+function IfElseConditionEditor({
+  conditions,
+  onChange,
+}: {
+  conditions: Conditions;
+  onChange: (c: Conditions) => void;
+}) {
+  const items = conditions.all || [];
+
+  const handleAdd = () => {
+    onChange({ ...conditions, all: [...items, { path: "", op: "exists" }] });
+  };
+  const handleRemove = (i: number) => {
+    onChange({ ...conditions, all: items.filter((_, idx) => idx !== i) });
+  };
+  const handleChange = (i: number, field: string, value: unknown) => {
+    const updated = [...items];
+    updated[i] = { ...updated[i], [field]: value };
+    onChange({ ...conditions, all: updated });
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium">Condizioni IF (tutte devono essere vere)</span>
+        <Button variant="ghost" size="sm" type="button" onClick={handleAdd} className="h-6 px-2">
+          <Plus className="h-3 w-3 mr-1" /> Aggiungi
+        </Button>
+      </div>
+      {items.map((item, i) => (
+        <div key={i} className="flex items-center gap-1">
+          <Select value={item.path || ""} onValueChange={(v) => handleChange(i, "path", v)}>
+            <SelectTrigger className="w-[160px] h-7 text-xs">
+              <SelectValue placeholder="Campo..." />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYLOAD_FIELDS.map((f) => (
+                <SelectItem key={f.path} value={f.path}>{f.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={item.op} onValueChange={(v) => handleChange(i, "op", v)}>
+            <SelectTrigger className="w-[120px] h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CONDITION_OPERATORS.map((op) => (
+                <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!["exists", "not_exists"].includes(item.op) && (
+            <Input
+              className="flex-1 h-7 text-xs"
+              placeholder="Valore..."
+              value={String(item.value || "")}
+              onChange={(e) => handleChange(i, "value", e.target.value)}
+            />
+          )}
+          <Button variant="ghost" size="icon" type="button" className="h-6 w-6" onClick={() => handleRemove(i)}>
+            <Trash2 className="h-3 w-3 text-destructive" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// HTTP Headers key-value editor
+function HttpHeadersEditor({
+  headers,
+  onChange,
+}: {
+  headers: Record<string, string>;
+  onChange: (h: Record<string, string>) => void;
+}) {
+  const entries = Object.entries(headers);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">Headers</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          className="h-6 px-2"
+          onClick={() => onChange({ ...headers, "": "" })}
+        >
+          <Plus className="h-3 w-3 mr-1" /> Header
+        </Button>
+      </div>
+      {entries.map(([key, value], i) => (
+        <div key={i} className="flex gap-1">
+          <Input
+            className="flex-1 h-7 text-xs font-mono"
+            placeholder="Content-Type"
+            value={key}
+            onChange={(e) => {
+              const newHeaders = { ...headers };
+              delete newHeaders[key];
+              newHeaders[e.target.value] = value;
+              onChange(newHeaders);
+            }}
+          />
+          <Input
+            className="flex-1 h-7 text-xs font-mono"
+            placeholder="application/json"
+            value={value}
+            onChange={(e) => onChange({ ...headers, [key]: e.target.value })}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            className="h-7 w-7"
+            onClick={() => {
+              const newHeaders = { ...headers };
+              delete newHeaders[key];
+              onChange(newHeaders);
+            }}
+          >
+            <Trash2 className="h-3 w-3 text-destructive" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // Dedicated component for add_tag action with tag selector

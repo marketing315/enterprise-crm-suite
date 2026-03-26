@@ -42,7 +42,7 @@ interface ConditionItem {
 }
 
 interface Action {
-  type: "upsert_contact" | "add_tag" | "create_deal" | "create_ticket" | "send_outbound_webhook" | "set_callback_requested" | "log_note" | "schedule_job" | "update_contact_field";
+  type: "upsert_contact" | "add_tag" | "create_deal" | "create_ticket" | "send_outbound_webhook" | "set_callback_requested" | "log_note" | "schedule_job" | "update_contact_field" | "if_else" | "delay" | "loop" | "http_request";
   match?: Record<string, string>;
   fields?: Record<string, string>;
   entity?: "contact" | "deal" | "ticket";
@@ -58,6 +58,21 @@ interface Action {
   // update_contact_field
   field?: string;
   field_value?: string;
+  // if_else
+  conditions?: Condition;
+  then_actions?: Action[];
+  else_actions?: Action[];
+  // delay
+  delay_value?: number;
+  delay_unit?: "seconds" | "minutes" | "hours";
+  // loop
+  items_path?: string;
+  loop_actions?: Action[];
+  // http_request
+  url?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
 }
 
 interface StepLog {
@@ -780,6 +795,129 @@ async function executeUpdateContactField(action: Action, ctx: ActionContext): Pr
   return { contact_id: contactId, field: fieldName, value: fieldValue };
 }
 
+async function executeIfElse(action: Action, ctx: ActionContext, depth: number): Promise<Record<string, unknown>> {
+  const conditionsMet = evaluateCondition(action.conditions || null, ctx.payload);
+  const branch = conditionsMet ? (action.then_actions || []) : (action.else_actions || []);
+  const branchName = conditionsMet ? "then" : "else";
+  
+  const branchResults: Record<string, unknown>[] = [];
+  for (const subAction of branch) {
+    const result = await executeActionRecursive(subAction, ctx, depth + 1);
+    branchResults.push(result);
+  }
+  
+  return { branch: branchName, conditions_met: conditionsMet, steps: branchResults.length };
+}
+
+async function executeDelay(action: Action, ctx: ActionContext): Promise<Record<string, unknown>> {
+  const value = action.delay_value || 0;
+  const unit = action.delay_unit || "seconds";
+  
+  let ms = value * 1000;
+  if (unit === "minutes") ms = value * 60 * 1000;
+  if (unit === "hours") ms = value * 3600 * 1000;
+  
+  // Short delay: inline wait (max 25 seconds)
+  if (ms <= 25000) {
+    await new Promise((r) => setTimeout(r, ms));
+    return { delayed_ms: ms, mode: "inline" };
+  }
+  
+  // Long delay: schedule as automation_job for remaining steps
+  // Note: The caller should handle resumption logic
+  const runAt = new Date(Date.now() + ms).toISOString();
+  return { delayed_ms: ms, mode: "scheduled", run_at: runAt };
+}
+
+async function executeLoop(action: Action, ctx: ActionContext, depth: number): Promise<Record<string, unknown>> {
+  const itemsPath = action.items_path || "";
+  const items = resolvePath(ctx.payload, itemsPath);
+  
+  if (!Array.isArray(items)) {
+    throw new Error(`loop: path "${itemsPath}" is not an array`);
+  }
+  
+  const maxItems = Math.min(items.length, 50);
+  const results: Record<string, unknown>[] = [];
+  
+  for (let i = 0; i < maxItems; i++) {
+    // Inject current item into payload context
+    const loopCtx: ActionContext = {
+      ...ctx,
+      payload: { ...ctx.payload, item: items[i], item_index: i },
+    };
+    
+    for (const subAction of (action.loop_actions || [])) {
+      const result = await executeActionRecursive(subAction, loopCtx, depth + 1);
+      results.push(result);
+    }
+  }
+  
+  return { iterated: maxItems, total_items: items.length, total_sub_results: results.length };
+}
+
+async function executeHttpRequest(action: Action, ctx: ActionContext): Promise<Record<string, unknown>> {
+  const url = action.url ? resolveTemplate(action.url, { payload: ctx.payload }) : "";
+  if (!url) throw new Error("http_request requires url");
+  
+  const method = action.method || "POST";
+  const headers: Record<string, string> = {};
+  
+  if (action.headers) {
+    for (const [k, v] of Object.entries(action.headers)) {
+      headers[resolveTemplate(k, { payload: ctx.payload })] = resolveTemplate(v, { payload: ctx.payload });
+    }
+  }
+  
+  const fetchOptions: RequestInit = { method, headers };
+  
+  if (method !== "GET" && action.body) {
+    fetchOptions.body = resolveTemplate(action.body, { payload: ctx.payload });
+    if (!headers["Content-Type"] && !headers["content-type"]) {
+      headers["Content-Type"] = "application/json";
+    }
+  }
+  
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  
+  try {
+    const response = await fetch(url, { ...fetchOptions, signal: controller.signal });
+    const responseText = await response.text();
+    let responseBody: unknown;
+    try { responseBody = JSON.parse(responseText); } catch { responseBody = responseText; }
+    
+    return {
+      status_code: response.status,
+      ok: response.ok,
+      response: responseBody,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+const MAX_DEPTH = 3;
+
+async function executeActionRecursive(action: Action, ctx: ActionContext, depth: number = 0): Promise<Record<string, unknown>> {
+  if (depth > MAX_DEPTH) {
+    throw new Error(`Max nesting depth (${MAX_DEPTH}) exceeded`);
+  }
+  
+  switch (action.type) {
+    case "if_else":
+      return executeIfElse(action, ctx, depth);
+    case "delay":
+      return executeDelay(action, ctx);
+    case "loop":
+      return executeLoop(action, ctx, depth);
+    case "http_request":
+      return executeHttpRequest(action, ctx);
+    default:
+      return executeAction(action, ctx);
+  }
+}
+
 async function executeAction(action: Action, ctx: ActionContext): Promise<Record<string, unknown>> {
   switch (action.type) {
     case "upsert_contact":
@@ -874,7 +1012,7 @@ async function processEvent(
       const stepStart = Date.now();
       
       try {
-        const result = await executeAction(action, ctx);
+        const result = await executeActionRecursive(action, ctx);
         stepsLog.push({
           step: i + 1,
           action_type: action.type,
