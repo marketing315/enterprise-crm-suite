@@ -1,42 +1,63 @@
 
 
-## Piano: Aggiungere selezione fase pipeline per sorgente webhook
+## Riorganizzazione logica delle Impostazioni
 
-### Obiettivo
-Permettere agli admin di configurare, per ogni sorgente inbound, in quale fase della pipeline il lead deve entrare (es. "Nuovo Lead", "Fissato", ecc.) invece di usare sempre la fase di default.
+### Analisi dello stato attuale
 
-### Come funziona oggi
-- La tabella `webhook_sources` ha un campo `handler` (es. `keplero`) e `counts_as_new_lead` (boolean), ma **non** un campo per specificare la fase pipeline iniziale.
-- La fase iniziale viene decisa dall'AI classifier (`ai-classify`) o hardcoded nel handler Keplero.
-- Nel form di modifica sorgente (`InboundSourceFormDrawer`) non c'è modo di scegliere la fase.
+Dopo aver esaminato tutto il progetto (routes, moduli, componenti settings), ho identificato:
 
-### Cosa farò
+**Problemi attuali:**
+- "Attribution" (CampaignGroupsManager) è un componente marketing, non ha senso sotto "Lead & Automazioni"
+- "Webhook" contiene già le sorgenti inbound (InboundSourceList) al suo interno — le sorgenti inbound meritano visibilità propria dato che ora hanno la configurazione pipeline stage
+- VoIP e VOIspeed sono due componenti separati ma logicamente sono lo stesso dominio
+- "Canali OAuth" e "Meta Ads" sono concettualmente la stessa area (connessioni esterne)
+- "Keplero Lookup" è un'integrazione, non un'automazione
+- Manca una sezione per i Prodotti/Catalogo (la pagina /products esiste ma non è configurabile da settings)
 
-**1. Migration: aggiungere colonna `default_pipeline_stage_id`**
-```sql
-ALTER TABLE webhook_sources 
-ADD COLUMN default_pipeline_stage_id uuid 
-REFERENCES pipeline_stages(id) ON DELETE SET NULL;
+### Piano di riorganizzazione
+
+Nuova struttura a 5 gruppi:
+
+```text
+CRM & Dati
+  ├── Pipeline              (fasi pipeline)
+  ├── Campi personalizzati  (custom fields)
+  ├── Tag                   (tag manager)
+  ├── Ticketing & SLA       (regole SLA)
+  └── Sorgenti Inbound      ← NUOVO: estratto da Webhook, con pipeline stage mapping
+
+Lead & Automazioni
+  ├── Automazioni           (regole automatiche)
+  ├── Lead Digest           (report digest)
+  └── Attribution           (gruppi campagne — resta qui ma rinominato)
+
+Integrazioni
+  ├── Webhook               (outbound + monitor, senza inbound)
+  ├── Telefonia VoIP        (VoIP + VOIspeed — invariato)
+  ├── Google Sheets         (export sheets)
+  ├── Meta Ads              (meta apps)
+  ├── Canali OAuth          (token OAuth)
+  └── Keplero Lookup        ← SPOSTATO da Lead & Automazioni
+
+Notifiche
+  └── Preferenze notifiche  (invariato, ma in gruppo proprio)
+
+Sistema (solo super admin)
+  ├── Governance moduli
+  ├── MCP Server
+  └── Gestione utenti
 ```
 
-**2. Aggiornare il form `InboundSourceFormDrawer`**
-- Aggiungere un campo `Select` con le fasi pipeline attive (query da `pipeline_stages` con `is_active = true`)
-- Label: "Fase pipeline iniziale"
-- Descrizione: "Fase in cui verrà inserito il deal quando arriva un lead da questa sorgente. Se non specificata, verrà usata la classificazione automatica."
-- Valore opzionale (nullable) — se non selezionato, comportamento invariato
+### Modifiche concrete
 
-**3. Aggiornare `webhook-ingest` edge function**
-- Dopo aver caricato la `source`, leggere `default_pipeline_stage_id`
-- Se presente, passarlo al flusso di creazione deal come stage iniziale, bypassando la classificazione AI per la fase
-- Se assente, comportamento invariato (AI classifier decide)
+**File: `src/pages/Settings.tsx`**
 
-**4. Aggiornare `InboundSourceList`**
-- Mostrare un badge con il nome della fase configurata accanto a ogni sorgente nella lista
+1. **Aggiungere** voce "Sorgenti Inbound" (id: `inbound-sources`, icon: `Download`) nel gruppo "CRM & Dati" — renderizza `InboundSourceList` direttamente
+2. **Spostare** "Keplero Lookup" da "Lead & Automazioni" a "Integrazioni"
+3. **Spostare** "Notifiche" in un gruppo proprio chiamato "Notifiche"
+4. **Riordinare** il gruppo "Generale" → rinominato "CRM & Dati" con ordine logico: Pipeline, Campi personalizzati, Tag, Ticketing, Sorgenti Inbound
+5. **Aggiungere import** di `Download` da lucide-react e di `InboundSourceList`
+6. **Aggiungere case** `inbound-sources` nel switch `SettingsContent`
 
-### File modificati
-- `supabase/functions/webhook-ingest/index.ts` — usare `default_pipeline_stage_id` se presente
-- `src/components/settings/inbound/InboundSourceFormDrawer.tsx` — nuovo campo select con fasi pipeline
-- `src/components/settings/inbound/InboundSourceList.tsx` — badge fase nella lista
-- `src/hooks/useInboundSources.ts` — includere `default_pipeline_stage_id` nella query
-- Migration SQL per la nuova colonna
+Nessuna nuova tabella, nessuna migration, nessun componente nuovo — solo riorganizzazione della navigazione e un nuovo case nel router interno.
 
