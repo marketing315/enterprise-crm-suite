@@ -23,6 +23,7 @@ interface WebhookSource {
   hmac_enabled: boolean;
   replay_window_seconds: number;
   counts_as_new_lead: boolean;
+  default_pipeline_stage_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,7 +44,7 @@ export function InboundSourceList() {
       if (!currentBrand?.id) return [];
       const { data, error } = await supabase
         .from("webhook_sources_safe")
-        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, counts_as_new_lead, created_at, updated_at")
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, counts_as_new_lead, default_pipeline_stage_id, created_at, updated_at")
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
