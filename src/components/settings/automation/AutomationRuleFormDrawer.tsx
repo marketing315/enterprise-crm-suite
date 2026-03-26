@@ -999,7 +999,7 @@ function ActionFields({
           </div>
           {(action.delay_unit === "minutes" && (action.delay_value || 0) > 0) ||
           (action.delay_unit === "hours") ? (
-            <p className="text-xs text-amber-600">
+            <p className="text-xs text-destructive/80">
               ⚠️ Delay superiori a 25 secondi verranno schedulati come job asincrono
             </p>
           ) : null}
