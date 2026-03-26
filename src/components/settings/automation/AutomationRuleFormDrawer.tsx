@@ -564,6 +564,204 @@ interface Props {
   );
 }
 
+// Node type picker dropdown
+function WorkflowNodePicker({ onSelect }: { onSelect: (type: Action["type"]) => void }) {
+  const [open, setOpen] = useState(false);
+
+  const categories = [
+    {
+      label: "Azioni CRM",
+      types: ["upsert_contact", "add_tag", "create_deal", "create_ticket", "set_callback_requested", "log_note", "send_outbound_webhook"] as const,
+    },
+    {
+      label: "Controllo Flusso",
+      types: ["if_else", "delay", "loop", "http_request"] as const,
+    },
+  ];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          className="rounded-full h-8 px-4 border-dashed border-primary/30 text-primary hover:bg-primary/5"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          Aggiungi Nodo
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-2" align="center">
+        <ScrollArea className="max-h-[320px]">
+          {categories.map((cat) => (
+            <div key={cat.label}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5">
+                {cat.label}
+              </p>
+              {cat.types.map((type) => {
+                const info = ACTION_TYPES.find((t) => t.value === type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      onSelect(type);
+                      setOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-accent transition-colors text-left"
+                  >
+                    <WorkflowNodeIcon type={type} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium leading-tight">{info?.label || type}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight truncate">{info?.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Visual workflow node card with connector line
+function WorkflowNodeCard({
+  action,
+  index,
+  isLast,
+  onChange,
+  onRemove,
+}: {
+  action: Action;
+  index: number;
+  isLast: boolean;
+  onChange: (updates: Partial<Action>) => void;
+  onRemove: () => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const config = getNodeConfig(action.type);
+  const label = ACTION_TYPES.find((t) => t.value === action.type)?.label || action.type;
+
+  return (
+    <div className="relative">
+      {/* Connector line from previous node */}
+      {index > 0 && (
+        <div className="flex justify-center h-3">
+          <div className="w-px bg-border" />
+        </div>
+      )}
+
+      {/* Node card */}
+      <div className={cn(
+        "rounded-xl border transition-all duration-200",
+        "bg-card hover:shadow-sm",
+        expanded && "shadow-sm"
+      )}>
+        {/* Node header */}
+        <div
+          className="flex items-center gap-2.5 p-3 cursor-pointer select-none"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <WorkflowNodeIcon type={action.type} size="md" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold">{label}</span>
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-normal text-muted-foreground">
+                #{index + 1}
+              </Badge>
+            </div>
+            {!expanded && (
+              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                {getNodeSummary(action)}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {/* Type switcher */}
+            <Select
+              value={action.type}
+              onValueChange={(v) => onChange({ type: v as Action["type"] })}
+            >
+              <SelectTrigger className="h-7 w-7 p-0 border-none shadow-none [&>svg]:hidden" onClick={(e) => e.stopPropagation()}>
+                <Edit2 className="h-3 w-3 text-muted-foreground" />
+              </SelectTrigger>
+              <SelectContent>
+                {ACTION_TYPES.map((at) => (
+                  <SelectItem key={at.value} value={at.value}>
+                    <span className="flex items-center gap-2">
+                      <WorkflowNodeIcon type={at.value} size="sm" />
+                      {at.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+          </div>
+        </div>
+
+        {/* Node body */}
+        {expanded && (
+          <div className="px-3 pb-3 pt-0">
+            <div className={cn("rounded-lg p-3", config.bg, "bg-opacity-30")}>
+              <ActionFields action={action} onChange={onChange} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Connector to next node */}
+      {!isLast && (
+        <div className="flex justify-center h-3">
+          <div className="w-px bg-border" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Summary text when node is collapsed
+function getNodeSummary(action: Action): string {
+  switch (action.type) {
+    case "upsert_contact":
+      return action.match?.phone || "Trova/crea contatto per telefono";
+    case "add_tag":
+      return action.tag || "Seleziona un tag...";
+    case "create_deal":
+      return "Crea deal per il contatto";
+    case "create_ticket":
+      return action.fields?.title || "Nuovo ticket";
+    case "set_callback_requested":
+      return action.value !== false ? "Attiva ricontatto" : "Disattiva ricontatto";
+    case "log_note":
+      return action.note?.slice(0, 50) || "Aggiungi nota...";
+    case "send_outbound_webhook":
+      return action.webhook_id || "Seleziona webhook...";
+    case "if_else":
+      return `Then: ${action.then_actions?.length || 0} · Else: ${action.else_actions?.length || 0} azioni`;
+    case "delay":
+      return `${action.delay_value || 0} ${action.delay_unit === "minutes" ? "min" : action.delay_unit === "hours" ? "ore" : "sec"}`;
+    case "loop":
+      return `${action.loop_actions?.length || 0} azioni su ${action.items_path || "..."}`;
+    case "http_request":
+      return `${action.method || "POST"} ${action.url || "..."}`;
+    default:
+      return "";
+  }
+}
+
 // Reusable nested action list for IF/ELSE branches and Loop
 function NestedActionList({
   actions,
