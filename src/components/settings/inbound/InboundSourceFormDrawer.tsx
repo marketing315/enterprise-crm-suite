@@ -155,11 +155,12 @@ export function InboundSourceFormDrawer({
         description: values.description || null,
         rate_limit_per_min: values.rate_limit_per_min,
         counts_as_new_lead: values.counts_as_new_lead,
+        default_pipeline_stage_id: values.default_pipeline_stage_id || null,
         api_key_hash: apiKeyHash,
         is_active: true,
         hmac_enabled: values.hmac_enabled,
-        hmac_secret: hmacSecret, // Plain text for signature verification
-        hmac_secret_hash: hmacSecretHash, // Hash for backward compatibility
+        hmac_secret: hmacSecret,
+        hmac_secret_hash: hmacSecretHash,
         replay_window_seconds: values.replay_window_seconds,
       }).select("id").single();
 
@@ -187,6 +188,7 @@ export function InboundSourceFormDrawer({
           description: values.description || null,
           rate_limit_per_min: values.rate_limit_per_min,
           counts_as_new_lead: values.counts_as_new_lead,
+          default_pipeline_stage_id: values.default_pipeline_stage_id || null,
           hmac_enabled: values.hmac_enabled,
           replay_window_seconds: values.replay_window_seconds,
         })
