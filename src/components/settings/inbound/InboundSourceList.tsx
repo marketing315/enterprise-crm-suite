@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
-import { usePipelineStages } from "@/hooks/usePipelineStages";
+import { usePipelineStages } from "@/hooks/usePipeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,8 @@ export function InboundSourceList() {
   const [deletingSource, setDeletingSource] = useState<WebhookSource | null>(null);
   const [rotateKeyDialogOpen, setRotateKeyDialogOpen] = useState(false);
   const [rotatingSource, setRotatingSource] = useState<WebhookSource | null>(null);
+
+  const { data: pipelineStages } = usePipelineStages();
 
   const { data: sources, isLoading } = useQuery({
     queryKey: ["inbound-sources", currentBrand?.id],
@@ -155,6 +157,14 @@ export function InboundSourceList() {
                         Non conta come lead
                       </Badge>
                     )}
+                    {source.default_pipeline_stage_id && pipelineStages && (() => {
+                      const stage = pipelineStages.find(s => s.id === source.default_pipeline_stage_id);
+                      return stage ? (
+                        <Badge variant="outline" className="gap-1 text-xs" style={{ borderColor: stage.color, color: stage.color }}>
+                          📍 {stage.name}
+                        </Badge>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
