@@ -1012,7 +1012,7 @@ async function processEvent(
       const stepStart = Date.now();
       
       try {
-        const result = await executeAction(action, ctx);
+        const result = await executeActionRecursive(action, ctx);
         stepsLog.push({
           step: i + 1,
           action_type: action.type,

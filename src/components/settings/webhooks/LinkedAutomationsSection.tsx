@@ -125,16 +125,17 @@
      return found?.label || eventType;
    };
  
-   const getActionsPreview = (actions: AutomationRule["actions"]) => {
-     if (!actions || actions.length === 0) return "Nessuna azione";
-     return actions
-       .slice(0, 2)
-       .map((a) => {
-         const found = ACTION_TYPES.find((t) => t.value === a.type);
-         return found?.label || a.type;
-       })
-       .join(", ") + (actions.length > 2 ? ` +${actions.length - 2}` : "");
-   };
+  const getActionsPreview = (actions: AutomationRule["actions"]) => {
+    if (!actions || actions.length === 0) return "Nessuna azione";
+    const getLabel = (type: string) => {
+      const found = ACTION_TYPES.find((t) => t.value === type);
+      return found?.label || type;
+    };
+    return actions
+      .slice(0, 3)
+      .map((a) => getLabel(a.type))
+      .join(" → ") + (actions.length > 3 ? ` +${actions.length - 3}` : "");
+  };
  
    const handleCreateNew = () => {
      setEditingRule(null);
