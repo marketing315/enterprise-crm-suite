@@ -438,6 +438,38 @@ export function InboundSourceFormDrawer({
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="default_pipeline_stage_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fase pipeline iniziale</FormLabel>
+                    <Select
+                      value={field.value || "auto"}
+                      onValueChange={(val) => field.onChange(val === "auto" ? null : val)}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Classificazione automatica" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="auto">Automatica (AI/default)</SelectItem>
+                        {pipelineStages?.map((stage) => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Fase in cui verrà inserito il deal da questa sorgente. Se "Automatica", verrà usata la classificazione standard.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <Separator className="my-4" />
 
               <div className="space-y-4">
