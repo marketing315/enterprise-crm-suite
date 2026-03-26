@@ -20,6 +20,7 @@ import {
   Search,
   Cpu,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -41,6 +42,7 @@ import { LeadDigestKpiCards } from "@/components/settings/digest/LeadDigestKpiCa
 import { CampaignGroupsManager } from "@/components/marketing/CampaignGroupsManager";
 import { KepleroLookupSettings } from "@/components/settings/keplero/KepleroLookupSettings";
 import { McpSettingsModule } from "@/components/settings/mcp/McpSettingsModule";
+import { InboundSourceList } from "@/components/settings/inbound/InboundSourceList";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -63,13 +65,13 @@ interface SettingsNavGroup {
 
 const settingsGroups: SettingsNavGroup[] = [
   {
-    label: "Generale",
+    label: "CRM & Dati",
     items: [
-      { id: "ticketing", label: "Ticketing & SLA", icon: Ticket },
       { id: "pipeline", label: "Pipeline", icon: GitBranch, brandAdminOnly: true },
       { id: "custom-fields", label: "Campi personalizzati", icon: FormInput, brandAdminOnly: true },
       { id: "tags", label: "Tag", icon: Tags },
-      { id: "notifications", label: "Notifiche", icon: Bell },
+      { id: "ticketing", label: "Ticketing & SLA", icon: Ticket },
+      { id: "inbound-sources", label: "Sorgenti Inbound", icon: Download, brandAdminOnly: true },
     ],
   },
   {
@@ -78,7 +80,6 @@ const settingsGroups: SettingsNavGroup[] = [
       { id: "automation", label: "Automazioni", icon: Zap, brandAdminOnly: true },
       { id: "digest", label: "Lead Digest", icon: Mailbox, adminOnly: true },
       { id: "attribution", label: "Attribution", icon: Target, brandAdminOnly: true },
-      { id: "keplero-lookup", label: "Keplero Lookup", icon: Search, brandAdminOnly: true },
     ],
   },
   {
@@ -89,6 +90,13 @@ const settingsGroups: SettingsNavGroup[] = [
       { id: "sheets", label: "Google Sheets", icon: FileSpreadsheet, brandAdminOnly: true },
       { id: "meta", label: "Meta Ads", icon: Facebook, brandAdminOnly: true },
       { id: "oauth", label: "Canali OAuth", icon: Plug, brandAdminOnly: true },
+      { id: "keplero-lookup", label: "Keplero Lookup", icon: Search, brandAdminOnly: true },
+    ],
+  },
+  {
+    label: "Notifiche",
+    items: [
+      { id: "notifications", label: "Preferenze notifiche", icon: Bell },
     ],
   },
   {
@@ -103,16 +111,16 @@ const settingsGroups: SettingsNavGroup[] = [
 
 function SettingsContent({ activeSection }: { activeSection: string }) {
   switch (activeSection) {
-    case "ticketing":
-      return <TicketingSettings />;
     case "pipeline":
       return <PipelineStagesSettings />;
     case "custom-fields":
       return <CustomFieldsSettings />;
     case "tags":
       return <TagManager />;
-    case "notifications":
-      return <NotificationPreferencesSettings />;
+    case "ticketing":
+      return <TicketingSettings />;
+    case "inbound-sources":
+      return <InboundSourceList />;
     case "automation":
       return <AutomationSettings />;
     case "digest":
@@ -125,8 +133,6 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
       );
     case "attribution":
       return <CampaignGroupsManager />;
-    case "keplero-lookup":
-      return <KepleroLookupSettings />;
     case "webhooks":
       return <WebhookSettings />;
     case "voip":
@@ -142,6 +148,10 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
       return <MetaAppsSettings />;
     case "oauth":
       return <OAuthChannelsSettings />;
+    case "keplero-lookup":
+      return <KepleroLookupSettings />;
+    case "notifications":
+      return <NotificationPreferencesSettings />;
     case "modules":
       return <ModuleGovernanceSettings />;
     case "mcp":
@@ -149,7 +159,7 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
     case "admin":
       return <AdminManagement />;
     default:
-      return <TicketingSettings />;
+      return <PipelineStagesSettings />;
   }
 }
 
