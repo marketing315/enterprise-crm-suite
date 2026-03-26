@@ -26,9 +26,16 @@ export type ActionType =
   | "create_ticket" 
   | "send_outbound_webhook" 
   | "set_callback_requested"
-  | "log_note";
+  | "log_note"
+  | "if_else"
+  | "delay"
+  | "loop"
+  | "http_request";
 
  export type TriggerType = "webhook_event" | "cron";
+
+export type DelayUnit = "seconds" | "minutes" | "hours";
+export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
 export interface Action {
   type: ActionType;
@@ -39,6 +46,21 @@ export interface Action {
   webhook_id?: string;
   value?: boolean;
   note?: string;
+  // if_else
+  conditions?: Conditions;
+  then_actions?: Action[];
+  else_actions?: Action[];
+  // delay
+  delay_value?: number;
+  delay_unit?: DelayUnit;
+  // loop
+  items_path?: string;
+  loop_actions?: Action[];
+  // http_request
+  url?: string;
+  method?: HttpMethod;
+  headers?: Record<string, string>;
+  body?: string;
 }
 
 export interface AutomationRule {
@@ -153,6 +175,10 @@ export const ACTION_TYPES: { value: ActionType; label: string; description: stri
   { value: "set_callback_requested", label: "Richiedi Ricontatto", description: "Imposta flag callback_requested" },
   { value: "send_outbound_webhook", label: "Invia Webhook", description: "Inoltra ad un webhook outbound" },
   { value: "log_note", label: "Aggiungi Nota", description: "Aggiunge una nota all'entità" },
+  { value: "if_else", label: "IF / ELSE", description: "Branching condizionale: esegue azioni diverse in base a condizioni" },
+  { value: "delay", label: "Delay / Attesa", description: "Mette in pausa il workflow per un tempo definito" },
+  { value: "loop", label: "Loop / Iterazione", description: "Ripete un blocco di azioni per ogni elemento di una lista" },
+  { value: "http_request", label: "HTTP Request", description: "Chiamata HTTP generica configurabile" },
 ];
 
 export const CONDITION_OPERATORS: { value: ConditionOperator; label: string }[] = [
