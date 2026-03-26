@@ -166,7 +166,7 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const { hasRole, isAdmin } = useAuth();
-  const [activeSection, setActiveSection] = useState("ticketing");
+  const [activeSection, setActiveSection] = useState("pipeline");
   // Mobile: show nav or content
   const [mobileShowContent, setMobileShowContent] = useState(false);
 
