@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check, GitBranch, Timer, Repeat, Globe } from "lucide-react";
+import { Plus, Trash2, GripVertical, Sparkles, Loader2, ChevronDown, Clock, Check, GitBranch, Timer, Repeat, Globe, Edit2 } from "lucide-react";
 import {
   useCreateAutomationRule,
   useUpdateAutomationRule,
@@ -37,6 +37,7 @@ import {
   CONDITION_OPERATORS,
 } from "@/hooks/useAutomationRules";
  import { useAutomationEventTypes } from "@/hooks/useInboundSources";
+import { WorkflowNodeIcon, getNodeConfig } from "./WorkflowNodeIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -504,79 +505,261 @@ interface Props {
 
           <Separator />
 
-          {/* Actions */}
+          {/* Workflow Builder */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-base">Azioni *</Label>
-              <Button variant="outline" size="sm" onClick={handleAddAction}>
-                <Plus className="h-4 w-4 mr-1" />
-                Aggiungi
-              </Button>
+              <div>
+                <Label className="text-base">Workflow *</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Trascina i nodi per costruire il flusso di automazione
+                </p>
+              </div>
             </div>
 
-            {actions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aggiungi almeno un'azione da eseguire
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {actions.map((action, index) => (
-                  <Card key={index}>
-                    <CardHeader className="p-3 pb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          <Badge variant="outline">{index + 1}</Badge>
-                          <Select
-                            value={action.type}
-                            onValueChange={(v) => handleActionChange(index, { type: v as Action["type"] })}
-                          >
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ACTION_TYPES.map((at) => (
-                                <SelectItem key={at.value} value={at.value}>
-                                  {at.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveAction(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      <ActionFields
-                        action={action}
-                        onChange={(updates) => handleActionChange(index, updates)}
-                      />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            {/* Visual workflow flow */}
+            <div className="relative">
+              {actions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border/50 rounded-xl bg-muted/20">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                    <Plus className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium mb-1">Aggiungi il primo nodo</p>
+                  <p className="text-xs text-muted-foreground mb-3">Scegli un'azione per iniziare il workflow</p>
+                  <WorkflowNodePicker onSelect={(type) => setActions([{ type }])} />
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  {actions.map((action, index) => (
+                    <WorkflowNodeCard
+                      key={index}
+                      action={action}
+                      index={index}
+                      isLast={index === actions.length - 1}
+                      onChange={(updates) => handleActionChange(index, updates)}
+                      onRemove={() => handleRemoveAction(index)}
+                    />
+                  ))}
+                  {/* Add node button after last node */}
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="w-px h-4 bg-border" />
+                    <WorkflowNodePicker onSelect={(type) => setActions([...actions, { type }])} />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Submit */}
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          <div className="flex gap-2 pt-4 sticky bottom-0 bg-background pb-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading} className="flex-1">
               Annulla
             </Button>
-            <Button onClick={handleSubmit} disabled={isLoading}>
-              {isLoading ? "Salvataggio..." : editingRule ? "Salva Modifiche" : "Crea Regola"}
+            <Button onClick={handleSubmit} disabled={isLoading} className="flex-1">
+              {isLoading ? "Salvataggio..." : editingRule ? "Salva Modifiche" : "Crea Workflow"}
             </Button>
           </div>
         </div>
       </SheetContent>
     </Sheet>
   );
+}
+
+// Node type picker dropdown
+function WorkflowNodePicker({ onSelect }: { onSelect: (type: Action["type"]) => void }) {
+  const [open, setOpen] = useState(false);
+
+  const categories = [
+    {
+      label: "Azioni CRM",
+      types: ["upsert_contact", "add_tag", "create_deal", "create_ticket", "set_callback_requested", "log_note", "send_outbound_webhook"] as const,
+    },
+    {
+      label: "Controllo Flusso",
+      types: ["if_else", "delay", "loop", "http_request"] as const,
+    },
+  ];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          className="rounded-full h-8 px-4 border-dashed border-primary/30 text-primary hover:bg-primary/5"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          Aggiungi Nodo
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-2" align="center">
+        <ScrollArea className="max-h-[320px]">
+          {categories.map((cat) => (
+            <div key={cat.label}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5">
+                {cat.label}
+              </p>
+              {cat.types.map((type) => {
+                const info = ACTION_TYPES.find((t) => t.value === type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      onSelect(type);
+                      setOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-accent transition-colors text-left"
+                  >
+                    <WorkflowNodeIcon type={type} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium leading-tight">{info?.label || type}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight truncate">{info?.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Visual workflow node card with connector line
+function WorkflowNodeCard({
+  action,
+  index,
+  isLast,
+  onChange,
+  onRemove,
+}: {
+  action: Action;
+  index: number;
+  isLast: boolean;
+  onChange: (updates: Partial<Action>) => void;
+  onRemove: () => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const config = getNodeConfig(action.type);
+  const label = ACTION_TYPES.find((t) => t.value === action.type)?.label || action.type;
+
+  return (
+    <div className="relative">
+      {/* Connector line from previous node */}
+      {index > 0 && (
+        <div className="flex justify-center h-3">
+          <div className="w-px bg-border" />
+        </div>
+      )}
+
+      {/* Node card */}
+      <div className={cn(
+        "rounded-xl border transition-all duration-200",
+        "bg-card hover:shadow-sm",
+        expanded && "shadow-sm"
+      )}>
+        {/* Node header */}
+        <div
+          className="flex items-center gap-2.5 p-3 cursor-pointer select-none"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <WorkflowNodeIcon type={action.type} size="md" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold">{label}</span>
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-normal text-muted-foreground">
+                #{index + 1}
+              </Badge>
+            </div>
+            {!expanded && (
+              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                {getNodeSummary(action)}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {/* Type switcher */}
+            <Select
+              value={action.type}
+              onValueChange={(v) => onChange({ type: v as Action["type"] })}
+            >
+              <SelectTrigger className="h-7 w-7 p-0 border-none shadow-none [&>svg]:hidden" onClick={(e) => e.stopPropagation()}>
+                <Edit2 className="h-3 w-3 text-muted-foreground" />
+              </SelectTrigger>
+              <SelectContent>
+                {ACTION_TYPES.map((at) => (
+                  <SelectItem key={at.value} value={at.value}>
+                    <span className="flex items-center gap-2">
+                      <WorkflowNodeIcon type={at.value} size="sm" />
+                      {at.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+          </div>
+        </div>
+
+        {/* Node body */}
+        {expanded && (
+          <div className="px-3 pb-3 pt-0">
+            <div className={cn("rounded-lg p-3", config.bg, "bg-opacity-30")}>
+              <ActionFields action={action} onChange={onChange} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Connector to next node */}
+      {!isLast && (
+        <div className="flex justify-center h-3">
+          <div className="w-px bg-border" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Summary text when node is collapsed
+function getNodeSummary(action: Action): string {
+  switch (action.type) {
+    case "upsert_contact":
+      return action.match?.phone || "Trova/crea contatto per telefono";
+    case "add_tag":
+      return action.tag || "Seleziona un tag...";
+    case "create_deal":
+      return "Crea deal per il contatto";
+    case "create_ticket":
+      return action.fields?.title || "Nuovo ticket";
+    case "set_callback_requested":
+      return action.value !== false ? "Attiva ricontatto" : "Disattiva ricontatto";
+    case "log_note":
+      return action.note?.slice(0, 50) || "Aggiungi nota...";
+    case "send_outbound_webhook":
+      return action.webhook_id || "Seleziona webhook...";
+    case "if_else":
+      return `Then: ${action.then_actions?.length || 0} · Else: ${action.else_actions?.length || 0} azioni`;
+    case "delay":
+      return `${action.delay_value || 0} ${action.delay_unit === "minutes" ? "min" : action.delay_unit === "hours" ? "ore" : "sec"}`;
+    case "loop":
+      return `${action.loop_actions?.length || 0} azioni su ${action.items_path || "..."}`;
+    case "http_request":
+      return `${action.method || "POST"} ${action.url || "..."}`;
+    default:
+      return "";
+  }
 }
 
 // Reusable nested action list for IF/ELSE branches and Loop
@@ -593,7 +776,7 @@ function NestedActionList({
 }) {
   if (depth > 3) return <p className="text-xs text-destructive">Nidificazione massima raggiunta (3 livelli)</p>;
 
-  const handleAdd = () => onChange([...actions, { type: "upsert_contact" }]);
+  const handleAdd = (type: Action["type"]) => onChange([...actions, { type }]);
   const handleRemove = (i: number) => onChange(actions.filter((_, idx) => idx !== i));
   const handleChange = (i: number, updates: Partial<Action>) => {
     const updated = [...actions];
@@ -602,43 +785,52 @@ function NestedActionList({
   };
 
   return (
-    <div className={cn("space-y-2 border-l-2 border-muted pl-3", depth > 1 && "ml-2")}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <Button variant="ghost" size="sm" type="button" onClick={handleAdd} className="h-6 px-2">
-          <Plus className="h-3 w-3 mr-1" />
-          Aggiungi
-        </Button>
-      </div>
+    <div className={cn(
+      "rounded-lg border border-dashed border-border/60 p-2.5 space-y-0",
+      depth > 1 && "ml-1"
+    )}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+        {label}
+      </p>
       {actions.map((action, i) => (
-        <Card key={i} className="p-2">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1">
-              <Badge variant="outline" className="text-[10px] px-1">{i + 1}</Badge>
-              <Select
-                value={action.type}
-                onValueChange={(v) => handleChange(i, { type: v as Action["type"] })}
-              >
-                <SelectTrigger className="w-[180px] h-7 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTION_TYPES.map((at) => (
-                    <SelectItem key={at.value} value={at.value}>{at.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div key={i} className="relative">
+          {i > 0 && (
+            <div className="flex justify-center h-2">
+              <div className="w-px bg-border" />
             </div>
-            <Button variant="ghost" size="icon" type="button" className="h-6 w-6" onClick={() => handleRemove(i)}>
-              <Trash2 className="h-3 w-3 text-destructive" />
-            </Button>
+          )}
+          <div className="rounded-lg border bg-card p-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <WorkflowNodeIcon type={action.type} size="sm" />
+                <Select
+                  value={action.type}
+                  onValueChange={(v) => handleChange(i, { type: v as Action["type"] })}
+                >
+                  <SelectTrigger className="w-[160px] h-6 text-[11px] border-none shadow-none px-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTION_TYPES.map((at) => (
+                      <SelectItem key={at.value} value={at.value}>{at.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="ghost" size="icon" type="button" className="h-5 w-5" onClick={() => handleRemove(i)}>
+                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </Button>
+            </div>
+            <ActionFields action={action} onChange={(u) => handleChange(i, u)} depth={depth} />
           </div>
-          <ActionFields action={action} onChange={(u) => handleChange(i, u)} depth={depth} />
-        </Card>
+        </div>
       ))}
       {actions.length === 0 && (
-        <p className="text-xs text-muted-foreground italic">Nessuna azione</p>
+        <p className="text-[10px] text-muted-foreground italic text-center py-2">Nessuna azione</p>
       )}
+      <div className="flex justify-center pt-2">
+        <WorkflowNodePicker onSelect={(type) => handleAdd(type)} />
+      </div>
     </div>
   );
 }
@@ -807,7 +999,7 @@ function ActionFields({
           </div>
           {(action.delay_unit === "minutes" && (action.delay_value || 0) > 0) ||
           (action.delay_unit === "hours") ? (
-            <p className="text-xs text-amber-600">
+            <p className="text-xs text-destructive/80">
               ⚠️ Delay superiori a 25 secondi verranno schedulati come job asincrono
             </p>
           ) : null}
