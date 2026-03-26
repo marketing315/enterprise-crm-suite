@@ -1,51 +1,68 @@
 
 
-## Creazione Documento PDF Descrittivo del Progetto CRM
+## Evoluzione Automazioni → Workflow con Step Avanzati (stile n8n)
 
-### Obiettivo
-Generare un documento PDF completo e professionale che descriva il progetto CRM Lead Management Platform a una persona che non lo conosce. Il documento coprirà tre sezioni principali:
+### Situazione Attuale
+Il motore di automazione esegue una lista lineare di azioni sequenziali (`multi_action`). Non supporta branching condizionale, delay, loop o HTTP request generici. Il backend (`automation-runner`) itera gli step uno dopo l'altro con `stop_on_failure`.
 
-1. **Cos'è e cosa fa** — panoramica della piattaforma, architettura, moduli, ruoli utente
-2. **Cosa è stato implementato** — dettaglio funzionalità realizzate con le logiche sottostanti
-3. **Cosa resta da implementare** — funzionalità mancanti, logiche da aggiungere, miglioramenti futuri
+### Cosa Cambia
+Evoluzione del sistema da "lista di azioni" a "workflow con nodi tipizzati" che supporta IF/ELSE, Delay, Loop e HTTP Request — mantenendo la UI a lista (non canvas).
 
-### Struttura del Documento (~15-20 pagine)
+### Modello Dati — Nuovi Tipi di Nodo
 
-**Copertina**: Titolo, data, versione
+Estendere il tipo `Action` (salvato nel campo JSON `actions` della tabella `automation_rules`) con 4 nuovi tipi:
 
-**Sezione 1 — Panoramica della Piattaforma**
-- Cos'è: CRM enterprise multi-brand per gestione ciclo lead-to-deal
-- A chi serve: aziende con più brand, call center, venditori sul campo
-- Architettura tecnica (frontend React + backend cloud)
-- Sistema ruoli (CEO, Admin, Responsabili, Venditori, Operatori)
-- Multi-brand e multi-tenancy
+```text
+Tipo Nodo          Comportamento
+─────────────────  ──────────────────────────────────────
+if_else            Valuta condizioni → esegue branch "then" o "else"
+                   Campi: conditions, then_actions[], else_actions[]
+delay              Pausa il workflow per N secondi/minuti/ore
+                   Campi: delay_value, delay_unit (seconds|minutes|hours)
+loop               Itera su un array del payload, esegue sub-actions per ogni item
+                   Campi: items_path, loop_actions[]
+http_request       Chiamata HTTP generica configurabile
+                   Campi: url, method, headers, body (con template {{...}})
+```
 
-**Sezione 2 — Funzionalità Implementate**
-Per ogni modulo implementato, descrivere cosa fa e la logica:
-- Ingestion Lead (Webhook inbound, Meta Lead Ads, Keplero)
-- Gestione Contatti (anagrafica, telefoni, deduplicazione, household)
-- Pipeline & Deals (Kanban, stage configurabili, scoring AI, drag-drop)
-- Ticketing & SLA (breach detection, queue, priorità, audit)
-- Appuntamenti (scheduling, tipi, qualificazione lead)
-- AI Classification (priorità automatica, confidence, override)
-- Automazioni (rule engine, dispatcher, job runner)
-- Marketing (campagne, costi, canali, report, analytics Meta/GA4)
-- Google Sheets Export (sync real-time, KPI dashboard)
-- Outbound Webhooks (retry esponenziale, DLQ, HMAC)
-- VOIspeed (click-to-call, screen-pop, log chiamate)
-- Dashboard per ruolo (6 dashboard specializzate)
-- Notifiche, Chat team, Tag & Filtri
-- Settings (brand, pipeline stages, SLA, moduli, webhook config)
-- Sicurezza (RLS, HMAC, API key hash, RBAC)
+Non serve migrazione DB: tutto è nel campo JSON `actions`.
 
-**Sezione 3 — Cosa Manca / Da Implementare**
-- Funzionalità in "Evaluate" e "Freeze" dal portfolio rationalization
-- Logiche mancanti identificate (reporting avanzato, workflow approvativi, integrazioni aggiuntive, mobile app nativa, onboarding guidato, ecc.)
-- Miglioramenti suggeriti (test E2E completi, monitoring produzione, documentazione utente)
+### Piano di Implementazione
 
-### Approccio Tecnico
-- Script Python con `reportlab` per generare il PDF
-- Output in `/mnt/documents/CRM_Platform_Documentation.pdf`
-- Stile professionale con colori corporate (navy/teal), intestazioni chiare, tabelle formattate
-- QA visivo obbligatorio dopo generazione
+**1. Estendere i tipi frontend** (`src/hooks/useAutomationRules.ts`)
+- Aggiungere i 4 nuovi valori a `ActionType`
+- Aggiungere i campi specifici all'interfaccia `Action` (conditions, then_actions, else_actions, delay_value, delay_unit, items_path, loop_actions, url, method, headers, body)
+- Aggiungere le nuove entry in `ACTION_TYPES`
+
+**2. Aggiungere i form dei nuovi nodi** (`AutomationRuleFormDrawer.tsx`)
+- `ActionFields` per `if_else`: editor condizioni + due liste azioni nidificate (then/else) con indentazione visiva
+- `ActionFields` per `delay`: input numerico + select unità
+- `ActionFields` per `loop`: input path array + lista sub-actions nidificata
+- `ActionFields` per `http_request`: input URL, select metodo (GET/POST/PUT/DELETE), editor headers key-value, textarea body con supporto template
+- Le liste nidificate (then/else/loop) riutilizzano lo stesso componente azione con un livello di indentazione
+
+**3. Aggiornare il backend** (`supabase/functions/automation-runner/index.ts`)
+- Aggiungere executor per `if_else`: valuta condizioni con `evaluateCondition`, poi esegue ricorsivamente `then_actions` o `else_actions`
+- Aggiungere executor per `delay`: `await new Promise(r => setTimeout(r, ms))` (max 30 secondi per edge function; delay più lunghi schedulano un `automation_job`)
+- Aggiungere executor per `loop`: risolve `items_path` dal payload, itera ed esegue `loop_actions` per ogni elemento
+- Aggiungere executor per `http_request`: fetch con URL/method/headers/body risolti via template, salva status code e response nel step log
+- Rendere l'esecuzione degli step ricorsiva per supportare nidificazione
+
+**4. Aggiornare log e preview**
+- `getActionsPreview` in `LinkedAutomationsSection` e `AutomationSettings` per mostrare i nuovi tipi
+- `StepLog` già supporta action_type arbitrari, nessuna modifica necessaria
+
+### Dettagli Tecnici
+
+- **Nidificazione massima**: 3 livelli (es. IF → loop → azione) per evitare complessità eccessiva
+- **Delay lungo**: Se > 25 secondi, il delay crea un `automation_job` con `run_at` futuro e interrompe l'esecuzione corrente. Il job dispatcher riprende il workflow dallo step successivo.
+- **HTTP Request**: Timeout 10 secondi, response salvata in `step_log.result`
+- **Loop**: Max 50 iterazioni per evitare timeout edge function
+
+### File Modificati
+1. `src/hooks/useAutomationRules.ts` — tipi e costanti
+2. `src/components/settings/automation/AutomationRuleFormDrawer.tsx` — UI form per i 4 nuovi nodi
+3. `supabase/functions/automation-runner/index.ts` — executor backend ricorsivo
+4. `src/components/settings/automation/AutomationSettings.tsx` — preview label
+5. `src/components/settings/webhooks/LinkedAutomationsSection.tsx` — preview label
 
