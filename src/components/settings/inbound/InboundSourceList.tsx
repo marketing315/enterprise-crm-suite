@@ -73,6 +73,23 @@ export function InboundSourceList() {
     },
   });
 
+  const toggleCountsAsLeadMutation = useMutation({
+    mutationFn: async ({ id, counts_as_new_lead }: { id: string; counts_as_new_lead: boolean }) => {
+      const { error } = await supabase
+        .from("webhook_sources")
+        .update({ counts_as_new_lead })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["inbound-sources"] });
+      toast.success(variables.counts_as_new_lead ? "Conta come nuovo lead" : "Non conta come nuovo lead");
+    },
+    onError: (error) => {
+      toast.error(`Errore: ${error.message}`);
+    },
+  });
+
   const handleCopyEndpoint = (sourceId: string) => {
     const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${sourceId}`;
     copyToClipboard(endpoint, "Endpoint");
@@ -152,11 +169,14 @@ export function InboundSourceList() {
                         HMAC
                       </Badge>
                     )}
-                    {!source.counts_as_new_lead && (
-                      <Badge variant="secondary" className="gap-1 text-xs">
-                        Non conta come lead
-                      </Badge>
-                    )}
+                    <Badge
+                      variant={source.counts_as_new_lead ? "outline" : "secondary"}
+                      className="gap-1 text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => toggleCountsAsLeadMutation.mutate({ id: source.id, counts_as_new_lead: !source.counts_as_new_lead })}
+                      title={source.counts_as_new_lead ? "Clicca per non contare come lead" : "Clicca per contare come lead"}
+                    >
+                      {source.counts_as_new_lead ? "✓ Conta come lead" : "✗ Non conta come lead"}
+                    </Badge>
                     {source.default_pipeline_stage_id && pipelineStages && (() => {
                       const stage = pipelineStages.find(s => s.id === source.default_pipeline_stage_id);
                       return stage ? (
