@@ -1,5 +1,26 @@
-import { Settings as SettingsIcon, Tags, Ticket, Webhook, AlertCircle, FileSpreadsheet, ShieldCheck, Facebook, GitBranch, FormInput, Bell, Phone, Zap, Plug, Layers, Mailbox, Target, Search, Cpu } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
+import {
+  Settings as SettingsIcon,
+  Tags,
+  Ticket,
+  Webhook,
+  AlertCircle,
+  FileSpreadsheet,
+  ShieldCheck,
+  Facebook,
+  GitBranch,
+  FormInput,
+  Bell,
+  Phone,
+  Zap,
+  Plug,
+  Layers,
+  Mailbox,
+  Target,
+  Search,
+  Cpu,
+  ChevronRight,
+} from "lucide-react";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
@@ -23,12 +44,122 @@ import { McpSettingsModule } from "@/components/settings/mcp/McpSettingsModule";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface SettingsNavItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  adminOnly?: boolean;
+  brandAdminOnly?: boolean;
+  superAdminOnly?: boolean;
+}
+
+interface SettingsNavGroup {
+  label: string;
+  items: SettingsNavItem[];
+}
+
+const settingsGroups: SettingsNavGroup[] = [
+  {
+    label: "Generale",
+    items: [
+      { id: "ticketing", label: "Ticketing & SLA", icon: Ticket },
+      { id: "pipeline", label: "Pipeline", icon: GitBranch, brandAdminOnly: true },
+      { id: "custom-fields", label: "Campi personalizzati", icon: FormInput, brandAdminOnly: true },
+      { id: "tags", label: "Tag", icon: Tags },
+      { id: "notifications", label: "Notifiche", icon: Bell },
+    ],
+  },
+  {
+    label: "Lead & Automazioni",
+    items: [
+      { id: "automation", label: "Automazioni", icon: Zap, brandAdminOnly: true },
+      { id: "digest", label: "Lead Digest", icon: Mailbox, adminOnly: true },
+      { id: "attribution", label: "Attribution", icon: Target, brandAdminOnly: true },
+      { id: "keplero-lookup", label: "Keplero Lookup", icon: Search, brandAdminOnly: true },
+    ],
+  },
+  {
+    label: "Integrazioni",
+    items: [
+      { id: "webhooks", label: "Webhook", icon: Webhook, brandAdminOnly: true },
+      { id: "voip", label: "Telefonia VoIP", icon: Phone, brandAdminOnly: true },
+      { id: "sheets", label: "Google Sheets", icon: FileSpreadsheet, brandAdminOnly: true },
+      { id: "meta", label: "Meta Ads", icon: Facebook, brandAdminOnly: true },
+      { id: "oauth", label: "Canali OAuth", icon: Plug, brandAdminOnly: true },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { id: "modules", label: "Governance moduli", icon: Layers, superAdminOnly: true },
+      { id: "mcp", label: "MCP Server", icon: Cpu, superAdminOnly: true },
+      { id: "admin", label: "Gestione utenti", icon: ShieldCheck, superAdminOnly: true },
+    ],
+  },
+];
+
+function SettingsContent({ activeSection }: { activeSection: string }) {
+  switch (activeSection) {
+    case "ticketing":
+      return <TicketingSettings />;
+    case "pipeline":
+      return <PipelineStagesSettings />;
+    case "custom-fields":
+      return <CustomFieldsSettings />;
+    case "tags":
+      return <TagManager />;
+    case "notifications":
+      return <NotificationPreferencesSettings />;
+    case "automation":
+      return <AutomationSettings />;
+    case "digest":
+      return (
+        <div className="space-y-6">
+          <LeadDigestSettings />
+          <LeadDigestKpiCards />
+          <LeadDigestRunsTable />
+        </div>
+      );
+    case "attribution":
+      return <CampaignGroupsManager />;
+    case "keplero-lookup":
+      return <KepleroLookupSettings />;
+    case "webhooks":
+      return <WebhookSettings />;
+    case "voip":
+      return (
+        <div className="space-y-6">
+          <VoIPSettings />
+          <VOIspeedSettings />
+        </div>
+      );
+    case "sheets":
+      return <GoogleSheetsSettings />;
+    case "meta":
+      return <MetaAppsSettings />;
+    case "oauth":
+      return <OAuthChannelsSettings />;
+    case "modules":
+      return <ModuleGovernanceSettings />;
+    case "mcp":
+      return <McpSettingsModule />;
+    case "admin":
+      return <AdminManagement />;
+    default:
+      return <TicketingSettings />;
+  }
+}
 
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const { hasRole, isAdmin } = useAuth();
-  
+  const [activeSection, setActiveSection] = useState("ticketing");
+  // Mobile: show nav or content
+  const [mobileShowContent, setMobileShowContent] = useState(false);
+
   const isBrandAdmin = currentBrand ? hasRole("admin", currentBrand.id) : false;
 
   if (!hasBrandSelected) {
@@ -44,224 +175,120 @@ export default function Settings() {
     );
   }
 
+  const isItemVisible = (item: SettingsNavItem) => {
+    if (item.superAdminOnly && !isAdmin) return false;
+    if (item.brandAdminOnly && !isBrandAdmin) return false;
+    if (item.adminOnly && !isAdmin && !isBrandAdmin) return false;
+    return true;
+  };
+
+  const visibleGroups = settingsGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(isItemVisible),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  // Find current section label for mobile header
+  const currentItem = visibleGroups
+    .flatMap((g) => g.items)
+    .find((i) => i.id === activeSection);
+
+  const handleSelectSection = (id: string) => {
+    setActiveSection(id);
+    setMobileShowContent(true);
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary/10">
-          <SettingsIcon className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+      <div className="flex items-center gap-3 pb-4 border-b border-border/50">
+        {mobileShowContent && (
+          <button
+            className="md:hidden flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mr-1"
+            onClick={() => setMobileShowContent(false)}
+          >
+            <ChevronRight className="h-4 w-4 rotate-180" />
+          </button>
+        )}
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+          <SettingsIcon className="h-4.5 w-4.5 text-primary" />
         </div>
-        <div>
-          <h1 className="text-lg md:text-2xl font-semibold">Impostazioni</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">
-            Configura {currentBrand?.name}
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight truncate">
+            {mobileShowContent && currentItem ? currentItem.label : "Impostazioni"}
+          </h1>
+          <p className="text-xs text-muted-foreground truncate">
+            {currentBrand?.name}
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="ticketing" className="space-y-4">
-        {/* Mobile-optimized scrollable tabs */}
-        <div className="w-full overflow-x-auto scrollbar-hide">
-          <TabsList className="inline-flex h-8 w-max gap-0.5 p-0.5">
-            <TabsTrigger value="ticketing" className="gap-1.5 px-3 text-xs md:text-sm">
-              <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span>Ticketing</span>
-            </TabsTrigger>
-            {(isAdmin || isBrandAdmin) && (
-              <TabsTrigger value="digest" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Mailbox className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Digest</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="pipeline" className="gap-1.5 px-3 text-xs md:text-sm">
-                <GitBranch className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Pipeline</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="custom-fields" className="gap-1.5 px-3 text-xs md:text-sm">
-                <FormInput className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Campi</span>
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="tags" className="gap-1.5 px-3 text-xs md:text-sm">
-              <Tags className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span>Tag</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="gap-1.5 px-3 text-xs md:text-sm">
-              <Bell className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span>Notifiche</span>
-            </TabsTrigger>
-            {isBrandAdmin && (
-              <TabsTrigger value="voip" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Phone className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>VoIP</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="automation" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Zap className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Automazioni</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="attribution" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Target className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Attribution</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="keplero-lookup" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Search className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Keplero</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="webhooks" className="gap-1.5 px-3 text-xs md:text-sm" data-testid="webhooks-settings-tab">
-                <Webhook className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Webhook</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="sheets" className="gap-1.5 px-3 text-xs md:text-sm">
-                <FileSpreadsheet className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Sheets</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="meta" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Facebook className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Meta Ads</span>
-              </TabsTrigger>
-            )}
-            {isBrandAdmin && (
-              <TabsTrigger value="oauth" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Plug className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>OAuth</span>
-              </TabsTrigger>
-            )}
-            {isAdmin && (
-              <TabsTrigger value="modules" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Layers className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Moduli</span>
-              </TabsTrigger>
-            )}
-            {isAdmin && (
-              <TabsTrigger value="mcp" className="gap-1.5 px-3 text-xs md:text-sm">
-                <Cpu className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>MCP</span>
-              </TabsTrigger>
-            )}
-            {isAdmin && (
-              <TabsTrigger value="admin" className="gap-1.5 px-3 text-xs md:text-sm">
-                <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Admin</span>
-              </TabsTrigger>
-            )}
-          </TabsList>
-        </div>
+      {/* Body: sidebar + content */}
+      <div className="flex flex-1 min-h-0 pt-4 gap-6">
+        {/* Sidebar nav — hidden on mobile when content shown */}
+        <aside
+          className={cn(
+            "w-full md:w-56 lg:w-60 shrink-0",
+            mobileShowContent && "hidden md:block"
+          )}
+        >
+          <ScrollArea className="h-full pr-2">
+            <nav className="space-y-5">
+              {visibleGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-2 mb-1.5">
+                    {group.label}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeSection === item.id;
+                      return (
+                        <li key={item.id}>
+                          <button
+                            onClick={() => handleSelectSection(item.id)}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150",
+                              "hover:bg-accent/50",
+                              isActive
+                                ? "bg-accent text-accent-foreground font-medium shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                            {isActive && (
+                              <ChevronRight className="h-3.5 w-3.5 ml-auto shrink-0 text-muted-foreground/50 md:hidden" />
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </nav>
+          </ScrollArea>
+        </aside>
 
-        <TabsContent value="ticketing" className="space-y-4">
-          <TicketingSettings />
-        </TabsContent>
+        {/* Vertical divider */}
+        <div className="hidden md:block w-px bg-border/50 shrink-0" />
 
-        {isBrandAdmin && (
-          <TabsContent value="pipeline" className="space-y-4">
-            <PipelineStagesSettings />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="custom-fields" className="space-y-4">
-            <CustomFieldsSettings />
-          </TabsContent>
-        )}
-
-        <TabsContent value="tags" className="space-y-4">
-          <TagManager />
-        </TabsContent>
-
-        <TabsContent value="notifications" className="space-y-4">
-          <NotificationPreferencesSettings />
-        </TabsContent>
-
-        {isBrandAdmin && (
-          <TabsContent value="voip" className="space-y-4">
-            <VoIPSettings />
-            <VOIspeedSettings />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="automation" className="space-y-4">
-            <AutomationSettings />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="attribution" className="space-y-4">
-            <CampaignGroupsManager />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="webhooks" className="space-y-4">
-            <WebhookSettings />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="keplero-lookup" className="space-y-4">
-            <KepleroLookupSettings />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="sheets" className="space-y-4">
-            <GoogleSheetsSettings />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="meta" className="space-y-4">
-            <MetaAppsSettings />
-          </TabsContent>
-        )}
-
-        {isBrandAdmin && (
-          <TabsContent value="oauth" className="space-y-4">
-            <OAuthChannelsSettings />
-          </TabsContent>
-        )}
-
-        {isAdmin && (
-          <TabsContent value="modules" className="space-y-4">
-            <ModuleGovernanceSettings />
-          </TabsContent>
-        )}
-
-        {(isAdmin || isBrandAdmin) && (
-          <TabsContent value="digest" className="space-y-4">
-            <LeadDigestSettings />
-            <LeadDigestKpiCards />
-            <LeadDigestRunsTable />
-          </TabsContent>
-        )}
-
-        {isAdmin && (
-          <TabsContent value="mcp" className="space-y-4">
-            <McpSettingsModule />
-          </TabsContent>
-        )}
-
-        {isAdmin && (
-          <TabsContent value="admin" className="space-y-4">
-            <AdminManagement />
-          </TabsContent>
-        )}
-      </Tabs>
+        {/* Content */}
+        <main
+          className={cn(
+            "flex-1 min-w-0",
+            !mobileShowContent && "hidden md:block"
+          )}
+        >
+          <ScrollArea className="h-full">
+            <div className="max-w-3xl space-y-4 pb-8">
+              <SettingsContent activeSection={activeSection} />
+            </div>
+          </ScrollArea>
+        </main>
+      </div>
     </div>
   );
 }
