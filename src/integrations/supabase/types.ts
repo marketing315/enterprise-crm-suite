@@ -7377,6 +7377,7 @@ export type Database = {
           brand_id: string
           counts_as_new_lead: boolean
           created_at: string
+          default_pipeline_stage_id: string | null
           description: string | null
           handler: string | null
           hmac_enabled: boolean
@@ -7395,6 +7396,7 @@ export type Database = {
           brand_id: string
           counts_as_new_lead?: boolean
           created_at?: string
+          default_pipeline_stage_id?: string | null
           description?: string | null
           handler?: string | null
           hmac_enabled?: boolean
@@ -7413,6 +7415,7 @@ export type Database = {
           brand_id?: string
           counts_as_new_lead?: boolean
           created_at?: string
+          default_pipeline_stage_id?: string | null
           description?: string | null
           handler?: string | null
           hmac_enabled?: boolean
@@ -7432,6 +7435,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_sources_default_pipeline_stage_id_fkey"
+            columns: ["default_pipeline_stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -7490,6 +7500,7 @@ export type Database = {
           brand_id: string | null
           counts_as_new_lead: boolean | null
           created_at: string | null
+          default_pipeline_stage_id: string | null
           description: string | null
           hmac_enabled: boolean | null
           id: string | null
@@ -7503,6 +7514,7 @@ export type Database = {
           brand_id?: string | null
           counts_as_new_lead?: boolean | null
           created_at?: string | null
+          default_pipeline_stage_id?: string | null
           description?: string | null
           hmac_enabled?: boolean | null
           id?: string | null
@@ -7516,6 +7528,7 @@ export type Database = {
           brand_id?: string | null
           counts_as_new_lead?: boolean | null
           created_at?: string | null
+          default_pipeline_stage_id?: string | null
           description?: string | null
           hmac_enabled?: boolean | null
           id?: string | null
@@ -7531,6 +7544,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_sources_default_pipeline_stage_id_fkey"
+            columns: ["default_pipeline_stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -8002,10 +8022,19 @@ export type Database = {
         }
         Returns: string
       }
-      find_or_create_deal: {
-        Args: { p_brand_id: string; p_contact_id: string }
-        Returns: string
-      }
+      find_or_create_deal:
+        | {
+            Args: { p_brand_id: string; p_contact_id: string }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_brand_id: string
+              p_contact_id: string
+              p_stage_id?: string
+            }
+            Returns: string
+          }
       find_or_create_ticket: {
         Args: {
           p_brand_id: string
