@@ -196,7 +196,10 @@ export function MainLayout() {
           <SidebarHeader className="border-b border-sidebar-border">
             <div className="flex items-center gap-2 px-4 py-3">
               <img src="/favicon.svg" alt="Logo" className="h-7 w-7" />
-              <span className="font-bold text-lg">CRM Gruppo Benessere</span>
+              <div className="flex flex-col">
+                <h1 className="font-bold text-lg leading-tight">CRM</h1>
+                <h2 className="text-xs text-muted-foreground leading-tight">Gruppo Benessere</h2>
+              </div>
             </div>
             <div className="px-4 pb-3">
               <BrandSelector compact />
