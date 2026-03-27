@@ -195,7 +195,7 @@ export function MainLayout() {
         <Sidebar>
           <SidebarHeader className="border-b border-sidebar-border">
             <div className="flex items-center gap-2 px-4 py-3">
-              <Building2 className="h-6 w-6 text-primary" />
+              <img src="/favicon.svg" alt="Logo" className="h-7 w-7" />
               <span className="font-bold text-lg">CRM Gruppo Benessere</span>
             </div>
             <div className="px-4 pb-3">
