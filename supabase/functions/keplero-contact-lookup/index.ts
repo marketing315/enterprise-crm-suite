@@ -42,10 +42,13 @@ Deno.serve(async (req: Request) => {
   if (req.method === "GET") {
     const incomingUrl = new URL(req.url);
     if (!incomingUrl.searchParams.has("_t")) {
-      incomingUrl.searchParams.set("_t", Date.now().toString());
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!; // https://<ref>.supabase.co
+      const publicUrl = new URL(`${supabaseUrl}/functions/v1/keplero-contact-lookup`);
+      incomingUrl.searchParams.forEach((v, k) => publicUrl.searchParams.set(k, v));
+      publicUrl.searchParams.set("_t", Date.now().toString());
       return new Response(null, {
         status: 302,
-        headers: { ...corsHeaders, "Location": incomingUrl.toString() },
+        headers: { ...corsHeaders, "Location": publicUrl.toString() },
       });
     }
   }
