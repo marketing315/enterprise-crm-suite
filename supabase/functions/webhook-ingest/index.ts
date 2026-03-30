@@ -969,6 +969,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Save quiz answers if present in payload
+    const quizAnswers = effectivePayload.answers;
+    if (quizAnswers && typeof quizAnswers === "object" && !Array.isArray(quizAnswers)) {
+      await supabaseAdmin
+        .from("contacts")
+        .update({ quiz_answers: quizAnswers })
+        .eq("id", contactId);
+      console.log(JSON.stringify({ ...logContext, action: "quiz_answers_saved", contact_id: contactId }));
+    }
+
     // Notes are now passed to find_or_create_contact via p_lead_message
 
     // Extract and save tracking parameters for CAPI attribution

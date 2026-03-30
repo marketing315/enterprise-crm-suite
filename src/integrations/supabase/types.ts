@@ -2718,6 +2718,7 @@ export type Database = {
           phone: string | null
           phone_normalized: string | null
           province: string | null
+          quiz_answers: Json | null
           status: Database["public"]["Enums"]["contact_status"]
           updated_at: string
           vat_number: string | null
@@ -2768,6 +2769,7 @@ export type Database = {
           phone?: string | null
           phone_normalized?: string | null
           province?: string | null
+          quiz_answers?: Json | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
           vat_number?: string | null
@@ -2818,6 +2820,7 @@ export type Database = {
           phone?: string | null
           phone_normalized?: string | null
           province?: string | null
+          quiz_answers?: Json | null
           status?: Database["public"]["Enums"]["contact_status"]
           updated_at?: string
           vat_number?: string | null

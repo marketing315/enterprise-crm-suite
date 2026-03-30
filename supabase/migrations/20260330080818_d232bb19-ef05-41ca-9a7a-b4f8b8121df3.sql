@@ -1,0 +1,1 @@
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS quiz_answers jsonb DEFAULT NULL;
