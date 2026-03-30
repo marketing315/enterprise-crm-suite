@@ -1,54 +1,34 @@
 
 
-## Aggiunta "Risposte Quiz" al Dettaglio Contatto
+## Problema: Cache CDN su richieste GET
 
-### Cosa serve
+### Diagnosi
 
-Il payload webhook contiene un campo `answers` con domande fisse e risposte variabili (stringa singola o array). Serve:
-1. Una colonna JSONB `quiz_answers` sulla tabella `contacts` per persistere le risposte
-2. Il webhook-ingest deve mappare `answers` → `quiz_answers`
-3. Una nuova sezione nel dettaglio contatto che mostra domanda/risposte in modo leggibile
+Il flusso è: **Keplero → CDN Supabase → Edge Function**
 
-### Implementazione
+Le richieste GET con URL identico (stesso telefono, brand, secret) possono essere servite dalla cache CDN senza mai raggiungere la Edge Function. Gli header `Cache-Control` nella risposta controllano il browser, ma il CDN potrebbe già aver intercettato la richiesta prima.
 
-**1. Migrazione DB**
-```sql
-ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS quiz_answers jsonb DEFAULT NULL;
+Il numero test `3333333333` funziona perché genera dati random — ma se il CDN serve una risposta cachata, i dati saranno identici tra chiamate ravvicinate.
+
+### Soluzione
+
+Tre interventi combinati:
+
+**1. Aggiungere header `CDN-Cache-Control` e `Vary`**
+Nella Edge Function `keplero-contact-lookup/index.ts`, aggiungere header specifici per il CDN:
 ```
-
-**2. Webhook Ingest** (`supabase/functions/webhook-ingest/index.ts`)
-- Nel blocco di creazione/aggiornamento contatto, mappare `effectivePayload.answers` → `quiz_answers` (salvare il JSON as-is)
-- Aggiungere `answers` al field mapping editor come campo disponibile
-
-**3. Nuovo componente `ContactQuizAnswersSection.tsx`**
-- Riceve `contact.quiz_answers` (tipo `Record<string, string | string[]>`)
-- Mostra ogni domanda come label bold, sotto le risposte come Badge (se array) o testo (se stringa singola)
-- Icona `ClipboardList` nel titolo sezione "Risposte Quiz"
-- Stile coerente con le altre sezioni (bordo, padding, separatore)
-
-**4. ContactDetailSheet** — Inserire la nuova sezione dopo "Dati Lead" (riga ~471)
-
-**5. Tipi** — Aggiungere `quiz_answers?: Record<string, string | string[]> | null` a `Contact` in `types/database.ts`
-
-**6. Field Mapping Editor** — Aggiungere `contact_snapshot.quiz_answers` alla categoria "Contatto - Lead Data"
-
-### UI della sezione
-
-```text
-─────────────────────────────
-📋 Risposte Quiz
-┌─────────────────────────────┐
-│ Di che natura è il tuo      │
-│ dolore?                     │
-│ [Cronico]                   │
-│                             │
-│ In quali parti del corpo    │
-│ senti dolore?               │
-│ [Schiena]                   │
-│                             │
-│ Quali trattamenti hai già   │
-│ provato?                    │
-│ [Farmaci] [Trattamenti nat] │
-└─────────────────────────────┘
+CDN-Cache-Control: no-store
+Vary: *
 ```
+Questi istruiscono esplicitamente il CDN (non solo il browser) a non cachare.
+
+**2. Aggiungere un timestamp anti-cache nella risposta**
+Includere `_nocache_ts` nel JSON di risposta per ogni chiamata (non solo il test number), così Keplero può verificare che ogni risposta è fresca.
+
+**3. Documentare per Keplero l'uso di cache-buster**
+Consigliare a Keplero di aggiungere un parametro `&_t={timestamp}` alla query string per forzare URL unici ad ogni richiesta. Questo è il metodo più affidabile per bypassare qualsiasi layer di cache.
+
+### File da modificare
+
+- `supabase/functions/keplero-contact-lookup/index.ts` — aggiornare `corsHeaders` con header anti-cache CDN, aggiungere `_nocache_ts` alla risposta
 
