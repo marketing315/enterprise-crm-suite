@@ -1,71 +1,54 @@
 
 
-## Redesign Completo: Creazione Regola Automazione → Wizard Multi-Step C-Level
+## Aggiunta "Risposte Quiz" al Dettaglio Contatto
 
-### Problema
-Il form attuale è un unico pannello Sheet lungo e denso con tutti i campi visibili insieme: trigger, condizioni, azioni, impostazioni avanzate. Non è intuitivo — sembra un form tecnico, non un workflow builder.
+### Cosa serve
 
-### Soluzione
-Sostituire il Sheet monolitico con un **wizard a step guidati** (stepper orizzontale) che divide la creazione in 4 fasi chiare, ciascuna con una UI pulita e focalizzata. Stile Apple-like, spaziatura generosa, animazioni fluide.
+Il payload webhook contiene un campo `answers` con domande fisse e risposte variabili (stringa singola o array). Serve:
+1. Una colonna JSONB `quiz_answers` sulla tabella `contacts` per persistere le risposte
+2. Il webhook-ingest deve mappare `answers` → `quiz_answers`
+3. Una nuova sezione nel dettaglio contatto che mostra domanda/risposte in modo leggibile
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  ① Trigger  →  ② Condizioni  →  ③ Workflow  →  ④ Review  │
-│─────────────────────────────────────────────────────│
-│                                                     │
-│   [Contenuto step corrente]                        │
-│                                                     │
-│                           ← Indietro    Avanti →   │
-└─────────────────────────────────────────────────────┘
+### Implementazione
+
+**1. Migrazione DB**
+```sql
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS quiz_answers jsonb DEFAULT NULL;
 ```
 
-### I 4 Step
+**2. Webhook Ingest** (`supabase/functions/webhook-ingest/index.ts`)
+- Nel blocco di creazione/aggiornamento contatto, mappare `effectivePayload.answers` → `quiz_answers` (salvare il JSON as-is)
+- Aggiungere `answers` al field mapping editor come campo disponibile
 
-**Step 1 — Trigger ("Quando")**
-- Card selezionabili grandi per tipo trigger (Webhook / Cron) con icona e descrizione
-- Sotto la selezione: evento webhook come card-grid categorizzate (Keplero, Meta, VOIspeed, Inbound) oppure cron picker
-- AI generator come banner in cima ("Descrivi in linguaggio naturale...")
-- Nome e descrizione inline, auto-suggeriti dopo la selezione trigger
+**3. Nuovo componente `ContactQuizAnswersSection.tsx`**
+- Riceve `contact.quiz_answers` (tipo `Record<string, string | string[]>`)
+- Mostra ogni domanda come label bold, sotto le risposte come Badge (se array) o testo (se stringa singola)
+- Icona `ClipboardList` nel titolo sezione "Risposte Quiz"
+- Stile coerente con le altre sezioni (bordo, padding, separatore)
 
-**Step 2 — Condizioni ("Filtri")**  
-- Opzionale, skip-pabile con un toggle "Applica solo se..."
-- Builder condizioni con chip visuali: `Campo` `Operatore` `Valore` in una riga pulita
-- Pulsante "+ Aggiungi filtro" minimalista
-- Testo esplicativo in linguaggio naturale sotto ogni riga (es. "Esegui solo se Nome esiste")
+**4. ContactDetailSheet** — Inserire la nuova sezione dopo "Dati Lead" (riga ~471)
 
-**Step 3 — Workflow ("Cosa fare")**
-- Il workflow builder attuale (nodi con connettori verticali) ma migliorato:
-  - Empty state con 3-4 template rapidi preconfigurati ("Crea contatto e tagga", "Invia webhook", etc.)
-  - Nodo picker come grid di card colorate invece che dropdown
-  - Drag handle visibile per riordinare
-  - Preview in linguaggio naturale sotto ogni nodo collassato
+**5. Tipi** — Aggiungere `quiz_answers?: Record<string, string | string[]> | null` a `Contact` in `types/database.ts`
 
-**Step 4 — Review ("Riepilogo")**
-- Vista read-only del workflow completo come flow visivo compatto
-- Toggle Attiva/Disattiva, Stop su errore, Priorità come impostazioni secondarie
-- Pulsante "Crea Workflow" prominente
+**6. Field Mapping Editor** — Aggiungere `contact_snapshot.quiz_answers` alla categoria "Contatto - Lead Data"
 
-### Dettagli Tecnici
+### UI della sezione
 
-**File da modificare:**
-1. `src/components/settings/automation/AutomationRuleFormDrawer.tsx` — Riscrittura completa: sostituire il form monolitico con un componente stepper che renderizza 4 sub-componenti
-2. Creare 4 nuovi componenti:
-   - `AutomationWizardTrigger.tsx` — Step 1
-   - `AutomationWizardConditions.tsx` — Step 2  
-   - `AutomationWizardWorkflow.tsx` — Step 3 (riusa WorkflowNodeCard, WorkflowNodePicker, NestedActionList, ActionFields)
-   - `AutomationWizardReview.tsx` — Step 4
-
-**Pattern UI:**
-- Stepper orizzontale con numeri/check e linea di connessione
-- Transizione fade tra step
-- Sheet mantiene `sm:max-w-3xl` per dare più spazio
-- Bottoni "Indietro / Avanti" fissi in basso con validazione per step
-- Step completati mostrano un check verde nella barra
-
-**Logica:**
-- Lo state rimane nel componente padre (AutomationRuleFormDrawer)
-- Ogni step riceve props e callbacks per aggiornare lo state
-- Validazione per step: Step 1 richiede trigger, Step 3 richiede almeno 1 azione
-- Il form AI resta nello Step 1 come opzione alternativa
-- In modalità edit, tutti gli step sono navigabili liberamente
+```text
+─────────────────────────────
+📋 Risposte Quiz
+┌─────────────────────────────┐
+│ Di che natura è il tuo      │
+│ dolore?                     │
+│ [Cronico]                   │
+│                             │
+│ In quali parti del corpo    │
+│ senti dolore?               │
+│ [Schiena]                   │
+│                             │
+│ Quali trattamenti hai già   │
+│ provato?                    │
+│ [Farmaci] [Trattamenti nat] │
+└─────────────────────────────┘
+```
 
