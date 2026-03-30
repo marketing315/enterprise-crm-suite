@@ -42,10 +42,8 @@ Deno.serve(async (req: Request) => {
   if (req.method === "GET") {
     const incomingUrl = new URL(req.url);
     if (!incomingUrl.searchParams.has("_t")) {
-      // Edge functions vedono URL interni; ricostruiamo l'URL pubblico corretto
-      const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || incomingUrl.host;
-      const proto = req.headers.get("x-forwarded-proto") || "https";
-      const publicUrl = new URL(`${proto}://${host}/functions/v1/keplero-contact-lookup`);
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!; // https://<ref>.supabase.co
+      const publicUrl = new URL(`${supabaseUrl}/functions/v1/keplero-contact-lookup`);
       incomingUrl.searchParams.forEach((v, k) => publicUrl.searchParams.set(k, v));
       publicUrl.searchParams.set("_t", Date.now().toString());
       return new Response(null, {
