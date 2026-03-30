@@ -1,0 +1,1 @@
+UPDATE public.contacts SET quiz_answers = '{"Di che natura è il tuo dolore?":"Traumatico","In quali parti del corpo senti dolore?":["Cervicale","Ginocchio"],"Quali trattamenti hai già provato per risolvere la tua patologia?":["Trattamenti naturali","Fiseoterapia"]}'::jsonb WHERE id = 'cad7245b-208a-45c3-a284-fa492e96445e';
