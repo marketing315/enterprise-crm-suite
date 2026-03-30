@@ -38,6 +38,18 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // Auto cache-buster: redirect GET senza _t per forzare URL unico
+  if (req.method === "GET") {
+    const incomingUrl = new URL(req.url);
+    if (!incomingUrl.searchParams.has("_t")) {
+      incomingUrl.searchParams.set("_t", Date.now().toString());
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, "Location": incomingUrl.toString() },
+      });
+    }
+  }
+
   const url = new URL(req.url);
 
   // Log essential request metadata for troubleshooting (no sensitive data)
