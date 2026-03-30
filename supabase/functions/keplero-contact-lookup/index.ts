@@ -6,9 +6,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-keplero-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+  "CDN-Cache-Control": "no-store",
   "Pragma": "no-cache",
   "Expires": "0",
   "Surrogate-Control": "no-store",
+  "Vary": "*",
 };
 
 function normalizePhone(phone: string): string {
@@ -438,6 +440,7 @@ Deno.serve(async (req: Request) => {
         note: nextAppointment.notes || "",
       } : null,
       custom_fields: customFields,
+      _nocache_ts: new Date().toISOString(),
     }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
