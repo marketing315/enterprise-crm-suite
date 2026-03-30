@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText } from 'lucide-react';
 import { CallTranscriptsSection } from './CallTranscriptsSection';
+import { ContactQuizAnswersSection } from './ContactQuizAnswersSection';
 import { Switch } from '@/components/ui/switch';
 import { ClickToCallButton } from './ClickToCallButton';
 import { CreateTicketDialog } from '@/components/tickets/CreateTicketDialog';
@@ -469,6 +470,9 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
 
               {/* Lead Data */}
               <ContactLeadDataSection contact={contact as any} />
+
+              {/* Quiz Answers */}
+              <ContactQuizAnswersSection quizAnswers={(contact as any)?.quiz_answers} />
 
               {/* Quick Actions */}
               <Separator />
