@@ -126,6 +126,7 @@ export interface Contact {
   note8?: string | null;
   note9?: string | null;
   note10?: string | null;
+  quiz_answers?: Record<string, string | string[]> | null;
   created_at: string;
   updated_at: string;
 }

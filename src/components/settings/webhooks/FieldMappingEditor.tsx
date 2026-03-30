@@ -67,6 +67,7 @@ const FIELD_CATEGORIES: FieldCategory[] = [
       { path: "contact_snapshot.lead_cost", label: "Costo Lead" },
       { path: "contact_snapshot.lead_valid", label: "Lead Valido (bool)" },
       { path: "contact_snapshot.lead_state_id", label: "ID Stato Lead" },
+      { path: "contact_snapshot.quiz_answers", label: "Risposte Quiz (JSON)" },
     ],
   },
   {
