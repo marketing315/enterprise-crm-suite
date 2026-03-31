@@ -26,6 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const syncRealtimeAuth = useCallback((nextSession: Session | null) => {
+    const accessToken = nextSession?.access_token;
+    if (!accessToken) return;
+
+    try {
+      void supabase.realtime.setAuth(accessToken);
+    } catch (error) {
+      console.warn('Failed to sync realtime auth:', error);
+    }
+  }, []);
+
   // H01 FIX: Track current auth user ID to prevent stale fetches
   const currentAuthIdRef = useRef<string | null>(null);
   // H02 FIX: Track if initial fetch is done to prevent double fetch
@@ -93,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, newSession) => {
         setSession(newSession);
         setSupabaseUser(newSession?.user ?? null);
+        syncRealtimeAuth(newSession);
 
         if (newSession?.user) {
           currentAuthIdRef.current = newSession.user.id;
@@ -125,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         setSession(existingSession);
         setSupabaseUser(existingSession?.user ?? null);
+        syncRealtimeAuth(existingSession);
 
         if (existingSession?.user) {
           currentAuthIdRef.current = existingSession.user.id;
@@ -146,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchUserData]);
+  }, [fetchUserData, syncRealtimeAuth]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

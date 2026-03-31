@@ -15,6 +15,45 @@ interface LogEntry {
 
 let logCounter = 0;
 
+function isEmptyPlainObject(value: unknown): value is Record<string, never> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value as Record<string, unknown>).length === 0
+  );
+}
+
+function formatLogArg(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value instanceof Error || value instanceof DOMException) {
+    return `${value.name}: ${value.message}`;
+  }
+
+  if (isEmptyPlainObject(value)) return "{}";
+
+  if (typeof value === "object" && value !== null) {
+    const errorLike = value as Record<string, unknown>;
+    const summary = {
+      name: errorLike.name,
+      message: errorLike.message,
+      code: errorLike.code,
+      details: errorLike.details,
+      hint: errorLike.hint,
+      status: errorLike.status,
+    };
+
+    const hasSummary = Object.values(summary).some(Boolean);
+    try {
+      return JSON.stringify(hasSummary ? summary : value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return String(value);
+}
+
 const levelColors: Record<string, string> = {
   error: "bg-destructive text-destructive-foreground",
   warn: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30",
@@ -29,10 +68,7 @@ export function ErrorConsolePanel() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const addLog = useCallback((level: LogEntry["level"], args: unknown[], stack?: string) => {
-    const message = args.map(a => {
-      if (typeof a === "string") return a;
-      try { return JSON.stringify(a, null, 2); } catch { return String(a); }
-    }).join(" ");
+    const message = args.map(formatLogArg).join(" ");
 
     // Defer state update to avoid "Cannot update a component while rendering a different component"
     queueMicrotask(() => {
@@ -51,11 +87,13 @@ export function ErrorConsolePanel() {
     console.error = (...args: unknown[]) => {
       // Filter out harmless recharts ref warnings
       const msg = String(args[0] ?? "");
+      const isSingleEmptyObject = args.length === 1 && isEmptyPlainObject(args[0]);
       if (
         msg.includes("Function components cannot be given refs") ||
         (msg.includes("DialogContent") && msg.includes("DialogTitle")) ||
         (msg.includes("Missing") && msg.includes("aria-describedby")) ||
-        msg.includes("contextMenuMessage")
+        msg.includes("contextMenuMessage") ||
+        isSingleEmptyObject
       ) {
         origError.apply(console, args);
         return;
@@ -74,11 +112,7 @@ export function ErrorConsolePanel() {
     const rejHandler = (e: PromiseRejectionEvent) => {
       const reason = e.reason;
       const isAbortError = reason instanceof DOMException && reason.name === "AbortError";
-      const isEmptyObjectReason =
-        typeof reason === "object" &&
-        reason !== null &&
-        !Array.isArray(reason) &&
-        Object.keys(reason as Record<string, unknown>).length === 0;
+      const isEmptyObjectReason = isEmptyPlainObject(reason);
 
       if (isAbortError || isEmptyObjectReason) {
         e.preventDefault();
