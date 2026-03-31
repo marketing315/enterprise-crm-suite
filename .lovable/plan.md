@@ -1,43 +1,28 @@
 
 
-## Problema
+## Piano: Eliminazione 7 contatti di test
 
-Keplero chiama il nostro endpoint via GET con URL identico ogni volta. Se un qualsiasi layer intermedio (CDN Supabase, proxy, ecc.) cacha la risposta, Keplero riceve dati stale — ad esempio il campo `ha_appuntamento` non aggiornato dopo che il deal cambia fase.
+### Contatti da eliminare
 
-Abbiamo già aggiunto header `Cache-Control`, `CDN-Cache-Control`, `Vary`, ecc., ma non possiamo garantire che tutti i proxy li rispettino. Keplero non può modificare la loro chiamata.
+| # | Nome | Telefono | ID |
+|---|------|----------|----|
+| 1 | TEST TEST | 3333333333 | `73c6c2cf-...` |
+| 2 | Test Lovable | 3330000000 | `d28be152-...` |
+| 3 | TEST3 TEST3 | 3333453432 | `cad7245b-...` |
+| 4 | test test | 381464599 | `b94fe1a5-...` |
+| 5 | Marco Rossi | 3331234567 | `965fdb54-...` |
+| 6 | Test Meta Lead | 31234278168 | `a1e5bfa9-...` |
+| 8 | Test Test | 3393635044 | `335152fa-...` |
 
-## Soluzione: Redirect con cache-buster automatico
+**Escluso:** Samuele Bolis (`8a2ca199-...`)
 
-Quando l'endpoint riceve una richiesta GET **senza** un parametro `_t` (timestamp), rispondiamo con un **302 redirect** verso lo stesso URL con `_t={timestamp}` aggiunto. Questo forza un URL unico ad ogni chiamata, rendendo impossibile il caching a qualsiasi livello.
+### Operazioni
 
-Il flusso diventa:
-```text
-Keplero → GET ...?phone=X&brand_slug=Y&secret=Z
-  ← 302 → GET ...?phone=X&brand_slug=Y&secret=Z&_t=1711812345678
-  ← 200 JSON (dati freschi)
-```
+Le tabelle con `ON DELETE CASCADE` su `contact_id` verranno pulite automaticamente (es. `contact_phones`, `lead_event_clinical_topics` via `lead_events`). Eseguirò nell'ordine:
 
-Se il parametro `_t` è già presente, la funzione procede normalmente e restituisce i dati.
+1. **DELETE `lead_events`** dove `contact_id` è uno dei 7 ID
+2. **DELETE `deals`** dove `contact_id` è uno dei 7 ID
+3. **DELETE `contacts`** per i 7 ID (cascade elimina `contact_phones` e altri riferimenti FK)
 
-## Modifica
-
-**File:** `supabase/functions/keplero-contact-lookup/index.ts`
-
-Subito dopo il check OPTIONS e il check del metodo (riga ~41, prima di qualsiasi logica), aggiungere:
-
-```typescript
-// Auto cache-buster: redirect GET senza _t per forzare URL unico
-if (req.method === "GET") {
-  const incomingUrl = new URL(req.url);
-  if (!incomingUrl.searchParams.has("_t")) {
-    incomingUrl.searchParams.set("_t", Date.now().toString());
-    return new Response(null, {
-      status: 302,
-      headers: { ...corsHeaders, "Location": incomingUrl.toString() },
-    });
-  }
-}
-```
-
-Nessuna modifica richiesta da parte di Keplero. Il redirect è trasparente per il loro client HTTP.
+Tutto tramite lo strumento di inserimento/delete dati (non migration, perché si tratta di dati, non schema).
 
