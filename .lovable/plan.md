@@ -1,20 +1,28 @@
 
 
-## Piano: Esportazione contatti in XLSX
+## Piano: Modifica inline di nome e colore delle fasi pipeline
 
-Esporterò tutti i 523 contatti dal database in un file Excel con le seguenti colonne:
+Attualmente il dialogo "Gestisci Fasi" permette solo di riordinare, aggiungere e disattivare le fasi. Aggiungerò la possibilità di modificare **nome** e **colore** direttamente cliccando sulla fase.
 
-- **Nome**
-- **Cognome**
-- **Telefono** (numero primario)
-- **Data creazione**
-- **Brand**
+### Cosa cambia
+
+**`src/components/pipeline/ManageStagesDialog.tsx`**
+
+1. **Click sul nome** → il testo diventa un campo `Input` editabile. Premendo Invio o perdendo il focus, il nome viene salvato tramite `useUpdatePipelineStage`.
+
+2. **Click sul pallino colorato** → si apre un `input[type=color]` (o un popover con i colori predefiniti) per cambiare il colore della fase. Il salvataggio avviene alla selezione.
+
+3. Il componente `SortableStageItem` riceverà una nuova prop `onUpdate` e gestirà internamente lo stato di editing (un semplice `isEditing` con stato locale).
+
+4. L'hook `useUpdatePipelineStage` (già esistente in `usePipelineStagesAdmin.ts`) verrà importato e usato — nessuna modifica lato hook o database necessaria.
 
 ### Dettagli tecnici
 
-1. Query `psql` per estrarre tutti i contatti con join su `contact_phones` (primary) e `brands`
-2. Script Python con `openpyxl` per generare il file XLSX formattato (header in grassetto, colonne auto-dimensionate, date in formato italiano dd/mm/yyyy)
-3. Output in `/mnt/documents/contatti_export.xlsx`
+- Stato locale `editingName` / `editingColor` nel componente `SortableStageItem`
+- Click sul nome → `setEditingName(true)`, mostra `<Input>` con `autoFocus`, `onBlur` e `onKeyDown Enter` per salvare
+- Click sul pallino → trigger di un `<input type="color">` nascosto via ref
+- Chiamata `useUpdatePipelineStage().mutate({ stageId, name, color })` al salvataggio
+- Stessa logica applicata anche alle fasi disattivate (sezione in basso)
 
-Un singolo file, nessuna modifica al codice del progetto.
+File modificato: solo `ManageStagesDialog.tsx`.
 
