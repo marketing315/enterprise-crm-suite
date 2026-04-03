@@ -367,7 +367,7 @@ async function ensureLeadsTab(accessToken: string, spreadsheetId: string): Promi
       }
     );
   }
-  await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
+  await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:X1`, [LEADS_HEADERS]);
   await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
   return sheetId;
 }
