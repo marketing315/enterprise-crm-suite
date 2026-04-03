@@ -28,6 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   DndContext,
   closestCenter,
   PointerSensor,
@@ -42,7 +47,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Settings2, Trash2, RotateCcw, Plus, GripVertical } from "lucide-react";
+import { Settings2, Trash2, RotateCcw, Plus, GripVertical, Pencil, Check, X } from "lucide-react";
 import { 
   usePipelineStagesAdmin,
   useDeactivatePipelineStage,
@@ -50,13 +55,178 @@ import {
   useDeletePipelineStagePermanently,
   useCreatePipelineStage,
   useReorderPipelineStages,
+  useUpdatePipelineStage,
 } from "@/hooks/usePipelineStagesAdmin";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+const STAGE_COLORS = [
+  "#6366f1", "#3b82f6", "#06b6d4", "#14b8a6", "#22c55e",
+  "#84cc16", "#eab308", "#f97316", "#ef4444", "#ec4899",
+  "#a855f7", "#8b5cf6", "#64748b", "#6b7280", "#71717a",
+];
+
+function StageColorPicker({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-5 h-5 rounded-full shrink-0 border-2 border-border hover:border-primary transition-colors cursor-pointer"
+          style={{ backgroundColor: color }}
+          title="Cambia colore"
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2" align="start" sideOffset={8}>
+        <div className="grid grid-cols-5 gap-1.5">
+          {STAGE_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={cn(
+                "w-6 h-6 rounded-full transition-all hover:scale-110",
+                color === c && "ring-2 ring-offset-2 ring-primary"
+              )}
+              style={{ backgroundColor: c }}
+              onClick={() => onChange(c)}
+            />
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface ManageStagesDialogProps {
   trigger?: React.ReactNode;
+}
+
+function InactiveStageItem({
+  stage,
+  onReactivate,
+  onDelete,
+  isReactivating,
+  isDeleting,
+}: {
+  stage: PipelineStage;
+  onReactivate: () => void;
+  onDelete: () => void;
+  isReactivating: boolean;
+  isDeleting: boolean;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(stage.name);
+  const [editColor, setEditColor] = useState(stage.color || "#6366f1");
+  const updateStage = useUpdatePipelineStage();
+
+  const handleSave = async () => {
+    const nameChanged = editName.trim() && editName !== stage.name;
+    const colorChanged = editColor !== (stage.color || "#6366f1");
+    if (nameChanged || colorChanged) {
+      await updateStage.mutateAsync({
+        stageId: stage.id,
+        name: nameChanged ? editName.trim() : undefined,
+        color: colorChanged ? editColor : undefined,
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditName(stage.name);
+    setEditColor(stage.color || "#6366f1");
+    setIsEditing(false);
+  };
+
+  const handleColorChange = async (newColor: string) => {
+    setEditColor(newColor);
+    if (!isEditing) {
+      await updateStage.mutateAsync({ stageId: stage.id, color: newColor });
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30 group">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <StageColorPicker color={isEditing ? editColor : (stage.color || "#6366f1")} onChange={handleColorChange} />
+        {isEditing ? (
+          <div className="flex items-center gap-1 flex-1 min-w-0">
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="h-7 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") handleCancel();
+              }}
+            />
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleSave} disabled={updateStage.isPending}>
+              <Check className="h-3.5 w-3.5 text-primary" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleCancel}>
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </div>
+        ) : (
+          <span
+            className="text-sm text-muted-foreground cursor-pointer hover:underline truncate"
+            onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+            title="Clicca per modificare"
+          >
+            {stage.name}
+          </span>
+        )}
+      </div>
+      {!isEditing && (
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Modifica nome</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onReactivate}
+                disabled={isReactivating}
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-primary" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Riattiva fase</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Elimina definitivamente</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SortableStageItem({
@@ -68,6 +238,11 @@ function SortableStageItem({
   onDeactivate: () => void;
   canDeactivate: boolean;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(stage.name);
+  const [editColor, setEditColor] = useState(stage.color || "#6366f1");
+  const updateStage = useUpdatePipelineStage();
+
   const {
     attributes,
     listeners,
@@ -84,13 +259,39 @@ function SortableStageItem({
     zIndex: isDragging ? 10 : undefined,
   };
 
+  const handleSave = async () => {
+    const nameChanged = editName.trim() && editName !== stage.name;
+    const colorChanged = editColor !== (stage.color || "#6366f1");
+    if (nameChanged || colorChanged) {
+      await updateStage.mutateAsync({
+        stageId: stage.id,
+        name: nameChanged ? editName.trim() : undefined,
+        color: colorChanged ? editColor : undefined,
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditName(stage.name);
+    setEditColor(stage.color || "#6366f1");
+    setIsEditing(false);
+  };
+
+  const handleColorChange = async (newColor: string) => {
+    setEditColor(newColor);
+    if (!isEditing) {
+      await updateStage.mutateAsync({ stageId: stage.id, color: newColor });
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+      className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-accent/50 transition-colors group"
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
         <button
           {...attributes}
           {...listeners}
@@ -98,30 +299,69 @@ function SortableStageItem({
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div
-          className="w-3 h-3 rounded-full shrink-0"
-          style={{ backgroundColor: stage.color || "#6366f1" }}
-        />
-        <span className="text-sm font-medium">{stage.name}</span>
-      </div>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={onDeactivate}
-            disabled={!canDeactivate}
+        <StageColorPicker color={isEditing ? editColor : (stage.color || "#6366f1")} onChange={handleColorChange} />
+        {isEditing ? (
+          <div className="flex items-center gap-1 flex-1 min-w-0">
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="h-7 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") handleCancel();
+              }}
+            />
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleSave} disabled={updateStage.isPending}>
+              <Check className="h-3.5 w-3.5 text-primary" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleCancel}>
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </div>
+        ) : (
+          <span
+            className="text-sm font-medium cursor-pointer hover:underline truncate"
+            onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+            title="Clicca per modificare"
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {!canDeactivate
-            ? "Deve rimanere almeno una fase attiva"
-            : "Disattiva fase"}
-        </TooltipContent>
-      </Tooltip>
+            {stage.name}
+          </span>
+        )}
+      </div>
+      {!isEditing && (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Modifica nome</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={onDeactivate}
+                disabled={!canDeactivate}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {!canDeactivate ? "Deve rimanere almeno una fase attiva" : "Disattiva fase"}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 }
@@ -295,50 +535,14 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
                     </Label>
                     <div className="space-y-1">
                       {inactiveStages.map((stage) => (
-                        <div
+                        <InactiveStageItem
                           key={stage.id}
-                          className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full shrink-0 opacity-50"
-                              style={{ backgroundColor: stage.color || "#6366f1" }}
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              {stage.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => reactivateStage.mutate(stage.id)}
-                                  disabled={reactivateStage.isPending}
-                                >
-                                  <RotateCcw className="h-4 w-4 text-primary" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Riattiva fase</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => setStageToDeletePermanently(stage)}
-                                  disabled={deleteStage.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Elimina definitivamente</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </div>
+                          stage={stage}
+                          onReactivate={() => reactivateStage.mutate(stage.id)}
+                          onDelete={() => setStageToDeletePermanently(stage)}
+                          isReactivating={reactivateStage.isPending}
+                          isDeleting={deleteStage.isPending}
+                        />
                       ))}
                     </div>
                   </div>
