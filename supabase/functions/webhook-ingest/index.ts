@@ -365,6 +365,47 @@ function tryExtractContactFields(payload: Record<string, unknown>): Partial<Extr
     }
   }
 
+  // Address
+  const addressFields = ["address", "indirizzo", "Address", "Indirizzo", "full_address", "fullAddress"];
+  for (const field of addressFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.address = value.trim();
+      break;
+    }
+  }
+
+  // Parse city and CAP from address string if not already found
+  // Matches Italian address patterns like "Via X, 9, 24030 Terno D'isola BG, Italia"
+  if (result.address && (!result.city || !result.cap)) {
+    const capMatch = result.address.match(/\b(\d{5})\b/);
+    if (capMatch && !result.cap) {
+      result.cap = capMatch[1];
+    }
+    // Try to extract city: text after CAP, before province code (2 uppercase letters)
+    const cityMatch = result.address.match(/\b\d{5}\s+([A-Za-zÀ-ú''\s]+?)(?:\s+[A-Z]{2}\s*,|\s*,\s*Italia|\s*$)/i);
+    if (cityMatch && !result.city) {
+      result.city = cityMatch[1].trim();
+    }
+  }
+
+  // Preferred days / time slot → append to notes
+  const preferredDays = payload.preferred_days;
+  const preferredTimeSlot = payload.preferred_time_slot || payload.preferredTimeSlot;
+  if (preferredDays || preferredTimeSlot) {
+    const parts: string[] = [];
+    if (Array.isArray(preferredDays) && preferredDays.length > 0) {
+      parts.push(`Giorni preferiti: ${preferredDays.join(", ")}`);
+    }
+    if (preferredTimeSlot && typeof preferredTimeSlot === "string") {
+      parts.push(`Fascia oraria: ${preferredTimeSlot}`);
+    }
+    if (parts.length > 0) {
+      const prefNote = parts.join(" | ");
+      result.notes = result.notes ? `${result.notes}\n${prefNote}` : prefNote;
+    }
+  }
+
   // Quiz data (e.g. fibromialgia.ch) → append to notes
   if (payload.quiz_score !== undefined || payload.quiz_percentage !== undefined) {
     const quizParts: string[] = [];
