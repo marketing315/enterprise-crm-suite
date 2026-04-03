@@ -303,10 +303,11 @@ async function fetchAllLeadsRows(
 
   const contactIds = [...new Set(events.map(e => e.contact_id).filter(Boolean))] as string[];
 
-  const [phonesRes, tagsRes, apptsRes] = await Promise.all([
+  const [phonesRes, tagsRes, apptsRes, dealsRes] = await Promise.all([
     supabaseAdmin.from("contact_phones").select("contact_id, phone_normalized").in("contact_id", contactIds).eq("is_primary", true),
     supabaseAdmin.from("tag_assignments").select("entity_id, tags(name)").eq("entity_type", "contact").in("entity_id", contactIds),
     supabaseAdmin.from("appointments").select("contact_id, status, scheduled_at, address, city, cap").in("contact_id", contactIds).order("scheduled_at", { ascending: false }),
+    supabaseAdmin.from("deals").select("contact_id, current_stage_id, pipeline_stages(name)").in("contact_id", contactIds).eq("status", "open").order("created_at", { ascending: false }),
   ]);
 
   const phoneMap = new Map<string, string>();
@@ -324,6 +325,13 @@ async function fetchAllLeadsRows(
     if (!apptMap.has(a.contact_id)) apptMap.set(a.contact_id, a);
   });
 
+  const stageMap = new Map<string, string>();
+  (dealsRes.data || []).forEach((d: any) => {
+    if (!stageMap.has(d.contact_id) && d.pipeline_stages?.name) {
+      stageMap.set(d.contact_id, d.pipeline_stages.name);
+    }
+  });
+
   return events.map(event => {
     const c = event.contacts as any;
     const contactId = event.contact_id as string;
@@ -332,6 +340,7 @@ async function fetchAllLeadsRows(
       phoneMap.get(contactId) || c?.phone_normalized || "",
       tagMap.get(contactId)?.join(", ") || "",
       apptMap.get(contactId) || null,
+      stageMap.get(contactId) || "",
     );
   });
 }
