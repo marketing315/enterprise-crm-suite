@@ -535,50 +535,14 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
                     </Label>
                     <div className="space-y-1">
                       {inactiveStages.map((stage) => (
-                        <div
+                        <InactiveStageItem
                           key={stage.id}
-                          className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full shrink-0 opacity-50"
-                              style={{ backgroundColor: stage.color || "#6366f1" }}
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              {stage.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => reactivateStage.mutate(stage.id)}
-                                  disabled={reactivateStage.isPending}
-                                >
-                                  <RotateCcw className="h-4 w-4 text-primary" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Riattiva fase</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => setStageToDeletePermanently(stage)}
-                                  disabled={deleteStage.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Elimina definitivamente</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </div>
+                          stage={stage}
+                          onReactivate={() => reactivateStage.mutate(stage.id)}
+                          onDelete={() => setStageToDeletePermanently(stage)}
+                          isReactivating={reactivateStage.isPending}
+                          isDeleting={deleteStage.isPending}
+                        />
                       ))}
                     </div>
                   </div>
