@@ -561,33 +561,35 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Disattiva "{stageToDeactivate?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                Questa azione disattiverà la fase. I deal attualmente in questa fase 
-                verranno spostati nella fase di fallback selezionata.
-              </p>
-              <div className="space-y-2">
-                <Label>Sposta i deal in:</Label>
-                <Select value={fallbackStageId} onValueChange={setFallbackStageId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona fase di fallback" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeStages
-                      .filter(s => s.id !== stageToDeactivate?.id)
-                      .map((stage) => (
-                        <SelectItem key={stage.id} value={stage.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: stage.color || "#6366f1" }}
-                            />
-                            {stage.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <span className="block">
+                  Questa azione disattiverà la fase. I deal attualmente in questa fase 
+                  verranno spostati nella fase di fallback selezionata.
+                </span>
+                <div className="space-y-2">
+                  <Label>Sposta i deal in:</Label>
+                  <Select value={fallbackStageId} onValueChange={setFallbackStageId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona fase di fallback" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeStages
+                        .filter(s => s.id !== stageToDeactivate?.id)
+                        .map((stage) => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: stage.color || "#6366f1" }}
+                              />
+                              {stage.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
