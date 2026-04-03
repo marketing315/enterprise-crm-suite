@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText, GitBranchPlus } from 'lucide-react';
 import { CallTranscriptsSection } from './CallTranscriptsSection';
 import { ContactQuizAnswersSection } from './ContactQuizAnswersSection';
 import { Switch } from '@/components/ui/switch';
@@ -51,6 +51,7 @@ import { ContactLeadDataSection } from './ContactLeadDataSection';
 import { LeadEventCard } from './LeadEventCard';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
 import { useContactDeal, useCreateContactDeal } from '@/hooks/useContactDeal';
+import { usePipelineStages } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
 import type { ContactStatus } from '@/types/database';
 
@@ -92,6 +93,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
   const { data: contact, isLoading: contactLoading } = useContact(contactId);
   const { data: events, isLoading: eventsLoading } = useLeadEvents(contactId || undefined);
   const { data: openDeal } = useContactDeal(contactId);
+  const { data: stages } = usePipelineStages();
   const createDeal = useCreateContactDeal();
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
@@ -473,6 +475,29 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
 
               {/* Quiz Answers */}
               <ContactQuizAnswersSection quizAnswers={(contact as any)?.quiz_answers} />
+
+              {/* Pipeline Stage */}
+              {openDeal && openDeal.current_stage_id && (() => {
+                const currentStage = stages?.find(s => s.id === openDeal.current_stage_id);
+                return currentStage ? (
+                  <>
+                    <Separator />
+                    <div className="space-y-1.5">
+                      <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                        <GitBranchPlus className="h-3.5 w-3.5" />
+                        Fase Pipeline
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: currentStage.color || 'hsl(var(--primary))' }}
+                        />
+                        <span className="text-sm font-medium">{currentStage.name}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : null;
+              })()}
 
               {/* Quick Actions */}
               <Separator />
