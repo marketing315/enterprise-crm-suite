@@ -476,6 +476,29 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
               {/* Quiz Answers */}
               <ContactQuizAnswersSection quizAnswers={(contact as any)?.quiz_answers} />
 
+              {/* Pipeline Stage */}
+              {openDeal && openDeal.current_stage_id && (() => {
+                const currentStage = stages?.find(s => s.id === openDeal.current_stage_id);
+                return currentStage ? (
+                  <>
+                    <Separator />
+                    <div className="space-y-1.5">
+                      <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                        <GitBranchPlus className="h-3.5 w-3.5" />
+                        Fase Pipeline
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: currentStage.color || 'hsl(var(--primary))' }}
+                        />
+                        <span className="text-sm font-medium">{currentStage.name}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : null;
+              })()}
+
               {/* Quick Actions */}
               <Separator />
               <div className="space-y-2">
