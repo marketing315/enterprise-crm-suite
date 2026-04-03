@@ -984,6 +984,7 @@ Deno.serve(async (req: Request) => {
     const email = extractedFields.email || null;
     const city = extractedFields.city || null;
     const cap = extractedFields.cap || null;
+    const address = extractedFields.address || null;
 
     // Find or create contact
     const { data: contactId, error: contactError } = await supabaseAdmin.rpc(
@@ -1000,6 +1001,7 @@ Deno.serve(async (req: Request) => {
         p_city: city,
         p_cap: cap,
         p_lead_message: extractedFields.notes || null,
+        p_address: address,
       }
     );
 
