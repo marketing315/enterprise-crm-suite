@@ -51,6 +51,7 @@ import { ContactLeadDataSection } from './ContactLeadDataSection';
 import { LeadEventCard } from './LeadEventCard';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
 import { useContactDeal, useCreateContactDeal } from '@/hooks/useContactDeal';
+import { usePipelineStages } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
 import type { ContactStatus } from '@/types/database';
 
