@@ -175,6 +175,7 @@ const LEADS_HEADERS = [
   "Tag", "Note",
   "Appuntamento Status", "Appuntamento Data", "Appuntamento Orario",
   "Appuntamento Via", "Appuntamento Civico", "Appuntamento Città", "Appuntamento CAP",
+  "Fase Pipeline",
 ];
 
 const TAB_NAME = "LEADS";
