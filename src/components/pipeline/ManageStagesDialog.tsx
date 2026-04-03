@@ -28,6 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   DndContext,
   closestCenter,
   PointerSensor,
@@ -42,7 +47,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Settings2, Trash2, RotateCcw, Plus, GripVertical } from "lucide-react";
+import { Settings2, Trash2, RotateCcw, Plus, GripVertical, Pencil, Check, X } from "lucide-react";
 import { 
   usePipelineStagesAdmin,
   useDeactivatePipelineStage,
@@ -50,7 +55,9 @@ import {
   useDeletePipelineStagePermanently,
   useCreatePipelineStage,
   useReorderPipelineStages,
+  useUpdatePipelineStage,
 } from "@/hooks/usePipelineStagesAdmin";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
