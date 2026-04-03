@@ -423,7 +423,7 @@ Deno.serve(async (req: Request) => {
 
     const sheetId = await ensureLeadsTab(accessToken, spreadsheetId);
     await clearSheet(accessToken, spreadsheetId, TAB_NAME);
-    await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
+    await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:X1`, [LEADS_HEADERS]);
     await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
 
     const rows = await fetchAllLeadsRows(supabaseAdmin, date_from || null, date_to || null);
