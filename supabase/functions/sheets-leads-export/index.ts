@@ -434,7 +434,7 @@ Deno.serve(async (req: Request) => {
         const batch = rows.slice(i, i + BATCH_SIZE);
         const startRow = i + 2;
         const endRow = startRow + batch.length - 1;
-        await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A${startRow}:W${endRow}`, batch);
+        await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A${startRow}:X${endRow}`, batch);
       }
     }
 
