@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -49,6 +49,17 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const columnsRef = useRef<HTMLDivElement>(null);
+
+  const scrollToStage = useCallback((stageId: string) => {
+    const el = document.getElementById(`stage-${stageId}`);
+    if (el && columnsRef.current) {
+      columnsRef.current.scrollTo({
+        left: el.offsetLeft - columnsRef.current.offsetLeft - 16,
+        behavior: 'smooth',
+      });
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -214,9 +225,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
             return (
               <button
                 key={stage.id}
-                onClick={() =>
-                  document.getElementById(`stage-${stage.id}`)?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
-                }
+                onClick={() => scrollToStage(stage.id)}
                 className="flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-accent text-left text-sm transition-colors"
               >
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color || 'hsl(var(--primary))' }} />
@@ -263,7 +272,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
+          <div ref={columnsRef} className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
             {stages.map((stage) => (
               <KanbanColumn
                 key={stage.id}
