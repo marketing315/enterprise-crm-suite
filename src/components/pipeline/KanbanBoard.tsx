@@ -17,11 +17,12 @@ import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCardPreview } from "./KanbanCardPreview";
 import { MobileKanbanView } from "./MobileKanbanView";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Lock, Globe } from "lucide-react";
+import { AlertCircle, Lock, Globe, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCanEditDeals } from "@/hooks/useCanEditDeals";
+import { cn } from "@/lib/utils";
 
 interface KanbanBoardProps {
   onDealClick?: (dealId: string) => void;
