@@ -7,6 +7,7 @@ import {
   parseISO,
   addWeeks,
   subWeeks,
+  isWithinInterval,
 } from "date-fns";
 import { it } from "date-fns/locale";
 import {
@@ -15,21 +16,16 @@ import {
   ChevronRight,
   Plus,
   RefreshCw,
-  User,
-  Clock,
-  MapPin,
-  Phone,
   Building2,
-  Stethoscope,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointments, useSetAppointmentStatus, useAssignAppointmentSales } from "@/hooks/useAppointments";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
-import type { AppointmentStatus, AppointmentType, AppointmentWithRelations } from "@/types/database";
+import { useIsMobile } from "@/hooks/use-mobile";
+import type { AppointmentStatus, AppointmentWithRelations } from "@/types/database";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -39,32 +35,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { NewAppointmentDialog } from "@/components/appointments/NewAppointmentDialog";
+import { AppointmentCard } from "@/components/appointments/AppointmentCard";
+import { AppointmentDaySelector } from "@/components/appointments/AppointmentDaySelector";
+import { AppointmentWeekStats } from "@/components/appointments/AppointmentWeekStats";
 
-const STATUS_CONFIG: Record<AppointmentStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  scheduled: { label: "Programmato", variant: "secondary" },
-  confirmed: { label: "Confermato", variant: "default" },
-  cancelled: { label: "Annullato", variant: "destructive" },
-  rescheduled: { label: "Riprogrammato", variant: "outline" },
-  visited: { label: "Visitato", variant: "default" },
-  no_show: { label: "Non presentato", variant: "destructive" },
-};
-
-const APPOINTMENT_TYPE_CONFIG: Record<AppointmentType, { label: string; color: string }> = {
-  primo_appuntamento: { label: "Primo", color: "bg-blue-100 text-blue-700 border-blue-300" },
-  follow_up: { label: "Follow-up", color: "bg-amber-100 text-amber-700 border-amber-300" },
-  visita_tecnica: { label: "Visita Tecnica", color: "bg-purple-100 text-purple-700 border-purple-300" },
-};
+const STATUS_FILTERS: { value: AppointmentStatus | "all"; label: string }[] = [
+  { value: "all", label: "Tutti" },
+  { value: "scheduled", label: "Programmati" },
+  { value: "confirmed", label: "Confermati" },
+  { value: "visited", label: "Visitati" },
+  { value: "cancelled", label: "Annullati" },
+  { value: "no_show", label: "No show" },
+];
 
 export default function Appointments() {
   const { currentBrand, hasBrandSelected, isAllBrandsSelected, brands } = useBrand();
+  const isMobile = useIsMobile();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
@@ -72,6 +60,7 @@ export default function Appointments() {
   const [salesFilter, setSalesFilter] = useState<string>("all");
   const [brandFilter, setBrandFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedMobileDay, setSelectedMobileDay] = useState(new Date());
 
   const weekEnd = addDays(weekStart, 6);
 
@@ -107,7 +96,6 @@ export default function Appointments() {
       }
     });
 
-    // Sort by time
     Object.keys(days).forEach((key) => {
       days[key].sort(
         (a, b) =>
@@ -117,6 +105,15 @@ export default function Appointments() {
 
     return days;
   }, [appointments, weekStart]);
+
+  // Count per day for mobile selector
+  const appointmentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.entries(appointmentsByDay).forEach(([key, apts]) => {
+      counts[key] = apts.length;
+    });
+    return counts;
+  }, [appointmentsByDay]);
 
   const handleStatusChange = async (appointmentId: string, status: AppointmentStatus) => {
     await setStatus.mutateAsync({ appointmentId, status });
@@ -139,123 +136,32 @@ export default function Appointments() {
     );
   }
 
-  const AppointmentCard = ({ apt }: { apt: AppointmentWithRelations }) => {
-    const contactName = [apt.contact?.first_name, apt.contact?.last_name]
-      .filter(Boolean)
-      .join(" ") || "Senza nome";
+  const today = new Date();
+  const isCurrentWeek = isWithinInterval(today, { start: weekStart, end: weekEnd });
 
-    const typeConfig = apt.appointment_type ? APPOINTMENT_TYPE_CONFIG[apt.appointment_type] : null;
-
-    return (
-      <Card className="mb-2">
-        <CardContent className="p-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={STATUS_CONFIG[apt.status].variant}>
-                  {STATUS_CONFIG[apt.status].label}
-                </Badge>
-                {typeConfig && (
-                  <Badge variant="outline" className={typeConfig.color}>
-                    <Stethoscope className="h-3 w-3 mr-1" />
-                    {typeConfig.label}
-                  </Badge>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3 inline mr-1" />
-                  {format(parseISO(apt.scheduled_at), "HH:mm")} - {apt.duration_minutes}min
-                </span>
-              </div>
-              {/* Brand badge in "All Brands" mode */}
-              {isAllBrandsSelected && apt.brand_name && (
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="text-xs bg-muted/50">
-                    <Building2 className="h-3 w-3 mr-1" />
-                    {apt.brand_name}
-                  </Badge>
-                </div>
-              )}
-              <p className="font-medium text-sm truncate">{contactName}</p>
-              {apt.contact?.primary_phone && (
-                <p className="text-xs text-muted-foreground">
-                  <Phone className="h-3 w-3 inline mr-1" />
-                  {apt.contact.primary_phone}
-                </p>
-              )}
-              {apt.city && (
-                <p className="text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3 inline mr-1" />
-                  {apt.city}
-                </p>
-              )}
-              {apt.sales_user && (
-                <p className="text-xs text-muted-foreground">
-                  <User className="h-3 w-3 inline mr-1" />
-                  {apt.sales_user.full_name || apt.sales_user.email}
-                </p>
-              )}
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  •••
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => handleStatusChange(apt.id, "confirmed")}
-                  disabled={apt.status === "confirmed"}
-                >
-                  ✓ Conferma
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleStatusChange(apt.id, "cancelled")}
-                  disabled={apt.status === "cancelled"}
-                >
-                  ✗ Annulla
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleStatusChange(apt.id, "visited")}
-                  disabled={apt.status === "visited"}
-                >
-                  🏠 Visitato
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleStatusChange(apt.id, "no_show")}
-                  disabled={apt.status === "no_show"}
-                >
-                  ⚠️ Non presentato
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {salesUsers.map((user) => (
-                  <DropdownMenuItem
-                    key={user.user_id}
-                    onClick={() => handleAssignSales(apt.id, user.user_id)}
-                    disabled={apt.assigned_sales_user_id === user.user_id}
-                  >
-                    Assegna a {user.full_name || user.email}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
+  // Mobile: show only selected day
+  const mobileDayKey = format(selectedMobileDay, "yyyy-MM-dd");
+  const mobileDayAppointments = appointmentsByDay[mobileDayKey] || [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 backdrop-blur-sm border border-primary/10">
             <Calendar className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Appuntamenti</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold">Appuntamenti</h1>
+              {appointments.length > 0 && (
+                <Badge variant="secondary" className="rounded-full tabular-nums">
+                  {appointments.length}
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
-              {format(weekStart, "d MMMM", { locale: it })} -{" "}
+              {format(weekStart, "d MMMM", { locale: it })} –{" "}
               {format(weekEnd, "d MMMM yyyy", { locale: it })}
             </p>
           </div>
@@ -265,41 +171,64 @@ export default function Appointments() {
           <Button
             variant="outline"
             size="icon"
+            className="rounded-xl"
             onClick={() => setWeekStart(subWeeks(weekStart, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
-            variant="outline"
+            variant={isCurrentWeek ? "secondary" : "outline"}
             size="sm"
-            onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+            className="rounded-xl"
+            onClick={() => {
+              setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+              setSelectedMobileDay(new Date());
+            }}
           >
             Oggi
           </Button>
           <Button
             variant="outline"
             size="icon"
+            className="rounded-xl"
             onClick={() => setWeekStart(addWeeks(weekStart, 1))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={() => refetch()}>
+          <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} className="rounded-xl">
             <Plus className="h-4 w-4 mr-2" />
             Nuovo
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4">
-        {/* Brand filter - only in "All Brands" mode */}
+      {/* Filters row: chip toggles for status + dropdown for brand/sales */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Status chip filters */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {STATUS_FILTERS.map((sf) => (
+            <button
+              key={sf.value}
+              onClick={() => setStatusFilter(sf.value)}
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-all duration-200 ${
+                statusFilter === sf.value
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-secondary/60 text-secondary-foreground hover:bg-secondary"
+              }`}
+            >
+              {sf.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Brand filter in All Brands mode */}
         {isAllBrandsSelected && (
           <Select value={brandFilter} onValueChange={setBrandFilter}>
-            <SelectTrigger className="w-[180px]">
-              <Building2 className="h-4 w-4 mr-2" />
+            <SelectTrigger className="w-[160px] h-8 text-xs rounded-xl">
+              <Building2 className="h-3.5 w-3.5 mr-1.5" />
               <SelectValue placeholder="Brand" />
             </SelectTrigger>
             <SelectContent>
@@ -313,82 +242,182 @@ export default function Appointments() {
           </Select>
         )}
 
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as AppointmentStatus | "all")}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Stato" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti gli stati</SelectItem>
-            {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-              <SelectItem key={key} value={key}>
-                {config.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={salesFilter} onValueChange={setSalesFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Venditore" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti i venditori</SelectItem>
-            {salesUsers.map((user) => (
-              <SelectItem key={user.user_id} value={user.user_id}>
-                {user.full_name || user.email}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Sales filter */}
+        {salesUsers.length > 0 && (
+          <Select value={salesFilter} onValueChange={setSalesFilter}>
+            <SelectTrigger className="w-[160px] h-8 text-xs rounded-xl">
+              <SelectValue placeholder="Venditore" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti i venditori</SelectItem>
+              {salesUsers.map((user) => (
+                <SelectItem key={user.user_id} value={user.user_id}>
+                  {user.full_name || user.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
+
+      {/* Week stats */}
+      {!isLoading && <AppointmentWeekStats appointments={appointments} />}
 
       {/* Week View */}
       {isLoading ? (
-        <div className="grid grid-cols-7 gap-2">
-          {[...Array(7)].map((_, i) => (
-            <Skeleton key={i} className="h-[300px]" />
+        <div className={`grid gap-2 ${isMobile ? "grid-cols-1" : "grid-cols-7"}`}>
+          {[...Array(isMobile ? 3 : 7)].map((_, i) => (
+            <Skeleton key={i} className="h-[200px] rounded-xl" />
           ))}
         </div>
+      ) : isMobile ? (
+        /* Mobile: Day selector + list */
+        <div className="space-y-3">
+          <AppointmentDaySelector
+            weekStart={weekStart}
+            selectedDay={selectedMobileDay}
+            onSelectDay={setSelectedMobileDay}
+            appointmentCounts={appointmentCounts}
+          />
+
+          <div className="min-h-[200px]">
+            {mobileDayAppointments.length === 0 ? (
+              <EmptyDayState onNewAppointment={() => setDialogOpen(true)} />
+            ) : (
+              mobileDayAppointments.map((apt, idx) => (
+                <AppointmentCard
+                  key={apt.id}
+                  apt={apt}
+                  index={idx}
+                  showBrand={isAllBrandsSelected}
+                  onStatusChange={handleStatusChange}
+                  onAssignSales={handleAssignSales}
+                  salesUsers={salesUsers}
+                />
+              ))
+            )}
+          </div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
+        /* Desktop: 7 column grid */
+        <div className="grid grid-cols-7 gap-2">
           {Object.entries(appointmentsByDay).map(([dateKey, dayAppointments]) => {
             const date = parseISO(dateKey);
-            const isToday = isSameDay(date, new Date());
+            const isToday = isSameDay(date, today);
 
             return (
-              <Card key={dateKey} className={isToday ? "ring-2 ring-primary" : ""}>
-                <CardHeader className="p-3 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    <span className="block text-xs text-muted-foreground uppercase">
-                      {format(date, "EEE", { locale: it })}
+              <div
+                key={dateKey}
+                className={`rounded-xl border bg-card/50 backdrop-blur-sm transition-all duration-200 ${
+                  isToday ? "border-primary/30 ring-1 ring-primary/20" : "border-border/50"
+                }`}
+              >
+                {/* Day header */}
+                <div className="px-3 py-2 border-b border-border/30">
+                  <p className="text-[10px] uppercase font-medium text-muted-foreground tracking-wider">
+                    {format(date, "EEEE", { locale: it })}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-lg font-semibold ${isToday ? "text-primary" : ""}`}>
+                      {format(date, "d")}
                     </span>
-                    <span className={isToday ? "text-primary" : ""}>
-                      {format(date, "d MMM", { locale: it })}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 pt-0 min-h-[200px]">
-                  {dayAppointments.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      Nessun appuntamento
-                    </p>
-                  ) : (
-                    dayAppointments.map((apt) => (
-                      <AppointmentCard key={apt.id} apt={apt} />
-                    ))
-                  )}
-                </CardContent>
-              </Card>
+                    {dayAppointments.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5 rounded-full tabular-nums">
+                        {dayAppointments.length}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Appointments */}
+                <ScrollArea className="h-[calc(100vh-22rem)]">
+                  <div className="p-1.5">
+                    {/* Now indicator */}
+                    {isToday && <NowIndicator />}
+
+                    {dayAppointments.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground text-center py-8 opacity-50">
+                        Nessun appuntamento
+                      </p>
+                    ) : (
+                      dayAppointments.map((apt, idx) => (
+                        <AppointmentCard
+                          key={apt.id}
+                          apt={apt}
+                          index={idx}
+                          showBrand={isAllBrandsSelected}
+                          onStatusChange={handleStatusChange}
+                          onAssignSales={handleAssignSales}
+                          salesUsers={salesUsers}
+                        />
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* New Appointment Dialog */}
+      {/* Empty state for entire week */}
+      {!isLoading && appointments.length === 0 && (
+        <WeekEmptyState onNewAppointment={() => setDialogOpen(true)} />
+      )}
+
       <NewAppointmentDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+    </div>
+  );
+}
+
+function NowIndicator() {
+  return (
+    <div className="relative flex items-center mb-2">
+      <div className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+      <div className="flex-1 h-px bg-destructive/40" />
+      <span className="text-[9px] text-destructive font-medium pl-1">ORA</span>
+    </div>
+  );
+}
+
+function EmptyDayState({ onNewAppointment }: { onNewAppointment: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
+      <div className="relative mb-4">
+        <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center">
+          <Calendar className="h-8 w-8 text-primary/30" />
+        </div>
+        <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary/10" />
+        <div className="absolute -bottom-2 -left-2 h-6 w-6 rounded-full bg-primary/5" />
+      </div>
+      <p className="text-sm text-muted-foreground mb-3">Nessun appuntamento per oggi</p>
+      <Button variant="outline" size="sm" className="rounded-xl" onClick={onNewAppointment}>
+        <Plus className="h-3.5 w-3.5 mr-1.5" />
+        Nuovo appuntamento
+      </Button>
+    </div>
+  );
+}
+
+function WeekEmptyState({ onNewAppointment }: { onNewAppointment: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
+      <div className="relative mb-6">
+        <div className="h-20 w-20 rounded-3xl bg-primary/5 flex items-center justify-center">
+          <Calendar className="h-10 w-10 text-primary/25" />
+        </div>
+        <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary/10" />
+        <div className="absolute -bottom-3 -left-3 h-8 w-8 rounded-full bg-primary/5" />
+        <div className="absolute top-1/2 -right-5 h-3 w-3 rounded-full bg-primary/10" />
+      </div>
+      <h3 className="text-lg font-medium mb-1">Nessun appuntamento questa settimana</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Pianifica il primo appuntamento per iniziare
+      </p>
+      <Button className="rounded-xl" onClick={onNewAppointment}>
+        <Plus className="h-4 w-4 mr-2" />
+        Nuovo appuntamento
+      </Button>
     </div>
   );
 }
