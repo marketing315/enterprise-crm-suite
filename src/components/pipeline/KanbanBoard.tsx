@@ -49,6 +49,17 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const columnsRef = useRef<HTMLDivElement>(null);
+
+  const scrollToStage = useCallback((stageId: string) => {
+    const el = document.getElementById(`stage-${stageId}`);
+    if (el && columnsRef.current) {
+      columnsRef.current.scrollTo({
+        left: el.offsetLeft - columnsRef.current.offsetLeft - 16,
+        behavior: 'smooth',
+      });
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
