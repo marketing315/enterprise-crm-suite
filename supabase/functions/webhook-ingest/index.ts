@@ -152,6 +152,7 @@ interface ExtractedContactData {
   city: string | null;
   cap: string | null;
   notes: string | null;
+  address: string | null;
 }
 
 const AI_EXTRACTION_PROMPT = `Sei un estrattore di dati contatto. Analizza il payload JSON e estrai le informazioni del contatto.
