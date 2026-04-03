@@ -1,30 +1,37 @@
 
 
-## Piano: Barra riepilogo fasi con navigazione rapida
+## Piano: Sidebar verticale nascondibile per navigazione fasi
 
-Aggiungere una barra orizzontale compatta sopra la Kanban board che mostra tutte le fasi con il conteggio dei deal. Cliccando su una fase, la board scrolla automaticamente alla colonna corrispondente.
+Trasformare la barra orizzontale di navigazione fasi in una sidebar verticale a sinistra della Kanban board, con possibilità di nasconderla/mostrarla tramite un toggle.
 
-### Cosa viene creato
+### Layout
 
-**Barra di navigazione fasi** — una riga di chip/badge sopra la kanban, ognuno con:
-- Pallino colorato della fase
-- Nome fase
-- Conteggio deal (badge numerico)
-- Click → scroll orizzontale fluido alla colonna corrispondente
+```text
+┌──────────┬──────────────────────────────┐
+│ [«]      │                              │
+│ ● Nuovo  │   Kanban columns →          │
+│   Lead 5 │                              │
+│ ● In     │                              │
+│   Tratt 3│                              │
+│ ● Chiuso │                              │
+│   2      │                              │
+│          │                              │
+└──────────┴──────────────────────────────┘
+```
+
+Quando nascosta, resta solo un piccolo bottone icona per riaprirla.
 
 ### Modifiche tecniche
 
 **`src/components/pipeline/KanbanBoard.tsx`**
 
-1. Ogni `KanbanColumn` riceve un `id` HTML basato sullo stage ID (es. `stage-{id}`) per poterlo individuare nel DOM.
+1. Aggiungere stato `sidebarOpen` (default `true`) con `useState`.
+2. Sostituire la barra orizzontale dei chip (righe 214-232) con un pannello verticale a sinistra:
+   - Wrapper `flex` orizzontale che contiene sidebar + area kanban.
+   - Sidebar: `w-48` quando aperta, `w-0` quando chiusa, con transizione CSS.
+   - Dentro: lista verticale delle fasi con pallino colorato, nome, conteggio. Click → `scrollIntoView`.
+   - Bottone toggle in alto (icona `PanelLeftClose`/`PanelLeftOpen`) per aprire/chiudere.
+3. Quando chiusa, mostrare un piccolo bottone floating/assoluto per riaprirla.
 
-2. Sopra il contenitore delle colonne, aggiungere una riga di chip cliccabili che mappano `stages` con il conteggio da `dealsByStage`. Al click, si usa `document.getElementById('stage-{id}')?.scrollIntoView({ behavior: 'smooth', inline: 'start' })`.
-
-3. La barra è visibile solo su desktop (nascosta su mobile dove c'è già la tab view).
-
-**`src/components/pipeline/KanbanColumn.tsx`**
-
-1. Aggiungere una prop `htmlId` passata come attributo `id` al div contenitore della colonna.
-
-File modificati: `KanbanBoard.tsx`, `KanbanColumn.tsx`.
+Nessun altro file da modificare — tutto contenuto in `KanbanBoard.tsx`.
 
