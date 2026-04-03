@@ -14,6 +14,8 @@ export interface KanbanColumnProps {
   showBrand?: boolean;
   /** Pre-fetched tags map: dealId → TagAssignment[] */
   tagsMap?: Record<string, TagAssignment[]>;
+  /** HTML id for scroll-into-view targeting */
+  htmlId?: string;
 }
 
 export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, showBrand = false, tagsMap }: KanbanColumnProps) {
