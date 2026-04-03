@@ -1,28 +1,30 @@
 
 
-## Piano: Modifica inline di nome e colore delle fasi pipeline
+## Piano: Barra riepilogo fasi con navigazione rapida
 
-Attualmente il dialogo "Gestisci Fasi" permette solo di riordinare, aggiungere e disattivare le fasi. Aggiungerò la possibilità di modificare **nome** e **colore** direttamente cliccando sulla fase.
+Aggiungere una barra orizzontale compatta sopra la Kanban board che mostra tutte le fasi con il conteggio dei deal. Cliccando su una fase, la board scrolla automaticamente alla colonna corrispondente.
 
-### Cosa cambia
+### Cosa viene creato
 
-**`src/components/pipeline/ManageStagesDialog.tsx`**
+**Barra di navigazione fasi** — una riga di chip/badge sopra la kanban, ognuno con:
+- Pallino colorato della fase
+- Nome fase
+- Conteggio deal (badge numerico)
+- Click → scroll orizzontale fluido alla colonna corrispondente
 
-1. **Click sul nome** → il testo diventa un campo `Input` editabile. Premendo Invio o perdendo il focus, il nome viene salvato tramite `useUpdatePipelineStage`.
+### Modifiche tecniche
 
-2. **Click sul pallino colorato** → si apre un `input[type=color]` (o un popover con i colori predefiniti) per cambiare il colore della fase. Il salvataggio avviene alla selezione.
+**`src/components/pipeline/KanbanBoard.tsx`**
 
-3. Il componente `SortableStageItem` riceverà una nuova prop `onUpdate` e gestirà internamente lo stato di editing (un semplice `isEditing` con stato locale).
+1. Ogni `KanbanColumn` riceve un `id` HTML basato sullo stage ID (es. `stage-{id}`) per poterlo individuare nel DOM.
 
-4. L'hook `useUpdatePipelineStage` (già esistente in `usePipelineStagesAdmin.ts`) verrà importato e usato — nessuna modifica lato hook o database necessaria.
+2. Sopra il contenitore delle colonne, aggiungere una riga di chip cliccabili che mappano `stages` con il conteggio da `dealsByStage`. Al click, si usa `document.getElementById('stage-{id}')?.scrollIntoView({ behavior: 'smooth', inline: 'start' })`.
 
-### Dettagli tecnici
+3. La barra è visibile solo su desktop (nascosta su mobile dove c'è già la tab view).
 
-- Stato locale `editingName` / `editingColor` nel componente `SortableStageItem`
-- Click sul nome → `setEditingName(true)`, mostra `<Input>` con `autoFocus`, `onBlur` e `onKeyDown Enter` per salvare
-- Click sul pallino → trigger di un `<input type="color">` nascosto via ref
-- Chiamata `useUpdatePipelineStage().mutate({ stageId, name, color })` al salvataggio
-- Stessa logica applicata anche alle fasi disattivate (sezione in basso)
+**`src/components/pipeline/KanbanColumn.tsx`**
 
-File modificato: solo `ManageStagesDialog.tsx`.
+1. Aggiungere una prop `htmlId` passata come attributo `id` al div contenitore della colonna.
+
+File modificati: `KanbanBoard.tsx`, `KanbanColumn.tsx`.
 
