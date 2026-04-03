@@ -158,12 +158,13 @@ interface ExtractedContactData {
 const AI_EXTRACTION_PROMPT = `Sei un estrattore di dati contatto. Analizza il payload JSON e estrai le informazioni del contatto.
 
 REGOLE:
-- Cerca campi che contengono: telefono, nome, cognome, email, città, CAP
-- I campi possono avere nomi diversi (phone, telefono, mobile, cellulare, name, nome, ecc.)
+- Cerca campi che contengono: telefono, nome, cognome, email, città, CAP, indirizzo
+- I campi possono avere nomi diversi (phone, telefono, mobile, cellulare, name, nome, address, indirizzo, ecc.)
 - Se non trovi un campo, restituisci null per quel campo
 - Il telefono è OBBLIGATORIO: cercalo in qualsiasi campo che possa contenerlo
 - Se trovi testo libero, cerca di estrarre i dati da lì
-- Per le note, includi qualsiasi informazione aggiuntiva rilevante (messaggio, richiesta, ecc.)
+- Per le note, includi qualsiasi informazione aggiuntiva rilevante (messaggio, richiesta, preferenze date/orari, ecc.)
+- Se trovi un indirizzo completo (es. "Via XX, 9, 24030 Terno D'isola BG, Italia"), estrai anche città e CAP da esso
 
 Rispondi SOLO con JSON valido nel formato:
 {
@@ -173,7 +174,8 @@ Rispondi SOLO con JSON valido nel formato:
   "email": "email o null",
   "city": "città o null",
   "cap": "CAP o null",
-  "notes": "note/messaggio o null"
+  "notes": "note/messaggio o null",
+  "address": "indirizzo completo o null"
 }`;
 
 async function extractContactDataWithAI(
