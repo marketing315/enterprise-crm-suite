@@ -957,6 +957,7 @@ Deno.serve(async (req: Request) => {
             city: extractedFields.city || aiResult.city,
             cap: extractedFields.cap || aiResult.cap,
             notes: extractedFields.notes || aiResult.notes,
+            address: extractedFields.address || aiResult.address,
           };
         }
       } else {
