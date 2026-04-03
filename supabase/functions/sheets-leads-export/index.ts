@@ -113,7 +113,7 @@ async function appendRows(
   accessToken: string, spreadsheetId: string, tabName: string, values: string[][]
 ): Promise<void> {
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName + "!A:W")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName + "!A:X")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -175,6 +175,7 @@ const LEADS_HEADERS = [
   "Tag", "Note",
   "Appuntamento Status", "Appuntamento Data", "Appuntamento Orario",
   "Appuntamento Via", "Appuntamento Civico", "Appuntamento Città", "Appuntamento CAP",
+  "Fase Pipeline",
 ];
 
 const TAB_NAME = "LEADS";
@@ -188,7 +189,7 @@ function extractStreetNumber(address: string | null): { street: string; number: 
   return { street: address, number: "" };
 }
 
-function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any): string[] {
+function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any, pipelineStageName?: string): string[] {
   const payload = (event.raw_payload || {}) as Record<string, any>;
   const { street, number: civico } = extractStreetNumber(appt?.address || null);
 
@@ -224,6 +225,7 @@ function buildRow(event: any, contact: any, brandName: string, phone: string, ta
     civico,
     appt?.city || "",
     appt?.cap || "",
+    pipelineStageName || "",
   ];
 }
 
@@ -253,7 +255,7 @@ async function fetchSingleLeadRow(
   const brandName = (event.brands as any)?.name || "";
 
   // Fetch phone, tags, appointment in parallel
-  const [phonesRes, tagsRes, apptsRes] = await Promise.all([
+  const [phonesRes, tagsRes, apptsRes, stageRes] = await Promise.all([
     contactId
       ? supabaseAdmin.from("contact_phones").select("phone_normalized").eq("contact_id", contactId).eq("is_primary", true).limit(1)
       : Promise.resolve({ data: [] }),
@@ -263,13 +265,17 @@ async function fetchSingleLeadRow(
     contactId
       ? supabaseAdmin.from("appointments").select("status, scheduled_at, address, city, cap").eq("contact_id", contactId).order("scheduled_at", { ascending: false }).limit(1)
       : Promise.resolve({ data: [] }),
+    contactId
+      ? supabaseAdmin.from("deals").select("current_stage_id, pipeline_stages(name)").eq("contact_id", contactId).eq("status", "open").order("created_at", { ascending: false }).limit(1)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const phone = (phonesRes.data as any)?.[0]?.phone_normalized || contact?.phone_normalized || "";
   const tags = (tagsRes.data as any[] || []).map((t: any) => t.tags?.name).filter(Boolean).join(", ");
   const appt = (apptsRes.data as any[])?.[0] || null;
+  const pipelineStageName = (stageRes.data as any[])?.[0]?.pipeline_stages?.name || "";
 
-  return buildRow(event, contact, brandName, phone, tags, appt);
+  return buildRow(event, contact, brandName, phone, tags, appt, pipelineStageName);
 }
 
 // ============ Fetch all leads (full export) ============
@@ -297,10 +303,11 @@ async function fetchAllLeadsRows(
 
   const contactIds = [...new Set(events.map(e => e.contact_id).filter(Boolean))] as string[];
 
-  const [phonesRes, tagsRes, apptsRes] = await Promise.all([
+  const [phonesRes, tagsRes, apptsRes, dealsRes] = await Promise.all([
     supabaseAdmin.from("contact_phones").select("contact_id, phone_normalized").in("contact_id", contactIds).eq("is_primary", true),
     supabaseAdmin.from("tag_assignments").select("entity_id, tags(name)").eq("entity_type", "contact").in("entity_id", contactIds),
     supabaseAdmin.from("appointments").select("contact_id, status, scheduled_at, address, city, cap").in("contact_id", contactIds).order("scheduled_at", { ascending: false }),
+    supabaseAdmin.from("deals").select("contact_id, current_stage_id, pipeline_stages(name)").in("contact_id", contactIds).eq("status", "open").order("created_at", { ascending: false }),
   ]);
 
   const phoneMap = new Map<string, string>();
@@ -318,6 +325,13 @@ async function fetchAllLeadsRows(
     if (!apptMap.has(a.contact_id)) apptMap.set(a.contact_id, a);
   });
 
+  const stageMap = new Map<string, string>();
+  (dealsRes.data || []).forEach((d: any) => {
+    if (!stageMap.has(d.contact_id) && d.pipeline_stages?.name) {
+      stageMap.set(d.contact_id, d.pipeline_stages.name);
+    }
+  });
+
   return events.map(event => {
     const c = event.contacts as any;
     const contactId = event.contact_id as string;
@@ -326,6 +340,7 @@ async function fetchAllLeadsRows(
       phoneMap.get(contactId) || c?.phone_normalized || "",
       tagMap.get(contactId)?.join(", ") || "",
       apptMap.get(contactId) || null,
+      stageMap.get(contactId) || "",
     );
   });
 }
@@ -352,7 +367,7 @@ async function ensureLeadsTab(accessToken: string, spreadsheetId: string): Promi
       }
     );
   }
-  await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
+  await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:X1`, [LEADS_HEADERS]);
   await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
   return sheetId;
 }
@@ -408,7 +423,7 @@ Deno.serve(async (req: Request) => {
 
     const sheetId = await ensureLeadsTab(accessToken, spreadsheetId);
     await clearSheet(accessToken, spreadsheetId, TAB_NAME);
-    await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:W1`, [LEADS_HEADERS]);
+    await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A1:X1`, [LEADS_HEADERS]);
     await applyFormatting(accessToken, spreadsheetId, sheetId, LEADS_HEADERS.length);
 
     const rows = await fetchAllLeadsRows(supabaseAdmin, date_from || null, date_to || null);
@@ -419,7 +434,7 @@ Deno.serve(async (req: Request) => {
         const batch = rows.slice(i, i + BATCH_SIZE);
         const startRow = i + 2;
         const endRow = startRow + batch.length - 1;
-        await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A${startRow}:W${endRow}`, batch);
+        await writeRange(accessToken, spreadsheetId, `${TAB_NAME}!A${startRow}:X${endRow}`, batch);
       }
     }
 

@@ -32,6 +32,7 @@ Available source fields in the webhook payload (use dot notation):
 - contact_snapshot.lead_valid - Lead valido (boolean)
 - contact_snapshot.lead_state_id - ID stato lead (numerico)
 - contact_snapshot.note1 through contact_snapshot.note10 - Campi note personalizzati
+- contact_snapshot.pipeline_stage_name - Nome della fase pipeline corrente (dal deal aperto)
 
 ## Event Data (root level)
 - event_type - Tipo evento (es. "lead_event.created")
