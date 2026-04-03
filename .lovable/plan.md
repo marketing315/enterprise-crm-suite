@@ -1,42 +1,75 @@
 
 
-## SPEC: Invio webhook SiLeads ad ogni cambio fase pipeline
+## Piano: Redesign C-Level del modulo Appuntamenti
 
-### Situazione attuale
+### Problemi attuali
 
-- Esiste gia un trigger SQL (`trg_emit_pipeline_stage_changed`) che, ad ogni INSERT su `deal_stage_history`, accoda un evento `pipeline.stage_changed` nella coda webhook con il payload completo (contact_snapshot + stage_snapshot).
-- I webhook SiLeads attualmente sottoscrivono **solo** `lead_event.created` — quindi i cambi di fase vengono ignorati.
-- Il dispatcher usa il `payload_mapping` del webhook per estrarre i campi dal payload e inviarli come form_urlencoded a SiLeads.
+1. **Vista settimanale troppo compressa** — 7 colonne su desktop rendono le card illeggibili, su mobile collassano verticalmente senza gerarchia
+2. **Card appuntamento piatta** — nessun glassmorphism, nessuna animazione, emoji nei menu (✓, ✗, 🏠, ⚠️), aspetto "form admin" non "Apple-like"
+3. **Header e filtri disallineati** — filtri su riga separata senza raggruppamento visivo, nessun conteggio appuntamenti
+4. **Dialog creazione monolitico** — un solo scroll lungo, nessuna separazione visiva tra sezioni, nessun feedback di progresso
+5. **Nessun stato empty premium** — il testo "Nessun appuntamento" è minimale, manca un'illustrazione o CTA
+6. **Manca indicatore visivo per oggi** — solo `ring-2` sulla card colonna, nessun dot/pulse per l'orario corrente
 
-### Piano di implementazione
+### Modifiche pianificate
 
-#### 1. Aggiungere `pipeline.stage_changed` agli event_types dei webhook SiLeads (migrazione dati)
+#### 1. Nuovo layout pagina `Appointments.tsx`
 
-```sql
-UPDATE outbound_webhooks
-SET event_types = array_append(event_types, 'pipeline.stage_changed')
-WHERE name ILIKE '%sileads%';
-```
+- Header con icona in cerchio glassmorphism (`backdrop-blur-sm bg-background/80`), conteggio badge animato
+- Filtri integrati nell'header con chip/pill toggle per stato (invece di Select dropdown)
+- Navigazione settimana con animazione di transizione (fade)
+- Vista settimanale: su desktop griglia 7 colonne con altezza fissa e scroll interno per colonna; su mobile vista lista giornaliera (mostra solo il giorno selezionato con swipe-like day selector)
+- Indicatore "now" con linea orizzontale rossa pulsante nella colonna di oggi
 
-Questo fa si che il dispatcher invii i dati a SiLeads anche quando un deal cambia fase.
+#### 2. Redesign `AppointmentCard` (nuovo componente)
 
-#### 2. Verificare compatibilita del payload
+- Estrarre in `src/components/appointments/AppointmentCard.tsx`
+- Glassmorphism: `bg-background/60 backdrop-blur-sm border border-border/50`
+- Status come dot colorato (non badge) + label piccola
+- Tipo appuntamento come pill sottile in alto
+- Layout: orario prominente a sinistra, info contatto a destra
+- Hover: leggero scale + shadow elevation
+- Menu azioni con icone Lucide (no emoji), raggruppate in sezioni (Stato / Assegnazione)
+- Animazione staggered all'ingresso (`animate-in` con delay incrementale)
 
-Il payload di `pipeline.stage_changed` include gia `contact_snapshot` (con `pipeline_stage_name`) e `stage_snapshot` (con `to_stage_name`). Il `payload_mapping` attuale dei webhook SiLeads mappa campi da `contact_snapshot.*`, quindi funzionera automaticamente: il campo `extra` mappato su `contact_snapshot.pipeline_stage_name` inviera il nome della nuova fase.
+#### 3. Mobile-first day selector
 
-**Nessuna modifica al dispatcher o al mapping necessaria** — il mapping gia configurato (`extra` -> `contact_snapshot.pipeline_stage_name`) funziona per entrambi gli eventi.
+- Su viewport `< md`: barra orizzontale con 7 giorni come cerchi (giorno selezionato = primary, oggi = dot), tap per mostrare lista
+- Sotto la barra, lista verticale degli appuntamenti del giorno selezionato
+- Swipe gesture opzionale (scroll orizzontale nativo)
 
-#### 3. Nessuna modifica a Google Sheets
+#### 4. Redesign `NewAppointmentDialog`
 
-Google Sheets usa gia `build_contact_snapshot` che include `pipeline_stage_name`. L'export riflettera sempre la fase corrente al momento dell'export.
+- Passaggio a layout multi-step con indicatore di progresso (3 step: Contatto → Dettagli → Qualificazione)
+- Ogni step ha titolo e sottotitolo
+- Ricerca contatto con risultati più ricchi (avatar iniziali, telefono, email inline)
+- Transizione smooth tra step
+- Footer con navigazione Indietro/Avanti + contesto step corrente
+- Glassmorphism su DialogContent
 
-### Riepilogo modifiche
+#### 5. Empty state premium
 
-| File/Risorsa | Modifica |
+- Illustrazione vettoriale (icona Calendar grande + cerchi decorativi in CSS)
+- Testo motivazionale + CTA "Nuovo Appuntamento"
+- Animazione fade-in
+
+#### 6. Conteggio e statistiche rapide
+
+- Sotto l'header: 3 mini-KPI pill (Tot. settimana, Confermati, Da confermare) con numeri animati
+
+### File coinvolti
+
+| File | Azione |
 |---|---|
-| Migrazione dati (SQL) | Aggiungere `pipeline.stage_changed` a `event_types` dei 3 webhook SiLeads |
+| `src/pages/Appointments.tsx` | Riscrittura completa layout, header, filtri, vista mobile |
+| `src/components/appointments/AppointmentCard.tsx` | Nuovo componente card C-level |
+| `src/components/appointments/AppointmentDaySelector.tsx` | Nuovo componente mobile day picker |
+| `src/components/appointments/AppointmentWeekStats.tsx` | Nuovo componente mini-KPI |
+| `src/components/appointments/NewAppointmentDialog.tsx` | Redesign multi-step |
+| `src/components/appointments/LeadQualificationFields.tsx` | Solo styling (spaziatura, bordi arrotondati) |
 
-### Risultato
+### Non modificato
 
-Ogni volta che un deal cambia fase (tramite UI pipeline, keplero-webhook, o automazioni), SiLeads ricevera automaticamente un webhook con tutti i dati del contatto, inclusa la nuova fase nel campo `extra`.
+- Hook `useAppointments` e le altre mutation (logica backend invariata)
+- `ClinicalTopicsSelector` (solo styling minore ereditato)
 
