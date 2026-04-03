@@ -48,6 +48,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   const isReadOnly = !canEditDeals;
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
