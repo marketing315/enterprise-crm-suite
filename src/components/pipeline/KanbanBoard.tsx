@@ -190,31 +190,25 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
 
   // Desktop: Full drag-and-drop Kanban (disabled for read-only users or global view)
   return (
-    <div className="relative">
-      {/* Read-only indicator */}
-      {isReadOnly && (
-        <div className="absolute top-2 right-4 z-10 flex items-center gap-2 text-sm text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border">
-          {isSystemBrand ? (
-            <>
-              <Globe className="h-3.5 w-3.5" />
-              <span>Vista globale (sola lettura)</span>
-            </>
-          ) : (
-            <>
-              <Lock className="h-3.5 w-3.5" />
-              <span>Modalità sola lettura</span>
-            </>
-          )}
-        </div>
-      )}
-      <DndContext
-        sensors={isReadOnly ? [] : sensors} // Disable sensors for read-only
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+    <div className="relative flex h-full">
+      {/* Vertical sidebar for stage navigation */}
+      <aside
+        className={cn(
+          "relative shrink-0 border-r border-border bg-muted/30 transition-all duration-300 overflow-hidden",
+          sidebarOpen ? "w-48" : "w-0"
+        )}
       >
-        {/* Stage navigation bar */}
-        <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto">
+        <div className="w-48 p-3 space-y-1">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fasi</span>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-1 rounded hover:bg-accent text-muted-foreground"
+              title="Nascondi sidebar"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </div>
           {stages.map((stage) => {
             const count = (dealsByStage[stage.id] || []).length;
             return (
@@ -223,35 +217,72 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
                 onClick={() =>
                   document.getElementById(`stage-${stage.id}`)?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
                 }
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent text-sm font-medium whitespace-nowrap transition-colors shrink-0"
+                className="flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-accent text-left text-sm transition-colors"
               >
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color || 'hsl(var(--primary))' }} />
-                <span className="text-foreground">{stage.name}</span>
-                <span className="ml-1 text-xs text-muted-foreground">{count}</span>
+                <span className="flex-1 truncate text-foreground font-medium">{stage.name}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
               </button>
             );
           })}
         </div>
+      </aside>
 
-        <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
-          {stages.map((stage) => (
-            <KanbanColumn
-              key={stage.id}
-              stage={stage}
-              deals={dealsByStage[stage.id] || []}
-              onDealClick={onDealClick}
-              readOnly={isReadOnly}
-              showBrand={isSystemBrand}
-              tagsMap={tagsMap}
-              htmlId={`stage-${stage.id}`}
-            />
-          ))}
-        </div>
+      {/* Toggle button when sidebar is closed */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="absolute left-0 top-3 z-10 p-1.5 rounded-r-md border border-l-0 border-border bg-background hover:bg-accent text-muted-foreground shadow-sm"
+          title="Mostra sidebar fasi"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      )}
 
-        <DragOverlay>
-          {activeDeal && <KanbanCardPreview deal={activeDeal} showBrand={isSystemBrand} />}
-        </DragOverlay>
-      </DndContext>
+      {/* Main kanban area */}
+      <div className="flex-1 min-w-0 relative">
+        {/* Read-only indicator */}
+        {isReadOnly && (
+          <div className="absolute top-2 right-4 z-10 flex items-center gap-2 text-sm text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border">
+            {isSystemBrand ? (
+              <>
+                <Globe className="h-3.5 w-3.5" />
+                <span>Vista globale (sola lettura)</span>
+              </>
+            ) : (
+              <>
+                <Lock className="h-3.5 w-3.5" />
+                <span>Modalità sola lettura</span>
+              </>
+            )}
+          </div>
+        )}
+        <DndContext
+          sensors={isReadOnly ? [] : sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
+            {stages.map((stage) => (
+              <KanbanColumn
+                key={stage.id}
+                stage={stage}
+                deals={dealsByStage[stage.id] || []}
+                onDealClick={onDealClick}
+                readOnly={isReadOnly}
+                showBrand={isSystemBrand}
+                tagsMap={tagsMap}
+                htmlId={`stage-${stage.id}`}
+              />
+            ))}
+          </div>
+
+          <DragOverlay>
+            {activeDeal && <KanbanCardPreview deal={activeDeal} showBrand={isSystemBrand} />}
+          </DragOverlay>
+        </DndContext>
+      </div>
     </div>
   );
 }
