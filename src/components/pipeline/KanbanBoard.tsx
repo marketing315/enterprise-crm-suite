@@ -225,9 +225,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
             return (
               <button
                 key={stage.id}
-                onClick={() =>
-                  document.getElementById(`stage-${stage.id}`)?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
-                }
+                onClick={() => scrollToStage(stage.id)}
                 className="flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-accent text-left text-sm transition-colors"
               >
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color || 'hsl(var(--primary))' }} />
