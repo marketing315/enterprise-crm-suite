@@ -211,6 +211,26 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
+        {/* Stage navigation bar */}
+        <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto">
+          {stages.map((stage) => {
+            const count = (dealsByStage[stage.id] || []).length;
+            return (
+              <button
+                key={stage.id}
+                onClick={() =>
+                  document.getElementById(`stage-${stage.id}`)?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent text-sm font-medium whitespace-nowrap transition-colors shrink-0"
+              >
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color || 'hsl(var(--primary))' }} />
+                <span className="text-foreground">{stage.name}</span>
+                <span className="ml-1 text-xs text-muted-foreground">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex gap-4 p-4 overflow-x-auto h-full pb-6">
           {stages.map((stage) => (
             <KanbanColumn
@@ -221,6 +241,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
               readOnly={isReadOnly}
               showBrand={isSystemBrand}
               tagsMap={tagsMap}
+              htmlId={`stage-${stage.id}`}
             />
           ))}
         </div>

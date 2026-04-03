@@ -14,16 +14,18 @@ export interface KanbanColumnProps {
   showBrand?: boolean;
   /** Pre-fetched tags map: dealId → TagAssignment[] */
   tagsMap?: Record<string, TagAssignment[]>;
+  /** HTML id for scroll-into-view targeting */
+  htmlId?: string;
 }
 
-export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, showBrand = false, tagsMap }: KanbanColumnProps) {
+export function KanbanColumn({ stage, deals, onDealClick, readOnly = false, showBrand = false, tagsMap, htmlId }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
   });
 
-
   return (
     <div
+      id={htmlId}
       ref={setNodeRef}
       className={`flex flex-col w-72 shrink-0 bg-muted/30 rounded-lg border transition-colors ${
         isOver ? "border-primary bg-primary/5" : "border-border"
