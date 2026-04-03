@@ -255,7 +255,7 @@ async function fetchSingleLeadRow(
   const brandName = (event.brands as any)?.name || "";
 
   // Fetch phone, tags, appointment in parallel
-  const [phonesRes, tagsRes, apptsRes] = await Promise.all([
+  const [phonesRes, tagsRes, apptsRes, stageRes] = await Promise.all([
     contactId
       ? supabaseAdmin.from("contact_phones").select("phone_normalized").eq("contact_id", contactId).eq("is_primary", true).limit(1)
       : Promise.resolve({ data: [] }),
@@ -265,13 +265,17 @@ async function fetchSingleLeadRow(
     contactId
       ? supabaseAdmin.from("appointments").select("status, scheduled_at, address, city, cap").eq("contact_id", contactId).order("scheduled_at", { ascending: false }).limit(1)
       : Promise.resolve({ data: [] }),
+    contactId
+      ? supabaseAdmin.from("deals").select("current_stage_id, pipeline_stages(name)").eq("contact_id", contactId).eq("status", "open").order("created_at", { ascending: false }).limit(1)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const phone = (phonesRes.data as any)?.[0]?.phone_normalized || contact?.phone_normalized || "";
   const tags = (tagsRes.data as any[] || []).map((t: any) => t.tags?.name).filter(Boolean).join(", ");
   const appt = (apptsRes.data as any[])?.[0] || null;
+  const pipelineStageName = (stageRes.data as any[])?.[0]?.pipeline_stages?.name || "";
 
-  return buildRow(event, contact, brandName, phone, tags, appt);
+  return buildRow(event, contact, brandName, phone, tags, appt, pipelineStageName);
 }
 
 // ============ Fetch all leads (full export) ============
