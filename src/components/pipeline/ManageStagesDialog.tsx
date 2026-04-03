@@ -616,13 +616,15 @@ export function ManageStagesDialog({ trigger }: ManageStagesDialogProps) {
             <AlertDialogTitle>
               Elimina definitivamente "{stageToDeletePermanently?.name}"?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              <p className="mb-2">
-                Questa azione è <strong>irreversibile</strong>. La fase verrà eliminata permanentemente.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                L'eliminazione è possibile solo se nessun deal è associato a questa fase.
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                <span className="block mb-2">
+                  Questa azione è <strong>irreversibile</strong>. La fase verrà eliminata permanentemente.
+                </span>
+                <span className="block text-sm text-muted-foreground">
+                  L'eliminazione è possibile solo se nessun deal è associato a questa fase.
+                </span>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
