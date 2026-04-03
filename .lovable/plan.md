@@ -1,37 +1,15 @@
 
 
-## Piano: Sidebar verticale nascondibile per navigazione fasi
+## Fix: Impedire lo scroll verticale al click sulla sidebar
 
-Trasformare la barra orizzontale di navigazione fasi in una sidebar verticale a sinistra della Kanban board, con possibilità di nasconderla/mostrarla tramite un toggle.
+Il problema è che `scrollIntoView` muove anche verticalmente la pagina. La soluzione è usare `scrollIntoView` solo per lo scroll orizzontale, oppure usare direttamente `element.scrollIntoView` con `block: 'nearest'` sostituito da uno scroll manuale sul contenitore orizzontale.
 
-### Layout
+### Modifica
 
-```text
-┌──────────┬──────────────────────────────┐
-│ [«]      │                              │
-│ ● Nuovo  │   Kanban columns →          │
-│   Lead 5 │                              │
-│ ● In     │                              │
-│   Tratt 3│                              │
-│ ● Chiuso │                              │
-│   2      │                              │
-│          │                              │
-└──────────┴──────────────────────────────┘
-```
+**`src/components/pipeline/KanbanBoard.tsx`** — Sostituire le due chiamate `scrollIntoView` (sidebar e bottoni stage) con uno scroll orizzontale diretto sul contenitore delle colonne:
 
-Quando nascosta, resta solo un piccolo bottone icona per riaprirla.
+1. Aggiungere un `useRef` per il contenitore scrollabile delle colonne kanban (`div.overflow-x-auto`).
+2. Al click su una fase nella sidebar, trovare l'elemento colonna e calcolare il suo `offsetLeft` relativo al contenitore, poi usare `containerRef.current.scrollTo({ left: offset, behavior: 'smooth' })`.
 
-### Modifiche tecniche
-
-**`src/components/pipeline/KanbanBoard.tsx`**
-
-1. Aggiungere stato `sidebarOpen` (default `true`) con `useState`.
-2. Sostituire la barra orizzontale dei chip (righe 214-232) con un pannello verticale a sinistra:
-   - Wrapper `flex` orizzontale che contiene sidebar + area kanban.
-   - Sidebar: `w-48` quando aperta, `w-0` quando chiusa, con transizione CSS.
-   - Dentro: lista verticale delle fasi con pallino colorato, nome, conteggio. Click → `scrollIntoView`.
-   - Bottone toggle in alto (icona `PanelLeftClose`/`PanelLeftOpen`) per aprire/chiudere.
-3. Quando chiusa, mostrare un piccolo bottone floating/assoluto per riaprirla.
-
-Nessun altro file da modificare — tutto contenuto in `KanbanBoard.tsx`.
+Questo evita qualsiasi movimento verticale della pagina.
 
