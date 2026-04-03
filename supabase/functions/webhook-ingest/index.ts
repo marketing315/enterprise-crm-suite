@@ -152,17 +152,19 @@ interface ExtractedContactData {
   city: string | null;
   cap: string | null;
   notes: string | null;
+  address: string | null;
 }
 
 const AI_EXTRACTION_PROMPT = `Sei un estrattore di dati contatto. Analizza il payload JSON e estrai le informazioni del contatto.
 
 REGOLE:
-- Cerca campi che contengono: telefono, nome, cognome, email, città, CAP
-- I campi possono avere nomi diversi (phone, telefono, mobile, cellulare, name, nome, ecc.)
+- Cerca campi che contengono: telefono, nome, cognome, email, città, CAP, indirizzo
+- I campi possono avere nomi diversi (phone, telefono, mobile, cellulare, name, nome, address, indirizzo, ecc.)
 - Se non trovi un campo, restituisci null per quel campo
 - Il telefono è OBBLIGATORIO: cercalo in qualsiasi campo che possa contenerlo
 - Se trovi testo libero, cerca di estrarre i dati da lì
-- Per le note, includi qualsiasi informazione aggiuntiva rilevante (messaggio, richiesta, ecc.)
+- Per le note, includi qualsiasi informazione aggiuntiva rilevante (messaggio, richiesta, preferenze date/orari, ecc.)
+- Se trovi un indirizzo completo (es. "Via XX, 9, 24030 Terno D'isola BG, Italia"), estrai anche città e CAP da esso
 
 Rispondi SOLO con JSON valido nel formato:
 {
@@ -172,7 +174,8 @@ Rispondi SOLO con JSON valido nel formato:
   "email": "email o null",
   "city": "città o null",
   "cap": "CAP o null",
-  "notes": "note/messaggio o null"
+  "notes": "note/messaggio o null",
+  "address": "indirizzo completo o null"
 }`;
 
 async function extractContactDataWithAI(
@@ -359,6 +362,47 @@ function tryExtractContactFields(payload: Record<string, unknown>): Partial<Extr
     if (value && typeof value === "string" && value.trim()) {
       result.notes = value.trim();
       break;
+    }
+  }
+
+  // Address
+  const addressFields = ["address", "indirizzo", "Address", "Indirizzo", "full_address", "fullAddress"];
+  for (const field of addressFields) {
+    const value = payload[field];
+    if (value && typeof value === "string" && value.trim()) {
+      result.address = value.trim();
+      break;
+    }
+  }
+
+  // Parse city and CAP from address string if not already found
+  // Matches Italian address patterns like "Via X, 9, 24030 Terno D'isola BG, Italia"
+  if (result.address && (!result.city || !result.cap)) {
+    const capMatch = result.address.match(/\b(\d{5})\b/);
+    if (capMatch && !result.cap) {
+      result.cap = capMatch[1];
+    }
+    // Try to extract city: text after CAP, before province code (2 uppercase letters)
+    const cityMatch = result.address.match(/\b\d{5}\s+([A-Za-zÀ-ú''\s]+?)(?:\s+[A-Z]{2}\s*,|\s*,\s*Italia|\s*$)/i);
+    if (cityMatch && !result.city) {
+      result.city = cityMatch[1].trim();
+    }
+  }
+
+  // Preferred days / time slot → append to notes
+  const preferredDays = payload.preferred_days;
+  const preferredTimeSlot = payload.preferred_time_slot || payload.preferredTimeSlot;
+  if (preferredDays || preferredTimeSlot) {
+    const parts: string[] = [];
+    if (Array.isArray(preferredDays) && preferredDays.length > 0) {
+      parts.push(`Giorni preferiti: ${preferredDays.join(", ")}`);
+    }
+    if (preferredTimeSlot && typeof preferredTimeSlot === "string") {
+      parts.push(`Fascia oraria: ${preferredTimeSlot}`);
+    }
+    if (parts.length > 0) {
+      const prefNote = parts.join(" | ");
+      result.notes = result.notes ? `${result.notes}\n${prefNote}` : prefNote;
     }
   }
 
@@ -913,6 +957,7 @@ Deno.serve(async (req: Request) => {
             city: extractedFields.city || aiResult.city,
             cap: extractedFields.cap || aiResult.cap,
             notes: extractedFields.notes || aiResult.notes,
+            address: extractedFields.address || aiResult.address,
           };
         }
       } else {
@@ -939,6 +984,7 @@ Deno.serve(async (req: Request) => {
     const email = extractedFields.email || null;
     const city = extractedFields.city || null;
     const cap = extractedFields.cap || null;
+    const address = extractedFields.address || null;
 
     // Find or create contact
     const { data: contactId, error: contactError } = await supabaseAdmin.rpc(
@@ -955,6 +1001,7 @@ Deno.serve(async (req: Request) => {
         p_city: city,
         p_cap: cap,
         p_lead_message: extractedFields.notes || null,
+        p_address: address,
       }
     );
 

@@ -8009,22 +8009,40 @@ export type Database = {
           source_id: string
         }[]
       }
-      find_or_create_contact: {
-        Args: {
-          p_assumed_country?: boolean
-          p_brand_id: string
-          p_cap?: string
-          p_city?: string
-          p_country_code?: string
-          p_email?: string
-          p_first_name?: string
-          p_last_name?: string
-          p_lead_message?: string
-          p_phone_normalized: string
-          p_phone_raw: string
-        }
-        Returns: string
-      }
+      find_or_create_contact:
+        | {
+            Args: {
+              p_assumed_country?: boolean
+              p_brand_id: string
+              p_cap?: string
+              p_city?: string
+              p_country_code?: string
+              p_email?: string
+              p_first_name?: string
+              p_last_name?: string
+              p_lead_message?: string
+              p_phone_normalized: string
+              p_phone_raw: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_address?: string
+              p_assumed_country: boolean
+              p_brand_id: string
+              p_cap?: string
+              p_city?: string
+              p_country_code: string
+              p_email?: string
+              p_first_name?: string
+              p_last_name?: string
+              p_lead_message?: string
+              p_phone_normalized: string
+              p_phone_raw: string
+            }
+            Returns: string
+          }
       find_or_create_deal:
         | {
             Args: { p_brand_id: string; p_contact_id: string }
