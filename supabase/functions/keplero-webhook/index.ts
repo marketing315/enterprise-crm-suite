@@ -280,6 +280,12 @@ async function handleKepleroPayload(
 
   // ── Find or create household contact (using requester phone) ──
   // NO overwrite on existing root contact — find_or_create_contact only fills NULLs via COALESCE
+  // Build full address from parts
+  const addressParts = [args.indirizzo || args.indirizzo_completo, args.numero_civico].filter(Boolean);
+  const fullAddress = addressParts.length > 0
+    ? [addressParts.join(" "), args.cap?.toString(), args.citta].filter(Boolean).join(", ")
+    : null;
+
   const { data: contactId, error: contactError } = await supabaseAdmin.rpc(
     "find_or_create_contact",
     {
@@ -293,6 +299,7 @@ async function handleKepleroPayload(
       p_email: null,
       p_city: args.citta || null,
       p_cap: args.cap?.toString() || null,
+      p_address: fullAddress,
     }
   );
 
