@@ -1,19 +1,22 @@
 
 
-## Piano: Aggiungere "+ Aggiungi Brand" nel selettore brand
+## Piano: Pulsante "Dettagli" negli appuntamenti
 
 ### Cosa cambia
 
-Nel componente `BrandSelector.tsx`, aggiungeremo un pulsante "+ Aggiungi Brand" in fondo al menu a tendina del `Select`, visibile solo agli admin. Cliccandolo si aprirà un dialog per creare un nuovo brand (nome + slug), riutilizzando la stessa logica di inserimento già presente in `BrandManagementCard.tsx`.
+1. **Nuova pagina `AppointmentDetail`** — una pagina dedicata che mostra tutti i dati dell'appuntamento (data/ora, durata, contatto con telefono/email, indirizzo completo, stato, tipo, venditore assegnato, note, deal collegato).
+
+2. **Nuova rotta** — aggiungere `/appointments/:id` in `App.tsx`.
+
+3. **Pulsante "Dettagli" nel dropdown azioni** — nella tabella appuntamenti (`Appointments.tsx`) e nella card mobile (`AppointmentCard.tsx`), aggiungere una voce "Dettagli" nel menu a tendina che naviga a `/appointments/{id}`.
 
 ### Dettagli tecnici
 
-**File: `src/components/layout/BrandSelector.tsx`**
-- Aggiungere stato locale per il dialog di creazione (`dialogOpen`, `newBrandName`, `newBrandSlug`)
-- Aggiungere una `useMutation` per l'inserimento nella tabella `brands` (stessa logica di `BrandManagementCard`)
-- Dopo la lista degli `SelectItem`, inserire un separatore e un bottone `+ Aggiungi Brand` (usando `SelectSeparator` o un elemento custom fuori dal `SelectContent` — più probabilmente un `Dialog` attivato da un bottone sotto il `Select`)
-- Il bottone sarà visibile solo se `isAdmin` è `true`
-- Dopo la creazione, invalidare la query `brands` e selezionare automaticamente il nuovo brand
+**File nuovi:**
+- `src/pages/AppointmentDetail.tsx` — pagina dettaglio con `useParams` per leggere l'id, query diretta alla tabella `appointments` con join su contatto e venditore, layout card con tutte le info, pulsante indietro, e azioni rapide (cambia stato, assegna venditore).
 
-**Approccio UI**: Siccome `Select` di Radix non supporta facilmente elementi interattivi dentro `SelectContent`, useremo un `Popover` custom al posto del `Select`, oppure aggiungeremo il bottone "+ Aggiungi Brand" subito sotto il `SelectContent` come ultimo item che chiude il select e apre un `Dialog`. L'approccio più pulito è rendere l'ultimo `SelectItem` un trigger che, una volta selezionato, apre il dialog di creazione anziché cambiare brand.
+**File modificati:**
+- `src/App.tsx` — aggiungere `<Route path="/appointments/:id" element={<AppointmentDetail />} />`
+- `src/pages/Appointments.tsx` — aggiungere `useNavigate`, inserire voce "Dettagli" con icona `Eye` come primo item nel `DropdownMenuContent` (riga ~458), con `onClick={() => navigate(`/appointments/${apt.id}`)}`
+- `src/components/appointments/AppointmentCard.tsx` — stessa voce "Dettagli" nel dropdown menu della card mobile
 
