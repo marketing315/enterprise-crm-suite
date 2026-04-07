@@ -1,4 +1,5 @@
 import { format, parseISO } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import {
   Clock,
   MapPin,
@@ -12,6 +13,7 @@ import {
   AlertTriangle,
   MoreHorizontal,
   UserPlus,
+  Eye,
 } from "lucide-react";
 import type { AppointmentStatus, AppointmentType, AppointmentWithRelations } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -57,6 +59,7 @@ export function AppointmentCard({
   onAssignSales,
   salesUsers,
 }: AppointmentCardProps) {
+  const navigate = useNavigate();
   const contactName = [apt.contact?.first_name, apt.contact?.last_name]
     .filter(Boolean)
     .join(" ") || "Senza nome";
@@ -137,6 +140,10 @@ export function AppointmentCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => navigate(`/appointments/${apt.id}`)}>
+              <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs">Stato</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => onStatusChange(apt.id, "confirmed")}
