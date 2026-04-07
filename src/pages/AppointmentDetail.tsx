@@ -61,7 +61,7 @@ export default function AppointmentDetail() {
         .select(`
           *,
           contacts!appointments_contact_id_fkey (
-            id, first_name, last_name, primary_phone, email, fiscal_code
+            id, first_name, last_name, phone, email, fiscal_code
           ),
           brands!appointments_brand_id_fkey (
             id, name
@@ -71,18 +71,20 @@ export default function AppointmentDetail() {
         .single();
       if (error) throw error;
 
-      // Fetch sales user separately
-      let salesUser = null;
+      // Fetch sales user name via RPC or direct query
+      let salesUser: { full_name: string | null; email: string } | null = null;
       if (data.assigned_sales_user_id) {
-        const { data: profile } = await supabase
-          .from("profiles")
+        const { data: members } = await supabase
+          .from("brand_users")
           .select("user_id, full_name, email")
           .eq("user_id", data.assigned_sales_user_id)
-          .single();
-        salesUser = profile;
+          .limit(1);
+        if (members && members.length > 0) {
+          salesUser = { full_name: members[0].full_name, email: members[0].email };
+        }
       }
 
-      return { ...data, sales_user: salesUser };
+      return { ...data, sales_user: salesUser } as any;
     },
     enabled: !!id,
   });

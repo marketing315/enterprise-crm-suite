@@ -87,6 +87,7 @@ type SortField = "date" | "contact" | "status" | "city" | "sales";
 type SortDir = "asc" | "desc";
 
 export default function Appointments() {
+  const navigate = useNavigate();
   const { currentBrand, hasBrandSelected, isAllBrandsSelected, brands } = useBrand();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
