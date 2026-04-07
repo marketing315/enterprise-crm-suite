@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   format,
   startOfWeek,
@@ -29,6 +30,7 @@ import {
   AlertTriangle,
   UserPlus,
   MoreHorizontal,
+  Eye,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointments, useSetAppointmentStatus, useAssignAppointmentSales } from "@/hooks/useAppointments";
@@ -456,6 +458,10 @@ export default function Appointments() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => navigate(`/appointments/${apt.id}`)}>
+                              <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuLabel className="text-xs">Stato</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleStatusChange(apt.id, "confirmed")} disabled={apt.status === "confirmed"}>
                               <Check className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Conferma
