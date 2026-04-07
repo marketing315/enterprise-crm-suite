@@ -1,7 +1,7 @@
 import { forwardRef, useState } from 'react';
 import { useBrand, SYSTEM_BRAND_ID } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
@@ -33,9 +33,8 @@ interface BrandSelectorProps {
 
 export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
   function BrandSelector({ compact = false }, ref) {
-    const { brands, currentBrand, systemBrand, setCurrentBrand, isLoading } = useBrand();
+    const { brands, currentBrand, systemBrand, setCurrentBrand, refetchBrands, isLoading } = useBrand();
     const { isAdmin, isCeo, hasRole } = useAuth();
-    const queryClient = useQueryClient();
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [newBrandName, setNewBrandName] = useState('');
@@ -59,7 +58,7 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
         setDialogOpen(false);
         setNewBrandName('');
         setNewBrandSlug('');
-        queryClient.invalidateQueries({ queryKey: ['brands'] });
+        refetchBrands();
         // Auto-select the new brand
         if (data) {
           setCurrentBrand(data as any);
