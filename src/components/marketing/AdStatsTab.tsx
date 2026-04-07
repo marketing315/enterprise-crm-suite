@@ -87,6 +87,11 @@ export function AdStatsTab() {
     campaignId,
   });
 
+  const { metrics: funnelMetrics, isLoading: funnelLoading } = useFunnelMetrics({
+    from: dateRange.from,
+    to: dateRange.to,
+  });
+
   // Build campaign options from stats (unfiltered by campaign)
   const { data: allStats } = useAdPlatformStats({
     fromDate: dateRange.from,
