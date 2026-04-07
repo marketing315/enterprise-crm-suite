@@ -26,6 +26,7 @@ import {
   useAdPlatformStatsTrend,
   useAdPlatformStatsSummary,
 } from "@/hooks/useAdPlatformStats";
+import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { AdStatsKpiCards } from "./AdStatsKpiCards";
 import { AdStatsTrendChart } from "./AdStatsTrendChart";
 import { AdStatsTable } from "./AdStatsTable";
@@ -84,6 +85,11 @@ export function AdStatsTab() {
     toDate: dateRange.to,
     platform,
     campaignId,
+  });
+
+  const { metrics: funnelMetrics, isLoading: funnelLoading } = useFunnelMetrics({
+    from: selectedRange.from,
+    to: selectedRange.to,
   });
 
   // Build campaign options from stats (unfiltered by campaign)
@@ -453,7 +459,7 @@ export function AdStatsTab() {
       )}
 
       {/* KPI Cards */}
-      <AdStatsKpiCards summary={summary} isLoading={summaryLoading} />
+      <AdStatsKpiCards summary={summary} isLoading={summaryLoading || funnelLoading} appointments={funnelMetrics?.appointments} />
 
       {/* Trend Chart */}
       <AdStatsTrendChart data={trend} isLoading={trendLoading} />

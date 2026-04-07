@@ -1,14 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Eye, MousePointer, Percent, DollarSign, Users, Repeat, Target } from "lucide-react";
+import { TrendingUp, Eye, MousePointer, Percent, DollarSign, Users, Repeat, Target, CalendarCheck } from "lucide-react";
 import type { AdPlatformStatSummary } from "@/types/adPlatform";
 
 interface AdStatsKpiCardsProps {
   summary: AdPlatformStatSummary | null | undefined;
   isLoading: boolean;
+  appointments?: number | null;
 }
 
-export function AdStatsKpiCards({ summary, isLoading }: AdStatsKpiCardsProps) {
+export function AdStatsKpiCards({ summary, isLoading, appointments }: AdStatsKpiCardsProps) {
   const kpis = [
     {
       label: "Spesa ADV",
@@ -31,6 +32,13 @@ export function AdStatsKpiCards({ summary, isLoading }: AdStatsKpiCardsProps) {
       icon: Target,
       color: "text-amber-500",
       highlight: true,
+    },
+    {
+      label: "Appuntamenti",
+      value: appointments ?? 0,
+      format: (v: number) => v.toLocaleString("it-IT"),
+      icon: CalendarCheck,
+      color: "text-teal-500",
     },
     {
       label: "Impression",
