@@ -1,14 +1,31 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 import { useBrand, SYSTEM_BRAND_ID } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building2, Globe } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Building2, Globe, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+
+const CREATE_BRAND_VALUE = '__create_brand__';
 
 interface BrandSelectorProps {
   compact?: boolean;
@@ -18,10 +35,48 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
   function BrandSelector({ compact = false }, ref) {
     const { brands, currentBrand, systemBrand, setCurrentBrand, isLoading } = useBrand();
     const { isAdmin, isCeo, hasRole } = useAuth();
+    const queryClient = useQueryClient();
 
-    // Admin, CEO, and Amministrazione can see "Azienda Intera" option
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [newBrandName, setNewBrandName] = useState('');
+    const [newBrandSlug, setNewBrandSlug] = useState('');
+
     const isAmministrazione = currentBrand ? hasRole('amministrazione', currentBrand.id) : false;
     const canSeeAllBrands = isAdmin || isCeo || isAmministrazione;
+
+    const createBrandMutation = useMutation({
+      mutationFn: async ({ name, slug }: { name: string; slug: string }) => {
+        const { data, error } = await supabase
+          .from('brands')
+          .insert({ name, slug })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      },
+      onSuccess: (data) => {
+        toast.success('Brand creato con successo');
+        setDialogOpen(false);
+        setNewBrandName('');
+        setNewBrandSlug('');
+        queryClient.invalidateQueries({ queryKey: ['brands'] });
+        // Auto-select the new brand
+        if (data) {
+          setCurrentBrand(data as any);
+        }
+      },
+      onError: (error: Error) => {
+        toast.error(`Errore: ${error.message}`);
+      },
+    });
+
+    const handleCreate = () => {
+      if (!newBrandName.trim() || !newBrandSlug.trim()) {
+        toast.error('Compila tutti i campi');
+        return;
+      }
+      createBrandMutation.mutate({ name: newBrandName, slug: newBrandSlug });
+    };
 
     if (isLoading) {
       return (
@@ -32,7 +87,7 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
       );
     }
 
-    if (brands.length === 0 && !systemBrand) {
+    if (brands.length === 0 && !systemBrand && !isAdmin) {
       return (
         <div ref={ref} className="flex items-center gap-2 text-muted-foreground">
           <Building2 className="h-4 w-4" />
@@ -47,6 +102,10 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
         <Select
           value={currentBrand?.id || ''}
           onValueChange={(value) => {
+            if (value === CREATE_BRAND_VALUE) {
+              setDialogOpen(true);
+              return;
+            }
             if (value === SYSTEM_BRAND_ID && systemBrand) {
               setCurrentBrand(systemBrand);
             } else {
@@ -59,7 +118,6 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
             <SelectValue placeholder="Seleziona brand" />
           </SelectTrigger>
           <SelectContent>
-            {/* System brand option for admins/CEOs/amministrazione */}
             {canSeeAllBrands && systemBrand && (
               <SelectItem value={systemBrand.id} className="font-medium">
                 <div className="flex items-center gap-2">
@@ -68,14 +126,62 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
                 </div>
               </SelectItem>
             )}
-            {/* Individual brands */}
             {brands.map((brand) => (
               <SelectItem key={brand.id} value={brand.id}>
                 {brand.name}
               </SelectItem>
             ))}
+            {isAdmin && (
+              <>
+                <SelectSeparator />
+                <SelectItem value={CREATE_BRAND_VALUE} className="text-primary">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <span>Aggiungi Brand</span>
+                  </div>
+                </SelectItem>
+              </>
+            )}
           </SelectContent>
         </Select>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Crea Nuovo Brand</DialogTitle>
+              <DialogDescription>Inserisci i dettagli del nuovo brand</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-brand-name">Nome Brand</Label>
+                <Input
+                  id="new-brand-name"
+                  value={newBrandName}
+                  onChange={(e) => {
+                    setNewBrandName(e.target.value);
+                    setNewBrandSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+                  }}
+                  placeholder="Es. Acme Corp"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-brand-slug">Slug</Label>
+                <Input
+                  id="new-brand-slug"
+                  value={newBrandSlug}
+                  onChange={(e) => setNewBrandSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                  placeholder="es. acme-corp"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Annulla</Button>
+              <Button onClick={handleCreate} disabled={createBrandMutation.isPending}>
+                {createBrandMutation.isPending ? 'Creazione...' : 'Crea Brand'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
