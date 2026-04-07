@@ -173,7 +173,7 @@ export default function AppointmentDetail() {
             <InfoRow
               icon={Briefcase}
               label="Venditore"
-              value={apt.sales_user?.full_name || apt.sales_user?.email || "Non assegnato"}
+              value={apt.assigned_sales_user_id ? "Assegnato" : "Non assegnato"}
             />
             <InfoRow icon={Building2} label="Brand" value={apt.brands?.name} />
           </CardContent>
