@@ -14,6 +14,7 @@ interface BrandContextType {
   currentBrand: Brand | null;
   systemBrand: Brand | null; // The actual system brand from DB
   setCurrentBrand: (brand: Brand | null) => void;
+  refetchBrands: () => void;
   isLoading: boolean;
   hasBrandSelected: boolean;
   isAllBrandsSelected: boolean;
