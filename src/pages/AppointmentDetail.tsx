@@ -151,7 +151,7 @@ export default function AppointmentDetail() {
           </CardHeader>
           <CardContent className="space-y-1">
             <InfoRow icon={User} label="Nome" value={contactName} />
-            <InfoRow icon={Phone} label="Telefono" value={apt.contacts?.primary_phone} />
+            <InfoRow icon={Phone} label="Telefono" value={apt.contacts?.phone} />
             <InfoRow icon={Mail} label="Email" value={apt.contacts?.email} />
           </CardContent>
         </Card>
