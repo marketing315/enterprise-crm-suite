@@ -1,22 +1,18 @@
 
 
-## Piano: Pulsante "Dettagli" negli appuntamenti
+## Piano: Aggiungere "Appuntamenti Fissati" nelle KPI card ADV
 
-### Cosa cambia
+Il dato "Appuntamenti Fissati" è già presente nella tab **Overview**, ma manca nella tab **Statistiche ADV** (`AdStatsKpiCards`).
 
-1. **Nuova pagina `AppointmentDetail`** — una pagina dedicata che mostra tutti i dati dell'appuntamento (data/ora, durata, contatto con telefono/email, indirizzo completo, stato, tipo, venditore assegnato, note, deal collegato).
+### Modifiche
 
-2. **Nuova rotta** — aggiungere `/appointments/:id` in `App.tsx`.
+1. **`src/components/marketing/AdStatsTab.tsx`** — importare e invocare `useFunnelMetrics` con le stesse date del range selezionato, passare il dato appointments al componente `AdStatsKpiCards`.
 
-3. **Pulsante "Dettagli" nel dropdown azioni** — nella tabella appuntamenti (`Appointments.tsx`) e nella card mobile (`AppointmentCard.tsx`), aggiungere una voce "Dettagli" nel menu a tendina che naviga a `/appointments/{id}`.
+2. **`src/components/marketing/AdStatsKpiCards.tsx`** — aggiungere prop opzionale `appointments` (number), aggiungere una KPI card "Appuntamenti" con icona `CalendarCheck` e colore verde, posizionata dopo Lead e CPL.
 
 ### Dettagli tecnici
 
-**File nuovi:**
-- `src/pages/AppointmentDetail.tsx` — pagina dettaglio con `useParams` per leggere l'id, query diretta alla tabella `appointments` con join su contatto e venditore, layout card con tutte le info, pulsante indietro, e azioni rapide (cambia stato, assegna venditore).
-
-**File modificati:**
-- `src/App.tsx` — aggiungere `<Route path="/appointments/:id" element={<AppointmentDetail />} />`
-- `src/pages/Appointments.tsx` — aggiungere `useNavigate`, inserire voce "Dettagli" con icona `Eye` come primo item nel `DropdownMenuContent` (riga ~458), con `onClick={() => navigate(`/appointments/${apt.id}`)}`
-- `src/components/appointments/AppointmentCard.tsx` — stessa voce "Dettagli" nel dropdown menu della card mobile
+- `AdStatsKpiCardsProps` riceverà `appointments?: number | null`
+- La nuova card userà `CalendarCheck` da lucide-react con `text-teal-500`
+- In `AdStatsTab.tsx`, il hook `useFunnelMetrics` verrà chiamato con `from`/`to` derivati dai filtri data già presenti nel componente
 
