@@ -88,8 +88,8 @@ export function AdStatsTab() {
   });
 
   const { metrics: funnelMetrics, isLoading: funnelLoading } = useFunnelMetrics({
-    from: dateRange.from,
-    to: dateRange.to,
+    from: selectedRange.from,
+    to: selectedRange.to,
   });
 
   // Build campaign options from stats (unfiltered by campaign)
