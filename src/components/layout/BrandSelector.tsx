@@ -58,7 +58,7 @@ export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
         setDialogOpen(false);
         setNewBrandName('');
         setNewBrandSlug('');
-        queryClient.invalidateQueries({ queryKey: ['brands'] });
+        refetchBrands();
         // Auto-select the new brand
         if (data) {
           setCurrentBrand(data as any);
