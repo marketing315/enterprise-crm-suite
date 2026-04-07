@@ -32,69 +32,69 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   const [currentBrandState, setCurrentBrandState] = useState<Brand | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchBrands = useCallback(async () => {
+    if (!user || authLoading) {
+      setBrands([]);
+      setSystemBrand(null);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('brands')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching brands:', error);
+        setBrands([]);
+        setSystemBrand(null);
+      } else {
+        const allBrands = (data || []) as Brand[];
+        
+        // Separate system brand from regular brands
+        const system = allBrands.find(b => b.id === SYSTEM_BRAND_ID || b.is_system === true);
+        const regularBrands = allBrands.filter(b => b.id !== SYSTEM_BRAND_ID && b.is_system !== true);
+        
+        setSystemBrand(system || null);
+        setBrands(regularBrands);
+        
+        // Try to restore previously selected brand
+        const storedBrandId = localStorage.getItem(BRAND_STORAGE_KEY);
+        let restored = false;
+        if (storedBrandId && data) {
+          if (storedBrandId === SYSTEM_BRAND_ID && system && (isAdmin || isCeo)) {
+            setCurrentBrandState(system);
+            restored = true;
+          } else {
+            const storedBrand = regularBrands.find(b => b.id === storedBrandId);
+            if (storedBrand) {
+              setCurrentBrandState(storedBrand);
+              restored = true;
+            }
+          }
+        }
+        // R08: If stored brand is no longer valid/accessible, reset selection
+        if (!restored) {
+          setCurrentBrandState(null);
+          localStorage.removeItem(BRAND_STORAGE_KEY);
+        }
+      }
+    } catch (error) {
+      console.error('Error in fetchBrands:', error);
+      setBrands([]);
+      setSystemBrand(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, authLoading, isAdmin, isCeo]);
+
   // Fetch brands user has access to
   // RLS now handles visibility: admins see ALL brands, others see only their assigned brands
   useEffect(() => {
-    const fetchBrands = async () => {
-      if (!user || authLoading) {
-        setBrands([]);
-        setSystemBrand(null);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('brands')
-          .select('*')
-          .order('name');
-
-        if (error) {
-          console.error('Error fetching brands:', error);
-          setBrands([]);
-          setSystemBrand(null);
-        } else {
-          const allBrands = (data || []) as Brand[];
-          
-          // Separate system brand from regular brands
-          const system = allBrands.find(b => b.id === SYSTEM_BRAND_ID || b.is_system === true);
-          const regularBrands = allBrands.filter(b => b.id !== SYSTEM_BRAND_ID && b.is_system !== true);
-          
-          setSystemBrand(system || null);
-          setBrands(regularBrands);
-          
-          // Try to restore previously selected brand
-          const storedBrandId = localStorage.getItem(BRAND_STORAGE_KEY);
-          let restored = false;
-          if (storedBrandId && data) {
-            if (storedBrandId === SYSTEM_BRAND_ID && system && (isAdmin || isCeo)) {
-              setCurrentBrandState(system);
-              restored = true;
-            } else {
-              const storedBrand = regularBrands.find(b => b.id === storedBrandId);
-              if (storedBrand) {
-                setCurrentBrandState(storedBrand);
-                restored = true;
-              }
-            }
-          }
-          // R08: If stored brand is no longer valid/accessible, reset selection
-          if (!restored) {
-            setCurrentBrandState(null);
-            localStorage.removeItem(BRAND_STORAGE_KEY);
-          }
-        }
-      } catch (error) {
-        console.error('Error in fetchBrands:', error);
-        setBrands([]);
-        setSystemBrand(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchBrands();
-  }, [user, userRoles, authLoading, isAdmin, isCeo]);
+  }, [fetchBrands, userRoles]);
 
   const setCurrentBrand = (brand: Brand | null) => {
     setCurrentBrandState(brand);
@@ -115,6 +115,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         currentBrand: currentBrandState,
         systemBrand,
         setCurrentBrand,
+        refetchBrands: fetchBrands,
         isLoading: isLoading || authLoading,
         hasBrandSelected: currentBrandState !== null,
         isAllBrandsSelected,
