@@ -33,9 +33,8 @@ interface BrandSelectorProps {
 
 export const BrandSelector = forwardRef<HTMLDivElement, BrandSelectorProps>(
   function BrandSelector({ compact = false }, ref) {
-    const { brands, currentBrand, systemBrand, setCurrentBrand, isLoading } = useBrand();
+    const { brands, currentBrand, systemBrand, setCurrentBrand, refetchBrands, isLoading } = useBrand();
     const { isAdmin, isCeo, hasRole } = useAuth();
-    const queryClient = useQueryClient();
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [newBrandName, setNewBrandName] = useState('');
