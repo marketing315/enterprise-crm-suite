@@ -56,35 +56,21 @@ export default function AppointmentDetail() {
   const { data: apt, isLoading } = useQuery({
     queryKey: ["appointment-detail", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("appointments")
+      const { data, error } = await (supabase
+        .from("appointments") as any)
         .select(`
           *,
-          contacts!appointments_contact_id_fkey (
-            id, first_name, last_name, phone, email, fiscal_code
+          contacts:contact_id (
+            id, first_name, last_name, phone, email
           ),
-          brands!appointments_brand_id_fkey (
+          brands:brand_id (
             id, name
           )
         `)
         .eq("id", id!)
         .single();
       if (error) throw error;
-
-      // Fetch sales user name via RPC or direct query
-      let salesUser: { full_name: string | null; email: string } | null = null;
-      if (data.assigned_sales_user_id) {
-        const { data: members } = await supabase
-          .from("brand_users")
-          .select("user_id, full_name, email")
-          .eq("user_id", data.assigned_sales_user_id)
-          .limit(1);
-        if (members && members.length > 0) {
-          salesUser = { full_name: members[0].full_name, email: members[0].email };
-        }
-      }
-
-      return { ...data, sales_user: salesUser } as any;
+      return data;
     },
     enabled: !!id,
   });
