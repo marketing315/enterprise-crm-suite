@@ -59,6 +59,7 @@ export function AppointmentCard({
   onAssignSales,
   salesUsers,
 }: AppointmentCardProps) {
+  const navigate = useNavigate();
   const contactName = [apt.contact?.first_name, apt.contact?.last_name]
     .filter(Boolean)
     .join(" ") || "Senza nome";
