@@ -1,7 +1,7 @@
 import { forwardRef, useState } from 'react';
 import { useBrand, SYSTEM_BRAND_ID } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
