@@ -1,18 +1,35 @@
 
 
-## Piano: Aggiungere "Appuntamenti Fissati" nelle KPI card ADV
+## Piano: Aggiungere risposte quiz nella colonna "Messaggio" del Google Sheet
 
-Il dato "Appuntamenti Fissati" è già presente nella tab **Overview**, ma manca nella tab **Statistiche ADV** (`AdStatsKpiCards`).
+Le risposte quiz sono già salvate nella colonna `quiz_answers` (JSONB) della tabella `contacts`, ma la funzione `sheets-leads-export` non le include nell'export. Il campo "messaggio" corrisponde a `contact.lead_message` nella riga 215.
 
 ### Modifiche
 
-1. **`src/components/marketing/AdStatsTab.tsx`** — importare e invocare `useFunnelMetrics` con le stesse date del range selezionato, passare il dato appointments al componente `AdStatsKpiCards`.
+**File: `supabase/functions/sheets-leads-export/index.ts`**
 
-2. **`src/components/marketing/AdStatsKpiCards.tsx`** — aggiungere prop opzionale `appointments` (number), aggiungere una KPI card "Appuntamenti" con icona `CalendarCheck` e colore verde, posizionata dopo Lead e CPL.
+1. **Aggiungere `quiz_answers` alle query SELECT** — sia in `fetchSingleLeadRow` (riga 242) che in `fetchAllLeadsRows` (riga 292), aggiungere `quiz_answers` alla lista dei campi di `contacts(...)`.
+
+2. **Modificare la funzione `buildRow`** — nella riga 215, concatenare le risposte quiz al `lead_message`:
+   - Se `contact.quiz_answers` esiste e ha contenuto, formattarlo come stringa leggibile (es. `"Domanda: Risposta, Domanda2: Risposta2"`)
+   - Concatenarlo al `lead_message` esistente separato da ` | `
+   - Se `lead_message` è vuoto, usare solo le risposte quiz
 
 ### Dettagli tecnici
 
-- `AdStatsKpiCardsProps` riceverà `appointments?: number | null`
-- La nuova card userà `CalendarCheck` da lucide-react con `text-teal-500`
-- In `AdStatsTab.tsx`, il hook `useFunnelMetrics` verrà chiamato con `from`/`to` derivati dai filtri data già presenti nel componente
+Funzione helper per formattare le quiz answers:
+```typescript
+function formatQuizAnswers(qa: Record<string, string | string[]>): string {
+  return Object.entries(qa)
+    .map(([q, a]) => `${q}: ${Array.isArray(a) ? a.join(", ") : a}`)
+    .join(" | ");
+}
+```
+
+Nella riga 215 di `buildRow`:
+```typescript
+const quizStr = contact?.quiz_answers ? formatQuizAnswers(contact.quiz_answers) : "";
+const messaggio = [contact?.lead_message, quizStr].filter(Boolean).join(" | ");
+// usa messaggio al posto di contact?.lead_message || ""
+```
 
