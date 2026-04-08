@@ -182,6 +182,13 @@ const TAB_NAME = "LEADS";
 
 // ============ Data Helpers ============
 
+function formatQuizAnswers(qa: Record<string, any>): string {
+  return Object.entries(qa)
+    .filter(([_, v]) => v !== null && v !== undefined && v !== "")
+    .map(([q, a]) => `${q}: ${Array.isArray(a) ? a.join(", ") : a}`)
+    .join(" | ");
+}
+
 function extractStreetNumber(address: string | null): { street: string; number: string } {
   if (!address) return { street: "", number: "" };
   const match = address.match(/^(.+?)[,\s]+(?:n\.?\s*)?(\d+\s*\/?[a-zA-Z]?)$/);
@@ -212,7 +219,7 @@ function buildRow(event: any, contact: any, brandName: string, phone: string, ta
     event.source_name || "",
     payload.adset || payload.adset_name || payload.meta_adset_name || "",
     contact?.lead_reason || "",
-    contact?.lead_message || "",
+    [contact?.lead_message, contact?.quiz_answers ? formatQuizAnswers(contact.quiz_answers) : ""].filter(Boolean).join(" | ") || "",
     contact?.cap || "",
     contact?.city || "",
     contact?.province || "",
@@ -239,7 +246,7 @@ async function fetchSingleLeadRow(
     .from("lead_events")
     .select(`
       id, received_at, source_name, raw_payload, contact_id, brand_id,
-      contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, cap, city, province, notes),
+      contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, quiz_answers, cap, city, province, notes),
       brands(name)
     `)
     .eq("id", leadEventId)
@@ -289,7 +296,7 @@ async function fetchAllLeadsRows(
     .from("lead_events")
     .select(`
       id, received_at, source_name, raw_payload, contact_id, brand_id,
-      contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, cap, city, province, notes),
+      contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, quiz_answers, cap, city, province, notes),
       brands(name)
     `)
     .order("received_at", { ascending: true })
