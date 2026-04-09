@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { it } from "date-fns/locale";
-import { Mail, Eye, Building2, Settings2, Save, Trash2, ShoppingCart } from "lucide-react";
+import { Mail, Eye, Building2, Settings2, Save, Trash2, ShoppingCart, Flame, Snowflake, ThermometerSun } from "lucide-react";
 import {
   Table,
   TableBody,
