@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowDown, Loader2, Send, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatThreadIcon } from "./ChatThreadIcon";
@@ -48,21 +47,22 @@ export function ChatMessagePanel({
   const hasThread = !!thread || isDraftMode;
   const isGroup = thread?.type === "group";
 
-  // Auto-scroll only when near bottom
   useEffect(() => {
     if (isNearBottom) {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       }, 50);
     }
   }, [messages, thread?.id, isNearBottom]);
 
-  const handleScroll = useCallback(() => {
-    // Will be connected via onScrollCapture
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    setIsNearBottom(distanceFromBottom < 120);
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     setIsNearBottom(true);
   }, []);
 
@@ -78,9 +78,8 @@ export function ChatMessagePanel({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
-      {/* Header */}
-      <div className="px-5 py-3 border-b border-border/50 flex items-center gap-3 bg-card/30 backdrop-blur-sm">
+    <div className="flex-1 h-full min-h-0 flex flex-col min-w-0">
+      <div className="shrink-0 px-5 py-3 border-b border-border/50 flex items-center gap-3 bg-card/30 backdrop-blur-sm">
         <ChatThreadIcon type={thread?.type || (isDraftMode ? "executive" : "direct")} />
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold truncate">
@@ -112,9 +111,8 @@ export function ChatMessagePanel({
         )}
       </div>
 
-      {/* Messages */}
-      <div className="relative flex-1 min-h-0">
-        <ScrollArea className="h-full">
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto overscroll-contain" onScroll={handleScroll}>
           <div className="p-5">
             {messagesLoading ? (
               <div className="flex items-center justify-center h-40">
@@ -136,9 +134,8 @@ export function ChatMessagePanel({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
-        {/* Scroll to bottom FAB */}
         {!isNearBottom && messages.length > 5 && (
           <button
             onClick={scrollToBottom}
@@ -155,8 +152,7 @@ export function ChatMessagePanel({
         )}
       </div>
 
-      {/* Input Area */}
-      <form onSubmit={onSend} className="px-5 py-3 border-t border-border/50 bg-card/30 backdrop-blur-sm space-y-2.5">
+      <form onSubmit={onSend} className="shrink-0 px-5 py-3 border-t border-border/50 bg-card/30 backdrop-blur-sm space-y-2.5">
         {(thread?.type === "entity" || isExecutiveThread) && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
