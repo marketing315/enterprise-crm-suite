@@ -127,6 +127,9 @@ export interface Contact {
   note9?: string | null;
   note10?: string | null;
   quiz_answers?: Record<string, string | string[]> | null;
+  lead_score?: number | null;
+  lead_heat_class?: string | null;
+  lead_score_updated_at?: string | null;
   created_at: string;
   updated_at: string;
 }
