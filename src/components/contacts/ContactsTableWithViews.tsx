@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { it } from "date-fns/locale";
-import { Mail, Eye, Building2, Settings2, Save, Trash2, ShoppingCart } from "lucide-react";
+import { Mail, Eye, Building2, Settings2, Save, Trash2, ShoppingCart, Flame, Snowflake, ThermometerSun } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -36,6 +36,7 @@ import { SaveViewDialog } from "./views/SaveViewDialog";
 import { EditViewDialog } from "./views/EditViewDialog";
 import { ColumnManager } from "./views/ColumnManager";
 import { SortableFilterableHeader, type SortConfig, type DateFilter } from "./SortableFilterableHeader";
+import { cn } from "@/lib/utils";
 import { useBrand } from "@/contexts/BrandContext";
 import { useActiveTableView } from "@/hooks/useActiveTableView";
 import {
@@ -514,6 +515,29 @@ export function ContactsTableWithViews({
             <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-medium">€{salesData.total.toLocaleString("it-IT")}</span>
             <span className="text-muted-foreground">({salesData.count})</span>
+          </div>
+        );
+      }
+
+      case "lead_score": {
+        const score = contact.lead_score;
+        const heat = contact.lead_heat_class as "freddo" | "tiepido" | "caldo" | null;
+        if (score == null || !heat) {
+          return <span className="text-muted-foreground text-sm">-</span>;
+        }
+        const heatMap = {
+          caldo: { icon: Flame, color: "text-red-600", bg: "bg-red-100", label: "Caldo" },
+          tiepido: { icon: ThermometerSun, color: "text-amber-600", bg: "bg-amber-100", label: "Tiepido" },
+          freddo: { icon: Snowflake, color: "text-blue-600", bg: "bg-blue-100", label: "Freddo" },
+        };
+        const h = heatMap[heat];
+        const HeatIcon = h.icon;
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", h.bg, h.color)}>
+              <HeatIcon className="h-3 w-3" />
+              {score}
+            </span>
           </div>
         );
       }
