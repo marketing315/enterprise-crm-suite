@@ -196,7 +196,7 @@ export default function Chat() {
         </TabsContent>
 
         {/* Conversations Tab */}
-        <TabsContent value="threads" className="flex-1 min-h-0 mt-0">
+        <TabsContent value="threads" className="flex-1 min-h-0 mt-0 overflow-hidden">
           <div className="h-full flex rounded-xl border border-border/50 overflow-hidden bg-background">
             {/* Thread list - hidden on mobile when viewing messages */}
             <div className={cn(
