@@ -518,6 +518,29 @@ export function ContactsTableWithViews({
         );
       }
 
+      case "lead_score": {
+        const score = contact.lead_score;
+        const heat = contact.lead_heat_class as "freddo" | "tiepido" | "caldo" | null;
+        if (score == null || !heat) {
+          return <span className="text-muted-foreground text-sm">-</span>;
+        }
+        const heatMap = {
+          caldo: { icon: Flame, color: "text-red-600", bg: "bg-red-100", label: "Caldo" },
+          tiepido: { icon: ThermometerSun, color: "text-amber-600", bg: "bg-amber-100", label: "Tiepido" },
+          freddo: { icon: Snowflake, color: "text-blue-600", bg: "bg-blue-100", label: "Freddo" },
+        };
+        const h = heatMap[heat];
+        const HeatIcon = h.icon;
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", h.bg, h.color)}>
+              <HeatIcon className="h-3 w-3" />
+              {score}
+            </span>
+          </div>
+        );
+      }
+
       default:
         return null;
     }
