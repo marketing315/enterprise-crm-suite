@@ -2694,10 +2694,13 @@ export type Database = {
           last_name: string | null
           lead_cost: number | null
           lead_extra: string | null
+          lead_heat_class: Database["public"]["Enums"]["heat_class"] | null
           lead_message: string | null
           lead_note: string | null
           lead_reason: string | null
           lead_reason_id: string | null
+          lead_score: number | null
+          lead_score_updated_at: string | null
           lead_state_id: string | null
           lead_type: string | null
           lead_valid: boolean | null
@@ -2745,10 +2748,13 @@ export type Database = {
           last_name?: string | null
           lead_cost?: number | null
           lead_extra?: string | null
+          lead_heat_class?: Database["public"]["Enums"]["heat_class"] | null
           lead_message?: string | null
           lead_note?: string | null
           lead_reason?: string | null
           lead_reason_id?: string | null
+          lead_score?: number | null
+          lead_score_updated_at?: string | null
           lead_state_id?: string | null
           lead_type?: string | null
           lead_valid?: boolean | null
@@ -2796,10 +2802,13 @@ export type Database = {
           last_name?: string | null
           lead_cost?: number | null
           lead_extra?: string | null
+          lead_heat_class?: Database["public"]["Enums"]["heat_class"] | null
           lead_message?: string | null
           lead_note?: string | null
           lead_reason?: string | null
           lead_reason_id?: string | null
+          lead_score?: number | null
+          lead_score_updated_at?: string | null
           lead_state_id?: string | null
           lead_type?: string | null
           lead_valid?: boolean | null
@@ -4461,6 +4470,114 @@ export type Database = {
             columns: ["marketing_campaign_id"]
             isOneToOne: false
             referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_score_history: {
+        Row: {
+          brand_id: string
+          computed_at: string
+          contact_id: string
+          heat_class: Database["public"]["Enums"]["heat_class"]
+          id: string
+          negative_drivers: string[]
+          positive_drivers: string[]
+          score: number
+          trigger_event: string | null
+        }
+        Insert: {
+          brand_id: string
+          computed_at?: string
+          contact_id: string
+          heat_class: Database["public"]["Enums"]["heat_class"]
+          id?: string
+          negative_drivers?: string[]
+          positive_drivers?: string[]
+          score: number
+          trigger_event?: string | null
+        }
+        Update: {
+          brand_id?: string
+          computed_at?: string
+          contact_id?: string
+          heat_class?: Database["public"]["Enums"]["heat_class"]
+          id?: string
+          negative_drivers?: string[]
+          positive_drivers?: string[]
+          score?: number
+          trigger_event?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_score_history_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_score_history_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_scores: {
+        Row: {
+          brand_id: string
+          computed_at: string
+          contact_id: string
+          created_at: string
+          heat_class: Database["public"]["Enums"]["heat_class"]
+          id: string
+          negative_drivers: string[]
+          next_best_action: string | null
+          positive_drivers: string[]
+          score: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          computed_at?: string
+          contact_id: string
+          created_at?: string
+          heat_class?: Database["public"]["Enums"]["heat_class"]
+          id?: string
+          negative_drivers?: string[]
+          next_best_action?: string | null
+          positive_drivers?: string[]
+          score?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          computed_at?: string
+          contact_id?: string
+          created_at?: string
+          heat_class?: Database["public"]["Enums"]["heat_class"]
+          id?: string
+          negative_drivers?: string[]
+          next_best_action?: string | null
+          positive_drivers?: string[]
+          score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_scores_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_scores_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -7628,6 +7745,10 @@ export type Database = {
         Returns: Json
       }
       calculate_deal_scores: { Args: { p_brand_id?: string }; Returns: number }
+      calculate_lead_score: {
+        Args: { p_contact_id: string; p_trigger_event?: string }
+        Returns: Json
+      }
       can_manage_role: {
         Args: {
           manager_role: Database["public"]["Enums"]["app_role"]
@@ -9233,6 +9354,7 @@ export type Database = {
         | "ai_extraction_failed"
         | "contact_creation_failed"
         | "unknown_error"
+      heat_class: "freddo" | "tiepido" | "caldo"
       household_person_role: "requester" | "beneficiary" | "other"
       ingest_status: "pending" | "success" | "rejected" | "failed"
       lead_source_channel: "tv" | "online" | "other"
@@ -9578,6 +9700,7 @@ export const Constants = {
         "contact_creation_failed",
         "unknown_error",
       ],
+      heat_class: ["freddo", "tiepido", "caldo"],
       household_person_role: ["requester", "beneficiary", "other"],
       ingest_status: ["pending", "success", "rejected", "failed"],
       lead_source_channel: ["tv", "online", "other"],
