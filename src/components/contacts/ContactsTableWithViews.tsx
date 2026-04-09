@@ -36,6 +36,7 @@ import { SaveViewDialog } from "./views/SaveViewDialog";
 import { EditViewDialog } from "./views/EditViewDialog";
 import { ColumnManager } from "./views/ColumnManager";
 import { SortableFilterableHeader, type SortConfig, type DateFilter } from "./SortableFilterableHeader";
+import { cn } from "@/lib/utils";
 import { useBrand } from "@/contexts/BrandContext";
 import { useActiveTableView } from "@/hooks/useActiveTableView";
 import {
