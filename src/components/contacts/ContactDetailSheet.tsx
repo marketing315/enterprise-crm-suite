@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText, GitBranchPlus } from 'lucide-react';
 import { CallTranscriptsSection } from './CallTranscriptsSection';
+import { LeadScoreBadge } from './LeadScoreBadge';
 import { ContactQuizAnswersSection } from './ContactQuizAnswersSection';
 import { Switch } from '@/components/ui/switch';
 import { ClickToCallButton } from './ClickToCallButton';
@@ -371,6 +372,11 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     <ContactStatusBadge status={contact.status} />
                   </div>
                 </div>
+              )}
+
+              {/* Lead Score */}
+              {contactId && (
+                <LeadScoreBadge contactId={contactId} />
               )}
 
               <Separator />
