@@ -43,7 +43,7 @@ export function useContactSearch(
   offset = 0
 ) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
-  const { status, createdFrom, createdTo, sourceName, tagIds } = filters;
+  const { status, createdFrom, createdTo, sourceName, tagIds, sortBy = "updated_at", sortDir = "desc" } = filters;
 
   return useQuery({
     queryKey: [
@@ -55,6 +55,8 @@ export function useContactSearch(
       createdTo?.toISOString(),
       sourceName,
       tagIds,
+      sortBy,
+      sortDir,
       limit,
       offset,
     ],
