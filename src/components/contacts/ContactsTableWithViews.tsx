@@ -123,8 +123,8 @@ export function ContactsTableWithViews({
       }
     });
 
-    // Apply sorting
-    if (sortConfig?.key && sortConfig?.direction) {
+    // Apply sorting only for non-server-sortable columns (server handles the rest)
+    if (sortConfig?.key && sortConfig?.direction && !serverSortableColumns.includes(sortConfig.key)) {
       result.sort((a, b) => {
         const aValue = a[sortConfig.key as keyof ContactWithBrand];
         const bValue = b[sortConfig.key as keyof ContactWithBrand];
