@@ -43,7 +43,7 @@ export function useContactSearch(
   offset = 0
 ) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
-  const { status, createdFrom, createdTo, sourceName, tagIds, sortBy = "updated_at", sortDir = "desc" } = filters;
+  const { status, createdFrom, createdTo, sourceName, tagIds, sortBy = "last_interaction_at", sortDir = "desc" } = filters;
 
   return useQuery({
     queryKey: [
@@ -104,7 +104,7 @@ export function useContactSearch(
             last_interaction_at,
             contact_phones(phone_normalized, is_primary, is_active)
           `)
-          .order(sortBy, { ascending: sortDir === "asc" })
+          .order(sortBy, { ascending: sortDir === "asc", nullsFirst: false })
           .range(offset, offset + limit - 1);
 
         if (isAllBrandsSelected) {

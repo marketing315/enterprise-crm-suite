@@ -54,8 +54,9 @@ export default function Contacts() {
   const [createdFromDate, setCreatedFromDate] = useState<Date | undefined>();
   const [createdToDate, setCreatedToDate] = useState<Date | undefined>();
   const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<SortField>('updated_at');
+  const [sortBy, setSortBy] = useState<SortField>('last_interaction_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [showAll, setShowAll] = useState(false);
   const { data: sourceNames = [] } = useLeadSourceNames();
 
   // Handle URL param to open contact detail
