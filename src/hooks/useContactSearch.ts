@@ -321,3 +321,60 @@ export function useContactSearch(
     staleTime: 1000 * 30,
   });
 }
+
+export function useContactCount(
+  query: string,
+  filters: ContactSearchFilters = {}
+) {
+  const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
+  const { status, createdFrom, createdTo, sourceName, tagIds } = filters;
+
+  return useQuery({
+    queryKey: [
+      "contact-count",
+      isAllBrandsSelected ? "all" : currentBrand?.id,
+      query,
+      status,
+      createdFrom?.toISOString(),
+      createdTo?.toISOString(),
+      sourceName,
+      tagIds,
+    ],
+    queryFn: async (): Promise<number> => {
+      const hasValidBrands = isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand;
+      if (!hasValidBrands) return 0;
+
+      // For text search queries, we can't easily get an exact count, return undefined
+      if (query.trim()) return 0;
+
+      let countQuery = supabase
+        .from("contacts")
+        .select("id", { count: "exact", head: true });
+
+      if (isAllBrandsSelected) {
+        countQuery = countQuery.in("brand_id", allBrandIds);
+      } else if (currentBrand) {
+        countQuery = countQuery.eq("brand_id", currentBrand.id);
+      }
+
+      if (status) {
+        countQuery = countQuery.eq("status", status);
+      }
+
+      if (createdFrom) {
+        countQuery = countQuery.gte("created_at", createdFrom.toISOString());
+      }
+      if (createdTo) {
+        const endOfDay = new Date(createdTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        countQuery = countQuery.lte("created_at", endOfDay.toISOString());
+      }
+
+      const { count, error } = await countQuery;
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand,
+    staleTime: 1000 * 60,
+  });
+}
