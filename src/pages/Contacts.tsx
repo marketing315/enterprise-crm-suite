@@ -121,6 +121,7 @@ export default function Contacts() {
         address: (c as any).address || null as string | null,
         notes: (c as any).notes || null as string | null,
         updated_at: (c as any).updated_at || c.created_at,
+        last_interaction_at: (c as any).last_interaction_at || null as string | null,
         contact_phones: c.primary_phone 
           ? [{ id: '', brand_id: c.brand_id, contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: c.primary_phone, country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
           : [],
