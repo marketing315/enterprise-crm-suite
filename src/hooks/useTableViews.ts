@@ -35,6 +35,7 @@ export interface ContactTableView {
 
 // Default columns configuration
 export const DEFAULT_COLUMNS: TableColumn[] = [
+  { key: "lead_score", label: "Lead Score", visible: true },
   { key: "full_name", label: "Nome completo", visible: true },
   { key: "first_name", label: "Nome", visible: false },
   { key: "last_name", label: "Cognome", visible: false },
@@ -44,10 +45,9 @@ export const DEFAULT_COLUMNS: TableColumn[] = [
   { key: "cap", label: "CAP", visible: false },
   { key: "address", label: "Indirizzo", visible: false },
   { key: "status", label: "Stato", visible: true },
-  { key: "sales_total", label: "Vendite", visible: true },
-  { key: "lead_score", label: "Lead Score", visible: true },
+  { key: "sales_total", label: "Vendite", visible: false },
   { key: "notes", label: "Note", visible: false },
-  { key: "brand_name", label: "Brand", visible: false }, // Hidden by default, shown in all-brands view
+  { key: "brand_name", label: "Brand", visible: false },
   { key: "created_at", label: "Data creazione", visible: true },
   { key: "updated_at", label: "Ultimo aggiornamento", visible: false },
   { key: "last_interaction_at", label: "Ultima interazione", visible: true },
