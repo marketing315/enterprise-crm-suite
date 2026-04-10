@@ -20,6 +20,7 @@ import {
   Phone,
   Ticket,
   X,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EntityTagList } from "@/components/tags/EntityTagList";
 import { EntityChatBox } from "@/components/chat/EntityChatBox";
+import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssignmentSelect";
 import { CampaignSelect } from "./CampaignSelect";
 import { ClickToCallButton } from "@/components/contacts/ClickToCallButton";
@@ -143,9 +145,13 @@ export function DealInlinePanel({ deal, onClose }: DealInlinePanelProps) {
       {/* Tabs */}
       <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
         <div className="px-4 pt-2 shrink-0">
-          <TabsList className="grid w-full grid-cols-2 h-8">
+          <TabsList className="grid w-full grid-cols-3 h-8">
             <TabsTrigger value="details" className="text-xs">Dettagli</TabsTrigger>
             <TabsTrigger value="chat" className="text-xs">Discussione</TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs flex items-center gap-1">
+              <History className="h-3 w-3" />
+              Audit
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -350,6 +356,12 @@ export function DealInlinePanel({ deal, onClose }: DealInlinePanelProps) {
 
         <TabsContent value="chat" className="flex-1 overflow-hidden mt-2 px-2 pb-2">
           <EntityChatBox entityType="deal" entityId={deal.id} className="h-full" />
+        </TabsContent>
+
+        <TabsContent value="audit" className="flex-1 overflow-hidden mt-2 px-2 pb-2">
+          <ScrollArea className="h-full">
+            <AuditTimeline entityType="deal" entityId={deal.id} />
+          </ScrollArea>
         </TabsContent>
       </Tabs>
 
