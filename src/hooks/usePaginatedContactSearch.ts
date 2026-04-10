@@ -1,16 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useContactSearch, type ContactSearchFilters, type SearchResult } from "./useContactSearch";
+import { useContactSearch, useContactCount, type ContactSearchFilters, type SearchResult } from "./useContactSearch";
 
 const PAGE_SIZE = 50;
 
 export function usePaginatedContactSearch(
   query: string,
-  filters: ContactSearchFilters = {}
+  filters: ContactSearchFilters = {},
+  showAll = false
 ) {
   const [allResults, setAllResults] = useState<SearchResult[]>([]);
   const [page, setPage] = useState(0);
   const prevKeyRef = useRef("");
   const loadTriggeredRef = useRef(false);
+
+  const effectiveLimit = showAll ? 10000 : PAGE_SIZE;
 
   // Build a stable key to detect filter/query changes
   const filterKey = JSON.stringify([
@@ -22,6 +25,7 @@ export function usePaginatedContactSearch(
     filters.tagIds,
     filters.sortBy,
     filters.sortDir,
+    showAll,
   ]);
 
   // Reset when filters/query change
@@ -34,20 +38,22 @@ export function usePaginatedContactSearch(
     }
   }, [filterKey]);
 
-  const offset = page * PAGE_SIZE;
+  const offset = showAll ? 0 : page * PAGE_SIZE;
 
   const { data: pageData = [], isLoading, isFetching, isError } = useContactSearch(
     query,
     filters,
-    PAGE_SIZE,
+    effectiveLimit,
     offset
   );
+
+  const { data: totalCount } = useContactCount(query, filters);
 
   // Append new page data when it arrives and reset the load guard
   useEffect(() => {
     if (pageData.length > 0) {
       setAllResults((prev) => {
-        if (page === 0) return pageData;
+        if (page === 0 || showAll) return pageData;
         const existingIds = new Set(prev.map((r) => r.id));
         const newItems = pageData.filter((r) => !existingIds.has(r.id));
         return [...prev, ...newItems];
@@ -57,12 +63,11 @@ export function usePaginatedContactSearch(
       setAllResults([]);
       loadTriggeredRef.current = false;
     } else if (!isFetching) {
-      // R04: Reset guard when fetch finished with empty data (end of list or error)
       loadTriggeredRef.current = false;
     }
-  }, [pageData, page, isFetching]);
+  }, [pageData, page, isFetching, showAll]);
 
-  // R04: Also reset guard on query error so "load more" doesn't stay stuck
+  // Reset guard on query error
   useEffect(() => {
     if (isError) {
       loadTriggeredRef.current = false;
@@ -70,13 +75,13 @@ export function usePaginatedContactSearch(
   }, [isError]);
 
   const loadMore = useCallback(() => {
-    // Prevent multiple rapid increments before isFetching kicks in
+    if (showAll) return;
     if (loadTriggeredRef.current) return;
     loadTriggeredRef.current = true;
     setPage((p) => p + 1);
-  }, []);
+  }, [showAll]);
 
-  const hasMore = pageData.length === PAGE_SIZE;
+  const hasMore = !showAll && pageData.length === effectiveLimit;
   const contacts = allResults;
 
   return {
@@ -86,5 +91,6 @@ export function usePaginatedContactSearch(
     hasMore,
     loadMore,
     totalLoaded: allResults.length,
+    totalCount: totalCount ?? null,
   };
 }
