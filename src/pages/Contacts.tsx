@@ -319,6 +319,7 @@ export default function Contacts() {
         hasMore={hasMore}
         isLoadingMore={isLoadingMore}
         onLoadMore={loadMore}
+        onSortChange={handleSortChange}
       />
 
       {/* Contact Detail Sheet */}
