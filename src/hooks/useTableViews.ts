@@ -50,6 +50,7 @@ export const DEFAULT_COLUMNS: TableColumn[] = [
   { key: "brand_name", label: "Brand", visible: false }, // Hidden by default, shown in all-brands view
   { key: "created_at", label: "Data creazione", visible: true },
   { key: "updated_at", label: "Ultimo aggiornamento", visible: false },
+  { key: "last_interaction_at", label: "Ultima interazione", visible: true },
 ];
 
 export function useTableViews() {
