@@ -2691,6 +2691,7 @@ export type Database = {
           first_name: string | null
           fiscal_code: string | null
           id: string
+          last_interaction_at: string | null
           last_name: string | null
           lead_cost: number | null
           lead_extra: string | null
@@ -2745,6 +2746,7 @@ export type Database = {
           first_name?: string | null
           fiscal_code?: string | null
           id?: string
+          last_interaction_at?: string | null
           last_name?: string | null
           lead_cost?: number | null
           lead_extra?: string | null
@@ -2799,6 +2801,7 @@ export type Database = {
           first_name?: string | null
           fiscal_code?: string | null
           id?: string
+          last_interaction_at?: string | null
           last_name?: string | null
           lead_cost?: number | null
           lead_extra?: string | null
