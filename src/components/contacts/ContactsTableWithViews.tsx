@@ -158,8 +158,16 @@ export function ContactsTableWithViews({
   const handleSort = (key: string, direction: SortConfig['direction']) => {
     if (direction === null) {
       setSortConfig(null);
+      // Reset to default server sort
+      if (serverSortableColumns.includes(key) && onSortChange) {
+        onSortChange('updated_at', 'desc');
+      }
     } else {
       setSortConfig({ key, direction });
+      // Delegate to server for server-sortable columns
+      if (serverSortableColumns.includes(key) && onSortChange) {
+        onSortChange(key, direction);
+      }
     }
   };
 
