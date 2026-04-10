@@ -186,6 +186,7 @@ export function useContactSearch(
             lead_score: c.lead_score,
             lead_heat_class: c.lead_heat_class,
             lead_score_updated_at: c.lead_score_updated_at,
+            last_interaction_at: c.last_interaction_at,
             match_type: "none",
           };
         });
