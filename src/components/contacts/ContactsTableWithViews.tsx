@@ -477,6 +477,15 @@ export function ContactsTableWithViews({
           <span className="text-muted-foreground">-</span>
         );
 
+      case "last_interaction_at":
+        return contact.last_interaction_at ? (
+          <span className="text-sm text-muted-foreground">
+            {format(new Date(contact.last_interaction_at), "dd MMM yyyy HH:mm", { locale: it })}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
       case "first_name":
         return contact.first_name ? (
           <span className="text-sm">{contact.first_name}</span>
