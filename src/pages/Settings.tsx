@@ -21,6 +21,7 @@ import {
   Cpu,
   ChevronRight,
   Download,
+  ScrollText,
 } from "lucide-react";
 import { TagManager } from "@/components/tags/TagManager";
 import { TicketingSettings } from "@/components/settings/TicketingSettings";
@@ -43,6 +44,7 @@ import { CampaignGroupsManager } from "@/components/marketing/CampaignGroupsMana
 import { KepleroLookupSettings } from "@/components/settings/keplero/KepleroLookupSettings";
 import { McpSettingsModule } from "@/components/settings/mcp/McpSettingsModule";
 import { InboundSourceList } from "@/components/settings/inbound/InboundSourceList";
+import { AuditConsole } from "@/components/audit/AuditConsole";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -103,6 +105,7 @@ const settingsGroups: SettingsNavGroup[] = [
     label: "Sistema",
     items: [
       { id: "modules", label: "Governance moduli", icon: Layers, superAdminOnly: true },
+      { id: "audit", label: "Audit Log", icon: ScrollText, superAdminOnly: true },
       { id: "mcp", label: "MCP Server", icon: Cpu, superAdminOnly: true },
       { id: "admin", label: "Gestione utenti", icon: ShieldCheck, superAdminOnly: true },
     ],
@@ -154,6 +157,8 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
       return <NotificationPreferencesSettings />;
     case "modules":
       return <ModuleGovernanceSettings />;
+    case "audit":
+      return <AuditConsole />;
     case "mcp":
       return <McpSettingsModule />;
     case "admin":
