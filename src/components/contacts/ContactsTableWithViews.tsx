@@ -74,6 +74,7 @@ export function ContactsTableWithViews({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  onSortChange,
 }: ContactsTableProps) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
