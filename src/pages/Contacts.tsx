@@ -73,7 +73,7 @@ export default function Contacts() {
   }, [searchParams, setSearchParams]);
   
   
-  const { contacts, isLoading, isLoadingMore, hasMore, loadMore, totalLoaded } = usePaginatedContactSearch(
+  const { contacts, isLoading, isLoadingMore, hasMore, loadMore, totalLoaded, totalCount } = usePaginatedContactSearch(
     searchQuery,
     {
       status: statusFilter === 'all' ? undefined : statusFilter,
@@ -83,7 +83,8 @@ export default function Contacts() {
       tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       sortBy,
       sortDir,
-    }
+    },
+    showAll
   );
 
   const handleSortChange = useCallback((field: string, direction: string) => {
@@ -225,7 +226,7 @@ export default function Contacts() {
             <div>
               <h1 className="text-lg md:text-2xl font-semibold">Contatti</h1>
           <p className="text-xs md:text-sm text-muted-foreground">
-                {totalLoaded} {searchQuery ? 'trovati' : 'caricati'}
+                {totalLoaded}{totalCount ? ` di ${totalCount}` : ''} {searchQuery ? 'trovati' : 'contatti'}
               </p>
             </div>
           </div>
@@ -321,6 +322,10 @@ export default function Contacts() {
         isLoadingMore={isLoadingMore}
         onLoadMore={loadMore}
         onSortChange={handleSortChange}
+        showAll={showAll}
+        onToggleShowAll={() => setShowAll(prev => !prev)}
+        totalCount={totalCount}
+        totalLoaded={totalLoaded}
       />
 
       {/* Contact Detail Sheet */}
