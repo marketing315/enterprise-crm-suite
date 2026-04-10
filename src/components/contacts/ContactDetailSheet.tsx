@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText, GitBranchPlus } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText, GitBranchPlus, History } from 'lucide-react';
 import { CallTranscriptsSection } from './CallTranscriptsSection';
 import { LeadScoreBadge } from './LeadScoreBadge';
 import { ContactQuizAnswersSection } from './ContactQuizAnswersSection';
@@ -49,6 +49,8 @@ import { CorrectPhoneDialog } from './CorrectPhoneDialog';
 import { BrandBadge } from '@/components/layout/BrandBadge';
 import { ContactCompanySection } from './ContactCompanySection';
 import { ContactLeadDataSection } from './ContactLeadDataSection';
+import { AuditTimeline } from '@/components/audit/AuditTimeline';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LeadEventCard } from './LeadEventCard';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
 import { useContactDeal, useCreateContactDeal } from '@/hooks/useContactDeal';
@@ -251,7 +253,17 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
             <Skeleton className="h-24 w-full" />
           </div>
         ) : contact ? (
-          <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
+          <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden mt-4">
+            <TabsList className="grid w-full grid-cols-2 shrink-0">
+              <TabsTrigger value="details">Dettagli</TabsTrigger>
+              <TabsTrigger value="audit" className="flex items-center gap-1.5">
+                <History className="h-3.5 w-3.5" />
+                Cronologia
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="details" className="flex-1 overflow-hidden mt-2">
+          <ScrollArea className="h-[calc(100vh-200px)] pr-4">
             <div className="space-y-6">
               {/* Header / Edit Form */}
               {isEditing ? (
@@ -620,6 +632,14 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
               </div>
             </div>
           </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="audit" className="flex-1 overflow-hidden mt-2">
+              <ScrollArea className="h-[calc(100vh-200px)] pr-4">
+                <AuditTimeline entityType="contact" entityId={contact.id} />
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         ) : (
           <p className="mt-6 text-muted-foreground">Contatto non trovato</p>
         )}
