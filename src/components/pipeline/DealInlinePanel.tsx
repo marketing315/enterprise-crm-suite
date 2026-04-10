@@ -20,6 +20,7 @@ import {
   Phone,
   Ticket,
   X,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EntityTagList } from "@/components/tags/EntityTagList";
 import { EntityChatBox } from "@/components/chat/EntityChatBox";
+import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { SalespersonAssignmentSelect } from "@/components/team/SalespersonAssignmentSelect";
 import { CampaignSelect } from "./CampaignSelect";
 import { ClickToCallButton } from "@/components/contacts/ClickToCallButton";
