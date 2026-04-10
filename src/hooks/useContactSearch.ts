@@ -19,8 +19,12 @@ export interface SearchResult {
   lead_score?: number | null;
   lead_heat_class?: "freddo" | "tiepido" | "caldo" | null;
   lead_score_updated_at?: string | null;
+  last_interaction_at?: string | null;
   match_type: string;
 }
+
+export type SortField = "updated_at" | "created_at" | "last_interaction_at" | "first_name" | "last_name" | "email" | "lead_score";
+export type SortDir = "asc" | "desc";
 
 export interface ContactSearchFilters {
   status?: ContactStatus;
@@ -28,6 +32,8 @@ export interface ContactSearchFilters {
   createdTo?: Date;
   sourceName?: string;
   tagIds?: string[];
+  sortBy?: SortField;
+  sortDir?: SortDir;
 }
 
 export function useContactSearch(
