@@ -267,9 +267,13 @@ export function ContactsTableWithViews({
   const [localColumns, setLocalColumns] = useState<TableColumn[]>(activeColumns);
 
   // Sync local columns when active view changes
+  const activeColumnsKey = useMemo(
+    () => JSON.stringify(activeColumns.map(c => ({ k: c.key, v: c.visible }))),
+    [activeColumns]
+  );
   useEffect(() => {
     setLocalColumns(activeColumns);
-  }, [activeViewId, activeColumns.length]);
+  }, [activeViewId, activeColumnsKey]);
 
   const createView = useCreateTableView();
   const updateView = useUpdateTableView();
