@@ -101,9 +101,10 @@ export function useContactSearch(
             lead_score,
             lead_heat_class,
             lead_score_updated_at,
+            last_interaction_at,
             contact_phones(phone_normalized, is_primary, is_active)
           `)
-          .order("updated_at", { ascending: false })
+          .order(sortBy, { ascending: sortDir === "asc" })
           .range(offset, offset + limit - 1);
 
         if (isAllBrandsSelected) {
