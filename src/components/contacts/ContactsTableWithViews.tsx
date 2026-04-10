@@ -64,6 +64,10 @@ interface ContactsTableProps {
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
   onSortChange?: (field: string, direction: string) => void;
+  showAll?: boolean;
+  onToggleShowAll?: () => void;
+  totalCount?: number | null;
+  totalLoaded?: number;
 }
 
 export function ContactsTableWithViews({
@@ -75,6 +79,10 @@ export function ContactsTableWithViews({
   isLoadingMore,
   onLoadMore,
   onSortChange,
+  showAll,
+  onToggleShowAll,
+  totalCount,
+  totalLoaded,
 }: ContactsTableProps) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -160,7 +168,7 @@ export function ContactsTableWithViews({
       setSortConfig(null);
       // Reset to default server sort
       if (serverSortableColumns.includes(key) && onSortChange) {
-        onSortChange('updated_at', 'desc');
+        onSortChange('last_interaction_at', 'desc');
       }
     } else {
       setSortConfig({ key, direction });
@@ -575,13 +583,25 @@ export function ContactsTableWithViews({
     <>
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <TableViewSelector
-          views={views}
-          activeViewId={activeViewId}
-          onViewChange={setActiveViewId}
-          onNewView={() => setSaveDialogOpen(true)}
-          onEditView={handleEditView}
-        />
+        <div className="flex items-center gap-2">
+          <TableViewSelector
+            views={views}
+            activeViewId={activeViewId}
+            onViewChange={setActiveViewId}
+            onNewView={() => setSaveDialogOpen(true)}
+            onEditView={handleEditView}
+          />
+          {onToggleShowAll && (
+            <Button
+              variant={showAll ? "default" : "outline"}
+              size="sm"
+              onClick={onToggleShowAll}
+              disabled={isLoading}
+            >
+              {showAll ? "Mostra paginati" : `Mostra tutti${totalCount ? ` (${totalCount})` : ''}`}
+            </Button>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <Button
