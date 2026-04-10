@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
-import { TicketAuditTimeline } from "./TicketAuditTimeline";
+import { AuditTimeline } from "@/components/audit/AuditTimeline";
 import { EntityChatBox } from "@/components/chat/EntityChatBox";
 import {
   TicketWithRelations,
@@ -509,9 +509,9 @@ export function TicketDetailSheet({
           </TabsContent>
           
           <TabsContent value="audit" className="flex-1 overflow-hidden mt-4">
-            <div className="h-full">
-              <TicketAuditTimeline ticketId={ticket.id} />
-            </div>
+            <ScrollArea className="h-full">
+              <AuditTimeline entityType="ticket" entityId={ticket.id} />
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </SheetContent>
