@@ -270,13 +270,13 @@ export function useContactSearch(
       const contactIds = contacts.map((c) => c.id);
       let leadScoreMap = new Map<
         string,
-        { lead_score: number | null; lead_heat_class: "freddo" | "tiepido" | "caldo" | null; lead_score_updated_at: string | null }
+        { lead_score: number | null; lead_heat_class: "freddo" | "tiepido" | "caldo" | null; lead_score_updated_at: string | null; last_interaction_at: string | null }
       >();
 
       if (contactIds.length > 0) {
         const { data: scoreData, error: scoreError } = await supabase
           .from("contacts")
-          .select("id, lead_score, lead_heat_class, lead_score_updated_at")
+          .select("id, lead_score, lead_heat_class, lead_score_updated_at, last_interaction_at")
           .in("id", contactIds);
 
         if (scoreError) throw scoreError;
@@ -288,6 +288,7 @@ export function useContactSearch(
               lead_score: row.lead_score,
               lead_heat_class: row.lead_heat_class,
               lead_score_updated_at: row.lead_score_updated_at,
+              last_interaction_at: row.last_interaction_at,
             },
           ])
         );
@@ -310,7 +311,8 @@ export function useContactSearch(
           primary_phone: c.phones?.find((p) => p.is_primary)?.phone_normalized || c.phones?.[0]?.phone_normalized || null,
           lead_score: scoreMeta?.lead_score ?? null,
           lead_heat_class: scoreMeta?.lead_heat_class ?? null,
-          lead_score_updated_at: scoreMeta?.lead_score_updated_at ?? null,
+           lead_score_updated_at: scoreMeta?.lead_score_updated_at ?? null,
+          last_interaction_at: scoreMeta?.last_interaction_at ?? null,
           match_type: "search",
         };
       });
