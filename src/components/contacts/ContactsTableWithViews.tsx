@@ -168,7 +168,7 @@ export function ContactsTableWithViews({
       setSortConfig(null);
       // Reset to default server sort
       if (serverSortableColumns.includes(key) && onSortChange) {
-        onSortChange('updated_at', 'desc');
+        onSortChange('last_interaction_at', 'desc');
       }
     } else {
       setSortConfig({ key, direction });
