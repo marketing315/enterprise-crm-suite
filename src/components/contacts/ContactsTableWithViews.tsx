@@ -97,8 +97,8 @@ export function ContactsTableWithViews({
   const { data: salesTotals } = useContactsSalesTotals();
 
   // Date columns for special handling
-  const dateColumns = ['created_at', 'updated_at'];
-
+  const dateColumns = ['created_at', 'updated_at', 'last_interaction_at'];
+  const serverSortableColumns = ['created_at', 'updated_at', 'last_interaction_at', 'first_name', 'last_name', 'email', 'lead_score'];
   // Sort and filter contacts
   const processedContacts = useMemo(() => {
     let result = [...contacts];
