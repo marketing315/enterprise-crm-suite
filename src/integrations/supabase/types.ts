@@ -1342,6 +1342,81 @@ export type Database = {
           },
         ]
       }
+      audit_events: {
+        Row: {
+          action: string
+          actor_display_name: string | null
+          actor_type: string
+          actor_user_id: string | null
+          brand_id: string
+          changed_fields: string[] | null
+          correlation_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          idempotency_key: string | null
+          metadata: Json
+          new_value: Json | null
+          occurred_at: string
+          old_value: Json | null
+          source: string
+        }
+        Insert: {
+          action: string
+          actor_display_name?: string | null
+          actor_type?: string
+          actor_user_id?: string | null
+          brand_id: string
+          changed_fields?: string[] | null
+          correlation_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          source?: string
+        }
+        Update: {
+          action?: string
+          actor_display_name?: string | null
+          actor_type?: string
+          actor_user_id?: string | null
+          brand_id?: string
+          changed_fields?: string[] | null
+          correlation_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -9079,6 +9154,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_audit_context: {
+        Args: {
+          p_actor_display_name?: string
+          p_actor_type?: string
+          p_actor_user_id?: string
+          p_correlation_id?: string
+          p_reason?: string
+          p_source?: string
+        }
+        Returns: undefined
+      }
       set_lead_event_archived: {
         Args: { p_archived: boolean; p_event_id: string }
         Returns: undefined
@@ -9248,6 +9334,20 @@ export type Database = {
       webhook_top_webhooks_24h: {
         Args: { p_brand_id: string; p_limit?: number }
         Returns: Json
+      }
+      write_audit_event: {
+        Args: {
+          p_action: string
+          p_brand_id: string
+          p_changed_fields?: string[]
+          p_entity_id: string
+          p_entity_type: string
+          p_idempotency_key?: string
+          p_metadata?: Json
+          p_new_value?: Json
+          p_old_value?: Json
+        }
+        Returns: string
       }
     }
     Enums: {
