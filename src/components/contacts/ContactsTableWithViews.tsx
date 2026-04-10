@@ -51,6 +51,7 @@ import type { ContactWithPhones } from "@/types/database";
 
 interface ContactWithBrand extends ContactWithPhones {
   brand_name?: string;
+  last_interaction_at?: string | null;
   customFieldValues?: Record<string, string | number | boolean | null>;
 }
 
@@ -62,6 +63,7 @@ interface ContactsTableProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  onSortChange?: (field: string, direction: string) => void;
 }
 
 export function ContactsTableWithViews({
