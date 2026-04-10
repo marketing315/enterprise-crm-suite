@@ -19,8 +19,12 @@ export interface SearchResult {
   lead_score?: number | null;
   lead_heat_class?: "freddo" | "tiepido" | "caldo" | null;
   lead_score_updated_at?: string | null;
+  last_interaction_at?: string | null;
   match_type: string;
 }
+
+export type SortField = "updated_at" | "created_at" | "last_interaction_at" | "first_name" | "last_name" | "email" | "lead_score";
+export type SortDir = "asc" | "desc";
 
 export interface ContactSearchFilters {
   status?: ContactStatus;
@@ -28,6 +32,8 @@ export interface ContactSearchFilters {
   createdTo?: Date;
   sourceName?: string;
   tagIds?: string[];
+  sortBy?: SortField;
+  sortDir?: SortDir;
 }
 
 export function useContactSearch(
@@ -37,7 +43,7 @@ export function useContactSearch(
   offset = 0
 ) {
   const { currentBrand, isAllBrandsSelected, allBrandIds } = useBrand();
-  const { status, createdFrom, createdTo, sourceName, tagIds } = filters;
+  const { status, createdFrom, createdTo, sourceName, tagIds, sortBy = "updated_at", sortDir = "desc" } = filters;
 
   return useQuery({
     queryKey: [
@@ -49,6 +55,8 @@ export function useContactSearch(
       createdTo?.toISOString(),
       sourceName,
       tagIds,
+      sortBy,
+      sortDir,
       limit,
       offset,
     ],
@@ -93,9 +101,10 @@ export function useContactSearch(
             lead_score,
             lead_heat_class,
             lead_score_updated_at,
+            last_interaction_at,
             contact_phones(phone_normalized, is_primary, is_active)
           `)
-          .order("updated_at", { ascending: false })
+          .order(sortBy, { ascending: sortDir === "asc" })
           .range(offset, offset + limit - 1);
 
         if (isAllBrandsSelected) {
@@ -177,6 +186,7 @@ export function useContactSearch(
             lead_score: c.lead_score,
             lead_heat_class: c.lead_heat_class,
             lead_score_updated_at: c.lead_score_updated_at,
+            last_interaction_at: c.last_interaction_at,
             match_type: "none",
           };
         });
@@ -260,13 +270,13 @@ export function useContactSearch(
       const contactIds = contacts.map((c) => c.id);
       let leadScoreMap = new Map<
         string,
-        { lead_score: number | null; lead_heat_class: "freddo" | "tiepido" | "caldo" | null; lead_score_updated_at: string | null }
+        { lead_score: number | null; lead_heat_class: "freddo" | "tiepido" | "caldo" | null; lead_score_updated_at: string | null; last_interaction_at: string | null }
       >();
 
       if (contactIds.length > 0) {
         const { data: scoreData, error: scoreError } = await supabase
           .from("contacts")
-          .select("id, lead_score, lead_heat_class, lead_score_updated_at")
+          .select("id, lead_score, lead_heat_class, lead_score_updated_at, last_interaction_at")
           .in("id", contactIds);
 
         if (scoreError) throw scoreError;
@@ -278,6 +288,7 @@ export function useContactSearch(
               lead_score: row.lead_score,
               lead_heat_class: row.lead_heat_class,
               lead_score_updated_at: row.lead_score_updated_at,
+              last_interaction_at: row.last_interaction_at,
             },
           ])
         );
@@ -300,7 +311,8 @@ export function useContactSearch(
           primary_phone: c.phones?.find((p) => p.is_primary)?.phone_normalized || c.phones?.[0]?.phone_normalized || null,
           lead_score: scoreMeta?.lead_score ?? null,
           lead_heat_class: scoreMeta?.lead_heat_class ?? null,
-          lead_score_updated_at: scoreMeta?.lead_score_updated_at ?? null,
+           lead_score_updated_at: scoreMeta?.lead_score_updated_at ?? null,
+          last_interaction_at: scoreMeta?.last_interaction_at ?? null,
           match_type: "search",
         };
       });

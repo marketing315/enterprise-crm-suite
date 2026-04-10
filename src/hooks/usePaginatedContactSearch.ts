@@ -20,6 +20,8 @@ export function usePaginatedContactSearch(
     filters.createdTo?.toISOString(),
     filters.sourceName,
     filters.tagIds,
+    filters.sortBy,
+    filters.sortDir,
   ]);
 
   // Reset when filters/query change

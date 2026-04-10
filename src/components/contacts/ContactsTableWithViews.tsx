@@ -51,6 +51,7 @@ import type { ContactWithPhones } from "@/types/database";
 
 interface ContactWithBrand extends ContactWithPhones {
   brand_name?: string;
+  last_interaction_at?: string | null;
   customFieldValues?: Record<string, string | number | boolean | null>;
 }
 
@@ -62,6 +63,7 @@ interface ContactsTableProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  onSortChange?: (field: string, direction: string) => void;
 }
 
 export function ContactsTableWithViews({
@@ -72,6 +74,7 @@ export function ContactsTableWithViews({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  onSortChange,
 }: ContactsTableProps) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -94,8 +97,8 @@ export function ContactsTableWithViews({
   const { data: salesTotals } = useContactsSalesTotals();
 
   // Date columns for special handling
-  const dateColumns = ['created_at', 'updated_at'];
-
+  const dateColumns = ['created_at', 'updated_at', 'last_interaction_at'];
+  const serverSortableColumns = ['created_at', 'updated_at', 'last_interaction_at', 'first_name', 'last_name', 'email', 'lead_score'];
   // Sort and filter contacts
   const processedContacts = useMemo(() => {
     let result = [...contacts];
@@ -120,8 +123,8 @@ export function ContactsTableWithViews({
       }
     });
 
-    // Apply sorting
-    if (sortConfig?.key && sortConfig?.direction) {
+    // Apply sorting only for non-server-sortable columns (server handles the rest)
+    if (sortConfig?.key && sortConfig?.direction && !serverSortableColumns.includes(sortConfig.key)) {
       result.sort((a, b) => {
         const aValue = a[sortConfig.key as keyof ContactWithBrand];
         const bValue = b[sortConfig.key as keyof ContactWithBrand];
@@ -155,8 +158,16 @@ export function ContactsTableWithViews({
   const handleSort = (key: string, direction: SortConfig['direction']) => {
     if (direction === null) {
       setSortConfig(null);
+      // Reset to default server sort
+      if (serverSortableColumns.includes(key) && onSortChange) {
+        onSortChange('updated_at', 'desc');
+      }
     } else {
       setSortConfig({ key, direction });
+      // Delegate to server for server-sortable columns
+      if (serverSortableColumns.includes(key) && onSortChange) {
+        onSortChange(key, direction);
+      }
     }
   };
 
@@ -461,6 +472,15 @@ export function ContactsTableWithViews({
         return contact.updated_at ? (
           <span className="text-sm text-muted-foreground">
             {format(new Date(contact.updated_at), "dd MMM yyyy HH:mm", { locale: it })}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+
+      case "last_interaction_at":
+        return contact.last_interaction_at ? (
+          <span className="text-sm text-muted-foreground">
+            {format(new Date(contact.last_interaction_at), "dd MMM yyyy HH:mm", { locale: it })}
           </span>
         ) : (
           <span className="text-muted-foreground">-</span>

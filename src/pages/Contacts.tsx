@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Users, Filter, SlidersHorizontal, Building2 } from 'lucide-react';
 import {
@@ -28,6 +28,7 @@ import { useBrand } from '@/contexts/BrandContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useContactsRealtime } from '@/hooks/useContactsRealtime';
 import type { ContactStatus } from '@/types/database';
+import type { SortField, SortDir } from '@/hooks/useContactSearch';
 
 const statusOptions: { value: ContactStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Tutti gli stati' },
@@ -53,6 +54,8 @@ export default function Contacts() {
   const [createdFromDate, setCreatedFromDate] = useState<Date | undefined>();
   const [createdToDate, setCreatedToDate] = useState<Date | undefined>();
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortField>('updated_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const { data: sourceNames = [] } = useLeadSourceNames();
 
   // Handle URL param to open contact detail
@@ -77,8 +80,19 @@ export default function Contacts() {
       createdTo: createdToDate,
       sourceName: sourceFilter === 'all' ? undefined : sourceFilter,
       tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+      sortBy,
+      sortDir,
     }
   );
+
+  const handleSortChange = useCallback((field: string, direction: string) => {
+    const validFields: SortField[] = ['updated_at', 'created_at', 'last_interaction_at', 'first_name', 'last_name', 'email', 'lead_score'];
+    if (validFields.includes(field as SortField)) {
+      setSortBy(field as SortField);
+      setSortDir(direction as SortDir);
+    }
+  }, []);
+
   const handleContactCreated = (contactId: string) => {
     setSelectedContactId(contactId);
     setSheetOpen(true);
@@ -107,6 +121,7 @@ export default function Contacts() {
         address: (c as any).address || null as string | null,
         notes: (c as any).notes || null as string | null,
         updated_at: (c as any).updated_at || c.created_at,
+        last_interaction_at: (c as any).last_interaction_at || null as string | null,
         contact_phones: c.primary_phone 
           ? [{ id: '', brand_id: c.brand_id, contact_id: c.id, phone_raw: c.primary_phone, phone_normalized: c.primary_phone, country_code: 'IT', assumed_country: true, is_primary: true, is_active: true, created_at: '' }]
           : [],
@@ -304,6 +319,7 @@ export default function Contacts() {
         hasMore={hasMore}
         isLoadingMore={isLoadingMore}
         onLoadMore={loadMore}
+        onSortChange={handleSortChange}
       />
 
       {/* Contact Detail Sheet */}
