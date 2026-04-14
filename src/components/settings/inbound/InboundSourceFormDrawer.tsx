@@ -61,11 +61,12 @@ interface InboundSourceFormDrawerProps {
   } | null;
 }
 
-// Generate a secure random key (64 hex chars = 32 bytes)
+// Generate a secure random key (24 alphanumeric chars — short enough for query params)
 function generateSecureKey(): string {
-  const array = new Uint8Array(32);
+  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const array = new Uint8Array(24);
   crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(array, (b) => charset[b % charset.length]).join("");
 }
 
 // Hash key for storage (SHA-256)

@@ -25,11 +25,12 @@ interface RotateInboundKeyDialogProps {
   source: { id: string; name: string; hmac_enabled?: boolean } | null;
 }
 
-// Generate a secure random API key
+// Generate a secure random API key (24 alphanumeric chars)
 function generateApiKey(): string {
-  const array = new Uint8Array(32);
+  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const array = new Uint8Array(24);
   crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(array, (b) => charset[b % charset.length]).join("");
 }
 
 // Hash API key for storage
