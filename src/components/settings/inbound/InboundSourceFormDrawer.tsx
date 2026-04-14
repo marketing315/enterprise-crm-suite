@@ -313,6 +313,33 @@ export function InboundSourceFormDrawer({
                 </p>
               </div>
             )}
+
+            {/* URL completo con chiave inline (per piattaforme senza header, es. Google Forms) */}
+            {!generatedCredentials.hmacEnabled && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">URL completo con chiave (per Google Forms ecc.)</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}?api_key=${generatedCredentials.apiKey}`}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => handleCopy(
+                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}?api_key=${generatedCredentials.apiKey}`,
+                      "URL con chiave"
+                    )}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Usa questo URL se la piattaforma non supporta header personalizzati
+                </p>
+              </div>
+            )}
             
             {/* HMAC Secret (if enabled) */}
             {generatedCredentials.hmacSecret && (
