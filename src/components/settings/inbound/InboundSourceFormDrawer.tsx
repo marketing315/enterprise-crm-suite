@@ -61,11 +61,12 @@ interface InboundSourceFormDrawerProps {
   } | null;
 }
 
-// Generate a secure random key (64 hex chars = 32 bytes)
+// Generate a secure random key (24 alphanumeric chars — short enough for query params)
 function generateSecureKey(): string {
-  const array = new Uint8Array(32);
+  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const array = new Uint8Array(24);
   crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(array, (b) => charset[b % charset.length]).join("");
 }
 
 // Hash key for storage (SHA-256)
@@ -309,6 +310,33 @@ export function InboundSourceFormDrawer({
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
+                </p>
+              </div>
+            )}
+
+            {/* URL completo con chiave inline (per piattaforme senza header, es. Google Forms) */}
+            {!generatedCredentials.hmacEnabled && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">URL completo con chiave (per Google Forms ecc.)</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}?api_key=${generatedCredentials.apiKey}`}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => handleCopy(
+                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}?api_key=${generatedCredentials.apiKey}`,
+                      "URL con chiave"
+                    )}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Usa questo URL se la piattaforma non supporta header personalizzati
                 </p>
               </div>
             )}
