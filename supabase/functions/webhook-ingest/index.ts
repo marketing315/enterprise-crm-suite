@@ -505,6 +505,11 @@ Deno.serve(async (req: Request) => {
   // B06: Also check query string for api_key (supported for platforms without custom header support)
   const apiKeyFromQuery = url.searchParams.get("api_key");
 
+  // Google Ads Lead Forms: extract google_key from body as API key
+  const apiKeyFromBody = rawBody && typeof rawBody === "object" && typeof (rawBody as Record<string, unknown>).google_key === "string"
+    ? (rawBody as Record<string, unknown>).google_key as string
+    : null;
+
   // Generate request ID for structured logging
   const requestId = crypto.randomUUID();
   const logContext = { request_id: requestId, source_id: sourceId, ip: ipAddress, ip_source: ipSource };
