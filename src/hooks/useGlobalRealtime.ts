@@ -105,11 +105,11 @@ const CHANNEL_GROUPS: Record<string, string[]> = {
 export function useGlobalRealtime() {
   const queryClient = useQueryClient();
   const { currentBrand, isAllBrandsSelected } = useBrand();
-  const { supabaseUser, isLoading: authLoading } = useAuth();
+  const { supabaseUser, isLoading: authLoading, isRealtimeReady } = useAuth();
   const brandId = currentBrand?.id ?? null;
 
   useEffect(() => {
-    if (authLoading || !supabaseUser?.id || !brandId) return;
+    if (authLoading || !isRealtimeReady || !supabaseUser?.id || !brandId) return;
 
     let isDisposed = false;
     const retryTimers: ReturnType<typeof setTimeout>[] = [];
@@ -191,6 +191,6 @@ export function useGlobalRealtime() {
       retryTimers.forEach(clearTimeout);
       activeChannels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [brandId, isAllBrandsSelected, queryClient, supabaseUser?.id, authLoading]);
+  }, [brandId, isAllBrandsSelected, queryClient, supabaseUser?.id, authLoading, isRealtimeReady]);
 }
 

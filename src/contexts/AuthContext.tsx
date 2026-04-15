@@ -9,6 +9,7 @@ interface AuthContextType {
   supabaseUser: SupabaseUser | null;
   userRoles: UserRole[];
   isLoading: boolean;
+  isRealtimeReady: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -25,14 +26,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRealtimeReady, setIsRealtimeReady] = useState(false);
 
-  const syncRealtimeAuth = useCallback((nextSession: Session | null) => {
+  const syncRealtimeAuth = useCallback(async (nextSession: Session | null) => {
     const accessToken = nextSession?.access_token;
-    if (!accessToken) return;
+    if (!accessToken) {
+      setIsRealtimeReady(false);
+      return;
+    }
 
     try {
-      void supabase.realtime.setAuth(accessToken);
+      setIsRealtimeReady(false);
+      await supabase.realtime.setAuth(accessToken);
+      setIsRealtimeReady(true);
     } catch (error) {
+      setIsRealtimeReady(false);
       console.warn('Failed to sync realtime auth:', error);
     }
   }, []);
@@ -104,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, newSession) => {
         setSession(newSession);
         setSupabaseUser(newSession?.user ?? null);
-        syncRealtimeAuth(newSession);
+        void syncRealtimeAuth(newSession);
 
         if (newSession?.user) {
           currentAuthIdRef.current = newSession.user.id;
@@ -137,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         setSession(existingSession);
         setSupabaseUser(existingSession?.user ?? null);
-        syncRealtimeAuth(existingSession);
+        await syncRealtimeAuth(existingSession);
 
         if (existingSession?.user) {
           currentAuthIdRef.current = existingSession.user.id;
@@ -149,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSupabaseUser(null);
         setUser(null);
         setUserRoles([]);
+        setIsRealtimeReady(false);
       } finally {
         // H03 FIX: Only set loading false AFTER fetchUserData completes
         initialFetchDoneRef.current = true;
@@ -187,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserRoles([]);
     setSession(null);
     setSupabaseUser(null);
+    setIsRealtimeReady(false);
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
@@ -207,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabaseUser,
         userRoles,
         isLoading,
+        isRealtimeReady,
         signIn,
         signUp,
         signOut,
