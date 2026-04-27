@@ -67,6 +67,8 @@ export function AuditConsole() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const { currentBrand } = useBrand();
+  const { user } = useAuth();
 
   const filters: AuditFilters = useMemo(() => ({
     entityType: entityType === "all" ? undefined : entityType,
@@ -80,8 +82,32 @@ export function AuditConsole() {
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / 50);
 
-  const handleExportCSV = () => {
+  // Log console view (once per filter/page change)
+  useEffect(() => {
+    if (!currentBrand?.id || isLoading) return;
+    logAuditAccess(currentBrand.id, "console_view", {
+      entityType, actionType, page,
+      dateFrom: dateFrom?.toISOString(),
+      dateTo: dateTo?.toISOString(),
+    }, total);
+  }, [currentBrand?.id, entityType, actionType, page, dateFrom, dateTo, isLoading, total]);
+
+  const handleExportCSV = async () => {
     if (events.length === 0) return;
+
+    // Watermark header
+    const exportedAt = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+    const exportedBy = user?.email || "unknown";
+    const watermark = [
+      `# Export Audit Log`,
+      `# Generated: ${exportedAt}`,
+      `# By: ${exportedBy}`,
+      `# Brand: ${currentBrand?.name ?? currentBrand?.id ?? "—"}`,
+      `# Filters: entity=${entityType} action=${actionType} from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"}`,
+      `# Records: ${events.length} (page ${page + 1}/${totalPages || 1})`,
+      ``,
+    ].join("\n");
+
     const headers = ["Data", "Entità", "ID Entità", "Azione", "Attore", "Tipo attore", "Source", "Campi modificati"];
     const rows = events.map(e => [
       format(new Date(e.occurred_at), "yyyy-MM-dd HH:mm:ss"),
@@ -93,15 +119,23 @@ export function AuditConsole() {
       e.source,
       e.changed_fields?.join(", ") || "",
     ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = watermark + [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `audit_log_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.download = `audit_log_${format(new Date(), "yyyy-MM-dd_HHmmss")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+
+    // Log export
+    await logAuditAccess(currentBrand?.id ?? null, "export", {
+      entityType, actionType,
+      dateFrom: dateFrom?.toISOString(),
+      dateTo: dateTo?.toISOString(),
+    }, events.length, "CSV export from audit console");
   };
+
 
   return (
     <div className="space-y-4">
