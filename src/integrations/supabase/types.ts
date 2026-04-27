@@ -7627,6 +7627,7 @@ export type Database = {
           is_active: boolean
           mapping: Json | null
           name: string
+          payload_schema: Json | null
           rate_limit_per_min: number
           replay_window_seconds: number
           updated_at: string
@@ -7646,6 +7647,7 @@ export type Database = {
           is_active?: boolean
           mapping?: Json | null
           name: string
+          payload_schema?: Json | null
           rate_limit_per_min?: number
           replay_window_seconds?: number
           updated_at?: string
@@ -7665,6 +7667,7 @@ export type Database = {
           is_active?: boolean
           mapping?: Json | null
           name?: string
+          payload_schema?: Json | null
           rate_limit_per_min?: number
           replay_window_seconds?: number
           updated_at?: string
