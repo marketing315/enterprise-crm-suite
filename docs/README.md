@@ -61,6 +61,7 @@ Piattaforma CRM enterprise multi-brand per la gestione completa del ciclo lead-t
 4. Configura il tuo form/landing page per inviare POST
 
 **Documentazione completa:** [docs/inbound-webhooks.md](./inbound-webhooks.md)
+**Guida Google Forms (utente finale):** [docs/google-forms-webhook.md](./google-forms-webhook.md)
 
 ### 3. Configurazione Meta Lead Ads
 
