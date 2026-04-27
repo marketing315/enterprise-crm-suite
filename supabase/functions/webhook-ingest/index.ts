@@ -633,6 +633,7 @@ Deno.serve(async (req: Request) => {
     | "invalid_json"
     | "mapping_error"
     | "missing_required"
+    | "schema_validation_failed"
     | "signature_failed"
     | "rate_limited"
     | "ai_extraction_failed"
@@ -642,6 +643,7 @@ Deno.serve(async (req: Request) => {
   function mapErrorToDlqReason(errorMessage: string | null): DlqReason | null {
     if (!errorMessage) return null;
     if (errorMessage === "invalid_json") return "invalid_json";
+    if (errorMessage.startsWith("schema_validation_failed")) return "schema_validation_failed";
     if (errorMessage.includes("signature") || errorMessage === "invalid_signature" || errorMessage === "invalid_signature_format") return "signature_failed";
     if (errorMessage === "rate_limited") return "rate_limited";
     if (errorMessage.includes("mapping")) return "mapping_error";
