@@ -254,11 +254,15 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
           </div>
         ) : contact ? (
           <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden mt-4">
-            <TabsList className="grid w-full grid-cols-2 shrink-0">
+            <TabsList className="grid w-full grid-cols-3 shrink-0">
               <TabsTrigger value="details">Dettagli</TabsTrigger>
+              <TabsTrigger value="unified" className="flex items-center gap-1.5">
+                <History className="h-3.5 w-3.5" />
+                Storico cliente
+              </TabsTrigger>
               <TabsTrigger value="audit" className="flex items-center gap-1.5">
                 <History className="h-3.5 w-3.5" />
-                Cronologia
+                Audit
               </TabsTrigger>
             </TabsList>
 
