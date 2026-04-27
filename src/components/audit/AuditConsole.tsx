@@ -192,6 +192,17 @@ export function AuditConsole() {
           onFromDateChange={(d) => { setDateFrom(d); setPage(0); }}
           onToDateChange={(d) => { setDateTo(d); setPage(0); }}
         />
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Cerca in metadata, attore, correlation id…"
+            className="pl-8"
+            aria-label="Ricerca full-text negli eventi audit"
+          />
+        </div>
       </div>
 
       {/* Table */}
