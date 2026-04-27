@@ -117,6 +117,116 @@ async function verifyApiKey(
   return constantTimeCompare(providedHash, storedHash);
 }
 
+// ============================================================
+// PAYLOAD SCHEMA VALIDATION
+// ============================================================
+// Per-source optional schema validation. Schema format:
+// {
+//   "required": ["field1", "field2"],
+//   "fields": {
+//     "field1": { "type": "string", "max_length": 255, "pattern": "^[A-Z]+$" },
+//     "field2": { "type": "number", "min": 0, "max": 100 },
+//     "field3": { "type": "email" },
+//     "field4": { "type": "phone" },
+//   },
+//   "strict": false  // if true, reject unknown fields
+// }
+interface FieldRule {
+  type?: "string" | "number" | "boolean" | "email" | "phone" | "object" | "array";
+  max_length?: number;
+  min_length?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+}
+interface PayloadSchema {
+  required?: string[];
+  fields?: Record<string, FieldRule>;
+  strict?: boolean;
+}
+
+function validatePayloadSchema(
+  payload: Record<string, unknown>,
+  schema: PayloadSchema | null | undefined,
+): { valid: true } | { valid: false; errors: string[] } {
+  if (!schema || typeof schema !== "object") return { valid: true };
+
+  const errors: string[] = [];
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[+\d][\d\s().-]{5,}$/;
+
+  // 1. Required fields
+  for (const key of schema.required ?? []) {
+    const v = payload[key];
+    if (v === undefined || v === null || v === "") {
+      errors.push(`required field missing: ${key}`);
+    }
+  }
+
+  // 2. Field-level rules
+  for (const [key, rule] of Object.entries(schema.fields ?? {})) {
+    if (!(key in payload)) continue;
+    const value = payload[key];
+    if (value === null || value === undefined) continue;
+
+    switch (rule.type) {
+      case "string":
+        if (typeof value !== "string") errors.push(`${key}: expected string`);
+        break;
+      case "number":
+        if (typeof value !== "number" || Number.isNaN(value)) errors.push(`${key}: expected number`);
+        break;
+      case "boolean":
+        if (typeof value !== "boolean") errors.push(`${key}: expected boolean`);
+        break;
+      case "email":
+        if (typeof value !== "string" || !emailRegex.test(value)) errors.push(`${key}: invalid email`);
+        break;
+      case "phone":
+        if (typeof value !== "string" || !phoneRegex.test(value)) errors.push(`${key}: invalid phone`);
+        break;
+      case "object":
+        if (typeof value !== "object" || Array.isArray(value)) errors.push(`${key}: expected object`);
+        break;
+      case "array":
+        if (!Array.isArray(value)) errors.push(`${key}: expected array`);
+        break;
+    }
+
+    if (typeof value === "string") {
+      if (typeof rule.max_length === "number" && value.length > rule.max_length) {
+        errors.push(`${key}: exceeds max_length ${rule.max_length}`);
+      }
+      if (typeof rule.min_length === "number" && value.length < rule.min_length) {
+        errors.push(`${key}: below min_length ${rule.min_length}`);
+      }
+      if (rule.pattern) {
+        try {
+          if (!new RegExp(rule.pattern).test(value)) {
+            errors.push(`${key}: pattern mismatch`);
+          }
+        } catch {
+          // invalid regex in schema config — ignore silently
+        }
+      }
+    }
+    if (typeof value === "number") {
+      if (typeof rule.min === "number" && value < rule.min) errors.push(`${key}: below min ${rule.min}`);
+      if (typeof rule.max === "number" && value > rule.max) errors.push(`${key}: above max ${rule.max}`);
+    }
+  }
+
+  // 3. Strict mode: reject unknown fields
+  if (schema.strict && schema.fields) {
+    const known = new Set([...(schema.required ?? []), ...Object.keys(schema.fields)]);
+    for (const key of Object.keys(payload)) {
+      if (!known.has(key)) errors.push(`unknown field: ${key}`);
+    }
+  }
+
+  return errors.length === 0 ? { valid: true } : { valid: false, errors };
+}
+
 // Apply field mapping from webhook source config
 function applyMapping(
   payload: Record<string, unknown>,
@@ -523,6 +633,7 @@ Deno.serve(async (req: Request) => {
     | "invalid_json"
     | "mapping_error"
     | "missing_required"
+    | "schema_validation_failed"
     | "signature_failed"
     | "rate_limited"
     | "ai_extraction_failed"
@@ -532,6 +643,7 @@ Deno.serve(async (req: Request) => {
   function mapErrorToDlqReason(errorMessage: string | null): DlqReason | null {
     if (!errorMessage) return null;
     if (errorMessage === "invalid_json") return "invalid_json";
+    if (errorMessage.startsWith("schema_validation_failed")) return "schema_validation_failed";
     if (errorMessage.includes("signature") || errorMessage === "invalid_signature" || errorMessage === "invalid_signature_format") return "signature_failed";
     if (errorMessage === "rate_limited") return "rate_limited";
     if (errorMessage.includes("mapping")) return "mapping_error";
@@ -638,7 +750,7 @@ Deno.serve(async (req: Request) => {
   // 3. Find webhook source to check authentication mode
   const { data: source, error: sourceError } = await supabaseAdmin
     .from("webhook_sources")
-    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds, handler, default_pipeline_stage_id")
+    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds, handler, default_pipeline_stage_id, payload_schema")
     .eq("id", sourceId)
     .maybeSingle();
 
@@ -821,7 +933,39 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // 8. Rate limit - full audit (only well-formed requests consume tokens)
+  // B09: Per-source payload schema validation (optional)
+  // Runs BEFORE rate-limit so that schema-violating payloads don't burn quota
+  if (source.payload_schema) {
+    const validationResult = validatePayloadSchema(
+      rawBody as Record<string, unknown>,
+      source.payload_schema as PayloadSchema,
+    );
+    if (!validationResult.valid) {
+      const errorDetails = validationResult.errors.join("; ");
+      console.log(JSON.stringify({
+        ...logContext,
+        outcome: "schema_validation_failed",
+        status: 422,
+        errors: validationResult.errors,
+      }));
+      await createAuditRecord(
+        "rejected",
+        `schema_validation_failed: ${errorDetails}`,
+        sourceId,
+        brandId,
+      );
+      return new Response(
+        JSON.stringify({
+          error: "schema_validation_failed",
+          message: "Payload does not match the expected schema",
+          details: validationResult.errors,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
+  // 8. Rate limit - full audit (only well-formed and schema-valid requests consume tokens)
   const { data: hasToken, error: rateLimitError } = await supabaseAdmin.rpc(
     "consume_rate_limit_token",
     { p_source_id: source.id }
