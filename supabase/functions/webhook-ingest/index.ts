@@ -934,7 +934,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // B09: Per-source payload schema validation (optional)
-  // Runs BEFORE rate-limit so that schema-violating payloads don't burn quota
+  // Runs BEFORE dedup/rate-limit so malformed payloads don't burn quota or dedup slots
   if (source.payload_schema) {
     const validationResult = validatePayloadSchema(
       rawBody as Record<string, unknown>,
@@ -963,6 +963,76 @@ Deno.serve(async (req: Request) => {
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+  }
+
+  // B10: Replay/duplicate detection (idempotency)
+  // Computes a fingerprint of the request and rejects if the same fingerprint
+  // was already processed within the source's replay_window_seconds.
+  // Fingerprint priority:
+  //   1. HMAC signature (when present) — strongest, includes timestamp+body
+  //   2. SHA-256 of bodyText — works for any source
+  // Runs BEFORE rate-limit so retries don't burn quota.
+  try {
+    const replayWindow = source.replay_window_seconds || 300;
+    const sigHeader =
+      req.headers.get("x-signature") ||
+      req.headers.get("x-webhook-signature") ||
+      "";
+    const fingerprintInput = sigHeader
+      ? `sig:${sigHeader}`
+      : `body:${await hashSha256(bodyText)}`;
+    const fingerprint = fingerprintInput.slice(0, 256);
+
+    const expiresAt = new Date(Date.now() + replayWindow * 1000).toISOString();
+
+    const { error: dedupError } = await supabaseAdmin
+      .from("webhook_request_dedup")
+      .insert({
+        source_id: source.id,
+        fingerprint,
+        expires_at: expiresAt,
+      });
+
+    if (dedupError) {
+      // 23505 = unique_violation → duplicate request within window
+      if (dedupError.code === "23505") {
+        console.log(JSON.stringify({
+          ...logContext,
+          outcome: "duplicate_request",
+          status: 409,
+          fingerprint_prefix: fingerprint.slice(0, 16),
+        }));
+        await createAuditRecord(
+          "rejected",
+          `duplicate_request: fingerprint already seen within ${replayWindow}s window`,
+          sourceId,
+          brandId,
+        );
+        return new Response(
+          JSON.stringify({
+            error: "duplicate_request",
+            message: `Identical request already processed within the last ${replayWindow} seconds`,
+          }),
+          {
+            status: 409,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      // Non-fatal: log and continue (dedup is defense-in-depth, not a hard gate)
+      console.error(JSON.stringify({
+        ...logContext,
+        warning: "dedup_insert_failed",
+        db_error: dedupError.message,
+      }));
+    }
+  } catch (e) {
+    console.error(JSON.stringify({
+      ...logContext,
+      warning: "dedup_check_exception",
+      error: String(e),
+    }));
+    // Continue — dedup failure must not block legitimate traffic
   }
 
   // 8. Rate limit - full audit (only well-formed and schema-valid requests consume tokens)

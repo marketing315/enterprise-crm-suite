@@ -7611,6 +7611,45 @@ export type Database = {
           },
         ]
       }
+      webhook_request_dedup: {
+        Row: {
+          created_at: string
+          expires_at: string
+          fingerprint: string
+          id: string
+          source_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          fingerprint: string
+          id?: string
+          source_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          fingerprint?: string
+          id?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_request_dedup_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_request_dedup_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_sources_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_sources: {
         Row: {
           api_key_hash: string
@@ -8033,6 +8072,7 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: number
       }
+      cleanup_webhook_dedup: { Args: never; Returns: number }
       complete_ai_tag_job: {
         Args: { p_error?: string; p_job_id: string }
         Returns: undefined
