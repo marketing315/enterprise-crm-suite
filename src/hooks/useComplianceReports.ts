@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useBrandFilter } from "./useBrandFilter";
+import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 
 export type ComplianceReportType = "gdpr" | "sox" | "custom";
@@ -49,20 +49,21 @@ export interface ComplianceReportDetail {
 }
 
 export function useComplianceReports(reportType?: ComplianceReportType) {
-  const { effectiveBrandId } = useBrandFilter();
+  const { currentBrand } = useBrand();
+  const brandId = currentBrand?.id ?? null;
   return useQuery({
-    queryKey: ["compliance-reports", effectiveBrandId, reportType ?? "all"],
+    queryKey: ["compliance-reports", brandId, reportType ?? "all"],
     queryFn: async (): Promise<ComplianceReportListItem[]> => {
-      if (!effectiveBrandId) return [];
+      if (!brandId) return [];
       const { data, error } = await supabase.rpc("list_compliance_reports", {
-        p_brand_id: effectiveBrandId,
+        p_brand_id: brandId,
         p_report_type: reportType ?? null,
         p_limit: 100,
       });
       if (error) throw error;
-      return (data ?? []) as ComplianceReportListItem[];
+      return ((data ?? []) as unknown) as ComplianceReportListItem[];
     },
-    enabled: !!effectiveBrandId,
+    enabled: !!brandId,
     staleTime: 1000 * 30,
   });
 }
@@ -76,7 +77,7 @@ export function useComplianceReportDetail(reportId: string | null) {
         p_report_id: reportId,
       });
       if (error) throw error;
-      return data as ComplianceReportDetail;
+      return (data as unknown) as ComplianceReportDetail;
     },
     enabled: !!reportId,
     staleTime: 1000 * 60 * 5,
@@ -92,13 +93,14 @@ interface GenerateReportInput {
 
 export function useGenerateComplianceReport() {
   const qc = useQueryClient();
-  const { effectiveBrandId } = useBrandFilter();
+  const { currentBrand } = useBrand();
 
   return useMutation({
     mutationFn: async (input: GenerateReportInput) => {
-      if (!effectiveBrandId) throw new Error("Brand non selezionato");
+      const brandId = currentBrand?.id;
+      if (!brandId) throw new Error("Brand non selezionato");
       const { data, error } = await supabase.rpc("generate_compliance_report", {
-        p_brand_id: effectiveBrandId,
+        p_brand_id: brandId,
         p_report_type: input.reportType,
         p_period_start: input.periodStart,
         p_period_end: input.periodEnd,
