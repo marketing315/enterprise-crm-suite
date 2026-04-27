@@ -68,6 +68,7 @@ import {
   Zap,
   Target,
   ShieldCheck,
+  ScrollText,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -104,7 +105,7 @@ const adminMenuItems: Array<{
   icon: typeof UsersRound;
   label: string;
   path: string;
-  requiresRole?: ('admin' | 'ceo' | 'responsabile_venditori')[];
+  requiresRole?: ('admin' | 'ceo' | 'responsabile_venditori' | 'responsabile_callcenter' | 'amministrazione')[];
 }> = [
   { icon: LineChart, label: 'Dashboard CEO', path: '/ceo-dashboard', requiresRole: ['admin', 'ceo'] },
   { icon: UsersRound, label: 'Team', path: '/team' },
@@ -120,6 +121,7 @@ const adminMenuItems: Array<{
   { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi' },
   { icon: Target, label: 'SLO Board', path: '/admin/slo-board', requiresRole: ['admin', 'ceo'] },
   { icon: ShieldCheck, label: 'Security Review', path: '/admin/security-reviews', requiresRole: ['admin', 'ceo'] },
+  { icon: ScrollText, label: 'Audit & Compliance', path: '/admin/audit', requiresRole: ['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter'] },
 ];
 
 export function MainLayout() {

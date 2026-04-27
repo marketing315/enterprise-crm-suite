@@ -1342,6 +1342,48 @@ export type Database = {
           },
         ]
       }
+      audit_access_log: {
+        Row: {
+          access_type: string
+          accessed_at: string
+          accessed_by: string
+          accessed_by_display_name: string | null
+          brand_id: string | null
+          filters: Json | null
+          id: string
+          ip_hash: string | null
+          reason: string | null
+          result_count: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          access_type: string
+          accessed_at?: string
+          accessed_by: string
+          accessed_by_display_name?: string | null
+          brand_id?: string | null
+          filters?: Json | null
+          id?: string
+          ip_hash?: string | null
+          reason?: string | null
+          result_count?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          access_type?: string
+          accessed_at?: string
+          accessed_by?: string
+          accessed_by_display_name?: string | null
+          brand_id?: string | null
+          filters?: Json | null
+          id?: string
+          ip_hash?: string | null
+          reason?: string | null
+          result_count?: number | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           action: string
@@ -7841,6 +7883,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_view_audit: { Args: { _supabase_auth_id: string }; Returns: boolean }
       cap_to_provincia: { Args: { p_cap: string }; Returns: string }
       cap_to_regione: { Args: { p_cap: string }; Returns: string }
       capi_events_summary: {
@@ -8161,6 +8204,10 @@ export type Database = {
         Args: { p_brand_id?: string }
         Returns: number
       }
+      detect_audit_anomalies: {
+        Args: { p_brand_id: string; p_lookback_hours?: number }
+        Returns: Json
+      }
       dynamic_analytics_query: {
         Args: {
           p_brand_id?: string
@@ -8423,6 +8470,10 @@ export type Database = {
           total_leads: number
           unmapped_count: number
         }[]
+      }
+      get_audit_dashboard_stats: {
+        Args: { p_brand_id: string; p_date_from?: string; p_date_to?: string }
+        Returns: Json
       }
       get_board_slo_metrics: {
         Args: { p_brand_id?: string; p_month_start?: string }
@@ -8781,6 +8832,20 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_unified_customer_timeline: {
+        Args: { p_contact_id: string; p_limit?: number }
+        Returns: {
+          action: string
+          actor_display_name: string
+          entity_id: string
+          entity_type: string
+          event_id: string
+          metadata: Json
+          occurred_at: string
+          source: string
+          summary: string
+        }[]
+      }
       get_unread_counts: {
         Args: never
         Returns: {
@@ -8838,6 +8903,7 @@ export type Database = {
           is_duplicate: boolean
         }[]
       }
+      is_audit_admin: { Args: { _supabase_auth_id: string }; Returns: boolean }
       is_column_hidden_for_user: {
         Args: {
           p_brand_id: string
@@ -8929,6 +8995,17 @@ export type Database = {
           p_webhook_id?: string
         }
         Returns: Json
+      }
+      log_audit_access: {
+        Args: {
+          p_access_type: string
+          p_brand_id: string
+          p_filters?: Json
+          p_reason?: string
+          p_result_count?: number
+          p_user_agent?: string
+        }
+        Returns: string
       }
       map_stage_to_contact_status: {
         Args: { p_stage_name: string }
