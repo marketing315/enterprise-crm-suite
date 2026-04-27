@@ -1,9 +1,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, BarChart3, ShieldAlert, Archive } from "lucide-react";
+import { ScrollText, BarChart3, ShieldAlert, Archive, Lock } from "lucide-react";
 import { AuditConsole } from "@/components/audit/AuditConsole";
 import { AuditDashboard } from "@/components/audit/AuditDashboard";
 import { AuditAnomaliesPanel } from "@/components/audit/AuditAnomaliesPanel";
 import { AuditRetentionPanel } from "@/components/audit/AuditRetentionPanel";
+import { AuditPiiPoliciesPanel } from "@/components/audit/AuditPiiPoliciesPanel";
 
 export default function AdminAudit() {
   return (
@@ -16,7 +17,7 @@ export default function AdminAudit() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-3xl grid-cols-5">
           <TabsTrigger value="dashboard" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -32,6 +33,10 @@ export default function AdminAudit() {
           <TabsTrigger value="retention" className="flex items-center gap-1.5">
             <Archive className="h-4 w-4" />
             Retention
+          </TabsTrigger>
+          <TabsTrigger value="pii" className="flex items-center gap-1.5">
+            <Lock className="h-4 w-4" />
+            PII
           </TabsTrigger>
         </TabsList>
 
@@ -49,6 +54,10 @@ export default function AdminAudit() {
 
         <TabsContent value="retention" className="mt-6">
           <AuditRetentionPanel />
+        </TabsContent>
+
+        <TabsContent value="pii" className="mt-6">
+          <AuditPiiPoliciesPanel />
         </TabsContent>
       </Tabs>
     </div>

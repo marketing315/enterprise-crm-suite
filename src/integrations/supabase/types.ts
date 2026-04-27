@@ -1576,6 +1576,39 @@ export type Database = {
           },
         ]
       }
+      audit_pii_policies: {
+        Row: {
+          created_at: string
+          description: string | null
+          exempt_roles: string[]
+          field_pattern: string
+          id: string
+          is_active: boolean
+          strategy: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          exempt_roles?: string[]
+          field_pattern: string
+          id?: string
+          is_active?: boolean
+          strategy: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          exempt_roles?: string[]
+          field_pattern?: string
+          id?: string
+          is_active?: boolean
+          strategy?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_retention_policies: {
         Row: {
           archive_enabled: boolean
@@ -8628,6 +8661,14 @@ export type Database = {
       get_audit_dashboard_stats: {
         Args: { p_brand_id: string; p_date_from?: string; p_date_to?: string }
         Returns: Json
+      }
+      get_audit_pii_policies_for_role: {
+        Args: never
+        Returns: {
+          description: string
+          field_pattern: string
+          strategy: string
+        }[]
       }
       get_board_slo_metrics: {
         Args: { p_brand_id?: string; p_month_start?: string }
