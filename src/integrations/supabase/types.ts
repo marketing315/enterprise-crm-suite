@@ -1462,6 +1462,66 @@ export type Database = {
           },
         ]
       }
+      audit_events_archive: {
+        Row: {
+          action: string
+          actor_display_name: string | null
+          actor_type: string
+          actor_user_id: string | null
+          archived_at: string
+          brand_id: string
+          changed_fields: string[] | null
+          correlation_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          new_value: Json | null
+          occurred_at: string
+          old_value: Json | null
+          source: string
+        }
+        Insert: {
+          action: string
+          actor_display_name?: string | null
+          actor_type: string
+          actor_user_id?: string | null
+          archived_at?: string
+          brand_id: string
+          changed_fields?: string[] | null
+          correlation_id?: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata?: Json
+          new_value?: Json | null
+          occurred_at: string
+          old_value?: Json | null
+          source: string
+        }
+        Update: {
+          action?: string
+          actor_display_name?: string | null
+          actor_type?: string
+          actor_user_id?: string | null
+          archived_at?: string
+          brand_id?: string
+          changed_fields?: string[] | null
+          correlation_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          source?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -1515,6 +1575,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_retention_policies: {
+        Row: {
+          archive_enabled: boolean
+          brand_id: string
+          created_at: string
+          id: string
+          last_archived_count: number | null
+          last_purge_at: string | null
+          last_purged_count: number | null
+          retention_months: number
+          updated_at: string
+        }
+        Insert: {
+          archive_enabled?: boolean
+          brand_id: string
+          created_at?: string
+          id?: string
+          last_archived_count?: number | null
+          last_purge_at?: string | null
+          last_purged_count?: number | null
+          retention_months?: number
+          updated_at?: string
+        }
+        Update: {
+          archive_enabled?: boolean
+          brand_id?: string
+          created_at?: string
+          id?: string
+          last_archived_count?: number | null
+          last_purge_at?: string | null
+          last_purged_count?: number | null
+          retention_months?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       automation_jobs: {
         Row: {
@@ -9168,6 +9264,10 @@ export type Database = {
         Args: { p_id: string; p_new_secret: string }
         Returns: string
       }
+      run_audit_retention: {
+        Args: { p_brand_id?: string; p_dry_run?: boolean }
+        Returns: Json
+      }
       search_appointments: {
         Args: {
           p_brand_id: string
@@ -9444,6 +9544,30 @@ export type Database = {
           p_new_role?: Database["public"]["Enums"]["app_role"]
         }
         Returns: undefined
+      }
+      upsert_audit_retention_policy: {
+        Args: {
+          p_archive_enabled: boolean
+          p_brand_id: string
+          p_retention_months: number
+        }
+        Returns: {
+          archive_enabled: boolean
+          brand_id: string
+          created_at: string
+          id: string
+          last_archived_count: number | null
+          last_purge_at: string | null
+          last_purged_count: number | null
+          retention_months: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "audit_retention_policies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       upsert_clinical_topics_from_strings: {
         Args: {
