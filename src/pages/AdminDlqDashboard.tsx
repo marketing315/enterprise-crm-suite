@@ -61,6 +61,7 @@ function DlqReasonBadge({ reason }: { reason: string | null }) {
   const variants: Record<string, "destructive" | "secondary" | "outline"> = {
     invalid_json: "destructive",
     signature_failed: "destructive",
+    schema_validation_failed: "destructive",
     missing_required: "secondary",
     mapping_error: "secondary",
     rate_limited: "outline",
@@ -72,6 +73,7 @@ function DlqReasonBadge({ reason }: { reason: string | null }) {
   const labels: Record<string, string> = {
     invalid_json: "JSON Invalido",
     signature_failed: "Firma HMAC",
+    schema_validation_failed: "Schema Invalido",
     missing_required: "Dati Mancanti",
     mapping_error: "Mapping",
     rate_limited: "Rate Limit",
