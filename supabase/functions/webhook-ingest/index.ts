@@ -963,6 +963,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // 8. Rate limit - full audit (only well-formed and schema-valid requests consume tokens)
   const { data: hasToken, error: rateLimitError } = await supabaseAdmin.rpc(
     "consume_rate_limit_token",
     { p_source_id: source.id }
