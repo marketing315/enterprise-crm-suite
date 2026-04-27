@@ -1402,6 +1402,7 @@ export type Database = {
           new_value: Json | null
           occurred_at: string
           old_value: Json | null
+          search_text: string | null
           source: string
         }
         Insert: {
@@ -1421,6 +1422,7 @@ export type Database = {
           new_value?: Json | null
           occurred_at?: string
           old_value?: Json | null
+          search_text?: string | null
           source?: string
         }
         Update: {
@@ -1440,6 +1442,7 @@ export type Database = {
           new_value?: Json | null
           occurred_at?: string
           old_value?: Json | null
+          search_text?: string | null
           source?: string
         }
         Relationships: [
@@ -8514,6 +8517,18 @@ export type Database = {
           unmapped_count: number
         }[]
       }
+      get_audit_access_log: {
+        Args: {
+          p_access_type?: string
+          p_brand_id: string
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_offset?: number
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       get_audit_dashboard_stats: {
         Args: { p_brand_id: string; p_date_from?: string; p_date_to?: string }
         Returns: Json
@@ -9165,6 +9180,38 @@ export type Database = {
           p_status?: Database["public"]["Enums"]["appointment_status"]
         }
         Returns: Json
+      }
+      search_audit_events: {
+        Args: {
+          p_action?: string
+          p_actor_user_id?: string
+          p_brand_id: string
+          p_date_from?: string
+          p_date_to?: string
+          p_entity_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_search: string
+        }
+        Returns: {
+          action: string
+          actor_display_name: string
+          actor_type: string
+          actor_user_id: string
+          brand_id: string
+          changed_fields: string[]
+          correlation_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          new_value: Json
+          occurred_at: string
+          old_value: Json
+          source: string
+          total_count: number
+        }[]
       }
       search_contacts: {
         Args: {
