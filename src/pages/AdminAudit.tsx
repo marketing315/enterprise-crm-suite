@@ -1,8 +1,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, BarChart3, ShieldAlert } from "lucide-react";
+import { ScrollText, BarChart3, ShieldAlert, Archive } from "lucide-react";
 import { AuditConsole } from "@/components/audit/AuditConsole";
 import { AuditDashboard } from "@/components/audit/AuditDashboard";
 import { AuditAnomaliesPanel } from "@/components/audit/AuditAnomaliesPanel";
+import { AuditRetentionPanel } from "@/components/audit/AuditRetentionPanel";
 
 export default function AdminAudit() {
   return (
@@ -15,7 +16,7 @@ export default function AdminAudit() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="dashboard" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -27,6 +28,10 @@ export default function AdminAudit() {
           <TabsTrigger value="alerts" className="flex items-center gap-1.5">
             <ShieldAlert className="h-4 w-4" />
             Alert
+          </TabsTrigger>
+          <TabsTrigger value="retention" className="flex items-center gap-1.5">
+            <Archive className="h-4 w-4" />
+            Retention
           </TabsTrigger>
         </TabsList>
 
@@ -40,6 +45,10 @@ export default function AdminAudit() {
 
         <TabsContent value="alerts" className="mt-6">
           <AuditAnomaliesPanel />
+        </TabsContent>
+
+        <TabsContent value="retention" className="mt-6">
+          <AuditRetentionPanel />
         </TabsContent>
       </Tabs>
     </div>
