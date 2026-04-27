@@ -635,6 +635,9 @@ export default function AdminDlqDashboard() {
         </Card>
       </div>
 
+      {/* Telemetry */}
+      <DlqTelemetryPanel />
+
       {/* Tabs */}
       <Card>
         <CardHeader>
