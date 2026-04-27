@@ -92,6 +92,111 @@ function DlqReasonBadge({ reason }: { reason: string | null }) {
 }
 
 // ========================================
+// DLQ Telemetry Panel — aggregated breakdown
+// ========================================
+
+function DlqTelemetryPanel() {
+  const { data, isLoading } = useIngestDlqTelemetry(24);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Telemetria errori (24h)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data || data.total === 0) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Telemetria errori (24h)</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Nessun errore registrato nelle ultime 24 ore. ✨
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Top 5 sources by failure count (across all reasons)
+  const topSources = data.bySource.slice(0, 5);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div>
+          <CardTitle className="text-sm font-medium">Telemetria errori (24h)</CardTitle>
+          <CardDescription className="mt-1">
+            {data.total} errori totali su {data.bySource.length} combinazioni motivo/sorgente
+          </CardDescription>
+        </div>
+        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Breakdown by reason */}
+        <div>
+          <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+            Per motivo
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {data.byReason.map(({ reason, count }) => (
+              <div
+                key={reason}
+                className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5"
+              >
+                <DlqReasonBadge reason={reason} />
+                <span className="text-sm font-semibold tabular-nums">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top failing sources */}
+        {topSources.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+              Top sorgenti in errore
+            </h4>
+            <div className="space-y-2">
+              {topSources.map((row) => (
+                <div
+                  key={`${row.dlq_reason}-${row.source_id ?? "null"}`}
+                  className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <DlqReasonBadge reason={row.dlq_reason} />
+                    <span className="text-sm font-medium truncate">
+                      {row.source_name ?? row.source_id?.slice(0, 8) ?? "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                    <span>
+                      ultimo: {format(new Date(row.last_at), "dd/MM HH:mm", { locale: it })}
+                    </span>
+                    <Badge variant="secondary" className="tabular-nums">
+                      {row.count}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
 // Ingest DLQ Table
 // ========================================
 
