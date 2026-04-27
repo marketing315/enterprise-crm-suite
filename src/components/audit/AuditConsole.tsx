@@ -1,8 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Download, Loader2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useAuditEvents, type AuditFilters } from "@/hooks/useAuditEvents";
+import { logAuditAccess } from "@/hooks/useAuditDashboard";
+import { useBrand } from "@/contexts/BrandContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { AuditActionTag } from "@/components/audit/AuditActionTag";
 import { AuditActorBadge } from "@/components/audit/AuditActorBadge";
 import { AuditDiffViewer } from "@/components/audit/AuditDiffViewer";
