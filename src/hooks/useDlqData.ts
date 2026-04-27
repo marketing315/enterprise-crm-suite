@@ -11,6 +11,7 @@ export type IngestDlqReason =
   | "invalid_json"
   | "mapping_error"
   | "missing_required"
+  | "schema_validation_failed"
   | "signature_failed"
   | "rate_limited"
   | "ai_extraction_failed"
