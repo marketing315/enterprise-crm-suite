@@ -931,7 +931,38 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // 8. Rate limit - full audit (only well-formed requests consume tokens)
+  // B09: Per-source payload schema validation (optional)
+  // Runs BEFORE rate-limit so that schema-violating payloads don't burn quota
+  if (source.payload_schema) {
+    const validationResult = validatePayloadSchema(
+      rawBody as Record<string, unknown>,
+      source.payload_schema as PayloadSchema,
+    );
+    if (!validationResult.valid) {
+      const errorDetails = validationResult.errors.join("; ");
+      console.log(JSON.stringify({
+        ...logContext,
+        outcome: "schema_validation_failed",
+        status: 422,
+        errors: validationResult.errors,
+      }));
+      await createAuditRecord(
+        "rejected",
+        `schema_validation_failed: ${errorDetails}`,
+        sourceId,
+        brandId,
+      );
+      return new Response(
+        JSON.stringify({
+          error: "schema_validation_failed",
+          message: "Payload does not match the expected schema",
+          details: validationResult.errors,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
   const { data: hasToken, error: rateLimitError } = await supabaseAdmin.rpc(
     "consume_rate_limit_token",
     { p_source_id: source.id }
