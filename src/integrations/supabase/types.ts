@@ -1384,6 +1384,48 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_compliance_reports: {
+        Row: {
+          brand_id: string
+          checksum: string
+          created_at: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          report_type: string
+          summary: Json
+        }
+        Insert: {
+          brand_id: string
+          checksum: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          report_type: string
+          summary?: Json
+        }
+        Update: {
+          brand_id?: string
+          checksum?: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          report_type?: string
+          summary?: Json
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           action: string
@@ -8491,6 +8533,16 @@ export type Database = {
         }
         Returns: string
       }
+      generate_compliance_report: {
+        Args: {
+          p_brand_id: string
+          p_notes?: string
+          p_period_end: string
+          p_period_start: string
+          p_report_type: string
+        }
+        Returns: Json
+      }
       generate_order_number: { Args: { p_brand_id: string }; Returns: string }
       get_accessible_brand_ids: {
         Args: { p_user_id: string }
@@ -8721,6 +8773,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_compliance_report: { Args: { p_report_id: string }; Returns: Json }
       get_contact_field_definitions: {
         Args: { p_brand_id: string }
         Returns: {
@@ -9143,6 +9196,10 @@ export type Database = {
           sent_at: string
           status: string
         }[]
+      }
+      list_compliance_reports: {
+        Args: { p_brand_id: string; p_limit?: number; p_report_type?: string }
+        Returns: Json
       }
       list_contact_lead_events: {
         Args: { p_contact_id: string; p_include_archived?: boolean }
