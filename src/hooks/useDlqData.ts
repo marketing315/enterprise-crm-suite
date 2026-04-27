@@ -204,3 +204,95 @@ export function useDlqStats() {
     refetchInterval: 60000, // Refresh every minute
   });
 }
+
+// ========================================
+// DLQ Telemetry — Aggregated breakdown
+// ========================================
+
+export interface DlqTelemetryRow {
+  dlq_reason: IngestDlqReason;
+  source_id: string | null;
+  source_name: string | null;
+  count: number;
+  last_at: string;
+}
+
+export interface DlqTelemetry {
+  byReason: Array<{ reason: IngestDlqReason; count: number }>;
+  bySource: DlqTelemetryRow[];
+  windowHours: number;
+  total: number;
+}
+
+/**
+ * Aggregates ingest DLQ failures by reason and by (reason, source) over the last N hours.
+ * Useful for spotting recurring schema validation issues per source.
+ */
+export function useIngestDlqTelemetry(windowHours = 24) {
+  const { currentBrand } = useBrand();
+
+  return useQuery({
+    queryKey: ["ingest-dlq-telemetry", currentBrand?.id, windowHours],
+    queryFn: async (): Promise<DlqTelemetry> => {
+      if (!currentBrand) {
+        return { byReason: [], bySource: [], windowHours, total: 0 };
+      }
+
+      const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
+
+      const { data, error } = await supabase
+        .from("incoming_requests")
+        .select(`id, dlq_reason, source_id, created_at, webhook_sources(name)`)
+        .eq("brand_id", currentBrand.id)
+        .not("dlq_reason", "is", null)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+
+      if (error) throw error;
+
+      const rows = (data || []) as unknown as Array<{
+        id: string;
+        dlq_reason: IngestDlqReason;
+        source_id: string | null;
+        created_at: string;
+        webhook_sources: { name: string } | null;
+      }>;
+
+      // Aggregate by reason
+      const reasonMap = new Map<IngestDlqReason, number>();
+      // Aggregate by (reason, source)
+      const sourceMap = new Map<string, DlqTelemetryRow>();
+
+      for (const r of rows) {
+        if (!r.dlq_reason) continue;
+        reasonMap.set(r.dlq_reason, (reasonMap.get(r.dlq_reason) || 0) + 1);
+
+        const key = `${r.dlq_reason}::${r.source_id ?? "null"}`;
+        const existing = sourceMap.get(key);
+        if (existing) {
+          existing.count += 1;
+          if (r.created_at > existing.last_at) existing.last_at = r.created_at;
+        } else {
+          sourceMap.set(key, {
+            dlq_reason: r.dlq_reason,
+            source_id: r.source_id,
+            source_name: r.webhook_sources?.name ?? null,
+            count: 1,
+            last_at: r.created_at,
+          });
+        }
+      }
+
+      const byReason = Array.from(reasonMap.entries())
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const bySource = Array.from(sourceMap.values()).sort((a, b) => b.count - a.count);
+
+      return { byReason, bySource, windowHours, total: rows.length };
+    },
+    enabled: !!currentBrand,
+    refetchInterval: 60000,
+  });
+}
