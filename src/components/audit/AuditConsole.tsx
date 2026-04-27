@@ -66,16 +66,28 @@ export function AuditConsole() {
   const [actionType, setActionType] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const { currentBrand } = useBrand();
   const { user } = useAuth();
+
+  // Debounce free-text search to avoid hammering the RPC on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const filters: AuditFilters = useMemo(() => ({
     entityType: entityType === "all" ? undefined : entityType,
     action: actionType === "all" ? undefined : actionType,
     dateFrom,
     dateTo,
-  }), [entityType, actionType, dateFrom, dateTo]);
+    search: debouncedSearch || undefined,
+  }), [entityType, actionType, dateFrom, dateTo, debouncedSearch]);
 
   const { data, isLoading } = useAuditEvents(filters, page);
   const events = data?.events || [];
