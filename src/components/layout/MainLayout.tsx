@@ -105,7 +105,7 @@ const adminMenuItems: Array<{
   icon: typeof UsersRound;
   label: string;
   path: string;
-  requiresRole?: ('admin' | 'ceo' | 'responsabile_venditori')[];
+  requiresRole?: ('admin' | 'ceo' | 'responsabile_venditori' | 'responsabile_callcenter' | 'amministrazione')[];
 }> = [
   { icon: LineChart, label: 'Dashboard CEO', path: '/ceo-dashboard', requiresRole: ['admin', 'ceo'] },
   { icon: UsersRound, label: 'Team', path: '/team' },
