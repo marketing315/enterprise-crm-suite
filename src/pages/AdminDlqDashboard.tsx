@@ -48,6 +48,7 @@ import {
   useReplayIngestDlq,
   useReplayOutboundDlq,
   useDlqStats,
+  useIngestDlqTelemetry,
   IngestDlqEntry,
   OutboundDlqEntry,
 } from "@/hooks/useDlqData";
