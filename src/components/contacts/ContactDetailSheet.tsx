@@ -643,6 +643,12 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                 <AuditTimeline entityType="contact" entityId={contact.id} />
               </ScrollArea>
             </TabsContent>
+
+            <TabsContent value="unified" className="flex-1 overflow-hidden mt-2">
+              <ScrollArea className="h-[calc(100vh-200px)] pr-4">
+                <UnifiedCustomerTimeline contactId={contact.id} />
+              </ScrollArea>
+            </TabsContent>
           </Tabs>
         ) : (
           <p className="mt-6 text-muted-foreground">Contatto non trovato</p>
