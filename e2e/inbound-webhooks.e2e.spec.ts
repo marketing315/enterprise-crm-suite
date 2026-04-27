@@ -352,6 +352,116 @@ test.describe("Inbound Webhooks - Happy Path", () => {
   });
 });
 
+test.describe("Inbound Webhooks - Google Forms (Apps Script)", () => {
+  // Apps Script tipicamente non personalizza header: usa `google_key` nel body JSON.
+  // Questi test coprono il flusso documentato in docs/google-forms-webhook.md.
+
+  test("Auth via body field `google_key` succeeds (no headers)", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+    const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        // NB: nessun X-API-Key header — simula UrlFetchApp di Google Apps Script
+      },
+      data: {
+        google_key: E2E_API_KEY,
+        nome: "Mario",
+        cognome: "GoogleForm",
+        telefono: uniquePhone,
+        email: "gforms@test.com",
+      },
+    });
+
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.contact_id).toBeTruthy();
+    expect(body.lead_event_id).toBeTruthy();
+  });
+
+  test("Wrong `google_key` in body returns 401", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+
+    const response = await request.post(endpoint, {
+      headers: { "Content-Type": "application/json" },
+      data: {
+        google_key: "wrong-key-from-script",
+        nome: "Wrong",
+        telefono: "+393331110001",
+      },
+    });
+
+    expect(response.status()).toBe(401);
+    const body = await response.json();
+    expect(body.error).toBe("Invalid API key");
+  });
+
+  test("Missing `google_key` and no header returns 401", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+
+    const response = await request.post(endpoint, {
+      headers: { "Content-Type": "application/json" },
+      data: {
+        nome: "NoAuth",
+        telefono: "+393331110002",
+      },
+    });
+
+    expect(response.status()).toBe(401);
+  });
+
+  test("Apps Script-style namedValues payload creates contact", async ({ request }) => {
+    // Lo snippet della guida appiattisce e.namedValues ({ "Nome": ["Mario"] } → { "Nome": "Mario" }).
+    // Verifichiamo che il payload finale (campi in italiano + google_key) venga ingerito correttamente.
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+    const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
+
+    const appsScriptPayload = {
+      google_key: E2E_API_KEY,
+      Nome: "Giulia",
+      Cognome: "Bianchi",
+      Telefono: uniquePhone,
+      Email: "giulia.bianchi@example.com",
+      Citta: "Torino",
+      // simula campo extra dal form non mappato
+      Note: "Interessata a consulenza",
+    };
+
+    const response = await request.post(endpoint, {
+      headers: { "Content-Type": "application/json" },
+      data: appsScriptPayload,
+    });
+
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.contact_id).toBeTruthy();
+  });
+
+  test("Header `X-API-Key` takes precedence and still works alongside body key", async ({ request }) => {
+    // Difensivo: se uno script invia entrambi, l'header valido deve autenticare.
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`;
+    const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
+
+    const response = await request.post(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": E2E_API_KEY,
+      },
+      data: {
+        google_key: "ignored-because-header-wins",
+        nome: "Header",
+        cognome: "Wins",
+        telefono: uniquePhone,
+      },
+    });
+
+    expect(response.status()).toBe(200);
+  });
+});
+
 test.describe("Sheets Export - Idempotency", () => {
   test("Duplicate sheets-export call returns skipped:true", async ({ request }) => {
     // First, create a lead event via inbound webhook
