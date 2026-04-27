@@ -50,6 +50,7 @@ import { BrandBadge } from '@/components/layout/BrandBadge';
 import { ContactCompanySection } from './ContactCompanySection';
 import { ContactLeadDataSection } from './ContactLeadDataSection';
 import { AuditTimeline } from '@/components/audit/AuditTimeline';
+import { UnifiedCustomerTimeline } from '@/components/audit/UnifiedCustomerTimeline';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LeadEventCard } from './LeadEventCard';
 import { useContact, useLeadEvents, useUpdateContact, useDeleteContact } from '@/hooks/useContacts';
