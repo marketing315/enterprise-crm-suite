@@ -115,7 +115,7 @@ export function AuditConsole() {
       `# Generated: ${exportedAt}`,
       `# By: ${exportedBy}`,
       `# Brand: ${currentBrand?.name ?? currentBrand?.id ?? "—"}`,
-      `# Filters: entity=${entityType} action=${actionType} from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"}`,
+      `# Filters: entity=${entityType} action=${actionType} from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"} search=${debouncedSearch || "—"}`,
       `# Records: ${events.length} (page ${page + 1}/${totalPages || 1})`,
       ``,
     ].join("\n");
