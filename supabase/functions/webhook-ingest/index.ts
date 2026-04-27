@@ -748,7 +748,7 @@ Deno.serve(async (req: Request) => {
   // 3. Find webhook source to check authentication mode
   const { data: source, error: sourceError } = await supabaseAdmin
     .from("webhook_sources")
-    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds, handler, default_pipeline_stage_id")
+    .select("id, name, brand_id, api_key_hash, rate_limit_per_min, mapping, is_active, hmac_enabled, hmac_secret, replay_window_seconds, handler, default_pipeline_stage_id, payload_schema")
     .eq("id", sourceId)
     .maybeSingle();
 
