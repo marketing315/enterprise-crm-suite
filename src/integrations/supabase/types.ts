@@ -8517,6 +8517,18 @@ export type Database = {
           unmapped_count: number
         }[]
       }
+      get_audit_access_log: {
+        Args: {
+          p_access_type?: string
+          p_brand_id: string
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_offset?: number
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       get_audit_dashboard_stats: {
         Args: { p_brand_id: string; p_date_from?: string; p_date_to?: string }
         Returns: Json
