@@ -41,40 +41,6 @@ export function useAuditEvents(filters: AuditFilters = {}, page = 0) {
     queryFn: async (): Promise<{ events: AuditEvent[]; total: number }> => {
       if (!currentBrand) return { events: [], total: 0 };
 
-      const trimmedSearch = filters.search?.trim() ?? "";
-
-      // Use the trigram-indexed RPC when there is a free-text query
-      // (full-text across entity_type, action, actor, correlation_id, changed_fields, metadata).
-      if (trimmedSearch.length > 0) {
-        const { data, error } = await supabase.rpc("search_audit_events", {
-          p_brand_id: currentBrand.id,
-          p_search: trimmedSearch,
-          p_entity_type: filters.entityType ?? null,
-          p_action: filters.action ?? null,
-          p_actor_user_id: filters.actorUserId ?? null,
-          p_date_from: filters.dateFrom ? filters.dateFrom.toISOString() : null,
-          p_date_to: filters.dateTo
-            ? (() => {
-                const end = new Date(filters.dateTo);
-                end.setHours(23, 59, 59, 999);
-                return end.toISOString();
-              })()
-            : null,
-          p_limit: PAGE_SIZE,
-          p_offset: page * PAGE_SIZE,
-        });
-
-        if (error) throw error;
-
-        const rows = (data ?? []) as Array<AuditEvent & { total_count: number }>;
-        const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
-        // Strip the aggregated total_count from each row
-        const events = rows.map(({ total_count: _omit, ...rest }) => rest as AuditEvent);
-
-        return { events, total };
-      }
-
-      // No search → use direct table query (cheaper, leverages existing indexes).
       let query = supabase
         .from("audit_events")
         .select("*", { count: "exact" })

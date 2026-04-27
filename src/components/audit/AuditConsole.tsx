@@ -66,28 +66,16 @@ export function AuditConsole() {
   const [actionType, setActionType] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const { currentBrand } = useBrand();
   const { user } = useAuth();
-
-  // Debounce free-text search to avoid hammering the RPC on every keystroke.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(searchInput.trim());
-      setPage(0);
-    }, 350);
-    return () => clearTimeout(t);
-  }, [searchInput]);
 
   const filters: AuditFilters = useMemo(() => ({
     entityType: entityType === "all" ? undefined : entityType,
     action: actionType === "all" ? undefined : actionType,
     dateFrom,
     dateTo,
-    search: debouncedSearch || undefined,
-  }), [entityType, actionType, dateFrom, dateTo, debouncedSearch]);
+  }), [entityType, actionType, dateFrom, dateTo]);
 
   const { data, isLoading } = useAuditEvents(filters, page);
   const events = data?.events || [];
@@ -115,7 +103,7 @@ export function AuditConsole() {
       `# Generated: ${exportedAt}`,
       `# By: ${exportedBy}`,
       `# Brand: ${currentBrand?.name ?? currentBrand?.id ?? "—"}`,
-      `# Filters: entity=${entityType} action=${actionType} from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"} search=${debouncedSearch || "—"}`,
+      `# Filters: entity=${entityType} action=${actionType} from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"}`,
       `# Records: ${events.length} (page ${page + 1}/${totalPages || 1})`,
       ``,
     ].join("\n");
@@ -192,17 +180,6 @@ export function AuditConsole() {
           onFromDateChange={(d) => { setDateFrom(d); setPage(0); }}
           onToDateChange={(d) => { setDateTo(d); setPage(0); }}
         />
-        <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            type="search"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Cerca in metadata, attore, correlation id…"
-            className="pl-8"
-            aria-label="Ricerca full-text negli eventi audit"
-          />
-        </div>
       </div>
 
       {/* Table */}

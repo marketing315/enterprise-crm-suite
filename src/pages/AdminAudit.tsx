@@ -1,9 +1,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, BarChart3, ShieldAlert, Eye } from "lucide-react";
+import { ScrollText, BarChart3, ShieldAlert, Archive } from "lucide-react";
 import { AuditConsole } from "@/components/audit/AuditConsole";
 import { AuditDashboard } from "@/components/audit/AuditDashboard";
 import { AuditAnomaliesPanel } from "@/components/audit/AuditAnomaliesPanel";
-import { AuditAccessLogPanel } from "@/components/audit/AuditAccessLogPanel";
+import { AuditRetentionPanel } from "@/components/audit/AuditRetentionPanel";
 
 export default function AdminAudit() {
   return (
@@ -29,9 +29,9 @@ export default function AdminAudit() {
             <ShieldAlert className="h-4 w-4" />
             Alert
           </TabsTrigger>
-          <TabsTrigger value="access" className="flex items-center gap-1.5">
-            <Eye className="h-4 w-4" />
-            Accessi
+          <TabsTrigger value="retention" className="flex items-center gap-1.5">
+            <Archive className="h-4 w-4" />
+            Retention
           </TabsTrigger>
         </TabsList>
 
@@ -47,8 +47,8 @@ export default function AdminAudit() {
           <AuditAnomaliesPanel />
         </TabsContent>
 
-        <TabsContent value="access" className="mt-6">
-          <AuditAccessLogPanel />
+        <TabsContent value="retention" className="mt-6">
+          <AuditRetentionPanel />
         </TabsContent>
       </Tabs>
     </div>
