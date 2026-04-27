@@ -933,6 +933,38 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // B09: Per-source payload schema validation (optional)
+  // Runs BEFORE dedup/rate-limit so malformed payloads don't burn quota or dedup slots
+  if (source.payload_schema) {
+    const validationResult = validatePayloadSchema(
+      rawBody as Record<string, unknown>,
+      source.payload_schema as PayloadSchema,
+    );
+    if (!validationResult.valid) {
+      const errorDetails = validationResult.errors.join("; ");
+      console.log(JSON.stringify({
+        ...logContext,
+        outcome: "schema_validation_failed",
+        status: 422,
+        errors: validationResult.errors,
+      }));
+      await createAuditRecord(
+        "rejected",
+        `schema_validation_failed: ${errorDetails}`,
+        sourceId,
+        brandId,
+      );
+      return new Response(
+        JSON.stringify({
+          error: "schema_validation_failed",
+          message: "Payload does not match the expected schema",
+          details: validationResult.errors,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
   // B10: Replay/duplicate detection (idempotency)
   // Computes a fingerprint of the request and rejects if the same fingerprint
   // was already processed within the source's replay_window_seconds.
@@ -1001,38 +1033,6 @@ Deno.serve(async (req: Request) => {
       error: String(e),
     }));
     // Continue — dedup failure must not block legitimate traffic
-  }
-
-  // B09: Per-source payload schema validation (optional)
-  // Runs BEFORE rate-limit so that schema-violating payloads don't burn quota
-  if (source.payload_schema) {
-    const validationResult = validatePayloadSchema(
-      rawBody as Record<string, unknown>,
-      source.payload_schema as PayloadSchema,
-    );
-    if (!validationResult.valid) {
-      const errorDetails = validationResult.errors.join("; ");
-      console.log(JSON.stringify({
-        ...logContext,
-        outcome: "schema_validation_failed",
-        status: 422,
-        errors: validationResult.errors,
-      }));
-      await createAuditRecord(
-        "rejected",
-        `schema_validation_failed: ${errorDetails}`,
-        sourceId,
-        brandId,
-      );
-      return new Response(
-        JSON.stringify({
-          error: "schema_validation_failed",
-          message: "Payload does not match the expected schema",
-          details: validationResult.errors,
-        }),
-        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
   }
 
   // 8. Rate limit - full audit (only well-formed and schema-valid requests consume tokens)
