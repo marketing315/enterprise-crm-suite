@@ -79,8 +79,8 @@ export function BulkReassignDialog({
             </SelectTrigger>
             <SelectContent>
               {salesUsers.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.full_name}
+                <SelectItem key={u.user_id} value={u.user_id}>
+                  {u.full_name ?? u.email}
                 </SelectItem>
               ))}
             </SelectContent>
