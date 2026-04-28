@@ -29,6 +29,7 @@ import {
   Home,
   AlertTriangle,
   UserPlus,
+  Users,
   MoreHorizontal,
   Eye,
 } from "lucide-react";
