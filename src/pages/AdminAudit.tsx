@@ -20,7 +20,7 @@ export default function AdminAudit() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full max-w-5xl grid-cols-7">
+        <TabsList className="grid w-full max-w-6xl grid-cols-8">
           <TabsTrigger value="dashboard" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -31,7 +31,11 @@ export default function AdminAudit() {
           </TabsTrigger>
           <TabsTrigger value="alerts" className="flex items-center gap-1.5">
             <ShieldAlert className="h-4 w-4" />
-            Alert
+            Anomalie
+          </TabsTrigger>
+          <TabsTrigger value="notify" className="flex items-center gap-1.5">
+            <Bell className="h-4 w-4" />
+            Notifiche
           </TabsTrigger>
           <TabsTrigger value="retention" className="flex items-center gap-1.5">
             <Archive className="h-4 w-4" />
