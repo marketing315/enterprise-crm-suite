@@ -30,9 +30,10 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Key, Shield } from "lucide-react";
+import { Copy, Key, Shield, FileJson } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LinkedAutomationsSection } from "@/components/settings/webhooks/LinkedAutomationsSection";
+import { PayloadSchemaEditor, type PayloadSchema } from "@/components/settings/inbound/PayloadSchemaEditor";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
@@ -42,6 +43,7 @@ const formSchema = z.object({
   default_pipeline_stage_id: z.string().nullable().optional(),
   hmac_enabled: z.boolean().default(false),
   replay_window_seconds: z.coerce.number().min(60).max(3600).default(300),
+  payload_schema: z.any().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
