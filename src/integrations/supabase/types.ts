@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_review_items: {
+        Row: {
+          created_at: string
+          current_role_label: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          decision_notes: string | null
+          id: string
+          last_login_at: string | null
+          review_id: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_role_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          decision_notes?: string | null
+          id?: string
+          last_login_at?: string | null
+          review_id: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_role_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          decision_notes?: string | null
+          id?: string
+          last_login_at?: string | null
+          review_id?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_review_items_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "access_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      access_reviews: {
+        Row: {
+          brand_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          review_period: string
+          reviewed_users: number
+          reviewer_user_id: string | null
+          revoked_count: number
+          started_at: string | null
+          status: string
+          total_users: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          review_period: string
+          reviewed_users?: number
+          reviewer_user_id?: string | null
+          revoked_count?: number
+          started_at?: string | null
+          status?: string
+          total_users?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          review_period?: string
+          reviewed_users?: number
+          reviewer_user_id?: string | null
+          revoked_count?: number
+          started_at?: string | null
+          status?: string
+          total_users?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       action_suggestions: {
         Row: {
           acted_on_at: string | null
@@ -1229,6 +1327,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      anomaly_baselines: {
+        Row: {
+          brand_id: string | null
+          computed_at: string
+          id: string
+          mean_value: number
+          metric_name: string
+          sample_count: number
+          stddev_value: number
+          window_hours: number
+        }
+        Insert: {
+          brand_id?: string | null
+          computed_at?: string
+          id?: string
+          mean_value: number
+          metric_name: string
+          sample_count: number
+          stddev_value: number
+          window_hours?: number
+        }
+        Update: {
+          brand_id?: string | null
+          computed_at?: string
+          id?: string
+          mean_value?: number
+          metric_name?: string
+          sample_count?: number
+          stddev_value?: number
+          window_hours?: number
+        }
+        Relationships: []
+      }
+      anomaly_detections: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          brand_id: string | null
+          context: Json | null
+          detected_at: string
+          direction: string
+          expected_value: number
+          id: string
+          metric_name: string
+          observed_value: number
+          severity: string
+          z_score: number
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          brand_id?: string | null
+          context?: Json | null
+          detected_at?: string
+          direction: string
+          expected_value: number
+          id?: string
+          metric_name: string
+          observed_value: number
+          severity: string
+          z_score: number
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          brand_id?: string | null
+          context?: Json | null
+          detected_at?: string
+          direction?: string
+          expected_value?: number
+          id?: string
+          metric_name?: string
+          observed_value?: number
+          severity?: string
+          z_score?: number
+        }
+        Relationships: []
       }
       appointments: {
         Row: {
@@ -2473,6 +2649,69 @@ export type Database = {
           },
         ]
       }
+      capacity_snapshots: {
+        Row: {
+          brand_id: string | null
+          captured_at: string
+          id: string
+          metadata: Json | null
+          metric_name: string
+          metric_value: number
+          unit: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          captured_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_name: string
+          metric_value: number
+          unit?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          captured_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_name?: string
+          metric_value?: number
+          unit?: string | null
+        }
+        Relationships: []
+      }
+      capacity_thresholds: {
+        Row: {
+          critical_threshold: number
+          growth_rate_warn_pct: number | null
+          id: string
+          is_active: boolean
+          metric_name: string
+          unit: string | null
+          updated_at: string
+          warn_threshold: number
+        }
+        Insert: {
+          critical_threshold: number
+          growth_rate_warn_pct?: number | null
+          id?: string
+          is_active?: boolean
+          metric_name: string
+          unit?: string | null
+          updated_at?: string
+          warn_threshold: number
+        }
+        Update: {
+          critical_threshold?: number
+          growth_rate_warn_pct?: number | null
+          id?: string
+          is_active?: boolean
+          metric_name?: string
+          unit?: string | null
+          updated_at?: string
+          warn_threshold?: number
+        }
+        Relationships: []
+      }
       chat_message_reads: {
         Row: {
           message_id: string
@@ -2757,6 +2996,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      compliance_change_log: {
+        Row: {
+          actor_email: string | null
+          actor_user_id: string | null
+          brand_id: string | null
+          change_type: string
+          id: string
+          new_value: Json | null
+          occurred_at: string
+          old_value: Json | null
+          reason: string | null
+          target_resource: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_user_id?: string | null
+          brand_id?: string | null
+          change_type: string
+          id?: string
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          reason?: string | null
+          target_resource?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_user_id?: string | null
+          brand_id?: string | null
+          change_type?: string
+          id?: string
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          reason?: string | null
+          target_resource?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      compliance_evidence: {
+        Row: {
+          brand_id: string | null
+          collected_at: string
+          collected_by_user_id: string | null
+          evidence_type: string
+          hash_sha256: string | null
+          id: string
+          notes: string | null
+          payload: Json
+          period: string
+        }
+        Insert: {
+          brand_id?: string | null
+          collected_at?: string
+          collected_by_user_id?: string | null
+          evidence_type: string
+          hash_sha256?: string | null
+          id?: string
+          notes?: string | null
+          payload?: Json
+          period: string
+        }
+        Update: {
+          brand_id?: string | null
+          collected_at?: string
+          collected_by_user_id?: string | null
+          evidence_type?: string
+          hash_sha256?: string | null
+          id?: string
+          notes?: string | null
+          payload?: Json
+          period?: string
+        }
+        Relationships: []
       }
       contact_field_definitions: {
         Row: {
@@ -8385,6 +8702,7 @@ export type Database = {
           total_events: number
         }[]
       }
+      capture_capacity_snapshot: { Args: never; Returns: Json }
       check_all_brands_sla_breaches: { Args: never; Returns: Json }
       check_and_mark_sla_breaches: {
         Args: { p_brand_id: string }
@@ -8710,6 +9028,7 @@ export type Database = {
         Args: { p_brand_id?: string }
         Returns: number
       }
+      detect_anomalies: { Args: { p_lookback_hours?: number }; Returns: Json }
       detect_audit_anomalies: {
         Args: { p_brand_id: string; p_lookback_hours?: number }
         Returns: Json
@@ -8822,6 +9141,7 @@ export type Database = {
         }
         Returns: string
       }
+      generate_access_review: { Args: { p_period: string }; Returns: string }
       generate_compliance_report: {
         Args: {
           p_brand_id: string
@@ -9654,6 +9974,7 @@ export type Database = {
         }
         Returns: Json
       }
+      refresh_anomaly_baselines: { Args: never; Returns: Json }
       remove_group_member: {
         Args: { p_target_user_id: string; p_thread_id: string }
         Returns: undefined
