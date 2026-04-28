@@ -198,7 +198,7 @@ export default function AppointmentsOpsBoard() {
                 .sort((a, b) => b[1] - a[1])
                 .map(([code, count]) => {
                   const meta =
-                    APPOINTMENT_STATUSES[code as AppointmentStatusCode];
+                    APPOINTMENT_STATUS[code as AppointmentStatus];
                   const total = kpi!.total || 1;
                   const pct = Math.round((count / total) * 100);
                   return (
@@ -314,7 +314,7 @@ export default function AppointmentsOpsBoard() {
                     .filter(Boolean)
                     .join(" ") || "Contatto";
                 const statusMeta =
-                  APPOINTMENT_STATUSES[apt.status as AppointmentStatusCode];
+                  APPOINTMENT_STATUS[apt.status as AppointmentStatus];
                 return (
                   <button
                     key={apt.id}
