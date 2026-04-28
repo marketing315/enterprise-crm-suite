@@ -13,10 +13,11 @@ import {
   startOfDay,
 } from "date-fns";
 import { it } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List, Users, X } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAppointmentConflict } from "@/features/appointments/useAppointmentConflict";
+import { BulkReassignDialog } from "@/features/appointments/BulkReassignDialog";
 import type { AppointmentWithRelations } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,11 +56,23 @@ export default function AppointmentsCalendar() {
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [showBulkReassign, setShowBulkReassign] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const dragRef = useRef<DraggedAppointment | null>(null);
   const [pendingMove, setPendingMove] = useState<{
     appt: DraggedAppointment;
     targetDate: Date;
   } | null>(null);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
 
   const weekEnd = addDays(weekStart, 7);
   const days = useMemo(
@@ -153,6 +166,31 @@ export default function AppointmentsCalendar() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/5 pl-3 pr-1 py-1">
+              <span className="text-xs font-medium text-primary">
+                {selectedIds.size} selezionat{selectedIds.size === 1 ? "o" : "i"}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7"
+                onClick={() => setShowBulkReassign(true)}
+              >
+                <Users className="mr-1.5 h-3.5 w-3.5" />
+                Riassegna
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={clearSelection}
+                title="Annulla selezione"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           <Button variant="outline" size="sm" onClick={() => navigate("/appointments")}>
             <List className="mr-2 h-4 w-4" />
             Vista lista
@@ -303,18 +341,27 @@ export default function AppointmentsCalendar() {
                       const contactName = [apt.contact?.first_name, apt.contact?.last_name]
                         .filter(Boolean)
                         .join(" ") || "—";
+                      const isSelected = selectedIds.has(apt.id);
                       return (
                         <div
                           key={apt.id}
                           draggable
                           onDragStart={(e) => handleDragStart(e, apt)}
-                          onClick={() => navigate(`/appointments/${apt.id}`)}
+                          onClick={(e) => {
+                            if (e.metaKey || e.ctrlKey || selectedIds.size > 0) {
+                              e.preventDefault();
+                              toggleSelect(apt.id);
+                            } else {
+                              navigate(`/appointments/${apt.id}`);
+                            }
+                          }}
                           className={cn(
                             "absolute left-1 right-1 cursor-grab overflow-hidden rounded-md border-l-2 px-1.5 py-1 text-[11px] text-white shadow-sm transition hover:shadow-md active:cursor-grabbing",
-                            colorClass
+                            colorClass,
+                            isSelected && "ring-2 ring-offset-1 ring-primary"
                           )}
                           style={{ top, height }}
-                          title={`${format(dt, "HH:mm")} · ${contactName}`}
+                          title={`${format(dt, "HH:mm")} · ${contactName} (Ctrl/Cmd+click per selezionare)`}
                         >
                           <div className="truncate font-medium">
                             {format(dt, "HH:mm")} · {contactName}
@@ -385,6 +432,16 @@ export default function AppointmentsCalendar() {
       <NewAppointmentDialog
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
+      />
+
+      <BulkReassignDialog
+        open={showBulkReassign}
+        onOpenChange={setShowBulkReassign}
+        appointmentIds={Array.from(selectedIds)}
+        onDone={() => {
+          clearSelection();
+          refetch();
+        }}
       />
     </div>
   );
