@@ -39,7 +39,7 @@ export function useInboundSources() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as InboundSource[];
+      return data as unknown as InboundSource[];
     },
     enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id,
   });
