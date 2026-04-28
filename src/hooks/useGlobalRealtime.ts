@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { realtimeStatusStore } from './useRealtimeStatus';
 
 /**
  * Table-to-queryKey mapping for cache invalidation.
