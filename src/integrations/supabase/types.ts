@@ -9141,6 +9141,10 @@ export type Database = {
         Args: { p_error?: string; p_job_id: string }
         Returns: undefined
       }
+      compute_appointment_risk_score: {
+        Args: { p_appointment_id: string }
+        Returns: number
+      }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
         Returns: boolean

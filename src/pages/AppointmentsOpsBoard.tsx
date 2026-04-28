@@ -16,6 +16,7 @@ import {
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointmentsOpsKpi } from "@/features/appointments/useAppointmentsOpsKpi";
 import { useAppointments } from "@/hooks/useAppointments";
+import { RiskScoreBadge } from "@/features/appointments/RiskScoreBadge";
 import {
   APPOINTMENT_OUTCOMES,
   APPOINTMENT_STATUS,
@@ -322,7 +323,7 @@ export default function AppointmentsOpsBoard() {
                     className="flex w-full items-center justify-between gap-3 py-3 text-left transition hover:bg-muted/40 px-2 -mx-2 rounded-lg"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium truncate">{name}</span>
                         {statusMeta && (
                           <Badge
@@ -332,6 +333,7 @@ export default function AppointmentsOpsBoard() {
                             {statusMeta.label}
                           </Badge>
                         )}
+                        <RiskScoreBadge score={apt.risk_score} />
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {format(dt, "EEE d MMM 'alle' HH:mm", { locale: it })}

@@ -251,6 +251,7 @@ export interface Appointment {
   parent_appointment_id: string | null;
   assigned_sales_user_id: string | null;
   created_by_user_id: string | null;
+  risk_score: number | null;
   created_at: string;
   updated_at: string;
 }
