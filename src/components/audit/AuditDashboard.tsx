@@ -224,15 +224,15 @@ function KpiCard({
 }) {
   return (
     <Card>
-      <CardContent className="pt-5">
-        <div className="flex items-start justify-between">
+      <CardContent className="pt-4 sm:pt-5 px-3 sm:px-6 pb-3 sm:pb-6">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-            <p className="text-2xl font-semibold mt-1 truncate">{value}</p>
-            {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+            <p className="text-lg sm:text-2xl font-semibold mt-1 truncate">{value}</p>
+            {hint && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">{hint}</p>}
           </div>
-          <div className="rounded-md bg-primary/10 p-2 text-primary shrink-0 ml-2">
-            <Icon className="h-4 w-4" />
+          <div className="rounded-md bg-primary/10 p-1.5 sm:p-2 text-primary shrink-0">
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
         </div>
       </CardContent>
