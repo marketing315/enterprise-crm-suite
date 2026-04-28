@@ -281,6 +281,7 @@ export function useReplayOutboundDlq() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["outbound-dlq"] });
+      queryClient.invalidateQueries({ queryKey: ["dlq-stats"] });
       queryClient.invalidateQueries({ queryKey: ["webhook-deliveries"] });
     },
   });
