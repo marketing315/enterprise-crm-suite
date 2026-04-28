@@ -592,17 +592,71 @@ function OutboundDlqTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Aggiorna
-        </Button>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Select
+            value={eventTypeFilter}
+            onValueChange={(v) => {
+              setEventTypeFilter(v);
+              setSelectedIds(new Set());
+            }}
+          >
+            <SelectTrigger className="w-[200px] h-9">
+              <SelectValue placeholder="Filtra per evento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli eventi ({entries.length})</SelectItem>
+              {availableEventTypes.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t} ({entries.filter((e) => e.event_type === t).length})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedIds.size > 0 && (
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size} selezionati
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              onClick={handleBatchReplay}
+              disabled={batchReplayMutation.isPending}
+            >
+              {batchReplayMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              Replay batch ({selectedIds.size})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Aggiorna
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  ref={(el) => {
+                    const input = el?.querySelector<HTMLInputElement>("input");
+                    if (input) input.indeterminate = someFilteredSelected;
+                  }}
+                  onCheckedChange={toggleAll}
+                  aria-label="Seleziona tutti"
+                />
+              </TableHead>
               <TableHead className="w-[40px]"></TableHead>
               <TableHead className="w-[150px]">Dead At</TableHead>
               <TableHead>Webhook</TableHead>
@@ -613,10 +667,17 @@ function OutboundDlqTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {entries.map((entry) => (
+            {filteredEntries.map((entry) => (
               <Collapsible key={entry.id} asChild>
                 <>
-                  <TableRow>
+                  <TableRow data-selected={selectedIds.has(entry.id) || undefined} className="data-[selected]:bg-primary/5">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(entry.id)}
+                        onCheckedChange={() => toggleOne(entry.id)}
+                        aria-label={`Seleziona delivery ${entry.id}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <CollapsibleTrigger asChild>
                         <Button
@@ -657,7 +718,7 @@ function OutboundDlqTable() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleReplayClick(entry)}
-                        disabled={replayMutation.isPending}
+                        disabled={replayMutation.isPending || batchReplayMutation.isPending}
                       >
                         <Play className="h-3.5 w-3.5 mr-1" />
                         Replay
