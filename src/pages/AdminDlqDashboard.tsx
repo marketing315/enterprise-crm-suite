@@ -454,6 +454,14 @@ function IngestDlqTable() {
                                 <dt className="text-muted-foreground">ID:</dt>
                                 <dd className="font-mono text-xs">{entry.id}</dd>
                               </div>
+                              {entry.correlation_id && (
+                                <div className="flex gap-2">
+                                  <dt className="text-muted-foreground">Correlation ID:</dt>
+                                  <dd className="font-mono text-xs break-all">
+                                    {entry.correlation_id}
+                                  </dd>
+                                </div>
+                              )}
                               <div className="flex gap-2">
                                 <dt className="text-muted-foreground">IP:</dt>
                                 <dd>{entry.ip_address || "—"}</dd>
