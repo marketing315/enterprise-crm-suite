@@ -160,6 +160,7 @@ const App = () => (
                     <Route path="/products" element={<Products />} />
                     <Route path="/events" element={<Events />} />
                     <Route path="/appointments" element={<Appointments />} />
+                    <Route path="/appointments/calendar" element={<AppointmentsCalendar />} />
                     <Route path="/appointments/:id" element={<AppointmentDetail />} />
                     <Route path="/tickets" element={<Tickets />} />
                     <Route path="/chat" element={<GuardedChat />} />
