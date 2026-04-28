@@ -106,6 +106,7 @@ export function InboundSourceFormDrawer({
       default_pipeline_stage_id: null,
       hmac_enabled: false,
       replay_window_seconds: 300,
+      payload_schema: null,
     },
   });
 
@@ -119,6 +120,7 @@ export function InboundSourceFormDrawer({
         default_pipeline_stage_id: editingSource.default_pipeline_stage_id ?? null,
         hmac_enabled: editingSource.hmac_enabled ?? false,
         replay_window_seconds: editingSource.replay_window_seconds ?? 300,
+        payload_schema: editingSource.payload_schema ?? null,
       });
     } else {
       form.reset({
@@ -129,6 +131,7 @@ export function InboundSourceFormDrawer({
         default_pipeline_stage_id: null,
         hmac_enabled: false,
         replay_window_seconds: 300,
+        payload_schema: null,
       });
     }
     setGeneratedCredentials(null);
