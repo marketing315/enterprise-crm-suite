@@ -110,12 +110,14 @@ export function AuditConsole() {
     // Watermark header
     const exportedAt = format(new Date(), "yyyy-MM-dd HH:mm:ss");
     const exportedBy = user?.email || "unknown";
+    const exportedById = user?.id || "unknown";
+    const filename = `audit_log_${format(new Date(), "yyyy-MM-dd_HHmmss")}.csv`;
     const watermark = [
       `# Export Audit Log`,
       `# Generated: ${exportedAt}`,
       `# By: ${exportedBy}`,
       `# Brand: ${currentBrand?.name ?? currentBrand?.id ?? "—"}`,
-      `# Filters: entity=${entityType} action=${actionType} from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"}`,
+      `# Filters: entity=${entityType} action=${actionType} search="${search}" from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"}`,
       `# Records: ${events.length} (page ${page + 1}/${totalPages || 1})`,
       ``,
     ].join("\n");
@@ -132,20 +134,63 @@ export function AuditConsole() {
       e.changed_fields?.join(", ") || "",
     ]);
     const csv = watermark + [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    // Compute SHA-256 digest of CSV bytes for compliance signature
+    const csvBytes = new TextEncoder().encode(csv);
+    const digestBuf = await crypto.subtle.digest("SHA-256", csvBytes);
+    const digestHex = Array.from(new Uint8Array(digestBuf))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Download CSV
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `audit_log_${format(new Date(), "yyyy-MM-dd_HHmmss")}.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
 
-    // Log export
+    // Sidecar manifest with integrity signature
+    const manifest = {
+      schema: "lovable.audit.export.v1",
+      filename,
+      exported_at: new Date().toISOString(),
+      exported_by: { id: exportedById, email: exportedBy },
+      brand: { id: currentBrand?.id ?? null, name: currentBrand?.name ?? null },
+      filters: {
+        entity_type: entityType,
+        action: actionType,
+        search,
+        date_from: dateFrom?.toISOString() ?? null,
+        date_to: dateTo?.toISOString() ?? null,
+      },
+      record_count: events.length,
+      total_count: total,
+      page: page + 1,
+      total_pages: totalPages || 1,
+      bytes: csvBytes.byteLength,
+      algorithm: "SHA-256",
+      digest_hex: digestHex,
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {
+      type: "application/json",
+    });
+    const manifestUrl = URL.createObjectURL(manifestBlob);
+    const ma = document.createElement("a");
+    ma.href = manifestUrl;
+    ma.download = `${filename}.sig.json`;
+    ma.click();
+    URL.revokeObjectURL(manifestUrl);
+
+    // Log export with digest in reason for traceability
     await logAuditAccess(currentBrand?.id ?? null, "export", {
-      entityType, actionType,
+      entityType, actionType, search,
       dateFrom: dateFrom?.toISOString(),
       dateTo: dateTo?.toISOString(),
-    }, events.length, "CSV export from audit console");
+      digest_sha256: digestHex,
+      filename,
+    }, events.length, `CSV export — SHA-256: ${digestHex.slice(0, 16)}…`);
   };
 
 
