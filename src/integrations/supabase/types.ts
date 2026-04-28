@@ -10208,6 +10208,7 @@ export type Database = {
         Returns: number
       }
       normalize_topic_text: { Args: { p_text: string }; Returns: string }
+      notify_high_risk_appointments: { Args: never; Returns: Json }
       override_ai_decision:
         | {
             Args: {
@@ -10855,6 +10856,7 @@ export type Database = {
         | "tag_updated"
         | "ai_decision_ready"
         | "chat_message"
+        | "appointment_risk_alert"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       override_reason_category:
         | "wrong_priority"
@@ -11215,6 +11217,7 @@ export const Constants = {
         "tag_updated",
         "ai_decision_ready",
         "chat_message",
+        "appointment_risk_alert",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       override_reason_category: [
