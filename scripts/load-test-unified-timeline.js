@@ -56,6 +56,15 @@ function stats(samples) {
 }
 
 async function pickContactIds(n) {
+  // Fallback: load from a newline-delimited file (useful when anon RLS hides contacts)
+  if (process.env.CONTACT_IDS_FILE) {
+    const { readFileSync } = await import("node:fs");
+    const ids = readFileSync(process.env.CONTACT_IDS_FILE, "utf8")
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter((s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s));
+    return ids.slice(0, n);
+  }
   const { data, error } = await supabase
     .from("contacts")
     .select("id")
