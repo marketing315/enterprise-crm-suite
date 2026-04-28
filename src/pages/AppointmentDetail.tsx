@@ -57,6 +57,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
 export default function AppointmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [outcomeOpen, setOutcomeOpen] = useState(false);
 
   const { data: apt, isLoading } = useQuery({
     queryKey: ["appointment-detail", id],
@@ -79,6 +80,8 @@ export default function AppointmentDetail() {
     },
     enabled: !!id,
   });
+
+  const { data: outcomes = [] } = useAppointmentOutcomes(id);
 
   if (isLoading) {
     return (
