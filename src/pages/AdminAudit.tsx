@@ -73,6 +73,10 @@ export default function AdminAudit() {
         <TabsContent value="compliance" className="mt-6">
           <AuditCompliancePanel />
         </TabsContent>
+
+        <TabsContent value="realtime" className="mt-6">
+          <RealtimeStatusPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
