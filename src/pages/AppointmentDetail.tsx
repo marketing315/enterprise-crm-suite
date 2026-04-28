@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +15,16 @@ import {
   Building2,
   FileText,
   Briefcase,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AppointmentStatus, AppointmentType } from "@/types/database";
+import { AppointmentOutcomeDialog } from "@/features/appointments/AppointmentOutcomeDialog";
+import { useAppointmentOutcomes } from "@/features/appointments/useAppointmentOutcomes";
+import { getOutcomeMeta, getStatusMeta } from "@/features/appointments/taxonomy";
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; className: string }> = {
   scheduled: { label: "Programmato", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
