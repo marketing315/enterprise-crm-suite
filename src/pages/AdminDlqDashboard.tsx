@@ -41,16 +41,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   useIngestDlq,
   useOutboundDlq,
   useReplayIngestDlq,
   useReplayOutboundDlq,
+  useBatchReplayIngestDlq,
+  useBatchReplayOutboundDlq,
   useDlqStats,
   useIngestDlqTelemetry,
   IngestDlqEntry,
   OutboundDlqEntry,
+  type IngestDlqReason,
 } from "@/hooks/useDlqData";
 
 // ========================================
@@ -203,7 +214,46 @@ function DlqTelemetryPanel() {
 function IngestDlqTable() {
   const { data: entries = [], isLoading, refetch } = useIngestDlq();
   const replayMutation = useReplayIngestDlq();
+  const batchReplayMutation = useBatchReplayIngestDlq();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reasonFilter, setReasonFilter] = useState<IngestDlqReason | "all">("all");
+
+  // Available reasons in the current dataset (for filter dropdown)
+  const availableReasons = Array.from(
+    new Set(entries.map((e) => e.dlq_reason).filter((r): r is IngestDlqReason => !!r)),
+  ).sort();
+
+  const filteredEntries = reasonFilter === "all"
+    ? entries
+    : entries.filter((e) => e.dlq_reason === reasonFilter);
+
+  const allFilteredSelected =
+    filteredEntries.length > 0 &&
+    filteredEntries.every((e) => selectedIds.has(e.id));
+  const someFilteredSelected =
+    filteredEntries.some((e) => selectedIds.has(e.id)) && !allFilteredSelected;
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filteredEntries.forEach((e) => next.delete(e.id));
+      } else {
+        filteredEntries.forEach((e) => next.add(e.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleReplay = async (entry: IngestDlqEntry) => {
     try {
@@ -211,6 +261,29 @@ function IngestDlqTable() {
       toast.success("Richiesta rimessa in coda per rielaborazione");
     } catch (error) {
       toast.error(`Errore: ${error instanceof Error ? error.message : "Replay fallito"}`);
+    }
+  };
+
+  const handleBatchReplay = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const confirmed = window.confirm(
+      `Confermi il replay di ${ids.length} richieste? Verranno rielaborate in parallelo.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const result = await batchReplayMutation.mutateAsync(ids);
+      setSelectedIds(new Set());
+      if (result.failed === 0) {
+        toast.success(`Replay completato: ${result.succeeded}/${result.total} richieste rielaborate`);
+      } else {
+        toast.warning(
+          `Replay parziale: ${result.succeeded} ok, ${result.failed} falliti su ${result.total}`,
+        );
+      }
+    } catch (error) {
+      toast.error(`Errore batch: ${error instanceof Error ? error.message : "Replay fallito"}`);
     }
   };
 
@@ -236,17 +309,71 @@ function IngestDlqTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Aggiorna
-        </Button>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Select
+            value={reasonFilter}
+            onValueChange={(v) => {
+              setReasonFilter(v as IngestDlqReason | "all");
+              setSelectedIds(new Set());
+            }}
+          >
+            <SelectTrigger className="w-[200px] h-9">
+              <SelectValue placeholder="Filtra per motivo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti i motivi ({entries.length})</SelectItem>
+              {availableReasons.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r} ({entries.filter((e) => e.dlq_reason === r).length})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedIds.size > 0 && (
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size} selezionati
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              onClick={handleBatchReplay}
+              disabled={batchReplayMutation.isPending}
+            >
+              {batchReplayMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              Replay batch ({selectedIds.size})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Aggiorna
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  ref={(el) => {
+                    const input = el?.querySelector<HTMLInputElement>("input");
+                    if (input) input.indeterminate = someFilteredSelected;
+                  }}
+                  onCheckedChange={toggleAll}
+                  aria-label="Seleziona tutti"
+                />
+              </TableHead>
               <TableHead className="w-[40px]"></TableHead>
               <TableHead className="w-[150px]">Data</TableHead>
               <TableHead>Sorgente</TableHead>
@@ -256,10 +383,17 @@ function IngestDlqTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {entries.map((entry) => (
+            {filteredEntries.map((entry) => (
               <Collapsible key={entry.id} asChild>
                 <>
-                  <TableRow>
+                  <TableRow data-selected={selectedIds.has(entry.id) || undefined} className="data-[selected]:bg-primary/5">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(entry.id)}
+                        onCheckedChange={() => toggleOne(entry.id)}
+                        aria-label={`Seleziona riga ${entry.id}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <CollapsibleTrigger asChild>
                         <Button
@@ -293,7 +427,7 @@ function IngestDlqTable() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleReplay(entry)}
-                        disabled={replayMutation.isPending}
+                        disabled={replayMutation.isPending || batchReplayMutation.isPending}
                       >
                         <Play className="h-3.5 w-3.5 mr-1" />
                         Replay
@@ -302,7 +436,7 @@ function IngestDlqTable() {
                   </TableRow>
                   <CollapsibleContent asChild>
                     <TableRow className="bg-muted/30">
-                      <TableCell colSpan={6} className="p-4">
+                      <TableCell colSpan={7} className="p-4">
                         <div className="grid gap-4 md:grid-cols-2">
                           <div>
                             <h4 className="font-medium mb-2">Payload</h4>
@@ -357,10 +491,63 @@ function IngestDlqTable() {
 function OutboundDlqTable() {
   const { data: entries = [], isLoading, refetch } = useOutboundDlq();
   const replayMutation = useReplayOutboundDlq();
+  const batchReplayMutation = useBatchReplayOutboundDlq();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [replayDialogOpen, setReplayDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<OutboundDlqEntry | null>(null);
   const [overrideUrl, setOverrideUrl] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+
+  const availableEventTypes = Array.from(new Set(entries.map((e) => e.event_type))).sort();
+  const filteredEntries = eventTypeFilter === "all"
+    ? entries
+    : entries.filter((e) => e.event_type === eventTypeFilter);
+
+  const allFilteredSelected =
+    filteredEntries.length > 0 && filteredEntries.every((e) => selectedIds.has(e.id));
+  const someFilteredSelected =
+    filteredEntries.some((e) => selectedIds.has(e.id)) && !allFilteredSelected;
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filteredEntries.forEach((e) => next.delete(e.id));
+      else filteredEntries.forEach((e) => next.add(e.id));
+      return next;
+    });
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBatchReplay = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const confirmed = window.confirm(
+      `Confermi il replay di ${ids.length} delivery? L'override URL non viene applicato in modalità batch.`,
+    );
+    if (!confirmed) return;
+    try {
+      const result = await batchReplayMutation.mutateAsync(ids);
+      setSelectedIds(new Set());
+      if (result.failed === 0) {
+        toast.success(`Replay completato: ${result.succeeded}/${result.total} delivery rimessi in coda`);
+      } else {
+        toast.warning(
+          `Replay parziale: ${result.succeeded} ok, ${result.failed} falliti su ${result.total}`,
+        );
+      }
+    } catch (error) {
+      toast.error(`Errore batch: ${error instanceof Error ? error.message : "Replay fallito"}`);
+    }
+  };
 
   const handleReplayClick = (entry: OutboundDlqEntry) => {
     setSelectedEntry(entry);
@@ -405,17 +592,71 @@ function OutboundDlqTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Aggiorna
-        </Button>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Select
+            value={eventTypeFilter}
+            onValueChange={(v) => {
+              setEventTypeFilter(v);
+              setSelectedIds(new Set());
+            }}
+          >
+            <SelectTrigger className="w-[200px] h-9">
+              <SelectValue placeholder="Filtra per evento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli eventi ({entries.length})</SelectItem>
+              {availableEventTypes.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t} ({entries.filter((e) => e.event_type === t).length})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedIds.size > 0 && (
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size} selezionati
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              onClick={handleBatchReplay}
+              disabled={batchReplayMutation.isPending}
+            >
+              {batchReplayMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              Replay batch ({selectedIds.size})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Aggiorna
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  ref={(el) => {
+                    const input = el?.querySelector<HTMLInputElement>("input");
+                    if (input) input.indeterminate = someFilteredSelected;
+                  }}
+                  onCheckedChange={toggleAll}
+                  aria-label="Seleziona tutti"
+                />
+              </TableHead>
               <TableHead className="w-[40px]"></TableHead>
               <TableHead className="w-[150px]">Dead At</TableHead>
               <TableHead>Webhook</TableHead>
@@ -426,10 +667,17 @@ function OutboundDlqTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {entries.map((entry) => (
+            {filteredEntries.map((entry) => (
               <Collapsible key={entry.id} asChild>
                 <>
-                  <TableRow>
+                  <TableRow data-selected={selectedIds.has(entry.id) || undefined} className="data-[selected]:bg-primary/5">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(entry.id)}
+                        onCheckedChange={() => toggleOne(entry.id)}
+                        aria-label={`Seleziona delivery ${entry.id}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <CollapsibleTrigger asChild>
                         <Button
@@ -470,7 +718,7 @@ function OutboundDlqTable() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleReplayClick(entry)}
-                        disabled={replayMutation.isPending}
+                        disabled={replayMutation.isPending || batchReplayMutation.isPending}
                       >
                         <Play className="h-3.5 w-3.5 mr-1" />
                         Replay
