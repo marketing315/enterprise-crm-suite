@@ -199,6 +199,7 @@ export function InboundSourceFormDrawer({
           default_pipeline_stage_id: values.default_pipeline_stage_id || null,
           hmac_enabled: values.hmac_enabled,
           replay_window_seconds: values.replay_window_seconds,
+          payload_schema: values.payload_schema ?? null,
         })
         .eq("id", editingSource.id);
 
