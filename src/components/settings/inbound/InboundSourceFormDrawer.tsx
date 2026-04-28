@@ -60,6 +60,7 @@ interface InboundSourceFormDrawerProps {
     default_pipeline_stage_id?: string | null;
     hmac_enabled?: boolean;
     replay_window_seconds?: number;
+    payload_schema?: PayloadSchema | null;
   } | null;
 }
 
