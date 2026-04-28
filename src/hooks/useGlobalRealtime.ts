@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { realtimeStatusStore } from './useRealtimeStatus';
 
 /**
  * Table-to-queryKey mapping for cache invalidation.
@@ -157,17 +158,32 @@ export function useGlobalRealtime() {
 
       const channel = createChannel(channelName, tables);
       activeChannels.push(channel);
+      realtimeStatusStore.set(channelName, {
+        status: (retryCounts[channelName] ?? 0) > 0 ? 'reconnecting' : 'connecting',
+        retryCount: retryCounts[channelName] ?? 0,
+      });
 
       channel.subscribe((status, err) => {
         if (isDisposed) return;
 
         if (status === 'SUBSCRIBED') {
           retryCounts[channelName] = 0;
+          realtimeStatusStore.set(channelName, {
+            status: 'connected',
+            retryCount: 0,
+            lastError: undefined,
+          });
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           const attempt = (retryCounts[channelName] ?? 0) + 1;
           retryCounts[channelName] = attempt;
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
           console.warn(`[Realtime] ${channelName} ${status}, retry #${attempt} in ${delay}ms`, err?.message);
+
+          realtimeStatusStore.set(channelName, {
+            status: attempt >= 3 ? 'error' : 'reconnecting',
+            retryCount: attempt,
+            lastError: err?.message ?? status,
+          });
 
           supabase.removeChannel(channel);
           const idx = activeChannels.indexOf(channel);
@@ -178,6 +194,11 @@ export function useGlobalRealtime() {
             subscribeChannel(channelName, tables);
           }, delay);
           retryTimers.push(timer);
+        } else if (status === 'CLOSED') {
+          realtimeStatusStore.set(channelName, {
+            status: 'reconnecting',
+            retryCount: retryCounts[channelName] ?? 0,
+          });
         }
       });
     }
@@ -190,6 +211,7 @@ export function useGlobalRealtime() {
       isDisposed = true;
       retryTimers.forEach(clearTimeout);
       activeChannels.forEach((ch) => supabase.removeChannel(ch));
+      realtimeStatusStore.reset();
     };
   }, [brandId, isAllBrandsSelected, queryClient, supabaseUser?.id, authLoading, isRealtimeReady]);
 }

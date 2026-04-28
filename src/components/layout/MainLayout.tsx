@@ -74,6 +74,7 @@ import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
 import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
+import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
 
 // Base menu items (always visible if brand selected)
 const baseMenuItems = [
@@ -347,6 +348,7 @@ export function MainLayout() {
           <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0">
             <SidebarTrigger />
             <div className="flex-1" />
+            <RealtimeStatusBadge />
             <PageHelpButton />
             <NotificationBell />
             {currentBrand && (
@@ -356,6 +358,7 @@ export function MainLayout() {
               </div>
             )}
           </header>
+          <RealtimeStatusBanner />
           <main className="flex-1 overflow-hidden p-3 md:p-6">
             <ErrorBoundary label="Pagina">
               <Outlet />
