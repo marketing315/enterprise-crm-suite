@@ -31,6 +31,7 @@ const Events = lazy(() => import("@/pages/Events"));
 const Appointments = lazy(() => import("@/pages/Appointments"));
 const AppointmentsCalendar = lazy(() => import("@/pages/AppointmentsCalendar"));
 const AppointmentsOpsBoard = lazy(() => import("@/pages/AppointmentsOpsBoard"));
+const SalesAvailability = lazy(() => import("@/pages/SalesAvailability"));
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const Settings = lazy(() => import("@/pages/Settings"));
