@@ -164,6 +164,7 @@ const App = () => (
                     <Route path="/appointments" element={<Appointments />} />
                     <Route path="/appointments/calendar" element={<AppointmentsCalendar />} />
                     <Route path="/appointments/ops-board" element={<AppointmentsOpsBoard />} />
+                    <Route path="/appointments/availability" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalesAvailability /></RoleGuard>} />
                     <Route path="/appointments/:id" element={<AppointmentDetail />} />
                     <Route path="/tickets" element={<Tickets />} />
                     <Route path="/chat" element={<GuardedChat />} />
