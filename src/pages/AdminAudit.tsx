@@ -26,39 +26,39 @@ export default function AdminAudit() {
           <TabsList className="inline-flex sm:grid w-max sm:w-full sm:max-w-7xl sm:grid-cols-9 px-2 sm:px-0">
             <TabsTrigger value="dashboard" className="flex items-center gap-1.5 shrink-0">
               <BarChart3 className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Dashboard</span>
+              <span>Dashboard</span>
             </TabsTrigger>
             <TabsTrigger value="console" className="flex items-center gap-1.5 shrink-0">
               <ScrollText className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Console</span>
+              <span>Console</span>
             </TabsTrigger>
             <TabsTrigger value="alerts" className="flex items-center gap-1.5 shrink-0">
               <ShieldAlert className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Anomalie</span>
+              <span>Anomalie</span>
             </TabsTrigger>
             <TabsTrigger value="notify" className="flex items-center gap-1.5 shrink-0">
               <Bell className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Notifiche</span>
+              <span>Notifiche</span>
             </TabsTrigger>
             <TabsTrigger value="access" className="flex items-center gap-1.5 shrink-0">
               <Eye className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Accessi</span>
+              <span>Accessi</span>
             </TabsTrigger>
             <TabsTrigger value="retention" className="flex items-center gap-1.5 shrink-0">
               <Archive className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Retention</span>
+              <span>Retention</span>
             </TabsTrigger>
             <TabsTrigger value="pii" className="flex items-center gap-1.5 shrink-0">
               <Lock className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">PII</span>
+              <span>PII</span>
             </TabsTrigger>
             <TabsTrigger value="compliance" className="flex items-center gap-1.5 shrink-0">
               <ShieldCheck className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Compliance</span>
+              <span>Compliance</span>
             </TabsTrigger>
             <TabsTrigger value="realtime" className="flex items-center gap-1.5 shrink-0">
               <Activity className="h-4 w-4" />
-              <span className="hidden xs:inline sm:inline">Realtime</span>
+              <span>Realtime</span>
             </TabsTrigger>
           </TabsList>
         </div>
