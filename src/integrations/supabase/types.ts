@@ -8115,6 +8115,7 @@ export type Database = {
           id: string | null
           is_active: boolean | null
           name: string | null
+          payload_schema: Json | null
           rate_limit_per_min: number | null
           replay_window_seconds: number | null
           updated_at: string | null
@@ -8129,6 +8130,7 @@ export type Database = {
           id?: string | null
           is_active?: boolean | null
           name?: string | null
+          payload_schema?: Json | null
           rate_limit_per_min?: number | null
           replay_window_seconds?: number | null
           updated_at?: string | null
@@ -8143,6 +8145,7 @@ export type Database = {
           id?: string | null
           is_active?: boolean | null
           name?: string | null
+          payload_schema?: Json | null
           rate_limit_per_min?: number | null
           replay_window_seconds?: number | null
           updated_at?: string | null

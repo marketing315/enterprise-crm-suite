@@ -60,16 +60,16 @@ export function AuditDashboard() {
   }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Dashboard Management</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-base sm:text-lg font-semibold">Dashboard Management</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Volumi e distribuzione delle attività tracciate
           </p>
         </div>
         <Select value={range} onValueChange={setRange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -81,7 +81,7 @@ export function AuditDashboard() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <KpiCard
           icon={Activity}
           label="Eventi totali"
@@ -118,7 +118,7 @@ export function AuditDashboard() {
           {chartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nessun dato</p>
           ) : (
-            <div className="h-[240px]">
+            <div className="h-[180px] sm:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -224,15 +224,15 @@ function KpiCard({
 }) {
   return (
     <Card>
-      <CardContent className="pt-5">
-        <div className="flex items-start justify-between">
+      <CardContent className="pt-4 sm:pt-5 px-3 sm:px-6 pb-3 sm:pb-6">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-            <p className="text-2xl font-semibold mt-1 truncate">{value}</p>
-            {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+            <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+            <p className="text-lg sm:text-2xl font-semibold mt-1 truncate">{value}</p>
+            {hint && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">{hint}</p>}
           </div>
-          <div className="rounded-md bg-primary/10 p-2 text-primary shrink-0 ml-2">
-            <Icon className="h-4 w-4" />
+          <div className="rounded-md bg-primary/10 p-1.5 sm:p-2 text-primary shrink-0">
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
         </div>
       </CardContent>

@@ -30,9 +30,10 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Key, Shield } from "lucide-react";
+import { Copy, Key, Shield, FileJson } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LinkedAutomationsSection } from "@/components/settings/webhooks/LinkedAutomationsSection";
+import { PayloadSchemaEditor, type PayloadSchema } from "@/components/settings/inbound/PayloadSchemaEditor";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto").max(100),
@@ -42,6 +43,7 @@ const formSchema = z.object({
   default_pipeline_stage_id: z.string().nullable().optional(),
   hmac_enabled: z.boolean().default(false),
   replay_window_seconds: z.coerce.number().min(60).max(3600).default(300),
+  payload_schema: z.any().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,6 +60,7 @@ interface InboundSourceFormDrawerProps {
     default_pipeline_stage_id?: string | null;
     hmac_enabled?: boolean;
     replay_window_seconds?: number;
+    payload_schema?: PayloadSchema | null;
   } | null;
 }
 
@@ -103,6 +106,7 @@ export function InboundSourceFormDrawer({
       default_pipeline_stage_id: null,
       hmac_enabled: false,
       replay_window_seconds: 300,
+      payload_schema: null,
     },
   });
 
@@ -116,6 +120,7 @@ export function InboundSourceFormDrawer({
         default_pipeline_stage_id: editingSource.default_pipeline_stage_id ?? null,
         hmac_enabled: editingSource.hmac_enabled ?? false,
         replay_window_seconds: editingSource.replay_window_seconds ?? 300,
+        payload_schema: editingSource.payload_schema ?? null,
       });
     } else {
       form.reset({
@@ -126,6 +131,7 @@ export function InboundSourceFormDrawer({
         default_pipeline_stage_id: null,
         hmac_enabled: false,
         replay_window_seconds: 300,
+        payload_schema: null,
       });
     }
     setGeneratedCredentials(null);
@@ -163,6 +169,7 @@ export function InboundSourceFormDrawer({
         hmac_secret: hmacSecret,
         hmac_secret_hash: hmacSecretHash,
         replay_window_seconds: values.replay_window_seconds,
+        payload_schema: values.payload_schema ?? null,
       }).select("id").single();
 
       if (error) throw error;
@@ -192,6 +199,7 @@ export function InboundSourceFormDrawer({
           default_pipeline_stage_id: values.default_pipeline_stage_id || null,
           hmac_enabled: values.hmac_enabled,
           replay_window_seconds: values.replay_window_seconds,
+          payload_schema: values.payload_schema ?? null,
         })
         .eq("id", editingSource.id);
 
@@ -547,6 +555,35 @@ export function InboundSourceFormDrawer({
                     )}
                   />
                 )}
+              </div>
+
+              <Separator className="my-4" />
+
+              {/* Payload schema validation */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileJson className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Validazione Payload</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Definisci campi obbligatori e regole applicate ai webhook in ingresso
+                  prima di consumare rate-limit e dedup.
+                </p>
+                <FormField
+                  control={form.control}
+                  name="payload_schema"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <PayloadSchemaEditor
+                          value={field.value as PayloadSchema | null}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
                {/* Linked Automations (only in edit mode) */}

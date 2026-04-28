@@ -12,6 +12,7 @@ export interface InboundSource {
   replay_window_seconds: number;
   counts_as_new_lead: boolean;
   default_pipeline_stage_id: string | null;
+  payload_schema: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -27,7 +28,7 @@ export function useInboundSources() {
 
       let query = supabase
         .from("webhook_sources_safe")
-        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, counts_as_new_lead, default_pipeline_stage_id, created_at, updated_at")
+        .select("id, name, description, is_active, rate_limit_per_min, hmac_enabled, replay_window_seconds, counts_as_new_lead, default_pipeline_stage_id, payload_schema, created_at, updated_at")
         .order("name", { ascending: true });
 
       if (isAllBrandsSelected) {
@@ -38,7 +39,7 @@ export function useInboundSources() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as InboundSource[];
+      return data as unknown as InboundSource[];
     },
     enabled: isAllBrandsSelected ? allBrandIds.length > 0 : !!currentBrand?.id,
   });

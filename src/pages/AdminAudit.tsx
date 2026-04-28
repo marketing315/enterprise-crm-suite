@@ -21,44 +21,47 @@ export default function AdminAudit() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full max-w-7xl grid-cols-9">
-          <TabsTrigger value="dashboard" className="flex items-center gap-1.5">
-            <BarChart3 className="h-4 w-4" />
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="console" className="flex items-center gap-1.5">
-            <ScrollText className="h-4 w-4" />
-            Console
-          </TabsTrigger>
-          <TabsTrigger value="alerts" className="flex items-center gap-1.5">
-            <ShieldAlert className="h-4 w-4" />
-            Anomalie
-          </TabsTrigger>
-          <TabsTrigger value="notify" className="flex items-center gap-1.5">
-            <Bell className="h-4 w-4" />
-            Notifiche
-          </TabsTrigger>
-          <TabsTrigger value="access" className="flex items-center gap-1.5">
-            <Eye className="h-4 w-4" />
-            Accessi
-          </TabsTrigger>
-          <TabsTrigger value="retention" className="flex items-center gap-1.5">
-            <Archive className="h-4 w-4" />
-            Retention
-          </TabsTrigger>
-          <TabsTrigger value="pii" className="flex items-center gap-1.5">
-            <Lock className="h-4 w-4" />
-            PII
-          </TabsTrigger>
-          <TabsTrigger value="compliance" className="flex items-center gap-1.5">
-            <ShieldCheck className="h-4 w-4" />
-            Compliance
-          </TabsTrigger>
-          <TabsTrigger value="realtime" className="flex items-center gap-1.5">
-            <Activity className="h-4 w-4" />
-            Realtime
-          </TabsTrigger>
-        </TabsList>
+        {/* Mobile: horizontal scroll | Desktop: grid 9 cols */}
+        <div className="-mx-2 sm:mx-0 overflow-x-auto sm:overflow-visible">
+          <TabsList className="inline-flex sm:grid w-max sm:w-full sm:max-w-7xl sm:grid-cols-9 px-2 sm:px-0">
+            <TabsTrigger value="dashboard" className="flex items-center gap-1.5 shrink-0">
+              <BarChart3 className="h-4 w-4" />
+              <span>Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="console" className="flex items-center gap-1.5 shrink-0">
+              <ScrollText className="h-4 w-4" />
+              <span>Console</span>
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="flex items-center gap-1.5 shrink-0">
+              <ShieldAlert className="h-4 w-4" />
+              <span>Anomalie</span>
+            </TabsTrigger>
+            <TabsTrigger value="notify" className="flex items-center gap-1.5 shrink-0">
+              <Bell className="h-4 w-4" />
+              <span>Notifiche</span>
+            </TabsTrigger>
+            <TabsTrigger value="access" className="flex items-center gap-1.5 shrink-0">
+              <Eye className="h-4 w-4" />
+              <span>Accessi</span>
+            </TabsTrigger>
+            <TabsTrigger value="retention" className="flex items-center gap-1.5 shrink-0">
+              <Archive className="h-4 w-4" />
+              <span>Retention</span>
+            </TabsTrigger>
+            <TabsTrigger value="pii" className="flex items-center gap-1.5 shrink-0">
+              <Lock className="h-4 w-4" />
+              <span>PII</span>
+            </TabsTrigger>
+            <TabsTrigger value="compliance" className="flex items-center gap-1.5 shrink-0">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Compliance</span>
+            </TabsTrigger>
+            <TabsTrigger value="realtime" className="flex items-center gap-1.5 shrink-0">
+              <Activity className="h-4 w-4" />
+              <span>Realtime</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="dashboard" className="mt-6">
           <AuditDashboard />
