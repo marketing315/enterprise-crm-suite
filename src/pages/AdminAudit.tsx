@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, BarChart3, ShieldAlert, Archive, Lock, ShieldCheck, Activity } from "lucide-react";
+import { ScrollText, BarChart3, ShieldAlert, Archive, Lock, ShieldCheck, Activity, Bell } from "lucide-react";
 import { AuditConsole } from "@/components/audit/AuditConsole";
 import { AuditDashboard } from "@/components/audit/AuditDashboard";
 import { AuditAnomaliesPanel } from "@/components/audit/AuditAnomaliesPanel";
@@ -7,6 +7,7 @@ import { AuditRetentionPanel } from "@/components/audit/AuditRetentionPanel";
 import { AuditPiiPoliciesPanel } from "@/components/audit/AuditPiiPoliciesPanel";
 import { AuditCompliancePanel } from "@/components/audit/AuditCompliancePanel";
 import { RealtimeStatusPanel } from "@/components/audit/RealtimeStatusPanel";
+import { AuditAlertsPanel } from "@/components/audit/AuditAlertsPanel";
 
 export default function AdminAudit() {
   return (
