@@ -557,6 +557,35 @@ export function InboundSourceFormDrawer({
                 )}
               </div>
 
+              <Separator className="my-4" />
+
+              {/* Payload schema validation */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileJson className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Validazione Payload</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Definisci campi obbligatori e regole applicate ai webhook in ingresso
+                  prima di consumare rate-limit e dedup.
+                </p>
+                <FormField
+                  control={form.control}
+                  name="payload_schema"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <PayloadSchemaEditor
+                          value={field.value as PayloadSchema | null}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
                {/* Linked Automations (only in edit mode) */}
                {editingSource && (
                  <LinkedAutomationsSection
