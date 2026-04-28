@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useAppointmentAuditTimeline, type AppointmentTimelineEvent } from "./useAppointmentAuditTimeline";
-import { OUTCOME_LABELS } from "./taxonomy";
+import { getOutcomeMeta } from "./taxonomy";
 
 interface AppointmentTimelineProps {
   appointmentId: string;
