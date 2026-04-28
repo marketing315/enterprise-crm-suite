@@ -118,7 +118,7 @@ export function AuditDashboard() {
           {chartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nessun dato</p>
           ) : (
-            <div className="h-[240px]">
+            <div className="h-[180px] sm:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
