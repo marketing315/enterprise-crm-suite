@@ -29,6 +29,7 @@ const Contacts = lazy(() => import("@/pages/Contacts"));
 const Pipeline = lazy(() => import("@/pages/Pipeline"));
 const Events = lazy(() => import("@/pages/Events"));
 const Appointments = lazy(() => import("@/pages/Appointments"));
+const AppointmentsCalendar = lazy(() => import("@/pages/AppointmentsCalendar"));
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const Settings = lazy(() => import("@/pages/Settings"));
@@ -159,6 +160,7 @@ const App = () => (
                     <Route path="/products" element={<Products />} />
                     <Route path="/events" element={<Events />} />
                     <Route path="/appointments" element={<Appointments />} />
+                    <Route path="/appointments/calendar" element={<AppointmentsCalendar />} />
                     <Route path="/appointments/:id" element={<AppointmentDetail />} />
                     <Route path="/tickets" element={<Tickets />} />
                     <Route path="/chat" element={<GuardedChat />} />
