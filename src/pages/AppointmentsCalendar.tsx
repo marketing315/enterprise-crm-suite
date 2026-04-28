@@ -341,18 +341,27 @@ export default function AppointmentsCalendar() {
                       const contactName = [apt.contact?.first_name, apt.contact?.last_name]
                         .filter(Boolean)
                         .join(" ") || "—";
+                      const isSelected = selectedIds.has(apt.id);
                       return (
                         <div
                           key={apt.id}
                           draggable
                           onDragStart={(e) => handleDragStart(e, apt)}
-                          onClick={() => navigate(`/appointments/${apt.id}`)}
+                          onClick={(e) => {
+                            if (e.metaKey || e.ctrlKey || selectedIds.size > 0) {
+                              e.preventDefault();
+                              toggleSelect(apt.id);
+                            } else {
+                              navigate(`/appointments/${apt.id}`);
+                            }
+                          }}
                           className={cn(
                             "absolute left-1 right-1 cursor-grab overflow-hidden rounded-md border-l-2 px-1.5 py-1 text-[11px] text-white shadow-sm transition hover:shadow-md active:cursor-grabbing",
-                            colorClass
+                            colorClass,
+                            isSelected && "ring-2 ring-offset-1 ring-primary"
                           )}
                           style={{ top, height }}
-                          title={`${format(dt, "HH:mm")} · ${contactName}`}
+                          title={`${format(dt, "HH:mm")} · ${contactName} (Ctrl/Cmd+click per selezionare)`}
                         >
                           <div className="truncate font-medium">
                             {format(dt, "HH:mm")} · {contactName}
