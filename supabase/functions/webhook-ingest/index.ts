@@ -1502,18 +1502,33 @@ Deno.serve(async (req: Request) => {
         duplicate: isDuplicate,
         contact_status: contactData?.status || "new",
         used_ai_extraction: usedAI,
+        correlation_id: correlationId,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-Correlation-Id": correlationId,
+        },
+      }
     );
 
   } catch (error) {
-    console.error("Webhook processing error:", JSON.stringify({ error: String(error) }));
+    console.error("Webhook processing error:", JSON.stringify({ ...logContext, error: String(error) }));
     if (auditId) {
       await updateAuditRecord(auditId, "failed", `internal_error: ${String(error)}`);
     }
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Internal server error", correlation_id: correlationId }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-Correlation-Id": correlationId,
+        },
+      }
     );
   }
 });
