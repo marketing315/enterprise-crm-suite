@@ -68,6 +68,11 @@ export function useAuditEvents(filters: AuditFilters = {}, page = 0) {
         end.setHours(23, 59, 59, 999);
         query = query.lte("occurred_at", end.toISOString());
       }
+      if (filters.search && filters.search.trim().length >= 2) {
+        // Trigram full-text search on precomputed search_text (gin_trgm_ops index)
+        const term = filters.search.trim().replace(/[%_]/g, "\\$&");
+        query = query.ilike("search_text", `%${term}%`);
+      }
 
       const { data, error, count } = await query;
       if (error) throw error;

@@ -66,16 +66,28 @@ export function AuditConsole() {
   const [actionType, setActionType] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const { currentBrand } = useBrand();
   const { user } = useAuth();
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const filters: AuditFilters = useMemo(() => ({
     entityType: entityType === "all" ? undefined : entityType,
     action: actionType === "all" ? undefined : actionType,
     dateFrom,
     dateTo,
-  }), [entityType, actionType, dateFrom, dateTo]);
+    search: search || undefined,
+  }), [entityType, actionType, dateFrom, dateTo, search]);
 
   const { data, isLoading } = useAuditEvents(filters, page);
   const events = data?.events || [];
@@ -86,11 +98,11 @@ export function AuditConsole() {
   useEffect(() => {
     if (!currentBrand?.id || isLoading) return;
     logAuditAccess(currentBrand.id, "console_view", {
-      entityType, actionType, page,
+      entityType, actionType, page, search,
       dateFrom: dateFrom?.toISOString(),
       dateTo: dateTo?.toISOString(),
     }, total);
-  }, [currentBrand?.id, entityType, actionType, page, dateFrom, dateTo, isLoading, total]);
+  }, [currentBrand?.id, entityType, actionType, page, search, dateFrom, dateTo, isLoading, total]);
 
   const handleExportCSV = async () => {
     if (events.length === 0) return;
@@ -98,12 +110,14 @@ export function AuditConsole() {
     // Watermark header
     const exportedAt = format(new Date(), "yyyy-MM-dd HH:mm:ss");
     const exportedBy = user?.email || "unknown";
+    const exportedById = user?.id || "unknown";
+    const filename = `audit_log_${format(new Date(), "yyyy-MM-dd_HHmmss")}.csv`;
     const watermark = [
       `# Export Audit Log`,
       `# Generated: ${exportedAt}`,
       `# By: ${exportedBy}`,
       `# Brand: ${currentBrand?.name ?? currentBrand?.id ?? "—"}`,
-      `# Filters: entity=${entityType} action=${actionType} from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"}`,
+      `# Filters: entity=${entityType} action=${actionType} search="${search}" from=${dateFrom?.toISOString() ?? "—"} to=${dateTo?.toISOString() ?? "—"}`,
       `# Records: ${events.length} (page ${page + 1}/${totalPages || 1})`,
       ``,
     ].join("\n");
@@ -120,20 +134,63 @@ export function AuditConsole() {
       e.changed_fields?.join(", ") || "",
     ]);
     const csv = watermark + [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    // Compute SHA-256 digest of CSV bytes for compliance signature
+    const csvBytes = new TextEncoder().encode(csv);
+    const digestBuf = await crypto.subtle.digest("SHA-256", csvBytes);
+    const digestHex = Array.from(new Uint8Array(digestBuf))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Download CSV
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `audit_log_${format(new Date(), "yyyy-MM-dd_HHmmss")}.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
 
-    // Log export
+    // Sidecar manifest with integrity signature
+    const manifest = {
+      schema: "lovable.audit.export.v1",
+      filename,
+      exported_at: new Date().toISOString(),
+      exported_by: { id: exportedById, email: exportedBy },
+      brand: { id: currentBrand?.id ?? null, name: currentBrand?.name ?? null },
+      filters: {
+        entity_type: entityType,
+        action: actionType,
+        search,
+        date_from: dateFrom?.toISOString() ?? null,
+        date_to: dateTo?.toISOString() ?? null,
+      },
+      record_count: events.length,
+      total_count: total,
+      page: page + 1,
+      total_pages: totalPages || 1,
+      bytes: csvBytes.byteLength,
+      algorithm: "SHA-256",
+      digest_hex: digestHex,
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {
+      type: "application/json",
+    });
+    const manifestUrl = URL.createObjectURL(manifestBlob);
+    const ma = document.createElement("a");
+    ma.href = manifestUrl;
+    ma.download = `${filename}.sig.json`;
+    ma.click();
+    URL.revokeObjectURL(manifestUrl);
+
+    // Log export with digest in reason for traceability
     await logAuditAccess(currentBrand?.id ?? null, "export", {
-      entityType, actionType,
+      entityType, actionType, search,
       dateFrom: dateFrom?.toISOString(),
       dateTo: dateTo?.toISOString(),
-    }, events.length, "CSV export from audit console");
+      digest_sha256: digestHex,
+      filename,
+    }, events.length, `CSV export — SHA-256: ${digestHex.slice(0, 16)}…`);
   };
 
 
@@ -146,14 +203,23 @@ export function AuditConsole() {
             {total} eventi registrati
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={events.length === 0}>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={events.length === 0} title="Scarica CSV + manifest .sig.json con SHA-256 per verifica integrità">
           <Download className="h-4 w-4" />
-          Esporta CSV
+          Esporta CSV firmato
         </Button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Cerca azione, attore, campo, ID…"
+            className="w-[260px] pl-8 h-9"
+          />
+        </div>
         <Select value={entityType} onValueChange={v => { setEntityType(v); setPage(0); }}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />

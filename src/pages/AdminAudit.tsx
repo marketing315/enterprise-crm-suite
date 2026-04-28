@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, BarChart3, ShieldAlert, Archive, Lock, ShieldCheck, Activity, Bell } from "lucide-react";
+import { ScrollText, BarChart3, ShieldAlert, Archive, Lock, ShieldCheck, Activity, Bell, Eye } from "lucide-react";
 import { AuditConsole } from "@/components/audit/AuditConsole";
 import { AuditDashboard } from "@/components/audit/AuditDashboard";
 import { AuditAnomaliesPanel } from "@/components/audit/AuditAnomaliesPanel";
@@ -8,6 +8,7 @@ import { AuditPiiPoliciesPanel } from "@/components/audit/AuditPiiPoliciesPanel"
 import { AuditCompliancePanel } from "@/components/audit/AuditCompliancePanel";
 import { RealtimeStatusPanel } from "@/components/audit/RealtimeStatusPanel";
 import { AuditAlertsPanel } from "@/components/audit/AuditAlertsPanel";
+import { AuditAccessLogPanel } from "@/components/audit/AuditAccessLogPanel";
 
 export default function AdminAudit() {
   return (
@@ -20,7 +21,7 @@ export default function AdminAudit() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full max-w-6xl grid-cols-8">
+        <TabsList className="grid w-full max-w-7xl grid-cols-9">
           <TabsTrigger value="dashboard" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -36,6 +37,10 @@ export default function AdminAudit() {
           <TabsTrigger value="notify" className="flex items-center gap-1.5">
             <Bell className="h-4 w-4" />
             Notifiche
+          </TabsTrigger>
+          <TabsTrigger value="access" className="flex items-center gap-1.5">
+            <Eye className="h-4 w-4" />
+            Accessi
           </TabsTrigger>
           <TabsTrigger value="retention" className="flex items-center gap-1.5">
             <Archive className="h-4 w-4" />
@@ -69,6 +74,10 @@ export default function AdminAudit() {
 
         <TabsContent value="notify" className="mt-6">
           <AuditAlertsPanel />
+        </TabsContent>
+
+        <TabsContent value="access" className="mt-6">
+          <AuditAccessLogPanel />
         </TabsContent>
 
         <TabsContent value="retention" className="mt-6">

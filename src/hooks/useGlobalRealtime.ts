@@ -207,10 +207,73 @@ export function useGlobalRealtime() {
       subscribeChannel(channelName, tables);
     });
 
+    // ---------------- Fallback polling ----------------
+    // If realtime stays unhealthy >30s, invalidate mapped queries every 30s
+    // to keep data fresh until reconnection succeeds.
+    let fallbackInterval: ReturnType<typeof setInterval> | null = null;
+    let fallbackActive = false;
+    const FALLBACK_GRACE_MS = 30_000;
+    const FALLBACK_INTERVAL_MS = 30_000;
+    const allMappedTables = Object.keys(TABLE_QUERY_MAP);
+
+    const evaluateFallback = () => {
+      if (isDisposed) return;
+      const snap = realtimeStatusStore.snapshot();
+      if (snap.size === 0) return;
+      const now = Date.now();
+      // Healthy = at least one channel connected AND no channel has been
+      // in error/reconnecting for longer than the grace period.
+      let oldestUnhealthy = 0;
+      let allHealthy = true;
+      snap.forEach((state) => {
+        if (state.status !== 'connected') {
+          allHealthy = false;
+          const stuckFor = now - state.lastChangeAt;
+          if (stuckFor > oldestUnhealthy) oldestUnhealthy = stuckFor;
+        }
+      });
+
+      const shouldFallback = !allHealthy && oldestUnhealthy >= FALLBACK_GRACE_MS;
+
+      if (shouldFallback && !fallbackActive) {
+        fallbackActive = true;
+        realtimeStatusStore.recordFallbackActivation();
+        console.warn(
+          `[Realtime] Fallback polling activated — channels unhealthy for ${Math.round(oldestUnhealthy / 1000)}s`,
+        );
+        fallbackInterval = setInterval(() => {
+          if (isDisposed) return;
+          allMappedTables.forEach((table) => {
+            const entries = TABLE_QUERY_MAP[table];
+            entries?.forEach((entry) => {
+              queryClient.invalidateQueries({
+                queryKey: entry.key,
+                exact: entry.exact ?? false,
+              });
+            });
+          });
+        }, FALLBACK_INTERVAL_MS);
+      } else if (!shouldFallback && fallbackActive) {
+        fallbackActive = false;
+        console.info('[Realtime] Fallback polling stopped — channels healthy again');
+        if (fallbackInterval) {
+          clearInterval(fallbackInterval);
+          fallbackInterval = null;
+        }
+      }
+    };
+
+    const unsubscribeStatusListener = realtimeStatusStore.subscribe(evaluateFallback);
+    // Re-evaluate periodically too — handles "stuck" states that don't emit
+    const watchdog = setInterval(evaluateFallback, 10_000);
+
     return () => {
       isDisposed = true;
       retryTimers.forEach(clearTimeout);
       activeChannels.forEach((ch) => supabase.removeChannel(ch));
+      unsubscribeStatusListener();
+      clearInterval(watchdog);
+      if (fallbackInterval) clearInterval(fallbackInterval);
       realtimeStatusStore.reset();
     };
   }, [brandId, isAllBrandsSelected, queryClient, supabaseUser?.id, authLoading, isRealtimeReady]);
