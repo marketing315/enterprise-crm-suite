@@ -6937,6 +6937,51 @@ export type Database = {
           },
         ]
       }
+      sales_availability: {
+        Row: {
+          brand_id: string
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          start_time: string
+          updated_at: string
+          user_id: string
+          valid_from: string
+          valid_to: string | null
+          weekday: number
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          start_time: string
+          updated_at?: string
+          user_id: string
+          valid_from?: string
+          valid_to?: string | null
+          weekday: number
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+          valid_from?: string
+          valid_to?: string | null
+          weekday?: number
+        }
+        Relationships: []
+      }
       sales_commissions: {
         Row: {
           approved_at: string | null
@@ -7270,6 +7315,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_time_off: {
+        Row: {
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          off_type: Database["public"]["Enums"]["sales_time_off_type"]
+          reason: string | null
+          start_date: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          off_type?: Database["public"]["Enums"]["sales_time_off_type"]
+          reason?: string | null
+          start_date: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          off_type?: Database["public"]["Enums"]["sales_time_off_type"]
+          reason?: string | null
+          start_date?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       security_findings: {
         Row: {
@@ -9923,6 +10004,10 @@ export type Database = {
         Args: { p_role: Database["public"]["Enums"]["app_role"] }
         Returns: number
       }
+      get_sales_capacity: {
+        Args: { p_brand_id: string; p_date_from: string; p_date_to: string }
+        Returns: Json
+      }
       get_sales_kpis: {
         Args: {
           p_brand_id: string
@@ -10878,6 +10963,12 @@ export type Database = {
         | "paid"
         | "cancelled"
         | "refunded"
+      sales_time_off_type:
+        | "vacation"
+        | "sick"
+        | "personal"
+        | "training"
+        | "other"
       table_view_scope: "single_brand" | "all_accessible"
       tag_scope:
         | "contact"
@@ -11241,6 +11332,13 @@ export const Constants = {
         "paid",
         "cancelled",
         "refunded",
+      ],
+      sales_time_off_type: [
+        "vacation",
+        "sick",
+        "personal",
+        "training",
+        "other",
       ],
       table_view_scope: ["single_brand", "all_accessible"],
       tag_scope: ["contact", "event", "deal", "appointment", "ticket", "mixed"],
