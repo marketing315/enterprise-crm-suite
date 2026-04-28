@@ -3920,6 +3920,51 @@ export type Database = {
           },
         ]
       }
+      dependency_inventory: {
+        Row: {
+          created_at: string
+          current_version: string
+          has_vulnerability: boolean
+          id: string
+          is_dev_dependency: boolean
+          is_outdated: boolean
+          last_scanned_at: string
+          latest_version: string | null
+          license: string | null
+          package_name: string
+          vulnerability_details: Json | null
+          vulnerability_severity: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_version: string
+          has_vulnerability?: boolean
+          id?: string
+          is_dev_dependency?: boolean
+          is_outdated?: boolean
+          last_scanned_at?: string
+          latest_version?: string | null
+          license?: string | null
+          package_name: string
+          vulnerability_details?: Json | null
+          vulnerability_severity?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_version?: string
+          has_vulnerability?: boolean
+          id?: string
+          is_dev_dependency?: boolean
+          is_outdated?: boolean
+          last_scanned_at?: string
+          latest_version?: string | null
+          license?: string | null
+          package_name?: string
+          vulnerability_details?: Json | null
+          vulnerability_severity?: string | null
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -7474,6 +7519,98 @@ export type Database = {
           },
         ]
       }
+      slo_definitions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          metric_type: string
+          name: string
+          service_name: string
+          target_percentage: number
+          threshold_value: number | null
+          updated_at: string
+          window_days: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_type: string
+          name: string
+          service_name: string
+          target_percentage: number
+          threshold_value?: number | null
+          updated_at?: string
+          window_days?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_type?: string
+          name?: string
+          service_name?: string
+          target_percentage?: number
+          threshold_value?: number | null
+          updated_at?: string
+          window_days?: number
+        }
+        Relationships: []
+      }
+      slo_measurements: {
+        Row: {
+          burn_rate_1h: number | null
+          burn_rate_24h: number | null
+          burn_rate_6h: number | null
+          current_sli: number | null
+          error_budget_remaining: number | null
+          good_events: number
+          id: string
+          measured_at: string
+          metadata: Json | null
+          slo_id: string
+          total_events: number
+        }
+        Insert: {
+          burn_rate_1h?: number | null
+          burn_rate_24h?: number | null
+          burn_rate_6h?: number | null
+          current_sli?: number | null
+          error_budget_remaining?: number | null
+          good_events?: number
+          id?: string
+          measured_at?: string
+          metadata?: Json | null
+          slo_id: string
+          total_events?: number
+        }
+        Update: {
+          burn_rate_1h?: number | null
+          burn_rate_24h?: number | null
+          burn_rate_6h?: number | null
+          current_sli?: number | null
+          error_budget_remaining?: number | null
+          good_events?: number
+          id?: string
+          measured_at?: string
+          metadata?: Json | null
+          slo_id?: string
+          total_events?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slo_measurements_slo_id_fkey"
+            columns: ["slo_id"]
+            isOneToOne: false
+            referencedRelation: "slo_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -8026,6 +8163,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trace_events: {
+        Row: {
+          attributes: Json | null
+          created_at: string
+          duration_ms: number
+          error_message: string | null
+          http_status: number | null
+          id: string
+          operation_name: string
+          parent_span_id: string | null
+          service_name: string
+          span_id: string
+          started_at: string
+          status_code: string
+          trace_id: string
+        }
+        Insert: {
+          attributes?: Json | null
+          created_at?: string
+          duration_ms: number
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          operation_name: string
+          parent_span_id?: string | null
+          service_name: string
+          span_id: string
+          started_at: string
+          status_code?: string
+          trace_id: string
+        }
+        Update: {
+          attributes?: Json | null
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          operation_name?: string
+          parent_span_id?: string | null
+          service_name?: string
+          span_id?: string
+          started_at?: string
+          status_code?: string
+          trace_id?: string
+        }
+        Relationships: []
       }
       user_hidden_columns: {
         Row: {
@@ -8671,6 +8856,16 @@ export type Database = {
         Args: { p_contact_id: string; p_trigger_event?: string }
         Returns: Json
       }
+      calculate_slo_burn_rate: {
+        Args: { p_slo_id: string }
+        Returns: {
+          burn_rate_1h: number
+          burn_rate_24h: number
+          burn_rate_6h: number
+          current_sli: number
+          error_budget_remaining: number
+        }[]
+      }
       can_manage_role: {
         Args: {
           manager_role: Database["public"]["Enums"]["app_role"]
@@ -8849,6 +9044,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cleanup_old_traces: { Args: never; Returns: number }
       cleanup_outbound_webhook_deliveries: {
         Args: { p_limit?: number }
         Returns: number
@@ -9974,6 +10170,7 @@ export type Database = {
         }
         Returns: Json
       }
+      record_slo_snapshot: { Args: never; Returns: number }
       refresh_anomaly_baselines: { Args: never; Returns: Json }
       remove_group_member: {
         Args: { p_target_user_id: string; p_thread_id: string }
