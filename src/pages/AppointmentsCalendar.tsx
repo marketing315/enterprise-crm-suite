@@ -300,6 +300,9 @@ export default function AppointmentsCalendar() {
                       if (top < 0 || top >= slotsPerDay * SLOT_PX) return null;
                       const colorClass =
                         STATUS_COLORS[apt.status] ?? "bg-muted border-border";
+                      const contactName = [apt.contact?.first_name, apt.contact?.last_name]
+                        .filter(Boolean)
+                        .join(" ") || "—";
                       return (
                         <div
                           key={apt.id}
@@ -311,16 +314,14 @@ export default function AppointmentsCalendar() {
                             colorClass
                           )}
                           style={{ top, height }}
-                          title={`${format(dt, "HH:mm")} · ${
-                            apt.contact?.full_name ?? "Contatto"
-                          }`}
+                          title={`${format(dt, "HH:mm")} · ${contactName}`}
                         >
                           <div className="truncate font-medium">
-                            {format(dt, "HH:mm")} · {apt.contact?.full_name ?? "—"}
+                            {format(dt, "HH:mm")} · {contactName}
                           </div>
-                          {height > SLOT_PX && apt.assigned_sales?.full_name && (
+                          {height > SLOT_PX && apt.sales_user?.full_name && (
                             <div className="truncate opacity-90">
-                              {apt.assigned_sales.full_name}
+                              {apt.sales_user.full_name}
                             </div>
                           )}
                         </div>
