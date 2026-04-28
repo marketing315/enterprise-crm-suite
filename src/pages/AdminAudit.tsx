@@ -67,6 +67,10 @@ export default function AdminAudit() {
           <AuditAnomaliesPanel />
         </TabsContent>
 
+        <TabsContent value="notify" className="mt-6">
+          <AuditAlertsPanel />
+        </TabsContent>
+
         <TabsContent value="retention" className="mt-6">
           <AuditRetentionPanel />
         </TabsContent>
