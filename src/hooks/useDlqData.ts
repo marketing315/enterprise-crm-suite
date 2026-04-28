@@ -108,6 +108,122 @@ export function useReplayIngestDlq() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ingest-dlq"] });
+      queryClient.invalidateQueries({ queryKey: ["dlq-stats"] });
+    },
+  });
+}
+
+export interface BatchReplayResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  errors: Array<{ id: string; error: string }>;
+}
+
+/**
+ * Batch replay for ingest DLQ. Calls the single-row RPC sequentially
+ * with bounded concurrency (5 in parallel) so we never exceed PostgREST
+ * connection limits even on hundreds of entries.
+ */
+export function useBatchReplayIngestDlq() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestIds: string[]): Promise<BatchReplayResult> => {
+      const result: BatchReplayResult = {
+        total: requestIds.length,
+        succeeded: 0,
+        failed: 0,
+        errors: [],
+      };
+
+      const concurrency = 5;
+      let cursor = 0;
+
+      const runOne = async (id: string) => {
+        try {
+          const { data, error } = await supabase.rpc("replay_ingest_dlq", {
+            p_request_id: id,
+          });
+          if (error) throw error;
+          const r = data as { success: boolean; error?: string };
+          if (!r.success) throw new Error(r.error || "Replay failed");
+          result.succeeded += 1;
+        } catch (e) {
+          result.failed += 1;
+          result.errors.push({
+            id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      };
+
+      const workers = Array.from({ length: Math.min(concurrency, requestIds.length) }, async () => {
+        while (cursor < requestIds.length) {
+          const i = cursor++;
+          await runOne(requestIds[i]);
+        }
+      });
+
+      await Promise.all(workers);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ingest-dlq"] });
+      queryClient.invalidateQueries({ queryKey: ["dlq-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["ingest-dlq-telemetry"] });
+    },
+  });
+}
+
+export function useBatchReplayOutboundDlq() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (deliveryIds: string[]): Promise<BatchReplayResult> => {
+      const result: BatchReplayResult = {
+        total: deliveryIds.length,
+        succeeded: 0,
+        failed: 0,
+        errors: [],
+      };
+
+      const concurrency = 5;
+      let cursor = 0;
+
+      const runOne = async (id: string) => {
+        try {
+          const { data, error } = await supabase.rpc("replay_outbound_dlq", {
+            p_delivery_id: id,
+            p_override_url: null,
+          });
+          if (error) throw error;
+          const r = data as { success: boolean; error?: string };
+          if (!r.success) throw new Error(r.error || "Replay failed");
+          result.succeeded += 1;
+        } catch (e) {
+          result.failed += 1;
+          result.errors.push({
+            id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      };
+
+      const workers = Array.from({ length: Math.min(concurrency, deliveryIds.length) }, async () => {
+        while (cursor < deliveryIds.length) {
+          const i = cursor++;
+          await runOne(deliveryIds[i]);
+        }
+      });
+
+      await Promise.all(workers);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outbound-dlq"] });
+      queryClient.invalidateQueries({ queryKey: ["dlq-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["webhook-deliveries"] });
     },
   });
 }
