@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffectivePiiPolicies, type EffectivePiiRule } from "@/hooks/useAuditPiiPolicies";
 import { resolveStrategy, applyMask } from "@/lib/piiMasking";
@@ -9,10 +11,12 @@ interface AuditDiffViewerProps {
 }
 
 const SKIP_FIELDS = ["updated_at", "created_at", "id", "brand_id"];
-const MAX_DEPTH = 5;
+const MAX_DEPTH = 8;
 const MAX_INLINE_LENGTH = 80;
+const COLLAPSE_THRESHOLD = 4; // collapse object/array nodes with > N changed children
 
 function fieldLabel(key: string): string {
+  if (/^\d+$/.test(key)) return `[${key}]`;
   return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -93,6 +97,41 @@ function DiffLeafRow({ path, oldVal, newVal, rules }: DiffRowProps) {
   );
 }
 
+interface CollapsibleNodeProps {
+  path: string[];
+  childRows: React.ReactNode[];
+  defaultOpen: boolean;
+  type: "object" | "array";
+  changedCount: number;
+}
+
+function CollapsibleNode({ path, childRows, defaultOpen, type, changedCount }: CollapsibleNodeProps) {
+  const [open, setOpen] = useState(defaultOpen);
+  const breadcrumb = path.map(fieldLabel).join(" › ");
+  const indent = Math.min(path.length - 1, 6) * 12;
+
+  return (
+    <div style={{ marginLeft: indent }} className="border-l-2 border-muted/40 pl-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {open ? (
+          <ChevronDown className="h-3 w-3 shrink-0" />
+        ) : (
+          <ChevronRight className="h-3 w-3 shrink-0" />
+        )}
+        <span>{breadcrumb}</span>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+          {type} · {changedCount} {changedCount === 1 ? "modifica" : "modifiche"}
+        </span>
+      </button>
+      {open && <div className="mt-1 space-y-1.5">{childRows}</div>}
+    </div>
+  );
+}
+
 function renderDiff(
   oldVal: unknown,
   newVal: unknown,
@@ -100,6 +139,7 @@ function renderDiff(
   depth: number,
   rules: EffectivePiiRule[],
 ): React.ReactNode[] {
+  // Recurse into plain objects
   if (isPlainObject(oldVal) && isPlainObject(newVal) && depth < MAX_DEPTH) {
     const allKeys = Array.from(new Set([...Object.keys(oldVal), ...Object.keys(newVal)]));
     const rows: React.ReactNode[] = [];
@@ -110,9 +150,47 @@ function renderDiff(
       if (isEqual(ov, nv)) continue;
       rows.push(...renderDiff(ov, nv, [...path, k], depth + 1, rules));
     }
+    if (rows.length > COLLAPSE_THRESHOLD && path.length > 0) {
+      return [
+        <CollapsibleNode
+          key={path.join(".") || "root-obj"}
+          path={path}
+          childRows={rows}
+          defaultOpen={depth <= 1}
+          type="object"
+          changedCount={rows.length}
+        />,
+      ];
+    }
     return rows;
   }
 
+  // Recurse into arrays (positional diff)
+  if (Array.isArray(oldVal) && Array.isArray(newVal) && depth < MAX_DEPTH) {
+    const maxLen = Math.max(oldVal.length, newVal.length);
+    const rows: React.ReactNode[] = [];
+    for (let i = 0; i < maxLen; i++) {
+      const ov = oldVal[i];
+      const nv = newVal[i];
+      if (isEqual(ov, nv)) continue;
+      rows.push(...renderDiff(ov, nv, [...path, String(i)], depth + 1, rules));
+    }
+    if (rows.length > COLLAPSE_THRESHOLD && path.length > 0) {
+      return [
+        <CollapsibleNode
+          key={path.join(".") || "root-arr"}
+          path={path}
+          childRows={rows}
+          defaultOpen={depth <= 1}
+          type="array"
+          changedCount={rows.length}
+        />,
+      ];
+    }
+    return rows;
+  }
+
+  // Type-mismatch fallback (e.g. object → array, primitive → object): render leaf
   return [
     <DiffLeafRow
       key={path.join(".")}
