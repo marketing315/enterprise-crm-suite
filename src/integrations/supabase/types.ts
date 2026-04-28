@@ -1384,6 +1384,159 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_alert_channels: {
+        Row: {
+          anomaly_types: string[]
+          brand_id: string
+          channel_type: string
+          created_at: string
+          created_by: string | null
+          destination: string
+          id: string
+          is_active: boolean
+          mask_pii: boolean
+          min_severity: string
+          name: string
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          anomaly_types?: string[]
+          brand_id?: string
+          channel_type: string
+          created_at?: string
+          created_by?: string | null
+          destination: string
+          id?: string
+          is_active?: boolean
+          mask_pii?: boolean
+          min_severity?: string
+          name: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          anomaly_types?: string[]
+          brand_id?: string
+          channel_type?: string
+          created_at?: string
+          created_by?: string | null
+          destination?: string
+          id?: string
+          is_active?: boolean
+          mask_pii?: boolean
+          min_severity?: string
+          name?: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: []
+      }
+      audit_alert_deliveries: {
+        Row: {
+          anomaly_id: string | null
+          attempt_count: number
+          brand_id: string
+          channel_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          payload: Json | null
+          response_status: number | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          anomaly_id?: string | null
+          attempt_count?: number
+          brand_id: string
+          channel_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          response_status?: number | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          anomaly_id?: string | null
+          attempt_count?: number
+          brand_id?: string
+          channel_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          response_status?: number | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_alert_deliveries_anomaly_id_fkey"
+            columns: ["anomaly_id"]
+            isOneToOne: false
+            referencedRelation: "audit_anomalies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_alert_deliveries_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "audit_alert_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_anomalies: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          actor_user_id: string | null
+          anomaly_type: string
+          brand_id: string
+          created_at: string
+          description: string | null
+          details: Json
+          detected_at: string
+          id: string
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actor_user_id?: string | null
+          anomaly_type: string
+          brand_id?: string
+          created_at?: string
+          description?: string | null
+          details?: Json
+          detected_at?: string
+          id?: string
+          severity?: string
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actor_user_id?: string | null
+          anomaly_type?: string
+          brand_id?: string
+          created_at?: string
+          description?: string | null
+          details?: Json
+          detected_at?: string
+          id?: string
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
       audit_compliance_reports: {
         Row: {
           brand_id: string
@@ -8989,6 +9142,20 @@ export type Database = {
           trigger_reason: string
         }[]
       }
+      get_pending_alert_deliveries: {
+        Args: { _limit?: number }
+        Returns: {
+          anomaly_id: string
+          attempt_count: number
+          brand_id: string
+          channel_id: string
+          channel_type: string
+          delivery_id: string
+          destination: string
+          mask_pii: boolean
+          webhook_secret: string
+        }[]
+      }
       get_pipeline_funnel_analytics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
@@ -9316,6 +9483,18 @@ export type Database = {
       }
       rebuild_contact_search_index: { Args: never; Returns: number }
       reclaim_stale_capi_events: { Args: never; Returns: number }
+      record_audit_anomaly: {
+        Args: {
+          _actor_user_id?: string
+          _anomaly_type: string
+          _brand_id: string
+          _description?: string
+          _details?: Json
+          _severity: string
+          _title: string
+        }
+        Returns: string
+      }
       record_delivery_result: {
         Args: {
           p_delivery_id: string
@@ -9537,6 +9716,10 @@ export type Database = {
       set_lead_event_clinical_topics: {
         Args: { p_event_id: string; p_topic_ids: string[] }
         Returns: undefined
+      }
+      severity_meets_threshold: {
+        Args: { _severity: string; _threshold: string }
+        Returns: boolean
       }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
       update_appointment: {
