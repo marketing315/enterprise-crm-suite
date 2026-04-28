@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, AlertTriangle, WifiOff, Loader2, RefreshCw } from 'lucide-react';
-import { useRealtimeStatus, realtimeStatusStore, type ChannelStatus } from '@/hooks/useRealtimeStatus';
+import { CheckCircle2, AlertTriangle, WifiOff, Loader2, RefreshCw, Activity, Zap } from 'lucide-react';
+import { useRealtimeStatus, realtimeStatusStore, type ChannelStatus, type RealtimeTelemetry } from '@/hooks/useRealtimeStatus';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 
