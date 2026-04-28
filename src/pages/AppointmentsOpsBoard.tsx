@@ -18,9 +18,10 @@ import { useAppointmentsOpsKpi } from "@/features/appointments/useAppointmentsOp
 import { useAppointments } from "@/hooks/useAppointments";
 import {
   APPOINTMENT_OUTCOMES,
-  APPOINTMENT_STATUSES,
+  APPOINTMENT_STATUS,
   type AppointmentOutcomeCode,
-  type AppointmentStatusCode,
+  type AppointmentStatus,
+  getStatusMeta,
 } from "@/features/appointments/taxonomy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
