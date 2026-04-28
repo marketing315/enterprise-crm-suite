@@ -26,7 +26,7 @@ const entityRoutes: Record<string, (id: string) => string> = {
   ticket: (id) => `/tickets?open=${id}`,
   contact: (id) => `/contacts?open=${id}`,
   deal: (id) => `/pipeline?deal=${id}`,
-  appointment: (id) => `/appointments?open=${id}`,
+  appointment: (id) => `/appointments/${id}`,
   lead_event: (id) => `/events?event=${id}`,
 };
 
@@ -36,6 +36,8 @@ const notificationTypeLabels: Record<string, string> = {
   tags_updated: "Tag Aggiornati",
   appointment_created: "Appuntamento Creato",
   appointment_updated: "Appuntamento Modificato",
+  appointment_reminder: "Promemoria Appuntamento",
+  appointment_risk_alert: "⚠️ Appuntamento a Rischio",
   ticket_created: "Nuovo Ticket",
   ticket_assigned: "Ticket Assegnato",
   ticket_status_changed: "Stato Ticket",
@@ -47,6 +49,8 @@ const notificationTypeColors: Record<string, string> = {
   tags_updated: "bg-green-500",
   appointment_created: "bg-orange-500",
   appointment_updated: "bg-orange-400",
+  appointment_reminder: "bg-amber-500",
+  appointment_risk_alert: "bg-destructive",
   ticket_created: "bg-red-500",
   ticket_assigned: "bg-yellow-500",
   ticket_status_changed: "bg-gray-500",
