@@ -166,6 +166,31 @@ export default function AppointmentsCalendar() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/5 pl-3 pr-1 py-1">
+              <span className="text-xs font-medium text-primary">
+                {selectedIds.size} selezionat{selectedIds.size === 1 ? "o" : "i"}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7"
+                onClick={() => setShowBulkReassign(true)}
+              >
+                <Users className="mr-1.5 h-3.5 w-3.5" />
+                Riassegna
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={clearSelection}
+                title="Annulla selezione"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           <Button variant="outline" size="sm" onClick={() => navigate("/appointments")}>
             <List className="mr-2 h-4 w-4" />
             Vista lista
