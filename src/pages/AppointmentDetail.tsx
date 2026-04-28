@@ -26,6 +26,7 @@ import type { AppointmentStatus, AppointmentType } from "@/types/database";
 import { AppointmentOutcomeDialog } from "@/features/appointments/AppointmentOutcomeDialog";
 import { useAppointmentOutcomes } from "@/features/appointments/useAppointmentOutcomes";
 import { getOutcomeMeta, getStatusMeta } from "@/features/appointments/taxonomy";
+import { AppointmentTimeline } from "@/features/appointments/AppointmentTimeline";
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; className: string }> = {
   scheduled: { label: "Programmato", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
@@ -278,6 +279,8 @@ export default function AppointmentDetail() {
           )}
         </CardContent>
       </Card>
+
+      <AppointmentTimeline appointmentId={apt.id} />
 
       <AppointmentOutcomeDialog
         appointmentId={apt.id}
