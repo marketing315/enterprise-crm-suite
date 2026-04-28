@@ -74,7 +74,7 @@ export function useIngestDlq(limit = 50) {
         .from("incoming_requests")
         .select(`
           id, source_id, brand_id, raw_body, raw_body_text, headers, ip_address, user_agent,
-          status, processed, error_message, dlq_reason, lead_event_id, created_at,
+          status, processed, error_message, dlq_reason, lead_event_id, correlation_id, created_at,
           webhook_sources(name)
         `)
         .eq("brand_id", currentBrand.id)
