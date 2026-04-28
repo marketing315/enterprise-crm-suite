@@ -19,7 +19,7 @@ export default function AdminAudit() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full max-w-4xl grid-cols-6">
+        <TabsList className="grid w-full max-w-5xl grid-cols-7">
           <TabsTrigger value="dashboard" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -43,6 +43,10 @@ export default function AdminAudit() {
           <TabsTrigger value="compliance" className="flex items-center gap-1.5">
             <ShieldCheck className="h-4 w-4" />
             Compliance
+          </TabsTrigger>
+          <TabsTrigger value="realtime" className="flex items-center gap-1.5">
+            <Activity className="h-4 w-4" />
+            Realtime
           </TabsTrigger>
         </TabsList>
 
