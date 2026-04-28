@@ -9572,6 +9572,10 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_appointments_ops_kpi: {
+        Args: { p_brand_id: string; p_date_from: string; p_date_to: string }
+        Returns: Json
+      }
       get_assignable_roles: {
         Args: { p_brand_id: string }
         Returns: {
