@@ -140,6 +140,7 @@ export default function AppointmentDetail() {
               {typeConfig.label}
             </Badge>
           )}
+          <RiskScoreBadge score={(apt as { risk_score?: number | null }).risk_score} size="md" showLabel />
           <Button
             size="sm"
             variant="default"
