@@ -31,6 +31,7 @@ const Events = lazy(() => import("@/pages/Events"));
 const Appointments = lazy(() => import("@/pages/Appointments"));
 const AppointmentsCalendar = lazy(() => import("@/pages/AppointmentsCalendar"));
 const AppointmentsOpsBoard = lazy(() => import("@/pages/AppointmentsOpsBoard"));
+const SalesAvailability = lazy(() => import("@/pages/SalesAvailability"));
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const Settings = lazy(() => import("@/pages/Settings"));
@@ -163,6 +164,7 @@ const App = () => (
                     <Route path="/appointments" element={<Appointments />} />
                     <Route path="/appointments/calendar" element={<AppointmentsCalendar />} />
                     <Route path="/appointments/ops-board" element={<AppointmentsOpsBoard />} />
+                    <Route path="/appointments/availability" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalesAvailability /></RoleGuard>} />
                     <Route path="/appointments/:id" element={<AppointmentDetail />} />
                     <Route path="/tickets" element={<Tickets />} />
                     <Route path="/chat" element={<GuardedChat />} />

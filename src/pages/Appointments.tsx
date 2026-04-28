@@ -29,6 +29,7 @@ import {
   Home,
   AlertTriangle,
   UserPlus,
+  Users,
   MoreHorizontal,
   Eye,
 } from "lucide-react";
@@ -238,6 +239,10 @@ export default function Appointments() {
           <Button variant="outline" className="rounded-xl" onClick={() => navigate("/appointments/ops-board")}>
             <AlertTriangle className="h-4 w-4 mr-2" />
             Ops Board
+          </Button>
+          <Button variant="outline" className="rounded-xl" onClick={() => navigate("/appointments/availability")}>
+            <Users className="h-4 w-4 mr-2" />
+            Disponibilità
           </Button>
           <Button onClick={() => setDialogOpen(true)} className="rounded-xl">
             <Plus className="h-4 w-4 mr-2" />
