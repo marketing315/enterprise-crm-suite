@@ -41,16 +41,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   useIngestDlq,
   useOutboundDlq,
   useReplayIngestDlq,
   useReplayOutboundDlq,
+  useBatchReplayIngestDlq,
+  useBatchReplayOutboundDlq,
   useDlqStats,
   useIngestDlqTelemetry,
   IngestDlqEntry,
   OutboundDlqEntry,
+  type IngestDlqReason,
 } from "@/hooks/useDlqData";
 
 // ========================================
