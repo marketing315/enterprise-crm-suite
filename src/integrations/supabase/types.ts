@@ -7047,6 +7047,116 @@ export type Database = {
           },
         ]
       }
+      siem_destinations: {
+        Row: {
+          actions_filter: string[] | null
+          batch_size: number
+          brand_id: string
+          consecutive_failures: number
+          created_at: string
+          created_by: string | null
+          endpoint_url: string
+          entity_types_filter: string[] | null
+          hmac_secret: string
+          id: string
+          is_active: boolean
+          last_error: string | null
+          last_exported_at: string
+          last_success_at: string | null
+          mask_pii: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          actions_filter?: string[] | null
+          batch_size?: number
+          brand_id: string
+          consecutive_failures?: number
+          created_at?: string
+          created_by?: string | null
+          endpoint_url: string
+          entity_types_filter?: string[] | null
+          hmac_secret: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_exported_at?: string
+          last_success_at?: string | null
+          mask_pii?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          actions_filter?: string[] | null
+          batch_size?: number
+          brand_id?: string
+          consecutive_failures?: number
+          created_at?: string
+          created_by?: string | null
+          endpoint_url?: string
+          entity_types_filter?: string[] | null
+          hmac_secret?: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_exported_at?: string
+          last_success_at?: string | null
+          mask_pii?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      siem_export_log: {
+        Row: {
+          brand_id: string
+          created_at: string
+          destination_id: string
+          error_message: string | null
+          events_count: number
+          exported_from: string | null
+          exported_to: string | null
+          http_status: number | null
+          id: string
+          latency_ms: number | null
+          status: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          destination_id: string
+          error_message?: string | null
+          events_count?: number
+          exported_from?: string | null
+          exported_to?: string | null
+          http_status?: number | null
+          id?: string
+          latency_ms?: number | null
+          status: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          destination_id?: string
+          error_message?: string | null
+          events_count?: number
+          exported_from?: string | null
+          exported_to?: string | null
+          http_status?: number | null
+          id?: string
+          latency_ms?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "siem_export_log_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "siem_destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -8373,6 +8483,26 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_pending_siem_exports: {
+        Args: { _destination_id: string }
+        Returns: {
+          action: string
+          actor_display_name: string
+          actor_type: string
+          actor_user_id: string
+          brand_id: string
+          changed_fields: string[]
+          correlation_id: string
+          entity_id: string
+          entity_type: string
+          event_id: string
+          metadata: Json
+          new_value: Json
+          occurred_at: string
+          old_value: Json
+          source: string
+        }[]
+      }
       claim_webhook_deliveries: {
         Args: { p_batch_size?: number }
         Returns: {
@@ -9443,6 +9573,18 @@ export type Database = {
       mark_notifications_read: {
         Args: { p_notification_ids: string[] }
         Returns: number
+      }
+      mark_siem_export_result: {
+        Args: {
+          _destination_id: string
+          _error_message?: string
+          _events_count: number
+          _http_status?: number
+          _last_event_at: string
+          _latency_ms?: number
+          _success: boolean
+        }
+        Returns: undefined
       }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
       move_to_dlq: {
