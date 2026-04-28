@@ -231,6 +231,10 @@ export default function Appointments() {
           <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
+          <Button variant="outline" className="rounded-xl" onClick={() => navigate("/appointments/calendar")}>
+            <Calendar className="h-4 w-4 mr-2" />
+            Calendario
+          </Button>
           <Button onClick={() => setDialogOpen(true)} className="rounded-xl">
             <Plus className="h-4 w-4 mr-2" />
             Nuovo
