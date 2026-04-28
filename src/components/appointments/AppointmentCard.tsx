@@ -93,6 +93,7 @@ export function AppointmentCard({
                 {typeConfig.label}
               </Badge>
             )}
+            <RiskScoreBadge score={apt.risk_score} />
           </div>
 
           {/* Contact name */}
