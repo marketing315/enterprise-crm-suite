@@ -491,10 +491,63 @@ function IngestDlqTable() {
 function OutboundDlqTable() {
   const { data: entries = [], isLoading, refetch } = useOutboundDlq();
   const replayMutation = useReplayOutboundDlq();
+  const batchReplayMutation = useBatchReplayOutboundDlq();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [replayDialogOpen, setReplayDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<OutboundDlqEntry | null>(null);
   const [overrideUrl, setOverrideUrl] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+
+  const availableEventTypes = Array.from(new Set(entries.map((e) => e.event_type))).sort();
+  const filteredEntries = eventTypeFilter === "all"
+    ? entries
+    : entries.filter((e) => e.event_type === eventTypeFilter);
+
+  const allFilteredSelected =
+    filteredEntries.length > 0 && filteredEntries.every((e) => selectedIds.has(e.id));
+  const someFilteredSelected =
+    filteredEntries.some((e) => selectedIds.has(e.id)) && !allFilteredSelected;
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filteredEntries.forEach((e) => next.delete(e.id));
+      else filteredEntries.forEach((e) => next.add(e.id));
+      return next;
+    });
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBatchReplay = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const confirmed = window.confirm(
+      `Confermi il replay di ${ids.length} delivery? L'override URL non viene applicato in modalità batch.`,
+    );
+    if (!confirmed) return;
+    try {
+      const result = await batchReplayMutation.mutateAsync(ids);
+      setSelectedIds(new Set());
+      if (result.failed === 0) {
+        toast.success(`Replay completato: ${result.succeeded}/${result.total} delivery rimessi in coda`);
+      } else {
+        toast.warning(
+          `Replay parziale: ${result.succeeded} ok, ${result.failed} falliti su ${result.total}`,
+        );
+      }
+    } catch (error) {
+      toast.error(`Errore batch: ${error instanceof Error ? error.message : "Replay fallito"}`);
+    }
+  };
 
   const handleReplayClick = (entry: OutboundDlqEntry) => {
     setSelectedEntry(entry);
