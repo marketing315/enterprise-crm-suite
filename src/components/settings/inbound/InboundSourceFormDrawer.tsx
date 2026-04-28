@@ -169,6 +169,7 @@ export function InboundSourceFormDrawer({
         hmac_secret: hmacSecret,
         hmac_secret_hash: hmacSecretHash,
         replay_window_seconds: values.replay_window_seconds,
+        payload_schema: values.payload_schema ?? null,
       }).select("id").single();
 
       if (error) throw error;
