@@ -74,6 +74,7 @@ import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
 import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
+import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
 
 // Base menu items (always visible if brand selected)
 const baseMenuItems = [
