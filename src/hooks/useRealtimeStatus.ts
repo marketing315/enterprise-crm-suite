@@ -19,6 +19,34 @@ type Listener = () => void;
 const channels = new Map<string, ChannelState>();
 const listeners = new Set<Listener>();
 
+/**
+ * Telemetry counters for SLO monitoring of realtime resilience.
+ * In-memory, reset on page reload. Read via realtimeStatusStore.getTelemetry().
+ */
+export interface RealtimeTelemetry {
+  totalErrors: number;
+  totalReconnects: number;
+  totalSubscribes: number;
+  fallbackPollingActivations: number;
+  lastErrorAt: number | null;
+  lastReconnectAt: number | null;
+  lastFallbackAt: number | null;
+  errorsPerChannel: Record<string, number>;
+  startedAt: number;
+}
+
+const telemetry: RealtimeTelemetry = {
+  totalErrors: 0,
+  totalReconnects: 0,
+  totalSubscribes: 0,
+  fallbackPollingActivations: 0,
+  lastErrorAt: null,
+  lastReconnectAt: null,
+  lastFallbackAt: null,
+  errorsPerChannel: {},
+  startedAt: Date.now(),
+};
+
 function emit() {
   for (const l of listeners) l();
 }
@@ -35,6 +63,21 @@ export const realtimeStatusStore = {
       ...patch,
       lastChangeAt: Date.now(),
     });
+
+    // Telemetry side-effects
+    if (patch.status === 'connected' && prev.status !== 'connected') {
+      telemetry.totalSubscribes += 1;
+      if (prev.status === 'reconnecting' || prev.status === 'error') {
+        telemetry.totalReconnects += 1;
+        telemetry.lastReconnectAt = Date.now();
+      }
+    }
+    if (patch.status === 'error' && prev.status !== 'error') {
+      telemetry.totalErrors += 1;
+      telemetry.lastErrorAt = Date.now();
+      telemetry.errorsPerChannel[channelName] =
+        (telemetry.errorsPerChannel[channelName] ?? 0) + 1;
+    }
     emit();
   },
   remove(channelName: string) {
@@ -44,6 +87,14 @@ export const realtimeStatusStore = {
   reset() {
     channels.clear();
     emit();
+  },
+  recordFallbackActivation() {
+    telemetry.fallbackPollingActivations += 1;
+    telemetry.lastFallbackAt = Date.now();
+    emit();
+  },
+  getTelemetry(): Readonly<RealtimeTelemetry> {
+    return { ...telemetry, errorsPerChannel: { ...telemetry.errorsPerChannel } };
   },
   snapshot(): ReadonlyMap<string, ChannelState> {
     return channels;
