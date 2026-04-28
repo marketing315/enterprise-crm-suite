@@ -16,6 +16,7 @@ import {
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointmentsOpsKpi } from "@/features/appointments/useAppointmentsOpsKpi";
 import { useAppointments } from "@/hooks/useAppointments";
+import { RiskScoreBadge } from "@/features/appointments/RiskScoreBadge";
 import {
   APPOINTMENT_OUTCOMES,
   APPOINTMENT_STATUS,
