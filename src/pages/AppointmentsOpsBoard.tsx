@@ -86,7 +86,7 @@ export default function AppointmentsOpsBoard() {
   const atRiskList = useMemo(
     () =>
       (atRiskData?.appointments ?? [])
-        .filter((a) => a.status === "scheduled" || a.status === "draft")
+        .filter((a) => (a.status as string) === "scheduled" || (a.status as string) === "draft")
         .slice(0, 8),
     [atRiskData]
   );
