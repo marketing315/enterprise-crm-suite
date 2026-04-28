@@ -56,11 +56,23 @@ export default function AppointmentsCalendar() {
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [showBulkReassign, setShowBulkReassign] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const dragRef = useRef<DraggedAppointment | null>(null);
   const [pendingMove, setPendingMove] = useState<{
     appt: DraggedAppointment;
     targetDate: Date;
   } | null>(null);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
 
   const weekEnd = addDays(weekStart, 7);
   const days = useMemo(
