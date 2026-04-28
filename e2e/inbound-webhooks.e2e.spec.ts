@@ -460,6 +460,67 @@ test.describe("Inbound Webhooks - Google Forms (Apps Script)", () => {
 
     expect(response.status()).toBe(200);
   });
+
+  // -------------------------------------------------------------------
+  // Query-string auth (`?api_key=...`) — usato dall'URL "completo" del drawer
+  // di configurazione sorgente, ideale per piattaforme che non permettono
+  // di personalizzare header (Google Forms, Typeform legacy, Zapier basic).
+  // -------------------------------------------------------------------
+
+  test("Auth via `?api_key=` query string succeeds (no headers, no body key)", async ({ request }) => {
+    const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}?api_key=${encodeURIComponent(E2E_API_KEY)}`;
+
+    const response = await request.post(endpoint, {
+      headers: { "Content-Type": "application/json" },
+      data: {
+        nome: "QueryString",
+        cognome: "Auth",
+        telefono: uniquePhone,
+      },
+    });
+
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.contact_id).toBeTruthy();
+  });
+
+  test("Wrong `?api_key=` query string returns 401", async ({ request }) => {
+    const endpoint = `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}?api_key=wrong-short-key`;
+
+    const response = await request.post(endpoint, {
+      headers: { "Content-Type": "application/json" },
+      data: {
+        nome: "Bad",
+        telefono: "+393331110099",
+      },
+    });
+
+    expect(response.status()).toBe(401);
+    const body = await response.json();
+    expect(body.error).toBe("Invalid API key");
+  });
+
+  test("Short 24-char API key in query string is accepted (Google Forms URL flow)", async ({ request }) => {
+    // Il drawer genera chiavi alfanumeriche da 24 caratteri (vedi InboundSourceFormDrawer.generateSecureKey).
+    // La fixture di seed usa un'API key del formato "e2e-test-api-key-12345" che è ≤24 char:
+    // verifichiamo esplicitamente che la lunghezza tipica dell'URL "completo con chiave"
+    // funzioni senza essere troncata o respinta.
+    expect(E2E_API_KEY.length).toBeLessThanOrEqual(32);
+    const uniquePhone = `+39333${Date.now().toString().slice(-7)}`;
+    const url = new URL(`${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}`);
+    url.searchParams.set("api_key", E2E_API_KEY);
+
+    const response = await request.post(url.toString(), {
+      headers: { "Content-Type": "application/json" },
+      data: { nome: "Short", cognome: "Key", telefono: uniquePhone },
+    });
+
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+  });
 });
 
 test.describe("Sheets Export - Idempotency", () => {
