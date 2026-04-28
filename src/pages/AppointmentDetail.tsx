@@ -120,16 +120,34 @@ export default function AppointmentDetail() {
           <p className="text-sm text-muted-foreground">Dettaglio appuntamento</p>
         </div>
         <div className="flex items-center gap-2">
-          {statusConfig && (
+          {statusConfig ? (
             <Badge variant="outline" className={`${statusConfig.className} border`}>
               {statusConfig.label}
             </Badge>
+          ) : (
+            (() => {
+              const m = getStatusMeta(apt.status);
+              return (
+                <Badge variant="outline" className={m.badgeClass}>
+                  {m.label}
+                </Badge>
+              );
+            })()
           )}
           {typeConfig && (
             <Badge variant="outline" className={`${typeConfig.className} border`}>
               {typeConfig.label}
             </Badge>
           )}
+          <Button
+            size="sm"
+            variant="default"
+            className="ml-1"
+            onClick={() => setOutcomeOpen(true)}
+          >
+            <ClipboardCheck className="h-4 w-4 mr-2" />
+            Registra esito
+          </Button>
         </div>
       </div>
 
