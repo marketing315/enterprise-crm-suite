@@ -217,6 +217,72 @@ export default function AppointmentDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Outcome history (append-only) */}
+      <Card className="border-border/50 bg-background/60 backdrop-blur-sm">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Storico esiti
+          </CardTitle>
+          {apt.last_outcome_at && (
+            <span className="text-xs text-muted-foreground">
+              Ultimo: {format(parseISO(apt.last_outcome_at), "d MMM yyyy HH:mm", { locale: it })}
+            </span>
+          )}
+        </CardHeader>
+        <CardContent>
+          {outcomes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nessun esito registrato. Usa "Registra esito" per archiviarne uno.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {outcomes.map((o) => {
+                const m = getOutcomeMeta(o.outcome_code);
+                const Icon = m?.icon ?? FileText;
+                return (
+                  <li
+                    key={o.id}
+                    className="flex items-start gap-3 rounded-md border border-border/50 bg-background/50 p-3"
+                  >
+                    <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className={m?.badgeClass}>
+                          {m?.label ?? o.outcome_code}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {format(parseISO(o.created_at), "d MMM yyyy HH:mm", { locale: it })}
+                        </span>
+                      </div>
+                      {o.outcome_notes && (
+                        <p className="text-sm mt-1 whitespace-pre-wrap">{o.outcome_notes}</p>
+                      )}
+                      {o.reschedule_reason && (
+                        <p className="text-xs mt-1 text-muted-foreground">
+                          <span className="font-medium">Motivo riprog.:</span> {o.reschedule_reason}
+                        </p>
+                      )}
+                      {o.next_action && (
+                        <p className="text-xs mt-1 text-muted-foreground">
+                          <span className="font-medium">Prossima azione:</span> {o.next_action}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <AppointmentOutcomeDialog
+        appointmentId={apt.id}
+        open={outcomeOpen}
+        onOpenChange={setOutcomeOpen}
+        contactName={contactName}
+      />
     </div>
   );
 }
