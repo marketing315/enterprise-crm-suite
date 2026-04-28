@@ -66,16 +66,28 @@ export function AuditConsole() {
   const [actionType, setActionType] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const { currentBrand } = useBrand();
   const { user } = useAuth();
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const filters: AuditFilters = useMemo(() => ({
     entityType: entityType === "all" ? undefined : entityType,
     action: actionType === "all" ? undefined : actionType,
     dateFrom,
     dateTo,
-  }), [entityType, actionType, dateFrom, dateTo]);
+    search: search || undefined,
+  }), [entityType, actionType, dateFrom, dateTo, search]);
 
   const { data, isLoading } = useAuditEvents(filters, page);
   const events = data?.events || [];
@@ -86,11 +98,11 @@ export function AuditConsole() {
   useEffect(() => {
     if (!currentBrand?.id || isLoading) return;
     logAuditAccess(currentBrand.id, "console_view", {
-      entityType, actionType, page,
+      entityType, actionType, page, search,
       dateFrom: dateFrom?.toISOString(),
       dateTo: dateTo?.toISOString(),
     }, total);
-  }, [currentBrand?.id, entityType, actionType, page, dateFrom, dateTo, isLoading, total]);
+  }, [currentBrand?.id, entityType, actionType, page, search, dateFrom, dateTo, isLoading, total]);
 
   const handleExportCSV = async () => {
     if (events.length === 0) return;
