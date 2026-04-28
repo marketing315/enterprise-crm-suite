@@ -26,6 +26,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { RiskScoreBadge } from "@/features/appointments/RiskScoreBadge";
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string }> = {
   scheduled: { label: "Programmato", color: "bg-amber-400" },
