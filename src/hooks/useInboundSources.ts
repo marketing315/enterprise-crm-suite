@@ -12,6 +12,7 @@ export interface InboundSource {
   replay_window_seconds: number;
   counts_as_new_lead: boolean;
   default_pipeline_stage_id: string | null;
+  payload_schema: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
