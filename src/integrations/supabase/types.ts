@@ -4273,6 +4273,7 @@ export type Database = {
       incoming_requests: {
         Row: {
           brand_id: string | null
+          correlation_id: string | null
           created_at: string
           dlq_reason: Database["public"]["Enums"]["dlq_reason"] | null
           error_message: string | null
@@ -4289,6 +4290,7 @@ export type Database = {
         }
         Insert: {
           brand_id?: string | null
+          correlation_id?: string | null
           created_at?: string
           dlq_reason?: Database["public"]["Enums"]["dlq_reason"] | null
           error_message?: string | null
@@ -4305,6 +4307,7 @@ export type Database = {
         }
         Update: {
           brand_id?: string | null
+          correlation_id?: string | null
           created_at?: string
           dlq_reason?: Database["public"]["Enums"]["dlq_reason"] | null
           error_message?: string | null
