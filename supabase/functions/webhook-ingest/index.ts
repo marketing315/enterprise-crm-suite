@@ -690,6 +690,7 @@ Deno.serve(async (req: Request) => {
         error_message: errorMessage,
         lead_event_id: leadEventId,
         dlq_reason: dlqReason,
+        correlation_id: correlationId,
       })
       .select("id")
       .single();
