@@ -8974,6 +8974,22 @@ export type Database = {
         Args: { p_brand_id: string }
         Returns: number
       }
+      check_appointment_conflict: {
+        Args: {
+          p_assigned_sales_user_id: string
+          p_brand_id: string
+          p_duration_minutes: number
+          p_exclude_appointment_id?: string
+          p_scheduled_at: string
+        }
+        Returns: {
+          contact_id: string
+          duration_minutes: number
+          id: string
+          scheduled_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+        }[]
+      }
       check_phone_duplicate: {
         Args: { p_brand_id: string; p_phone_normalized: string }
         Returns: {
