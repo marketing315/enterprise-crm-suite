@@ -18,6 +18,21 @@ export function RealtimeStatusPanel() {
   const status = useRealtimeStatus();
   const channels = Array.from(realtimeStatusStore.snapshot().entries());
 
+  // Re-render telemetry every 5s and on store changes
+  const [telemetry, setTelemetry] = useState<RealtimeTelemetry>(() => realtimeStatusStore.getTelemetry());
+  useEffect(() => {
+    const update = () => setTelemetry(realtimeStatusStore.getTelemetry());
+    const unsub = realtimeStatusStore.subscribe(update);
+    const tick = setInterval(update, 5000);
+    return () => { unsub(); clearInterval(tick); };
+  }, []);
+
+  const sessionMinutes = Math.max(1, Math.round((Date.now() - telemetry.startedAt) / 60000));
+  const errorRate = (telemetry.totalErrors / sessionMinutes).toFixed(2);
+  const reconnectSuccess = telemetry.totalErrors > 0
+    ? Math.round((telemetry.totalReconnects / telemetry.totalErrors) * 100)
+    : 100;
+
   const overallMeta =
     status.overall === 'connected'
       ? { icon: CheckCircle2, color: 'text-emerald-500', label: 'Tutti i canali realtime sono operativi' }
