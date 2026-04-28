@@ -622,7 +622,19 @@ Deno.serve(async (req: Request) => {
 
   // Generate request ID for structured logging
   const requestId = crypto.randomUUID();
-  const logContext = { request_id: requestId, source_id: sourceId, ip: ipAddress, ip_source: ipSource };
+  // E2E correlation: accept caller-provided id (header) or fallback to a fresh UUID.
+  // This id is propagated to: structured logs, incoming_requests row, audit_events payload, DLQ entries.
+  const incomingCorrelationId = req.headers.get("x-correlation-id") || req.headers.get("x-request-id");
+  const correlationId = (incomingCorrelationId && incomingCorrelationId.length <= 128)
+    ? incomingCorrelationId
+    : crypto.randomUUID();
+  const logContext = {
+    request_id: requestId,
+    correlation_id: correlationId,
+    source_id: sourceId,
+    ip: ipAddress,
+    ip_source: ipSource,
+  };
 
   // Validate UUID format
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -678,6 +690,7 @@ Deno.serve(async (req: Request) => {
         error_message: errorMessage,
         lead_event_id: leadEventId,
         dlq_reason: dlqReason,
+        correlation_id: correlationId,
       })
       .select("id")
       .single();
@@ -1489,18 +1502,33 @@ Deno.serve(async (req: Request) => {
         duplicate: isDuplicate,
         contact_status: contactData?.status || "new",
         used_ai_extraction: usedAI,
+        correlation_id: correlationId,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-Correlation-Id": correlationId,
+        },
+      }
     );
 
   } catch (error) {
-    console.error("Webhook processing error:", JSON.stringify({ error: String(error) }));
+    console.error("Webhook processing error:", JSON.stringify({ ...logContext, error: String(error) }));
     if (auditId) {
       await updateAuditRecord(auditId, "failed", `internal_error: ${String(error)}`);
     }
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Internal server error", correlation_id: correlationId }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-Correlation-Id": correlationId,
+        },
+      }
     );
   }
 });
