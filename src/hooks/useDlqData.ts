@@ -32,6 +32,7 @@ export interface IngestDlqEntry {
   error_message: string | null;
   dlq_reason: IngestDlqReason | null;
   lead_event_id: string | null;
+  correlation_id: string | null;
   created_at: string;
   // Joined
   webhook_sources?: { name: string } | null;
