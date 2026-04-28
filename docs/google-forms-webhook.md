@@ -97,6 +97,29 @@ function onFormSubmit(e) {
 
 > 💡 **Perché `google_key` nel body?** Apps Script non permette di personalizzare facilmente gli header su tutti gli ambienti. Il CRM accetta l'API key in 3 modi: header `X-API-Key`, query `?api_key=`, oppure campo body `google_key`.
 
+### 4.b (Alternativa) — URL "completo con chiave" via query string
+
+Se preferisci evitare di toccare il payload, copia dal drawer della sorgente l'**URL completo con chiave** (sezione mostrata subito dopo la creazione) e usalo così:
+
+```javascript
+// L'API key è già nell'URL come ?api_key=...
+const WEBHOOK_URL = 'https://qmqcjtmcxfqahhubpaea.supabase.co/functions/v1/webhook-ingest/SOURCE_ID?api_key=API_KEY';
+
+function onFormSubmit(e) {
+  const payload = {};
+  Object.keys(e.namedValues).forEach(k => payload[k] = e.namedValues[k][0]);
+
+  UrlFetchApp.fetch(WEBHOOK_URL, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  });
+}
+```
+
+Vantaggi: nessun campo `google_key` da iniettare, payload puro. Svantaggio: l'URL contiene la chiave — non condividerlo in log pubblici.
+
 ---
 
 ## 5. Test end-to-end
