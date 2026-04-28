@@ -203,14 +203,23 @@ export function AuditConsole() {
             {total} eventi registrati
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={events.length === 0}>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={events.length === 0} title="Scarica CSV + manifest .sig.json con SHA-256 per verifica integrità">
           <Download className="h-4 w-4" />
-          Esporta CSV
+          Esporta CSV firmato
         </Button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Cerca azione, attore, campo, ID…"
+            className="w-[260px] pl-8 h-9"
+          />
+        </div>
         <Select value={entityType} onValueChange={v => { setEntityType(v); setPage(0); }}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />
