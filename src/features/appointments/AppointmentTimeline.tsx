@@ -32,7 +32,8 @@ function getEventVisual(ev: AppointmentTimelineEvent): EventVisual {
   // Outcome events
   if (ev.kind === "outcome") {
     const code = (ev.new_value?.outcome_code as string) || "";
-    const label = OUTCOME_LABELS[code as keyof typeof OUTCOME_LABELS] ?? `Esito: ${code}`;
+    const meta = getOutcomeMeta(code);
+    const label = meta?.label ?? `Esito: ${code}`;
     if (code === "executed") return { icon: CheckCircle2, label, tone: "success" };
     if (code.startsWith("no_show")) return { icon: AlertTriangle, label, tone: "danger" };
     if (code.startsWith("cancelled")) return { icon: XCircle, label, tone: "danger" };
