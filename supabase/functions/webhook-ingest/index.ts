@@ -622,7 +622,19 @@ Deno.serve(async (req: Request) => {
 
   // Generate request ID for structured logging
   const requestId = crypto.randomUUID();
-  const logContext = { request_id: requestId, source_id: sourceId, ip: ipAddress, ip_source: ipSource };
+  // E2E correlation: accept caller-provided id (header) or fallback to a fresh UUID.
+  // This id is propagated to: structured logs, incoming_requests row, audit_events payload, DLQ entries.
+  const incomingCorrelationId = req.headers.get("x-correlation-id") || req.headers.get("x-request-id");
+  const correlationId = (incomingCorrelationId && incomingCorrelationId.length <= 128)
+    ? incomingCorrelationId
+    : crypto.randomUUID();
+  const logContext = {
+    request_id: requestId,
+    correlation_id: correlationId,
+    source_id: sourceId,
+    ip: ipAddress,
+    ip_source: ipSource,
+  };
 
   // Validate UUID format
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
