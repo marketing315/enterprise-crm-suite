@@ -1406,6 +1406,56 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_outcomes: {
+        Row: {
+          appointment_id: string
+          brand_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          next_action: string | null
+          outcome_code: Database["public"]["Enums"]["appointment_outcome_code"]
+          outcome_notes: string | null
+          recorded_at: string
+          recorded_by_user_id: string | null
+          reschedule_reason: string | null
+        }
+        Insert: {
+          appointment_id: string
+          brand_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          next_action?: string | null
+          outcome_code: Database["public"]["Enums"]["appointment_outcome_code"]
+          outcome_notes?: string | null
+          recorded_at?: string
+          recorded_by_user_id?: string | null
+          reschedule_reason?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          brand_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          next_action?: string | null
+          outcome_code?: Database["public"]["Enums"]["appointment_outcome_code"]
+          outcome_notes?: string | null
+          recorded_at?: string
+          recorded_by_user_id?: string | null
+          reschedule_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_outcomes_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           address: string | null
@@ -1423,8 +1473,15 @@ export type Database = {
           deal_id: string | null
           duration_minutes: number
           id: string
+          last_outcome_at: string | null
+          last_outcome_code:
+            | Database["public"]["Enums"]["appointment_outcome_code"]
+            | null
           notes: string | null
           parent_appointment_id: string | null
+          reschedule_count: number
+          reschedule_reason: string | null
+          risk_score: number | null
           scheduled_at: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
@@ -1445,8 +1502,15 @@ export type Database = {
           deal_id?: string | null
           duration_minutes?: number
           id?: string
+          last_outcome_at?: string | null
+          last_outcome_code?:
+            | Database["public"]["Enums"]["appointment_outcome_code"]
+            | null
           notes?: string | null
           parent_appointment_id?: string | null
+          reschedule_count?: number
+          reschedule_reason?: string | null
+          risk_score?: number | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -1467,8 +1531,15 @@ export type Database = {
           deal_id?: string | null
           duration_minutes?: number
           id?: string
+          last_outcome_at?: string | null
+          last_outcome_code?:
+            | Database["public"]["Enums"]["appointment_outcome_code"]
+            | null
           notes?: string | null
           parent_appointment_id?: string | null
+          reschedule_count?: number
+          reschedule_reason?: string | null
+          risk_score?: number | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -10147,6 +10218,17 @@ export type Database = {
       }
       rebuild_contact_search_index: { Args: never; Returns: number }
       reclaim_stale_capi_events: { Args: never; Returns: number }
+      record_appointment_outcome: {
+        Args: {
+          p_appointment_id: string
+          p_metadata?: Json
+          p_next_action?: string
+          p_outcome_code: Database["public"]["Enums"]["appointment_outcome_code"]
+          p_outcome_notes?: string
+          p_reschedule_reason?: string
+        }
+        Returns: string
+      }
       record_audit_anomaly: {
         Args: {
           _actor_user_id?: string
@@ -10632,12 +10714,23 @@ export type Database = {
         | "operatore_callcenter"
         | "venditore"
         | "amministrazione"
+      appointment_outcome_code:
+        | "executed"
+        | "no_show_client"
+        | "no_show_operator"
+        | "cancelled_client"
+        | "cancelled_operator"
+        | "rescheduled"
+        | "unreachable"
+        | "other"
       appointment_status:
+        | "draft"
         | "scheduled"
         | "confirmed"
         | "cancelled"
         | "rescheduled"
         | "visited"
+        | "completed"
         | "no_show"
       appointment_type: "primo_appuntamento" | "follow_up" | "visita_tecnica"
       assigned_by: "ai" | "user" | "rule"
@@ -10977,12 +11070,24 @@ export const Constants = {
         "venditore",
         "amministrazione",
       ],
+      appointment_outcome_code: [
+        "executed",
+        "no_show_client",
+        "no_show_operator",
+        "cancelled_client",
+        "cancelled_operator",
+        "rescheduled",
+        "unreachable",
+        "other",
+      ],
       appointment_status: [
+        "draft",
         "scheduled",
         "confirmed",
         "cancelled",
         "rescheduled",
         "visited",
+        "completed",
         "no_show",
       ],
       appointment_type: ["primo_appuntamento", "follow_up", "visita_tecnica"],
