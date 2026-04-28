@@ -433,6 +433,16 @@ export default function AppointmentsCalendar() {
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
       />
+
+      <BulkReassignDialog
+        open={showBulkReassign}
+        onOpenChange={setShowBulkReassign}
+        appointmentIds={Array.from(selectedIds)}
+        onDone={() => {
+          clearSelection();
+          refetch();
+        }}
+      />
     </div>
   );
 }
