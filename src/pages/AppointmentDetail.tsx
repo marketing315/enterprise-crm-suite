@@ -279,6 +279,8 @@ export default function AppointmentDetail() {
         </CardContent>
       </Card>
 
+      <AppointmentTimeline appointmentId={apt.id} />
+
       <AppointmentOutcomeDialog
         appointmentId={apt.id}
         open={outcomeOpen}
