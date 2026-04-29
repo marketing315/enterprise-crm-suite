@@ -1,10 +1,12 @@
 // =============================================================
 // MCP Server (Streamable HTTP) — exposes CRM to external AI clients
-// Loop 1: M0 Foundation + M1 Auth & RBAC
+// Loop 2: M2 Core capabilities
 // - JSON-RPC 2.0 over HTTP (POST)
-// - methods: initialize, ping, tools/list, tools/call
-// - auth: Bearer mcp_xxx token (validated via validate_mcp_token RPC)
-// - delegates tool execution to mcp-gateway (policy engine, audit)
+// - methods: initialize, ping, tools/list, tools/call,
+//            resources/list, resources/read
+// - dynamic tool/resource registry loaded from mcp_tools / mcp_resources
+// - auth: Bearer mcp_xxx token (validate_mcp_token RPC)
+// - delegates execution to mcp-gateway (policy engine + audit)
 // - audit log: mcp_request_log (every request, with request_id)
 // =============================================================
 
@@ -13,7 +15,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const INTERNAL_TOKEN = Deno.env.get("INTERNAL_SERVICE_TOKEN")!;
-const PROJECT_REF = SUPABASE_URL.match(/https:\/\/([^.]+)/)?.[1] ?? "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,11 +24,7 @@ const corsHeaders = {
   "Access-Control-Expose-Headers": "mcp-session-id, x-request-id",
 };
 
-const SERVER_INFO = {
-  name: "ralph-crm-mcp",
-  version: "1.0.0",
-};
-
+const SERVER_INFO = { name: "ralph-crm-mcp", version: "1.0.0" };
 const PROTOCOL_VERSION = "2024-11-05";
 
 // -------------------------------------------------------------
@@ -39,7 +36,6 @@ const RPC_ERR = {
   METHOD_NOT_FOUND: -32601,
   INVALID_PARAMS: -32602,
   INTERNAL_ERROR: -32603,
-  // Application-level (MCP)
   AUTH: -32001,
   POLICY_DENY: -32002,
   TIMEOUT: -32003,
@@ -74,7 +70,7 @@ function rpcErr(
 }
 
 // -------------------------------------------------------------
-// Auth: validate Bearer token via DB RPC
+// Auth: validate Bearer mcp_xxx via DB RPC
 // -------------------------------------------------------------
 type AuthCtx = {
   token_id: string;
@@ -90,9 +86,7 @@ async function authenticate(req: Request, supabase: any): Promise<AuthCtx | null
   const raw = authHeader.slice(7).trim();
   if (!raw.startsWith("mcp_")) return null;
 
-  const { data, error } = await supabase.rpc("validate_mcp_token", {
-    p_raw_token: raw,
-  });
+  const { data, error } = await supabase.rpc("validate_mcp_token", { p_raw_token: raw });
   if (error || !data || data.length === 0) return null;
   const row = data[0];
   return {
@@ -105,82 +99,7 @@ async function authenticate(req: Request, supabase: any): Promise<AuthCtx | null
 }
 
 // -------------------------------------------------------------
-// Tool registry (loop 1: subset; loop 2 will load from mcp_tools)
-// -------------------------------------------------------------
-type ToolDef = {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-  requiredScope: string;
-  dataClassification: "public" | "internal" | "restricted";
-  maxTimeoutMs: number;
-};
-
-const BUILT_IN_TOOLS: ToolDef[] = [
-  {
-    name: "crm.search_contacts",
-    description:
-      "Search contacts by name, email, or phone. Returns up to 25 contacts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Free-text query" },
-        limit: { type: "integer", minimum: 1, maximum: 50, default: 25 },
-      },
-      required: ["query"],
-    },
-    requiredScope: "crm.read",
-    dataClassification: "internal",
-    maxTimeoutMs: 5000,
-  },
-  {
-    name: "crm.get_contact",
-    description: "Get a single contact by id with deals, appointments, and recent events.",
-    inputSchema: {
-      type: "object",
-      properties: { id: { type: "string", format: "uuid" } },
-      required: ["id"],
-    },
-    requiredScope: "crm.read",
-    dataClassification: "internal",
-    maxTimeoutMs: 5000,
-  },
-  {
-    name: "crm.list_appointments",
-    description: "List appointments in a date range, optionally filtered by sales user.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        from: { type: "string", format: "date-time" },
-        to: { type: "string", format: "date-time" },
-        sales_user_id: { type: "string", format: "uuid" },
-      },
-      required: ["from", "to"],
-    },
-    requiredScope: "crm.read",
-    dataClassification: "internal",
-    maxTimeoutMs: 5000,
-  },
-  {
-    name: "crm.get_funnel_kpi",
-    description: "Get aggregated funnel KPIs (leads, deals, appointments) for a brand.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        brand_id: { type: "string", format: "uuid" },
-        from: { type: "string", format: "date" },
-        to: { type: "string", format: "date" },
-      },
-      required: ["from", "to"],
-    },
-    requiredScope: "crm.read",
-    dataClassification: "internal",
-    maxTimeoutMs: 8000,
-  },
-];
-
-// -------------------------------------------------------------
-// Audit log (best-effort, never throws to caller)
+// Audit (best-effort)
 // -------------------------------------------------------------
 async function logRequest(
   supabase: any,
@@ -202,9 +121,7 @@ async function logRequest(
 ) {
   try {
     await supabase.from("mcp_request_log").insert(entry);
-  } catch (_e) {
-    // swallow — log failures must not break MCP responses
-  }
+  } catch (_e) {/* swallow */}
 }
 
 // -------------------------------------------------------------
@@ -216,12 +133,12 @@ function handleInitialize(req: JsonRpcReq): JsonRpcRes {
     protocolVersion: params.protocolVersion ?? PROTOCOL_VERSION,
     capabilities: {
       tools: { listChanged: false },
-      // resources: { listChanged: false },  // enabled in Loop 3
+      resources: { listChanged: false, subscribe: false },
       logging: {},
     },
     serverInfo: SERVER_INFO,
     instructions:
-      "Ralph CRM MCP. Use tools/list to discover capabilities. " +
+      "Ralph CRM MCP. Use tools/list and resources/list to discover capabilities. " +
       "All calls are authorized server-side via the CRM policy engine.",
   });
 }
@@ -230,31 +147,201 @@ function handlePing(req: JsonRpcReq): JsonRpcRes {
   return rpcOk(req.id, {});
 }
 
-function handleToolsList(req: JsonRpcReq, ctx: AuthCtx): JsonRpcRes {
-  const visible = BUILT_IN_TOOLS.filter(
-    (t) =>
-      ctx.scopes.includes("*") ||
-      ctx.scopes.includes(t.requiredScope) ||
-      ctx.scopes.some((s) => t.requiredScope.startsWith(s.replace(/\*$/, ""))),
-  );
+async function handleToolsList(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const { data, error } = await supabase.rpc("mcp_list_tools_for_scopes", {
+    p_scopes: ctx.scopes,
+  });
+  if (error) {
+    return rpcErr(req.id, RPC_ERR.INTERNAL_ERROR, `registry error: ${error.message}`);
+  }
   return rpcOk(req.id, {
-    tools: visible.map((t) => ({
+    tools: (data ?? []).map((t: any) => ({
       name: t.name,
       description: t.description,
-      inputSchema: t.inputSchema,
-      // MCP extension fields:
+      inputSchema: t.input_schema_json ?? { type: "object" },
       _meta: {
-        requiredScope: t.requiredScope,
-        dataClassification: t.dataClassification,
-        maxTimeoutMs: t.maxTimeoutMs,
+        category: t.category,
+        requiredScope: t.required_scope,
+        dataClassification: t.data_classification,
+        maxTimeoutMs: t.max_timeout_ms,
+        requiresApproval: t.requires_approval,
+        rateLimitPerMin: t.rate_limit_per_min,
       },
     })),
   });
 }
 
+async function handleResourcesList(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const { data, error } = await supabase.rpc("mcp_list_resources_for_scopes", {
+    p_scopes: ctx.scopes,
+  });
+  if (error) {
+    return rpcErr(req.id, RPC_ERR.INTERNAL_ERROR, `registry error: ${error.message}`);
+  }
+  // MCP resources/list returns concrete resources OR resourceTemplates;
+  // we return both: concrete URIs (no placeholders) as resources, the rest
+  // as resourceTemplates.
+  const all = data ?? [];
+  const isTemplate = (uri: string) => /\{[^}]+\}/.test(uri);
+  return rpcOk(req.id, {
+    resources: all.filter((r: any) => !isTemplate(r.uri_template)).map((r: any) => ({
+      uri: r.uri_template,
+      name: r.name,
+      description: r.description,
+      mimeType: "application/json",
+      _meta: {
+        requiredScope: r.required_scope,
+        dataClassification: r.data_classification,
+      },
+    })),
+    resourceTemplates: all.filter((r: any) => isTemplate(r.uri_template)).map((r: any) => ({
+      uriTemplate: r.uri_template,
+      name: r.name,
+      description: r.description,
+      mimeType: "application/json",
+      _meta: {
+        requiredScope: r.required_scope,
+        dataClassification: r.data_classification,
+      },
+    })),
+  });
+}
+
+function scopeAllows(scopes: string[], required: string): boolean {
+  if (scopes.includes("*") || scopes.includes(required)) return true;
+  return scopes.some((s) => {
+    if (!s.endsWith("*")) return false;
+    const prefix = s.slice(0, -1);
+    return required.startsWith(prefix);
+  });
+}
+
+// Match an incoming uri (e.g. "crm://contacts/abc") against a template
+// (e.g. "crm://contacts/{id}"). Returns true if the structure matches.
+function uriMatchesTemplate(uri: string, template: string): boolean {
+  const re = new RegExp(
+    "^" +
+      template
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\\\{[^}]+\\\}/g, "[^/]+") +
+      "$",
+  );
+  return re.test(uri);
+}
+
+async function handleResourcesRead(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+  requestId: string,
+): Promise<{ res: JsonRpcRes; errorCode: string | null }> {
+  const params = (req.params ?? {}) as { uri?: string };
+  const uri = params.uri;
+  if (!uri || typeof uri !== "string") {
+    return {
+      res: rpcErr(req.id, RPC_ERR.INVALID_PARAMS, "missing uri"),
+      errorCode: "VALIDATION",
+    };
+  }
+
+  // Look up which resource template (if any) the URI matches
+  const { data: resources } = await supabase.rpc("mcp_list_resources_for_scopes", {
+    p_scopes: ctx.scopes,
+  });
+  const match = (resources ?? []).find((r: any) =>
+    r.uri_template === uri || uriMatchesTemplate(uri, r.uri_template),
+  );
+  if (!match) {
+    return {
+      res: rpcErr(req.id, RPC_ERR.AUTH, `resource not allowed or not found: ${uri}`),
+      errorCode: "AUTH",
+    };
+  }
+  if (!scopeAllows(ctx.scopes, match.required_scope)) {
+    return {
+      res: rpcErr(req.id, RPC_ERR.AUTH, `token lacks scope: ${match.required_scope}`),
+      errorCode: "AUTH",
+    };
+  }
+
+  // Delegate to mcp-gateway POST /fetch-resource
+  const gatewayUrl = `${SUPABASE_URL}/functions/v1/mcp-gateway/fetch-resource`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const upstream = await fetch(gatewayUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-mcp-internal": INTERNAL_TOKEN,
+        "x-mcp-on-behalf-user-id": ctx.user_id ?? "",
+        "x-mcp-request-id": requestId,
+      },
+      body: JSON.stringify({
+        request_id: requestId,
+        user_id: ctx.user_id,
+        brand_id: ctx.brand_id,
+        uri,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const body = await upstream.json().catch(() => ({}));
+
+    if (!upstream.ok) {
+      const code = upstream.status === 401 || upstream.status === 403
+        ? RPC_ERR.POLICY_DENY
+        : upstream.status >= 500
+        ? RPC_ERR.UPSTREAM
+        : RPC_ERR.INTERNAL_ERROR;
+      return {
+        res: rpcErr(req.id, code, body.error ?? `gateway ${upstream.status}`, {
+          request_id: requestId,
+        }),
+        errorCode: code === RPC_ERR.POLICY_DENY ? "POLICY_DENY" : "UPSTREAM",
+      };
+    }
+
+    return {
+      res: rpcOk(req.id, {
+        contents: [
+          {
+            uri,
+            mimeType: "application/json",
+            text: JSON.stringify(body.data ?? body, null, 2),
+          },
+        ],
+        _meta: { request_id: requestId, latency_ms: body.latency_ms },
+      }),
+      errorCode: null,
+    };
+  } catch (e) {
+    clearTimeout(timer);
+    const isAbort = (e as Error).name === "AbortError";
+    return {
+      res: rpcErr(
+        req.id,
+        isAbort ? RPC_ERR.TIMEOUT : RPC_ERR.INTERNAL_ERROR,
+        isAbort ? "resource fetch timed out" : (e as Error).message,
+        { request_id: requestId },
+      ),
+      errorCode: isAbort ? "TIMEOUT" : "INTERNAL",
+    };
+  }
+}
+
 async function handleToolsCall(
   req: JsonRpcReq,
   ctx: AuthCtx,
+  supabase: any,
   requestId: string,
 ): Promise<{ res: JsonRpcRes; toolName: string | null; errorCode: string | null }> {
   const params = (req.params ?? {}) as {
@@ -270,32 +357,43 @@ async function handleToolsCall(
     };
   }
 
-  const tool = BUILT_IN_TOOLS.find((t) => t.name === name);
+  // Resolve tool from dynamic registry
+  const { data: tools, error } = await supabase.rpc("mcp_list_tools_for_scopes", {
+    p_scopes: ctx.scopes,
+  });
+  if (error) {
+    return {
+      res: rpcErr(req.id, RPC_ERR.INTERNAL_ERROR, `registry error: ${error.message}`),
+      toolName: name,
+      errorCode: "INTERNAL",
+    };
+  }
+  const tool = (tools ?? []).find((t: any) => t.name === name);
   if (!tool) {
     return {
-      res: rpcErr(req.id, RPC_ERR.METHOD_NOT_FOUND, `unknown tool: ${name}`),
+      res: rpcErr(req.id, RPC_ERR.METHOD_NOT_FOUND, `unknown or not allowed tool: ${name}`),
       toolName: name,
       errorCode: "VALIDATION",
     };
   }
 
-  // Scope check (defense in depth before delegating to gateway policy engine)
-  if (
-    !ctx.scopes.includes("*") &&
-    !ctx.scopes.includes(tool.requiredScope) &&
-    !ctx.scopes.some((s) => tool.requiredScope.startsWith(s.replace(/\*$/, "")))
-  ) {
+  if (!scopeAllows(ctx.scopes, tool.required_scope)) {
     return {
-      res: rpcErr(req.id, RPC_ERR.AUTH, `token lacks scope: ${tool.requiredScope}`),
+      res: rpcErr(req.id, RPC_ERR.AUTH, `token lacks scope: ${tool.required_scope}`),
       toolName: name,
       errorCode: "AUTH",
     };
   }
 
-  // Delegate to internal mcp-gateway (which enforces full policy + audit)
-  const gatewayUrl = `${SUPABASE_URL}/functions/v1/mcp-gateway`;
+  // Build idempotency key for write tools
+  const idempotencyKey = tool.category !== "read"
+    ? `mcp:${ctx.token_id}:${name}:${requestId}`
+    : undefined;
+
+  // Delegate to mcp-gateway POST /execute-tool (service-to-service)
+  const gatewayUrl = `${SUPABASE_URL}/functions/v1/mcp-gateway/execute-tool`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), tool.maxTimeoutMs);
+  const timer = setTimeout(() => controller.abort(), tool.max_timeout_ms ?? 8000);
   const startedAt = Date.now();
 
   try {
@@ -303,40 +401,59 @@ async function handleToolsCall(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${INTERNAL_TOKEN}`,
+        "x-mcp-internal": INTERNAL_TOKEN,
+        "x-mcp-on-behalf-user-id": ctx.user_id ?? "",
         "x-mcp-request-id": requestId,
-        "x-mcp-user-id": ctx.user_id ?? "",
-        "x-mcp-brand-id": ctx.brand_id ?? "",
       },
       body: JSON.stringify({
-        action: "execute",
+        request_id: requestId,
+        user_id: ctx.user_id,
+        brand_id: ctx.brand_id,
         tool: name,
         input: params.arguments ?? {},
-        on_behalf_of: ctx.user_id,
-        brand_id: ctx.brand_id,
+        idempotency_key: idempotencyKey,
       }),
       signal: controller.signal,
     });
     clearTimeout(timer);
 
-    const text = await upstream.text();
-    let body: any = {};
-    try { body = text ? JSON.parse(text) : {}; } catch (_) { body = { raw: text }; }
+    const body = await upstream.json().catch(() => ({}));
 
-    if (!upstream.ok) {
-      const code =
-        upstream.status === 401 || upstream.status === 403
-          ? RPC_ERR.POLICY_DENY
-          : upstream.status >= 500
-          ? RPC_ERR.UPSTREAM
-          : RPC_ERR.INTERNAL_ERROR;
-      const errCode =
-        upstream.status === 401 || upstream.status === 403 ? "POLICY_DENY"
-          : upstream.status >= 500 ? "UPSTREAM" : "INTERNAL";
+    // Pending approval → MCP returns isError=false but signals to the client
+    if (upstream.status === 202 && body.status === "pending_approval") {
       return {
-        res: rpcErr(req.id, code, body.error ?? `gateway error ${upstream.status}`, {
+        res: rpcOk(req.id, {
+          content: [{
+            type: "text",
+            text: `Approval required. Execution id: ${body.execution_id}. ` +
+                  "An admin must approve before the action runs.",
+          }],
+          isError: false,
+          _meta: {
+            status: "pending_approval",
+            execution_id: body.execution_id,
+            request_id: requestId,
+          },
+        }),
+        toolName: name,
+        errorCode: null,
+      };
+    }
+
+    if (!upstream.ok || body.status === "denied" || body.status === "failed") {
+      const code = upstream.status === 401 || upstream.status === 403 || body.status === "denied"
+        ? RPC_ERR.POLICY_DENY
+        : upstream.status === 429
+        ? RPC_ERR.UPSTREAM
+        : upstream.status >= 500
+        ? RPC_ERR.UPSTREAM
+        : RPC_ERR.INTERNAL_ERROR;
+      const errCode = code === RPC_ERR.POLICY_DENY ? "POLICY_DENY"
+        : code === RPC_ERR.UPSTREAM ? "UPSTREAM" : "INTERNAL";
+      return {
+        res: rpcErr(req.id, code, body.error ?? `gateway ${upstream.status}`, {
           request_id: requestId,
-          status: upstream.status,
+          execution_id: body.execution_id,
         }),
         toolName: name,
         errorCode: errCode,
@@ -345,18 +462,17 @@ async function handleToolsCall(
 
     return {
       res: rpcOk(req.id, {
-        content: [
-          {
-            type: "text",
-            text: typeof body.result === "string"
-              ? body.result
-              : JSON.stringify(body.result ?? body, null, 2),
-          },
-        ],
+        content: [{
+          type: "text",
+          text: typeof body.result === "string"
+            ? body.result
+            : JSON.stringify(body.result ?? body, null, 2),
+        }],
         isError: false,
         _meta: {
           duration_ms: Date.now() - startedAt,
           request_id: requestId,
+          execution_id: body.execution_id,
           source_systems: ["crm"],
         },
       }),
@@ -370,7 +486,7 @@ async function handleToolsCall(
       res: rpcErr(
         req.id,
         isAbort ? RPC_ERR.TIMEOUT : RPC_ERR.INTERNAL_ERROR,
-        isAbort ? `tool timed out after ${tool.maxTimeoutMs}ms` : (e as Error).message,
+        isAbort ? `tool timed out after ${tool.max_timeout_ms}ms` : (e as Error).message,
         { request_id: requestId },
       ),
       toolName: name,
@@ -420,7 +536,8 @@ Deno.serve(async (req) => {
   }
 
   // initialize and ping are public (MCP spec); everything else requires auth
-  const isPublic = body.method === "initialize" || body.method === "ping";
+  const isPublic = body.method === "initialize" || body.method === "ping" ||
+    body.method === "notifications/initialized";
   let ctx: AuthCtx | null = null;
   if (!isPublic) {
     ctx = await authenticate(req, supabase);
@@ -463,17 +580,25 @@ Deno.serve(async (req) => {
         response = handlePing(body);
         break;
       case "tools/list":
-        response = handleToolsList(body, ctx!);
+        response = await handleToolsList(body, ctx!, supabase);
         break;
       case "tools/call": {
-        const out = await handleToolsCall(body, ctx!, requestId);
+        const out = await handleToolsCall(body, ctx!, supabase, requestId);
         response = out.res;
         toolName = out.toolName;
         errorCode = out.errorCode;
         break;
       }
+      case "resources/list":
+        response = await handleResourcesList(body, ctx!, supabase);
+        break;
+      case "resources/read": {
+        const out = await handleResourcesRead(body, ctx!, supabase, requestId);
+        response = out.res;
+        errorCode = out.errorCode;
+        break;
+      }
       case "notifications/initialized":
-        // MCP notification (no id, no response needed)
         return new Response(null, {
           status: 202,
           headers: { ...corsHeaders, "x-request-id": requestId },

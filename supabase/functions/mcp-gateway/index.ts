@@ -332,33 +332,59 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Auth check for all authenticated endpoints
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return json({ error: "Unauthorized: missing token" }, 401);
+  // Auth: support two modes
+  //   1) End-user JWT (Authorization: Bearer <supabase-jwt>) → resolve user + roles
+  //   2) Service-to-service from mcp-server (x-mcp-internal: <INTERNAL_SERVICE_TOKEN>
+  //      + x-mcp-on-behalf-user-id) → trust the upstream caller (mcp-server already
+  //      validated the MCP token and resolved identity)
+  const internalHeader = req.headers.get("x-mcp-internal") ?? "";
+  const internalSecret = Deno.env.get("INTERNAL_SERVICE_TOKEN") ?? "";
+  const isInternalCall = !!internalSecret && internalHeader === internalSecret;
+
+  let internalUserId: string;
+  let uniqueRoles: string[];
+  let userClient: any;
+
+  if (isInternalCall) {
+    const onBehalfId = req.headers.get("x-mcp-on-behalf-user-id") ?? "";
+    if (!onBehalfId) {
+      return json({ error: "Internal call missing x-mcp-on-behalf-user-id" }, 400);
+    }
+    const { data: userRow } = await serviceClient.from("users").select("id").eq("id", onBehalfId).maybeSingle();
+    if (!userRow) return json({ error: "On-behalf user not found" }, 403);
+    internalUserId = userRow.id;
+    const { data: rolesData } = await serviceClient.from("user_roles").select("role").eq("user_id", internalUserId);
+    uniqueRoles = [...new Set((rolesData ?? []).map((r: any) => r.role as string))];
+    // For DB queries we can use the service client (RLS bypass) — mcp-server already
+    // enforced scope + the gateway will enforce policy below.
+    userClient = serviceClient;
+  } else {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ error: "Unauthorized: missing token" }, 401);
+    }
+
+    userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claims, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claims?.claims) {
+      return json({ error: "Unauthorized: invalid token" }, 401);
+    }
+    const authUserId = claims.claims.sub as string;
+
+    const { data: userRow } = await serviceClient.from("users").select("id").eq("supabase_auth_id", authUserId).maybeSingle();
+    if (!userRow) return json({ error: "User not found" }, 403);
+    internalUserId = userRow.id;
+
+    const { data: rolesData } = await serviceClient.from("user_roles").select("role, brand_id").eq("user_id", internalUserId);
+    const userRoles = (rolesData ?? []).map((r: any) => r.role as string);
+    uniqueRoles = [...new Set(userRoles)];
   }
-
-  const userClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-
-  const token = authHeader.replace("Bearer ", "");
-  const { data: claims, error: claimsError } = await userClient.auth.getClaims(token);
-  if (claimsError || !claims?.claims) {
-    return json({ error: "Unauthorized: invalid token" }, 401);
-  }
-  const authUserId = claims.claims.sub as string;
-
-  // Resolve internal user ID and roles
-  const { data: userRow } = await serviceClient.from("users").select("id").eq("supabase_auth_id", authUserId).maybeSingle();
-  if (!userRow) return json({ error: "User not found" }, 403);
-  const internalUserId = userRow.id;
-
-  const { data: rolesData } = await serviceClient.from("user_roles").select("role, brand_id").eq("user_id", internalUserId);
-  const userRoles = (rolesData ?? []).map((r: any) => r.role as string);
-  const uniqueRoles = [...new Set(userRoles)];
   // ── GET /catalog (auth-gated) ──────────────────────
   if (req.method === "GET" && path === "catalog") {
     const { data: servers } = await serviceClient.from("mcp_servers").select("*").eq("kill_switch", false).order("name");
