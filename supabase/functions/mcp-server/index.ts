@@ -756,7 +756,7 @@ Deno.serve(async (req) => {
         response = await handleToolsList(body, ctx!, supabase);
         break;
       case "tools/call": {
-        const out = await handleToolsCall(body, ctx!, supabase, requestId);
+        const out = await handleToolsCall(body, ctx!, supabase, requestId, traceparentOut);
         response = out.res;
         toolName = out.toolName;
         errorCode = out.errorCode;
@@ -766,7 +766,7 @@ Deno.serve(async (req) => {
         response = await handleResourcesList(body, ctx!, supabase);
         break;
       case "resources/read": {
-        const out = await handleResourcesRead(body, ctx!, supabase, requestId);
+        const out = await handleResourcesRead(body, ctx!, supabase, requestId, traceparentOut);
         response = out.res;
         errorCode = out.errorCode;
         break;
@@ -774,7 +774,7 @@ Deno.serve(async (req) => {
       case "notifications/initialized":
         return new Response(null, {
           status: 202,
-          headers: { ...corsHeaders, "x-request-id": requestId },
+          headers: { ...corsHeaders, "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId },
         });
       default:
         response = rpcErr(body.id, RPC_ERR.METHOD_NOT_FOUND, `method not found: ${body.method}`);
