@@ -454,6 +454,19 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const path = url.pathname.split("/").filter(Boolean).pop() ?? "";
 
+  // ── Trace context (W3C) ──
+  // Honour incoming traceparent (mcp-server forwards it on internal calls;
+  // direct UI/control-plane callers may also set it). Otherwise start a
+  // fresh trace. The span_id is always fresh — this is OUR span.
+  const incomingTrace = parseTraceparent(req.headers.get("traceparent"));
+  const traceId = incomingTrace?.traceId ?? newTraceId();
+  const spanId = newSpanId();
+  const parentSpanId = incomingTrace?.parentSpanId;
+  const traceparentOut = buildTraceparent(traceId, spanId);
+  const traceHeaders = { "traceparent": traceparentOut, "x-trace-id": traceId };
+  const spanStartedAt = Date.now();
+  const spanStartedAtIso = new Date(spanStartedAt).toISOString();
+
   // Service client for admin operations (audit, policy reads)
   const serviceClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
