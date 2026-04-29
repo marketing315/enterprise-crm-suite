@@ -599,6 +599,40 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId },
       });
     }
+
+    // ---------------------------------------------------------
+    // Rate limiting per token (skipped for ping)
+    // ---------------------------------------------------------
+    if (ctx && body.method !== "ping") {
+      const { data: rl } = await supabase.rpc("mcp_check_rate_limit", { p_token_id: ctx.token_id });
+      const row = Array.isArray(rl) ? rl[0] : rl;
+      if (row && row.allowed === false) {
+        const res = rpcErr(body.id, RPC_ERR.UPSTREAM,
+          `rate limit exceeded: ${row.used}/${row.max_per_min} req/min`,
+          { request_id: requestId, retry_after_seconds: 60 });
+        const payload = JSON.stringify(res);
+        logRequest(supabase, {
+          request_id: requestId, token_id: ctx.token_id, user_id: ctx.user_id,
+          brand_id: ctx.brand_id, method: body.method, tool_name: null,
+          status_code: 429, error_code: "RATE_LIMIT",
+          duration_ms: Date.now() - startedAt,
+          request_size: raw.length, response_size: payload.length,
+          client_ip: req.headers.get("x-forwarded-for"),
+          user_agent: req.headers.get("user-agent"),
+        });
+        return new Response(payload, {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "x-request-id": requestId,
+            "Retry-After": "60",
+            "X-RateLimit-Limit": String(row.max_per_min),
+            "X-RateLimit-Remaining": "0",
+          },
+        });
+      }
+    }
   }
 
   let response: JsonRpcRes;
