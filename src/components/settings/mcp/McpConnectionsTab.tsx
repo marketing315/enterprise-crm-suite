@@ -211,6 +211,159 @@ export function McpConnectionsTab() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Guida alla connessione</CardTitle>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Istruzioni passo-passo per collegare i client AI più comuni. Genera prima un token, poi segui la guida del tuo client.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="claude">
+              <AccordionTrigger className="text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-orange-500/10 text-[10px] font-bold text-orange-600">C</span>
+                  Claude Desktop
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 text-sm">
+                <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                  <li>Apri <strong>Claude Desktop</strong> e vai su <em>Settings → Developer → Edit Config</em>. Si aprirà il file <code className="rounded bg-muted px-1 py-0.5 text-[11px]">claude_desktop_config.json</code>.</li>
+                  <li>Aggiungi (o estendi) il blocco <code className="rounded bg-muted px-1 py-0.5 text-[11px]">mcpServers</code> sostituendo <code className="rounded bg-muted px-1 py-0.5 text-[11px]">YOUR_TOKEN</code>:</li>
+                </ol>
+                <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-[11px] leading-relaxed">{`{
+  "mcpServers": {
+    "ralph-crm": {
+      "url": "${MCP_ENDPOINT}",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  }
+}`}</pre>
+                <ol start={3} className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                  <li>Salva il file e <strong>riavvia Claude Desktop</strong>.</li>
+                  <li>Nella chat dovresti vedere l'icona 🔌 con i tool <code className="rounded bg-muted px-1 py-0.5 text-[11px]">ralph-crm</code> disponibili.</li>
+                  <li>Prova con: <em>"Elenca i miei ultimi 5 contatti"</em>.</li>
+                </ol>
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Se Claude non vede i tool, controlla i log da <em>Settings → Developer → Open MCP Log Folder</em>.
+                  </AlertDescription>
+                </Alert>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="cursor">
+              <AccordionTrigger className="text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-500/10 text-[10px] font-bold text-blue-600">⌘</span>
+                  Cursor
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 text-sm">
+                <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                  <li>In Cursor apri <em>Settings → Cursor Settings → MCP</em> (oppure premi <kbd className="rounded border bg-muted px-1.5 text-[10px]">⌘ ,</kbd> e cerca "MCP").</li>
+                  <li>Clicca <strong>"+ Add new MCP server"</strong>.</li>
+                  <li>Compila i campi:
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                      <li><strong>Name:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">ralph-crm</code></li>
+                      <li><strong>Type:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">http</code></li>
+                      <li><strong>URL:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{MCP_ENDPOINT}</code></li>
+                    </ul>
+                  </li>
+                  <li>In <strong>Headers</strong> aggiungi: <code className="rounded bg-muted px-1 py-0.5 text-[11px]">Authorization: Bearer YOUR_TOKEN</code></li>
+                  <li>Salva e attendi il pallino verde 🟢 accanto a <code className="rounded bg-muted px-1 py-0.5 text-[11px]">ralph-crm</code>.</li>
+                  <li>In una chat con <em>Agent mode</em> attivo, i tool MCP saranno disponibili automaticamente.</li>
+                </ol>
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Cursor richiede <em>Agent mode</em> (non Ask) per usare i tool MCP. Il pallino rosso 🔴 indica un errore di auth: verifica il token.
+                  </AlertDescription>
+                </Alert>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="n8n">
+              <AccordionTrigger className="text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-pink-500/10 text-[10px] font-bold text-pink-600">n8</span>
+                  n8n
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 text-sm">
+                <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                  <li>Nel workflow n8n aggiungi un nodo <strong>"MCP Client Tool"</strong> (richiede n8n ≥ 1.69 con AI nodes abilitati).</li>
+                  <li>Imposta i parametri:
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                      <li><strong>Endpoint:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{MCP_ENDPOINT}</code></li>
+                      <li><strong>Server Transport:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">HTTP Streamable</code></li>
+                      <li><strong>Authentication:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">Header Auth</code></li>
+                    </ul>
+                  </li>
+                  <li>Crea una credenziale <strong>"Header Auth"</strong>:
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                      <li><strong>Name:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">Authorization</code></li>
+                      <li><strong>Value:</strong> <code className="rounded bg-muted px-1 py-0.5 text-[11px]">Bearer YOUR_TOKEN</code></li>
+                    </ul>
+                  </li>
+                  <li>Collega il nodo MCP Client Tool come tool di un nodo <strong>AI Agent</strong>.</li>
+                  <li>Esegui il workflow: l'agente vedrà i tool <code className="rounded bg-muted px-1 py-0.5 text-[11px]">crm.*</code> esposti dal server.</li>
+                </ol>
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Per n8n self-hosted assicurati di avere <code className="rounded bg-muted px-1 py-0.5 text-[11px]">N8N_AI_ENABLED=true</code>. Per token <em>service</em> (M2M) usa scope <code className="rounded bg-muted px-1 py-0.5 text-[11px]">crm.write</code>.
+                  </AlertDescription>
+                </Alert>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="curl">
+              <AccordionTrigger className="text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-500/10 text-[10px] font-bold text-emerald-600">$</span>
+                  Test rapido (curl)
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 text-sm">
+                <p className="text-sm text-muted-foreground">Verifica che il token funzioni prima di configurare un client:</p>
+                <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-[11px] leading-relaxed">{`curl -X POST ${MCP_ENDPOINT} \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json, text/event-stream" \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`}</pre>
+                <p className="text-xs text-muted-foreground">
+                  Risposta attesa: JSON con array <code className="rounded bg-muted px-1 py-0.5 text-[11px]">result.tools</code>. Errori comuni:
+                  <strong> 401</strong> token invalido/revocato, <strong>429</strong> rate-limit (60 req/min), <strong>503</strong> kill-switch attivo.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          <div className="mt-4 flex items-center gap-2 rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>
+              Documentazione completa del protocollo:{" "}
+              <a
+                href="https://modelcontextprotocol.io/docs"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-primary hover:underline"
+              >
+                modelcontextprotocol.io
+              </a>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       <Dialog open={dialogOpen} onOpenChange={(o) => !o && handleClose()}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
