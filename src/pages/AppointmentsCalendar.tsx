@@ -224,6 +224,25 @@ export default function AppointmentsCalendar() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => {
+              const list = selectedIds.size > 0
+                ? appointments.filter((a) => selectedIds.has(a.id))
+                : appointments;
+              if (list.length === 0) {
+                toast.info("Nessun appuntamento da esportare");
+                return;
+              }
+              const n = exportAppointmentsCsv(list, `appuntamenti-settimana-${format(weekStart, "yyyyMMdd")}`);
+              toast.success(`Esportati ${n} appuntamenti`);
+            }}
+            disabled={isLoading}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
           >
