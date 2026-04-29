@@ -599,13 +599,17 @@ Deno.serve(async (req: Request) => {
     try {
       const result = await routeToolExecution(userClient, body.tool, body.input, body.brand_id ?? null, server);
       const latency = Date.now() - startTime;
+      // Apply scope-aware PII redaction to the response payload.
+      const redactionsCounter = { n: 0 };
+      const safeResult = redactDeep(result, callerScopes, redactionsCounter);
       await updateExecution(serviceClient, execId, {
         status: "success",
         output_redacted: redactPII(result),
         latency_ms: latency,
         completed_at: new Date().toISOString(),
+        metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes },
       });
-      return json({ status: "success", execution_id: execId, result, latency_ms: latency });
+      return json({ status: "success", execution_id: execId, result: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
     } catch (err) {
       const latency = Date.now() - startTime;
       const errMsg = err instanceof Error ? err.message : String(err);
