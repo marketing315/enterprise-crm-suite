@@ -190,12 +190,15 @@ function handleInitialize(req: JsonRpcReq): JsonRpcRes {
     protocolVersion: params.protocolVersion ?? PROTOCOL_VERSION,
     capabilities: {
       tools: { listChanged: false },
-      resources: { listChanged: false, subscribe: false },
+      resources: { listChanged: false, subscribe: true },
       logging: {},
     },
     serverInfo: SERVER_INFO,
     instructions:
       "Ralph CRM MCP. Use tools/list and resources/list to discover capabilities. " +
+      "Subscribe to resource updates via resources/subscribe (URI patterns: " +
+      "crm://contacts/<id>, crm://contacts (collection), crm://* for all). " +
+      "Poll updates via notifications/poll or HTTP GET with ?since=<iso8601>. " +
       "All calls are authorized server-side via the CRM policy engine.",
   });
 }
