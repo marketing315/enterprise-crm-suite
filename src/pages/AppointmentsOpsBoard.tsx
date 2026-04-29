@@ -187,6 +187,24 @@ export default function AppointmentsOpsBoard() {
         </div>
       </div>
 
+      {/* Saved filters bar */}
+      <div className="flex items-center justify-between gap-2">
+        <SavedFiltersBar
+          scope="ops-board"
+          activeFilter={activeFilter}
+          activeFilterId={activeFilterId}
+          onChange={(id, f) => {
+            setActiveFilterId(id);
+            setActiveFilter(f);
+          }}
+        />
+        {activeFilter && Object.keys(activeFilter).length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            Filtro attivo su lista a rischio ed export ({filteredPeriod.length} match)
+          </span>
+        )}
+      </div>
+
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard
