@@ -95,6 +95,23 @@ export default function AppointmentsOpsBoard() {
     [atRiskData]
   );
 
+  // Dataset completo del periodo per export CSV
+  const { data: periodData, isFetching: isExportLoading } = useAppointments({
+    dateFrom,
+    dateTo,
+  });
+
+  const handleExport = () => {
+    const list = periodData?.appointments ?? [];
+    if (list.length === 0) {
+      toast.info("Nessun appuntamento da esportare nel periodo selezionato");
+      return;
+    }
+    const stamp = `${format(from, "yyyyMMdd")}-${format(to, "yyyyMMdd")}`;
+    const n = exportAppointmentsCsv(list, `ops-board-${stamp}`);
+    toast.success(`Esportati ${n} appuntamenti`);
+  };
+
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-6">
       {/* Header */}
