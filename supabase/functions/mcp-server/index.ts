@@ -161,6 +161,7 @@ async function logRequest(
   supabase: any,
   entry: {
     request_id: string;
+    trace_id: string | null;
     token_id: string | null;
     user_id: string | null;
     brand_id: string | null;
