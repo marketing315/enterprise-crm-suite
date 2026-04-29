@@ -668,6 +668,55 @@ async function handleToolsCall(
 }
 
 // -------------------------------------------------------------
+// HTTP GET long-poll for resource notifications
+//   GET /functions/v1/mcp-server?since=<iso8601>&wait_ms=<n>&limit=<n>
+//   Authorization: Bearer mcp_xxx
+// Returns: { notifications: [...], serverTime, nextSince }
+// -------------------------------------------------------------
+async function handleLongPollGet(req: Request): Promise<Response> {
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+  const ctx = await authenticate(req, supabase);
+  if (!ctx) {
+    return new Response(
+      JSON.stringify({ error: "unauthorized — Bearer mcp_xxx token required" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  const url = new URL(req.url);
+  const since = url.searchParams.get("since");
+  const waitMs = Math.min(Math.max(Number(url.searchParams.get("wait_ms")) || 0, 0), 25_000);
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 100, 1), 500);
+
+  const deadline = Date.now() + waitMs;
+  let changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+  while (changes.length === 0 && Date.now() < deadline) {
+    const sleep = Math.min(1000, deadline - Date.now());
+    if (sleep <= 0) break;
+    await new Promise((r) => setTimeout(r, sleep));
+    changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+  }
+
+  const serverTime = new Date().toISOString();
+  const body = {
+    notifications: changes.map((c) => ({
+      method: "notifications/resources/updated",
+      params: {
+        uri: c.uri,
+        resourceType: c.resourceType,
+        changeType: c.changeType,
+        occurredAt: c.occurredAt,
+      },
+    })),
+    serverTime,
+    nextSince: changes.length > 0 ? changes[0].occurredAt : serverTime,
+  };
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// -------------------------------------------------------------
 // Main handler
 // -------------------------------------------------------------
 Deno.serve(async (req) => {
