@@ -448,7 +448,7 @@ export default function SalespersonDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <RiskScoreBadge score={appt.risk_score} compact />
+                      <RiskScoreBadge score={appt.risk_score} size="sm" />
                       <Badge variant="outline" className={`text-xs gap-1 ${statusMeta.badgeClass}`}>
                         <StatusIcon className="h-3 w-3" />
                         {statusMeta.shortLabel}
