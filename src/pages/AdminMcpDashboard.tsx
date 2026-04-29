@@ -28,6 +28,9 @@ export default function AdminMcpDashboard() {
   const { data: tokens = [], isLoading: tokensLoading } = useMcpActiveTokens();
   const { data: logs = [], isLoading: logsLoading } = useMcpRequestLog(100);
   const { data: alerts = [], isLoading: alertsLoading } = useMcpSloAlerts(50);
+  const { data: subscriptions = [], isLoading: subsLoading } = useMcpSubscriptions();
+  const { data: recentChanges = [], isLoading: changesLoading } = useMcpRecentChanges(50);
+  const { data: subsKpi, isLoading: subsKpiLoading } = useMcpSubscriptionsKpi();
   const ackAlert = useAcknowledgeMcpAlert();
   const toggleKill = useToggleMcpKillSwitch();
   const openAlerts = alerts.filter((a) => !a.acknowledged_at);
