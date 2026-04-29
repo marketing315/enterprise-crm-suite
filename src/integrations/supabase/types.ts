@@ -11327,6 +11327,7 @@ export type Database = {
         | "ai_decision_ready"
         | "chat_message"
         | "appointment_risk_alert"
+        | "slo_alert"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       override_reason_category:
         | "wrong_priority"
@@ -11694,6 +11695,7 @@ export const Constants = {
         "ai_decision_ready",
         "chat_message",
         "appointment_risk_alert",
+        "slo_alert",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       override_reason_category: [
