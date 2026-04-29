@@ -71,6 +71,11 @@ jobs:
       - name: Run E2E feature tests
         run: npx playwright test e2e/tickets.gate.spec.ts e2e/webhooks.e2e.spec.ts e2e/webhooks-dashboard.e2e.spec.ts e2e/inbound-webhooks.e2e.spec.ts
 
+      - name: Run E2E revenue-critical tests (HARD GATE)
+        # If any of the 5 revenue-critical flows breaks, the PR is blocked.
+        # See e2e/revenue-critical/README.md
+        run: npx playwright test --grep @revenue-critical
+
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
