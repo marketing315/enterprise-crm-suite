@@ -17,9 +17,12 @@ import {
 import { toast } from "sonner";
 import { exportAppointmentsCsv } from "@/features/appointments/exportAppointmentsCsv";
 import { useBrand } from "@/contexts/BrandContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAppointmentsOpsKpi } from "@/features/appointments/useAppointmentsOpsKpi";
 import { useAppointments } from "@/hooks/useAppointments";
 import { RiskScoreBadge } from "@/features/appointments/RiskScoreBadge";
+import { SavedFiltersBar } from "@/features/appointments/SavedFiltersBar";
+import { applyAppointmentFilter, type AppointmentFilter } from "@/features/appointments/savedFilters";
 import {
   APPOINTMENT_OUTCOMES,
   APPOINTMENT_STATUS,
@@ -65,7 +68,10 @@ function getRange(key: RangeKey) {
 export default function AppointmentsOpsBoard() {
   const navigate = useNavigate();
   const { currentBrand } = useBrand();
+  const { user } = useAuth();
   const [range, setRange] = useState<RangeKey>("month");
+  const [activeFilter, setActiveFilter] = useState<AppointmentFilter | undefined>();
+  const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
 
   const { from, to } = useMemo(() => getRange(range), [range]);
   const dateFrom = from.toISOString();
@@ -88,21 +94,28 @@ export default function AppointmentsOpsBoard() {
     dateTo: next48hTo,
   });
   const atRiskList = useMemo(
-    () =>
-      (atRiskData?.appointments ?? [])
-        .filter((a) => (a.status as string) === "scheduled" || (a.status as string) === "draft")
-        .slice(0, 8),
-    [atRiskData]
+    () => {
+      const base = (atRiskData?.appointments ?? [])
+        .filter((a) => (a.status as string) === "scheduled" || (a.status as string) === "draft");
+      const filtered = applyAppointmentFilter(base, activeFilter, { currentUserId: user?.id });
+      return filtered.slice(0, 8);
+    },
+    [atRiskData, activeFilter, user?.id]
   );
 
-  // Dataset completo del periodo per export CSV
+  // Dataset completo del periodo per export CSV (filtri salvati applicati)
   const { data: periodData, isFetching: isExportLoading } = useAppointments({
     dateFrom,
     dateTo,
   });
 
+  const filteredPeriod = useMemo(
+    () => applyAppointmentFilter(periodData?.appointments ?? [], activeFilter, { currentUserId: user?.id }),
+    [periodData, activeFilter, user?.id]
+  );
+
   const handleExport = () => {
-    const list = periodData?.appointments ?? [];
+    const list = filteredPeriod;
     if (list.length === 0) {
       toast.info("Nessun appuntamento da esportare nel periodo selezionato");
       return;
@@ -172,6 +185,24 @@ export default function AppointmentsOpsBoard() {
             <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
           </Button>
         </div>
+      </div>
+
+      {/* Saved filters bar */}
+      <div className="flex items-center justify-between gap-2">
+        <SavedFiltersBar
+          scope="ops-board"
+          activeFilter={activeFilter}
+          activeFilterId={activeFilterId}
+          onChange={(id, f) => {
+            setActiveFilterId(id);
+            setActiveFilter(f);
+          }}
+        />
+        {activeFilter && Object.keys(activeFilter).length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            Filtro attivo su lista a rischio ed export ({filteredPeriod.length} match)
+          </span>
+        )}
       </div>
 
       {/* KPI cards */}

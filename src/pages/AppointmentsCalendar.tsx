@@ -19,6 +19,9 @@ import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAppointmentConflict } from "@/features/appointments/useAppointmentConflict";
 import { BulkReassignDialog } from "@/features/appointments/BulkReassignDialog";
 import { exportAppointmentsCsv } from "@/features/appointments/exportAppointmentsCsv";
+import { SavedFiltersBar } from "@/features/appointments/SavedFiltersBar";
+import { applyAppointmentFilter, type AppointmentFilter } from "@/features/appointments/savedFilters";
+import { useAuth } from "@/contexts/AuthContext";
 import type { AppointmentWithRelations } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,12 +56,15 @@ interface DraggedAppointment {
 export default function AppointmentsCalendar() {
   const navigate = useNavigate();
   const { currentBrand } = useBrand();
+  const { user } = useAuth();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<AppointmentFilter | undefined>();
+  const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
   const dragRef = useRef<DraggedAppointment | null>(null);
   const [pendingMove, setPendingMove] = useState<{
     appt: DraggedAppointment;
@@ -110,7 +116,11 @@ export default function AppointmentsCalendar() {
     enabled: !!pendingMove,
   });
 
-  const appointments = data?.appointments ?? [];
+  const allAppointments = data?.appointments ?? [];
+  const appointments = useMemo(
+    () => applyAppointmentFilter(allAppointments, activeFilter, { currentUserId: user?.id }),
+    [allAppointments, activeFilter, user?.id]
+  );
 
   const handleDragStart = (e: React.DragEvent, apt: AppointmentWithRelations) => {
     const payload: DraggedAppointment = {
@@ -253,6 +263,24 @@ export default function AppointmentsCalendar() {
             Nuovo
           </Button>
         </div>
+      </div>
+
+      {/* Saved filters bar */}
+      <div className="flex items-center justify-between gap-2">
+        <SavedFiltersBar
+          scope="calendar"
+          activeFilter={activeFilter}
+          activeFilterId={activeFilterId}
+          onChange={(id, f) => {
+            setActiveFilterId(id);
+            setActiveFilter(f);
+          }}
+        />
+        {activeFilter && Object.keys(activeFilter).length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {appointments.length} di {allAppointments.length} mostrati
+          </span>
+        )}
       </div>
 
       {/* Calendar grid */}
