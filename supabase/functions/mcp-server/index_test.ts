@@ -286,3 +286,61 @@ Deno.test("kill-switch contract: 503 responses carry KILL_SWITCH semantics", asy
   assert(typeof json.error?.code === "number");
   assert(typeof json.error?.message === "string");
 });
+
+// -----------------------------------------------------------------
+// OpenTelemetry trace propagation
+// -----------------------------------------------------------------
+
+Deno.test("response always carries traceparent + x-trace-id headers", async () => {
+  const res = await fetch(MCP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": ANON_KEY,
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+  });
+  await res.text();
+  const tp = res.headers.get("traceparent") ?? "";
+  const tid = res.headers.get("x-trace-id") ?? "";
+  assert(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/i.test(tp), `bad traceparent: ${tp}`);
+  assert(/^[0-9a-f]{32}$/i.test(tid), `bad x-trace-id: ${tid}`);
+  assert(tp.includes(tid), "traceparent must embed the trace id");
+});
+
+Deno.test("incoming traceparent is honoured (trace_id propagated)", async () => {
+  const incomingTraceId = "1".repeat(32);
+  const incomingSpanId = "a".repeat(16);
+  const incomingTp = `00-${incomingTraceId}-${incomingSpanId}-01`;
+  const res = await fetch(MCP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": ANON_KEY,
+      "traceparent": incomingTp,
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "ping" }),
+  });
+  await res.text();
+  assertEquals(res.headers.get("x-trace-id"), incomingTraceId);
+  const tp = res.headers.get("traceparent") ?? "";
+  assert(tp.startsWith(`00-${incomingTraceId}-`), `traceparent must reuse trace id: ${tp}`);
+  // span_id MUST be fresh (not the parent's)
+  assert(!tp.includes(incomingSpanId), "server must mint its own span id");
+});
+
+Deno.test("malformed incoming traceparent is ignored, fresh trace minted", async () => {
+  const res = await fetch(MCP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": ANON_KEY,
+      "traceparent": "garbage-not-a-trace",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "ping" }),
+  });
+  await res.text();
+  const tid = res.headers.get("x-trace-id") ?? "";
+  assert(/^[0-9a-f]{32}$/i.test(tid));
+  assert(tid !== "0".repeat(32));
+});

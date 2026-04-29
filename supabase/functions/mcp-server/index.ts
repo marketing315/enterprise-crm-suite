@@ -15,14 +15,70 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const INTERNAL_TOKEN = Deno.env.get("INTERNAL_SERVICE_TOKEN")!;
+const SERVICE_NAME = "mcp-server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, mcp-session-id, accept",
+    "authorization, x-client-info, apikey, content-type, mcp-session-id, accept, traceparent, tracestate",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Expose-Headers": "mcp-session-id, x-request-id",
+  "Access-Control-Expose-Headers": "mcp-session-id, x-request-id, traceparent, x-trace-id",
 };
+
+// -------------------------------------------------------------
+// W3C Trace Context (OpenTelemetry-compatible) helpers
+//   traceparent: 00-<trace_id:32hex>-<span_id:16hex>-<flags:2hex>
+// We persist spans into trace_events via the trace-ingest function
+// (best-effort, fire-and-forget — never blocks the request).
+// -------------------------------------------------------------
+function randHex(bytes: number): string {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function newTraceId(): string { return randHex(16); }
+function newSpanId(): string { return randHex(8); }
+
+const TRACEPARENT_RE = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/i;
+function parseTraceparent(value: string | null): { traceId: string; parentSpanId: string } | null {
+  if (!value) return null;
+  const m = TRACEPARENT_RE.exec(value.trim());
+  if (!m) return null;
+  // reject all-zero ids
+  if (/^0+$/.test(m[1]) || /^0+$/.test(m[2])) return null;
+  return { traceId: m[1].toLowerCase(), parentSpanId: m[2].toLowerCase() };
+}
+function buildTraceparent(traceId: string, spanId: string): string {
+  return `00-${traceId}-${spanId}-01`;
+}
+
+type SpanRecord = {
+  trace_id: string;
+  span_id: string;
+  parent_span_id?: string;
+  service_name: string;
+  operation_name: string;
+  started_at: string;
+  duration_ms: number;
+  status_code?: "ok" | "error" | "timeout";
+  http_status?: number;
+  error_message?: string;
+  attributes?: Record<string, unknown>;
+};
+
+function recordSpan(span: SpanRecord) {
+  // Fire-and-forget; never await on the hot path.
+  if (!INTERNAL_TOKEN) return;
+  const url = `${SUPABASE_URL}/functions/v1/trace-ingest`;
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-token": INTERNAL_TOKEN,
+    },
+    body: JSON.stringify({ events: [span] }),
+  }).catch(() => {/* swallow — observability must never break runtime */});
+}
 
 const SERVER_INFO = { name: "ralph-crm-mcp", version: "1.0.0" };
 const PROTOCOL_VERSION = "2024-11-05";
@@ -105,6 +161,7 @@ async function logRequest(
   supabase: any,
   entry: {
     request_id: string;
+    trace_id: string | null;
     token_id: string | null;
     user_id: string | null;
     brand_id: string | null;
@@ -242,6 +299,7 @@ async function handleResourcesRead(
   ctx: AuthCtx,
   supabase: any,
   requestId: string,
+  traceparent: string,
 ): Promise<{ res: JsonRpcRes; errorCode: string | null }> {
   const params = (req.params ?? {}) as { uri?: string };
   const uri = params.uri;
@@ -285,6 +343,7 @@ async function handleResourcesRead(
         "x-mcp-on-behalf-user-id": ctx.user_id ?? "",
         "x-mcp-request-id": requestId,
         "x-mcp-scopes": (ctx.scopes ?? []).join(","),
+        "traceparent": traceparent,
       },
       body: JSON.stringify({
         request_id: requestId,
@@ -344,6 +403,7 @@ async function handleToolsCall(
   ctx: AuthCtx,
   supabase: any,
   requestId: string,
+  traceparent: string,
 ): Promise<{ res: JsonRpcRes; toolName: string | null; errorCode: string | null }> {
   const params = (req.params ?? {}) as {
     name?: string;
@@ -406,6 +466,7 @@ async function handleToolsCall(
         "x-mcp-on-behalf-user-id": ctx.user_id ?? "",
         "x-mcp-request-id": requestId,
         "x-mcp-scopes": (ctx.scopes ?? []).join(","),
+        "traceparent": traceparent,
       },
       body: JSON.stringify({
         request_id: requestId,
@@ -514,6 +575,18 @@ Deno.serve(async (req) => {
 
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
+  const startedAtIso = new Date(startedAt).toISOString();
+
+  // ----- OpenTelemetry trace context (W3C) -----
+  // Honour incoming traceparent if any (so external clients/IDEs that
+  // already trace can stitch the MCP call into their trace), otherwise
+  // start a fresh trace. The span_id is always fresh (this is OUR span).
+  const incoming = parseTraceparent(req.headers.get("traceparent"));
+  const traceId = incoming?.traceId ?? newTraceId();
+  const spanId = newSpanId();
+  const parentSpanId = incoming?.parentSpanId;
+  const traceparentOut = buildTraceparent(traceId, spanId);
+
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false },
   });
@@ -526,14 +599,14 @@ Deno.serve(async (req) => {
   } catch (_) {
     return new Response(
       JSON.stringify(rpcErr(null, RPC_ERR.PARSE_ERROR, "invalid JSON")),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId } },
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId } },
     );
   }
 
   if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string") {
     return new Response(
       JSON.stringify(rpcErr(body?.id ?? null, RPC_ERR.INVALID_REQUEST, "expected JSON-RPC 2.0 request")),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId } },
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId } },
     );
   }
 
@@ -555,7 +628,8 @@ Deno.serve(async (req) => {
         { request_id: requestId });
       const payload = JSON.stringify(res);
       logRequest(supabase, {
-        request_id: requestId, token_id: null, user_id: null, brand_id: null,
+        request_id: requestId, trace_id: traceId,
+        token_id: null, user_id: null, brand_id: null,
         method: body.method, tool_name: null, status_code: 503,
         error_code: "KILL_SWITCH",
         duration_ms: Date.now() - startedAt,
@@ -563,9 +637,17 @@ Deno.serve(async (req) => {
         client_ip: req.headers.get("x-forwarded-for"),
         user_agent: req.headers.get("user-agent"),
       });
+      recordSpan({
+        trace_id: traceId, span_id: spanId, parent_span_id: parentSpanId,
+        service_name: SERVICE_NAME, operation_name: `mcp.${body.method}`,
+        started_at: startedAtIso, duration_ms: Date.now() - startedAt,
+        status_code: "error", http_status: 503,
+        error_message: "kill_switch_active",
+        attributes: { "mcp.method": body.method, "mcp.error_code": "KILL_SWITCH", "mcp.request_id": requestId },
+      });
       return new Response(payload, {
         status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId },
       });
     }
   }
@@ -583,6 +665,7 @@ Deno.serve(async (req) => {
       const payload = JSON.stringify(res);
       logRequest(supabase, {
         request_id: requestId,
+        trace_id: traceId,
         token_id: null,
         user_id: null,
         brand_id: null,
@@ -596,9 +679,16 @@ Deno.serve(async (req) => {
         client_ip: req.headers.get("x-forwarded-for"),
         user_agent: req.headers.get("user-agent"),
       });
+      recordSpan({
+        trace_id: traceId, span_id: spanId, parent_span_id: parentSpanId,
+        service_name: SERVICE_NAME, operation_name: `mcp.${body.method}`,
+        started_at: startedAtIso, duration_ms: Date.now() - startedAt,
+        status_code: "error", http_status: 401, error_message: "auth_failed",
+        attributes: { "mcp.method": body.method, "mcp.error_code": "AUTH", "mcp.request_id": requestId },
+      });
       return new Response(payload, {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId },
       });
     }
 
@@ -614,7 +704,8 @@ Deno.serve(async (req) => {
           { request_id: requestId, retry_after_seconds: 60 });
         const payload = JSON.stringify(res);
         logRequest(supabase, {
-          request_id: requestId, token_id: ctx.token_id, user_id: ctx.user_id,
+          request_id: requestId, trace_id: traceId,
+          token_id: ctx.token_id, user_id: ctx.user_id,
           brand_id: ctx.brand_id, method: body.method, tool_name: null,
           status_code: 429, error_code: "RATE_LIMIT",
           duration_ms: Date.now() - startedAt,
@@ -622,12 +713,25 @@ Deno.serve(async (req) => {
           client_ip: req.headers.get("x-forwarded-for"),
           user_agent: req.headers.get("user-agent"),
         });
+        recordSpan({
+          trace_id: traceId, span_id: spanId, parent_span_id: parentSpanId,
+          service_name: SERVICE_NAME, operation_name: `mcp.${body.method}`,
+          started_at: startedAtIso, duration_ms: Date.now() - startedAt,
+          status_code: "error", http_status: 429, error_message: "rate_limit_exceeded",
+          attributes: {
+            "mcp.method": body.method, "mcp.error_code": "RATE_LIMIT",
+            "mcp.token_id": ctx.token_id, "mcp.request_id": requestId,
+            "mcp.rate_limit_used": row.used, "mcp.rate_limit_max": row.max_per_min,
+          },
+        });
         return new Response(payload, {
           status: 429,
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
             "x-request-id": requestId,
+            "traceparent": traceparentOut,
+            "x-trace-id": traceId,
             "Retry-After": "60",
             "X-RateLimit-Limit": String(row.max_per_min),
             "X-RateLimit-Remaining": "0",
@@ -652,7 +756,7 @@ Deno.serve(async (req) => {
         response = await handleToolsList(body, ctx!, supabase);
         break;
       case "tools/call": {
-        const out = await handleToolsCall(body, ctx!, supabase, requestId);
+        const out = await handleToolsCall(body, ctx!, supabase, requestId, traceparentOut);
         response = out.res;
         toolName = out.toolName;
         errorCode = out.errorCode;
@@ -662,7 +766,7 @@ Deno.serve(async (req) => {
         response = await handleResourcesList(body, ctx!, supabase);
         break;
       case "resources/read": {
-        const out = await handleResourcesRead(body, ctx!, supabase, requestId);
+        const out = await handleResourcesRead(body, ctx!, supabase, requestId, traceparentOut);
         response = out.res;
         errorCode = out.errorCode;
         break;
@@ -670,7 +774,7 @@ Deno.serve(async (req) => {
       case "notifications/initialized":
         return new Response(null, {
           status: 202,
-          headers: { ...corsHeaders, "x-request-id": requestId },
+          headers: { ...corsHeaders, "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId },
         });
       default:
         response = rpcErr(body.id, RPC_ERR.METHOD_NOT_FOUND, `method not found: ${body.method}`);
@@ -695,6 +799,7 @@ Deno.serve(async (req) => {
 
   logRequest(supabase, {
     request_id: requestId,
+    trace_id: traceId,
     token_id: ctx?.token_id ?? null,
     user_id: ctx?.user_id ?? null,
     brand_id: ctx?.brand_id ?? null,
@@ -709,12 +814,37 @@ Deno.serve(async (req) => {
     user_agent: req.headers.get("user-agent"),
   });
 
+  // Emit OTel root span for this MCP request
+  recordSpan({
+    trace_id: traceId,
+    span_id: spanId,
+    parent_span_id: parentSpanId,
+    service_name: SERVICE_NAME,
+    operation_name: `mcp.${body.method}`,
+    started_at: startedAtIso,
+    duration_ms: Date.now() - startedAt,
+    status_code: status >= 500 ? "error" : status >= 400 ? "error" : "ok",
+    http_status: status,
+    error_message: response.error?.message?.slice(0, 500) ?? undefined,
+    attributes: {
+      "mcp.method": body.method,
+      "mcp.tool_name": toolName ?? undefined,
+      "mcp.error_code": errorCode ?? undefined,
+      "mcp.request_id": requestId,
+      "mcp.token_id": ctx?.token_id ?? undefined,
+      "mcp.user_id": ctx?.user_id ?? undefined,
+      "mcp.brand_id": ctx?.brand_id ?? undefined,
+    },
+  });
+
   return new Response(payload, {
     status,
     headers: {
       ...corsHeaders,
       "Content-Type": "application/json",
       "x-request-id": requestId,
+      "traceparent": traceparentOut,
+      "x-trace-id": traceId,
     },
   });
 });
