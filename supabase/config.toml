@@ -67,6 +67,8 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false
   [functions.sla-breach-checker]
     verify_jwt = false
+  [functions.slo-burn-rate-monitor]
+    verify_jwt = false
   [functions.ticket-assign-recovery]
     verify_jwt = false
   [functions.voispeed-call-request]
