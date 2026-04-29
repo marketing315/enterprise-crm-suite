@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Activity, AlertTriangle, ShieldOff, Zap, Clock, Users, KeyRound, BarChart3 } from "lucide-react";
+import { Activity, AlertTriangle, ShieldOff, Zap, Clock, Users, KeyRound, BarChart3, Radio, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import {
@@ -16,6 +16,9 @@ import {
   useToggleMcpKillSwitch,
   useMcpSloAlerts,
   useAcknowledgeMcpAlert,
+  useMcpSubscriptions,
+  useMcpRecentChanges,
+  useMcpSubscriptionsKpi,
 } from "@/hooks/useMcpServerKpi";
 import { toast } from "@/hooks/use-toast";
 
