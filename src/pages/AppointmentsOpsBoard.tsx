@@ -68,7 +68,10 @@ function getRange(key: RangeKey) {
 export default function AppointmentsOpsBoard() {
   const navigate = useNavigate();
   const { currentBrand } = useBrand();
+  const { user } = useAuth();
   const [range, setRange] = useState<RangeKey>("month");
+  const [activeFilter, setActiveFilter] = useState<AppointmentFilter | undefined>();
+  const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
 
   const { from, to } = useMemo(() => getRange(range), [range]);
   const dateFrom = from.toISOString();
