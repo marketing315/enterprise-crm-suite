@@ -299,6 +299,7 @@ async function handleResourcesRead(
   ctx: AuthCtx,
   supabase: any,
   requestId: string,
+  traceparent: string,
 ): Promise<{ res: JsonRpcRes; errorCode: string | null }> {
   const params = (req.params ?? {}) as { uri?: string };
   const uri = params.uri;
