@@ -120,6 +120,92 @@ export default function SalespersonDashboard() {
     enabled: !!user?.id && isQueryEnabled(),
   });
 
+  // My appointments — week, upcoming list, no-show 30d, follow-ups
+  const { data: apptStats, isLoading: apptStatsLoading } = useQuery({
+    queryKey: ['salesperson-appt-stats', user?.id, getQueryKeyBrand()],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return null;
+
+      const baseFilter = (q: any) => brandIds.length === 1 ? q.eq('brand_id', brandIds[0]) : q.in('brand_id', brandIds);
+
+      // Week count
+      const weekQ = baseFilter(
+        supabase.from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('assigned_sales_user_id', user.id)
+          .gte('scheduled_at', weekStart)
+          .lte('scheduled_at', weekEnd)
+      );
+
+      // Last 30d closed → calc no-show rate
+      const closedQ = baseFilter(
+        supabase.from('appointments')
+          .select('status')
+          .eq('assigned_sales_user_id', user.id)
+          .gte('scheduled_at', last30Start)
+          .lte('scheduled_at', todayEnd)
+          .in('status', ['completed', 'visited', 'no_show', 'cancelled'])
+          .limit(500)
+      );
+
+      // Pending follow-up: outcomes with next_action_at <= today
+      const followUpQ = baseFilter(
+        supabase.from('appointment_outcomes')
+          .select('id, appointments!inner(assigned_sales_user_id, brand_id)', { count: 'exact', head: true })
+          .eq('appointments.assigned_sales_user_id', user.id)
+          .not('next_action_at', 'is', null)
+          .lte('next_action_at', todayEnd)
+      );
+
+      const [weekRes, closedRes, followUpRes] = await Promise.all([weekQ, closedQ, followUpQ]);
+      if (weekRes.error) throw weekRes.error;
+      if (closedRes.error) throw closedRes.error;
+
+      const closed = (closedRes.data ?? []) as { status: string }[];
+      const noShows = closed.filter(a => a.status === 'no_show').length;
+      const noShowRate = closed.length > 0 ? (noShows / closed.length) * 100 : 0;
+
+      return {
+        weekCount: weekRes.count ?? 0,
+        noShowRate,
+        closedSample: closed.length,
+        pendingFollowUp: followUpRes.count ?? 0,
+      };
+    },
+    enabled: !!user?.id && isQueryEnabled(),
+  });
+
+  // Upcoming appointments (next 7 days) with risk score
+  const { data: upcomingAppts = [], isLoading: upcomingLoading } = useQuery({
+    queryKey: ['salesperson-upcoming-appts', user?.id, getQueryKeyBrand()],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const brandIds = getBrandIds();
+      if (brandIds.length === 0) return [];
+
+      let query = supabase
+        .from('appointments')
+        .select(`id, scheduled_at, status, risk_score, address, city,
+                 contact:contacts(id, first_name, last_name)`)
+        .eq('assigned_sales_user_id', user.id)
+        .gte('scheduled_at', todayStart)
+        .lte('scheduled_at', next7End)
+        .not('status', 'in', '(cancelled,no_show,completed,visited)')
+        .order('scheduled_at', { ascending: true })
+        .limit(8);
+
+      if (brandIds.length === 1) query = query.eq('brand_id', brandIds[0]);
+      else query = query.in('brand_id', brandIds);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user?.id && isQueryEnabled(),
+  });
+
   // Action suggestions
   const { data: suggestions = [], isLoading: sugLoading } = useMyActionSuggestions();
   const dismissSuggestion = useDismissSuggestion();
