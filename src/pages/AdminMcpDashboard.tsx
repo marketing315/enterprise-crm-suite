@@ -14,6 +14,8 @@ import {
   useMcpActiveTokens,
   useMcpRequestLog,
   useToggleMcpKillSwitch,
+  useMcpSloAlerts,
+  useAcknowledgeMcpAlert,
 } from "@/hooks/useMcpServerKpi";
 import { toast } from "@/hooks/use-toast";
 
