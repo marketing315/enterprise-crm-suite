@@ -17,9 +17,12 @@ import {
 import { toast } from "sonner";
 import { exportAppointmentsCsv } from "@/features/appointments/exportAppointmentsCsv";
 import { useBrand } from "@/contexts/BrandContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAppointmentsOpsKpi } from "@/features/appointments/useAppointmentsOpsKpi";
 import { useAppointments } from "@/hooks/useAppointments";
 import { RiskScoreBadge } from "@/features/appointments/RiskScoreBadge";
+import { SavedFiltersBar } from "@/features/appointments/SavedFiltersBar";
+import { applyAppointmentFilter, type AppointmentFilter } from "@/features/appointments/savedFilters";
 import {
   APPOINTMENT_OUTCOMES,
   APPOINTMENT_STATUS,
