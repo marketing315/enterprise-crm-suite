@@ -388,6 +388,80 @@ export default function SalespersonDashboard() {
         </Card>
       </div>
 
+      {/* Upcoming Appointments */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CalendarClock className="h-5 w-5 text-primary" />
+                Prossimi appuntamenti
+              </CardTitle>
+              <CardDescription>I tuoi impegni nei prossimi 7 giorni</CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/appointments/calendar')}>
+              Apri calendario
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {upcomingLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-12 bg-muted animate-pulse rounded" />
+              ))}
+            </div>
+          ) : upcomingAppts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Nessun appuntamento nei prossimi 7 giorni
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {upcomingAppts.map((appt: any) => {
+                const statusMeta = getStatusMeta(appt.status);
+                const StatusIcon = statusMeta.icon;
+                return (
+                  <div
+                    key={appt.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                    onClick={() => navigate(`/appointments/${appt.id}`)}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex flex-col items-center justify-center w-12 shrink-0 text-center">
+                        <span className="text-[10px] uppercase text-muted-foreground font-medium">
+                          {format(new Date(appt.scheduled_at), 'EEE', { locale: it })}
+                        </span>
+                        <span className="text-lg font-semibold leading-none">
+                          {format(new Date(appt.scheduled_at), 'dd')}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(new Date(appt.scheduled_at), 'HH:mm')}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {appt.contact?.first_name} {appt.contact?.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {appt.city || appt.address || '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <RiskScoreBadge score={appt.risk_score} compact />
+                      <Badge variant="outline" className={`text-xs gap-1 ${statusMeta.badgeClass}`}>
+                        <StatusIcon className="h-3 w-3" />
+                        {statusMeta.shortLabel}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
         <Button variant="outline" className="h-auto py-4 flex-col gap-1" onClick={() => navigate('/pipeline')}>
