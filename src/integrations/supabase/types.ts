@@ -5816,6 +5816,7 @@ export type Database = {
           idempotency_key: string | null
           input_redacted: Json | null
           latency_ms: number | null
+          metadata: Json
           output_redacted: Json | null
           policy_id: string | null
           request_id: string
@@ -5837,6 +5838,7 @@ export type Database = {
           idempotency_key?: string | null
           input_redacted?: Json | null
           latency_ms?: number | null
+          metadata?: Json
           output_redacted?: Json | null
           policy_id?: string | null
           request_id: string
@@ -5858,6 +5860,7 @@ export type Database = {
           idempotency_key?: string | null
           input_redacted?: Json | null
           latency_ms?: number | null
+          metadata?: Json
           output_redacted?: Json | null
           policy_id?: string | null
           request_id?: string

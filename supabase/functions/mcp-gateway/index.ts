@@ -128,23 +128,106 @@ async function updateExecution(supabase: any, id: string, updates: Record<string
   await supabase.from("mcp_executions").update(updates).eq("id", id);
 }
 
-// ── PII Redaction ──────────────────────────────────
-function redactPII(obj: unknown): unknown {
-  if (typeof obj !== "object" || obj === null) return obj;
-  const result: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
-    const lower = key.toLowerCase();
-    if (["password", "secret", "token", "api_key", "apikey", "credit_card", "ssn"].some(s => lower.includes(s))) {
-      result[key] = "[REDACTED]";
-    } else if (typeof val === "string" && /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(val)) {
-      result[key] = val.replace(/(.{2}).*(@.*)/, "$1***$2");
-    } else if (typeof val === "object") {
-      result[key] = redactPII(val);
-    } else {
-      result[key] = val;
-    }
+// ── PII Redaction (scope-aware) ────────────────────
+// Mirror of docs/mcp-server-redaction-policy.md.
+// Strategy: full | partial | none.
+type MaskStrategy = "full" | "partial" | "none";
+
+interface FieldRule {
+  patterns: string[];        // case-insensitive substring match on field name
+  strategy: MaskStrategy;    // default strategy
+  unlockScopes: string[];    // any of these scopes disables masking
+  alwaysMask?: boolean;      // never unlockable (auth secrets)
+}
+
+const FIELD_RULES: FieldRule[] = [
+  // auth secrets — never unlockable
+  { patterns: ["password", "secret", "api_key", "apikey", "token"], strategy: "full", unlockScopes: [], alwaysMask: true },
+  // payment data — only with explicit full scope
+  { patterns: ["iban", "card_number", "card_pan", "credit_card", "cvv"], strategy: "full", unlockScopes: ["payments.read.full", "*"] },
+  // fiscal
+  { patterns: ["fiscal_code", "codice_fiscale", "vat_number", "partita_iva", "ssn"], strategy: "full", unlockScopes: ["pii.read.full", "*"] },
+  // sanitario
+  { patterns: ["patient_id", "medical_", "clinical_topic"], strategy: "full", unlockScopes: ["health.read", "*"] },
+  // anagrafica
+  { patterns: ["birth_date", "data_nascita"], strategy: "full", unlockScopes: ["pii.read", "pii.read.full", "*"] },
+  // contatto / identità
+  { patterns: ["email", "email_address"], strategy: "partial", unlockScopes: ["pii.read", "pii.read.full", "*"] },
+  { patterns: ["phone", "mobile", "whatsapp"], strategy: "partial", unlockScopes: ["pii.read", "pii.read.full", "*"] },
+  // indirizzo
+  { patterns: ["address", "street", "via", "cap", "zip", "postal_code"], strategy: "partial", unlockScopes: ["address.read", "pii.read.full", "*"] },
+];
+
+function resolveStrategyForField(fieldName: string, scopes: string[]): MaskStrategy {
+  const lc = fieldName.toLowerCase();
+  for (const r of FIELD_RULES) {
+    if (!r.patterns.some((p) => lc.includes(p))) continue;
+    if (r.alwaysMask) return r.strategy;
+    if (r.unlockScopes.some((s) => scopes.includes(s))) return "none";
+    return r.strategy;
   }
-  return result;
+  return "none";
+}
+
+function partialMask(str: string): string {
+  if (!str) return "—";
+  if (str.includes("@")) {
+    const [local, domain] = str.split("@");
+    const visible = local.slice(0, 1);
+    return `${visible}${"•".repeat(Math.max(local.length - 1, 3))}@${domain}`;
+  }
+  const digits = str.replace(/\D/g, "");
+  if (digits.length >= 6 && digits.length / Math.max(str.length, 1) > 0.6) {
+    return `••• ••• ${digits.slice(-4)}`;
+  }
+  if (str.length <= 4) return `${str.charAt(0)}•••`;
+  return `${str.slice(0, 3)}${"•".repeat(Math.min(Math.max(str.length - 5, 3), 6))}${str.slice(-2)}`;
+}
+
+function applyMask(value: unknown, strategy: MaskStrategy): unknown {
+  if (value === null || value === undefined) return value;
+  if (strategy === "none") return value;
+  if (strategy === "full") return "••••••••";
+  if (strategy === "partial") {
+    const str = typeof value === "string" ? value : String(value);
+    return partialMask(str);
+  }
+  return value;
+}
+
+/**
+ * Recursively walks any JSON value and masks fields according to FIELD_RULES.
+ * `redactionsCount` is mutated in place for telemetry.
+ */
+function redactDeep(
+  obj: unknown,
+  scopes: string[],
+  redactionsCount: { n: number },
+  depth = 0,
+): unknown {
+  if (depth > 20) return obj; // safety against pathological structures
+  if (Array.isArray(obj)) return obj.map((o) => redactDeep(o, scopes, redactionsCount, depth + 1));
+  if (obj && typeof obj === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const strategy = resolveStrategyForField(k, scopes);
+      if (strategy === "none") {
+        out[k] = (v && typeof v === "object") ? redactDeep(v, scopes, redactionsCount, depth + 1) : v;
+      } else {
+        out[k] = applyMask(v, strategy);
+        if (v !== null && v !== undefined && out[k] !== v) redactionsCount.n += 1;
+      }
+    }
+    return out;
+  }
+  return obj;
+}
+
+// Backwards-compat alias for audit storage (always uses empty scope set =
+// most aggressive masking, suitable for long-term audit log).
+function redactPII(obj: unknown): unknown {
+  const counter = { n: 0 };
+  return redactDeep(obj, [], counter);
 }
 
 // ── CRM Adapter ────────────────────────────────────
@@ -341,6 +424,17 @@ Deno.serve(async (req: Request) => {
   const internalSecret = Deno.env.get("INTERNAL_SERVICE_TOKEN") ?? "";
   const isInternalCall = !!internalSecret && internalHeader === internalSecret;
 
+  // Caller scopes drive PII redaction on tool/resource responses.
+  // - Internal calls (from mcp-server): scopes derived from the validated MCP token.
+  // - Direct user calls (UI control plane): grant full access ("*"); RLS still
+  //   enforces tenant isolation, and these are first-party authenticated users.
+  const callerScopes: string[] = isInternalCall
+    ? (req.headers.get("x-mcp-scopes") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : ["*"];
+
   let internalUserId: string;
   let uniqueRoles: string[];
   let userClient: any;
@@ -505,13 +599,17 @@ Deno.serve(async (req: Request) => {
     try {
       const result = await routeToolExecution(userClient, body.tool, body.input, body.brand_id ?? null, server);
       const latency = Date.now() - startTime;
+      // Apply scope-aware PII redaction to the response payload.
+      const redactionsCounter = { n: 0 };
+      const safeResult = redactDeep(result, callerScopes, redactionsCounter);
       await updateExecution(serviceClient, execId, {
         status: "success",
         output_redacted: redactPII(result),
         latency_ms: latency,
         completed_at: new Date().toISOString(),
+        metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes },
       });
-      return json({ status: "success", execution_id: execId, result, latency_ms: latency });
+      return json({ status: "success", execution_id: execId, result: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
     } catch (err) {
       const latency = Date.now() - startTime;
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -602,14 +700,17 @@ Deno.serve(async (req: Request) => {
       }
 
       const latency = Date.now() - startTime;
+      const redactionsCounter = { n: 0 };
+      const safeResult = redactDeep(result, callerScopes, redactionsCounter);
       await updateExecution(serviceClient, execId, {
         status: "success",
         output_redacted: { type: "resource", record_count: Array.isArray(result) ? result.length : 1 },
         latency_ms: latency,
         completed_at: new Date().toISOString(),
+        metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes },
       });
 
-      return json({ status: "success", execution_id: execId, data: result, latency_ms: latency });
+      return json({ status: "success", execution_id: execId, data: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
     } catch (err) {
       const latency = Date.now() - startTime;
       const errMsg = err instanceof Error ? err.message : String(err);
