@@ -799,6 +799,7 @@ Deno.serve(async (req) => {
 
   logRequest(supabase, {
     request_id: requestId,
+    trace_id: traceId,
     token_id: ctx?.token_id ?? null,
     user_id: ctx?.user_id ?? null,
     brand_id: ctx?.brand_id ?? null,
@@ -813,12 +814,37 @@ Deno.serve(async (req) => {
     user_agent: req.headers.get("user-agent"),
   });
 
+  // Emit OTel root span for this MCP request
+  recordSpan({
+    trace_id: traceId,
+    span_id: spanId,
+    parent_span_id: parentSpanId,
+    service_name: SERVICE_NAME,
+    operation_name: `mcp.${body.method}`,
+    started_at: startedAtIso,
+    duration_ms: Date.now() - startedAt,
+    status_code: status >= 500 ? "error" : status >= 400 ? "error" : "ok",
+    http_status: status,
+    error_message: response.error?.message?.slice(0, 500) ?? undefined,
+    attributes: {
+      "mcp.method": body.method,
+      "mcp.tool_name": toolName ?? undefined,
+      "mcp.error_code": errorCode ?? undefined,
+      "mcp.request_id": requestId,
+      "mcp.token_id": ctx?.token_id ?? undefined,
+      "mcp.user_id": ctx?.user_id ?? undefined,
+      "mcp.brand_id": ctx?.brand_id ?? undefined,
+    },
+  });
+
   return new Response(payload, {
     status,
     headers: {
       ...corsHeaders,
       "Content-Type": "application/json",
       "x-request-id": requestId,
+      "traceparent": traceparentOut,
+      "x-trace-id": traceId,
     },
   });
 });
