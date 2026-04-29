@@ -18,7 +18,8 @@
 | `VITE_SUPABASE_URL` | both | Used by lead-ingest + MCP-server tests |
 | `PW_BASE_URL` | both | Preview URL (skip if local) |
 | `DATABASE_URL` | gate only | For seeding fixtures |
-| `SLACK_WEBHOOK_URL` | revenue-critical only | Optional — alerts on scheduled failures |
+
+> **No external alerting integrations.** Failures surface via the GitHub run summary and (for SLO burn rates at runtime) via in-app notifications to admins on the System Brand.
 
 ## Local reproduction
 
