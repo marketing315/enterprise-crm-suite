@@ -91,21 +91,28 @@ export default function AppointmentsOpsBoard() {
     dateTo: next48hTo,
   });
   const atRiskList = useMemo(
-    () =>
-      (atRiskData?.appointments ?? [])
-        .filter((a) => (a.status as string) === "scheduled" || (a.status as string) === "draft")
-        .slice(0, 8),
-    [atRiskData]
+    () => {
+      const base = (atRiskData?.appointments ?? [])
+        .filter((a) => (a.status as string) === "scheduled" || (a.status as string) === "draft");
+      const filtered = applyAppointmentFilter(base, activeFilter, { currentUserId: user?.id });
+      return filtered.slice(0, 8);
+    },
+    [atRiskData, activeFilter, user?.id]
   );
 
-  // Dataset completo del periodo per export CSV
+  // Dataset completo del periodo per export CSV (filtri salvati applicati)
   const { data: periodData, isFetching: isExportLoading } = useAppointments({
     dateFrom,
     dateTo,
   });
 
+  const filteredPeriod = useMemo(
+    () => applyAppointmentFilter(periodData?.appointments ?? [], activeFilter, { currentUserId: user?.id }),
+    [periodData, activeFilter, user?.id]
+  );
+
   const handleExport = () => {
-    const list = periodData?.appointments ?? [];
+    const list = filteredPeriod;
     if (list.length === 0) {
       toast.info("Nessun appuntamento da esportare nel periodo selezionato");
       return;
