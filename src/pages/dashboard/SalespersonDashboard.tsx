@@ -249,7 +249,7 @@ export default function SalespersonDashboard() {
       value: `${(apptStats?.noShowRate ?? 0).toFixed(0)}%`,
       subtitle: `Ultimi 30gg (${apptStats?.closedSample ?? 0})`,
       icon: TrendingDown,
-      variant: (apptStats?.noShowRate ?? 0) > 15 ? 'danger' : (apptStats?.noShowRate ?? 0) > 8 ? 'warning' : 'success',
+      variant: (apptStats?.noShowRate ?? 0) > 15 ? 'destructive' : (apptStats?.noShowRate ?? 0) > 8 ? 'warning' : 'success',
     },
     {
       title: 'Follow-up pendenti',
