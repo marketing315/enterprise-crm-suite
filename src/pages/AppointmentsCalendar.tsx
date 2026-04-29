@@ -13,11 +13,12 @@ import {
   startOfDay,
 } from "date-fns";
 import { it } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List, Users, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List, Users, X, Download } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAppointmentConflict } from "@/features/appointments/useAppointmentConflict";
 import { BulkReassignDialog } from "@/features/appointments/BulkReassignDialog";
+import { exportAppointmentsCsv } from "@/features/appointments/exportAppointmentsCsv";
 import type { AppointmentWithRelations } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
