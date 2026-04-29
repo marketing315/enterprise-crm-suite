@@ -404,6 +404,7 @@ async function handleToolsCall(
         "x-mcp-internal": INTERNAL_TOKEN,
         "x-mcp-on-behalf-user-id": ctx.user_id ?? "",
         "x-mcp-request-id": requestId,
+        "x-mcp-scopes": (ctx.scopes ?? []).join(","),
       },
       body: JSON.stringify({
         request_id: requestId,
