@@ -5984,10 +5984,12 @@ export type Database = {
       mcp_resources: {
         Row: {
           created_at: string
+          data_classification: string
           description: string | null
           enabled: boolean
           id: string
           name: string
+          required_scope: string
           schema_json: Json
           server_id: string
           updated_at: string
@@ -5995,10 +5997,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_classification?: string
           description?: string | null
           enabled?: boolean
           id?: string
           name: string
+          required_scope?: string
           schema_json?: Json
           server_id: string
           updated_at?: string
@@ -6006,10 +6010,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_classification?: string
           description?: string | null
           enabled?: boolean
           id?: string
           name?: string
+          required_scope?: string
           schema_json?: Json
           server_id?: string
           updated_at?: string
@@ -6129,13 +6135,16 @@ export type Database = {
         Row: {
           category: Database["public"]["Enums"]["mcp_tool_category"]
           created_at: string
+          data_classification: string
           description: string | null
           enabled: boolean
           id: string
           input_schema_json: Json
+          max_timeout_ms: number
           name: string
           output_schema_json: Json
           rate_limit_per_min: number | null
+          required_scope: string
           requires_approval: boolean
           server_id: string
           updated_at: string
@@ -6143,13 +6152,16 @@ export type Database = {
         Insert: {
           category?: Database["public"]["Enums"]["mcp_tool_category"]
           created_at?: string
+          data_classification?: string
           description?: string | null
           enabled?: boolean
           id?: string
           input_schema_json?: Json
+          max_timeout_ms?: number
           name: string
           output_schema_json?: Json
           rate_limit_per_min?: number | null
+          required_scope?: string
           requires_approval?: boolean
           server_id: string
           updated_at?: string
@@ -6157,13 +6169,16 @@ export type Database = {
         Update: {
           category?: Database["public"]["Enums"]["mcp_tool_category"]
           created_at?: string
+          data_classification?: string
           description?: string | null
           enabled?: boolean
           id?: string
           input_schema_json?: Json
+          max_timeout_ms?: number
           name?: string
           output_schema_json?: Json
           rate_limit_per_min?: number | null
+          required_scope?: string
           requires_approval?: boolean
           server_id?: string
           updated_at?: string
@@ -10422,6 +10437,31 @@ export type Database = {
         Returns: undefined
       }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
+      mcp_list_resources_for_scopes: {
+        Args: { p_scopes: string[] }
+        Returns: {
+          data_classification: string
+          description: string
+          name: string
+          required_scope: string
+          schema_json: Json
+          uri_template: string
+        }[]
+      }
+      mcp_list_tools_for_scopes: {
+        Args: { p_scopes: string[] }
+        Returns: {
+          category: Database["public"]["Enums"]["mcp_tool_category"]
+          data_classification: string
+          description: string
+          input_schema_json: Json
+          max_timeout_ms: number
+          name: string
+          rate_limit_per_min: number
+          required_scope: string
+          requires_approval: boolean
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
