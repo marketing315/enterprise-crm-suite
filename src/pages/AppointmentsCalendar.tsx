@@ -19,6 +19,9 @@ import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAppointmentConflict } from "@/features/appointments/useAppointmentConflict";
 import { BulkReassignDialog } from "@/features/appointments/BulkReassignDialog";
 import { exportAppointmentsCsv } from "@/features/appointments/exportAppointmentsCsv";
+import { SavedFiltersBar } from "@/features/appointments/SavedFiltersBar";
+import { applyAppointmentFilter, type AppointmentFilter } from "@/features/appointments/savedFilters";
+import { useAuth } from "@/contexts/AuthContext";
 import type { AppointmentWithRelations } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,12 +56,15 @@ interface DraggedAppointment {
 export default function AppointmentsCalendar() {
   const navigate = useNavigate();
   const { currentBrand } = useBrand();
+  const { user } = useAuth();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<AppointmentFilter | undefined>();
+  const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
   const dragRef = useRef<DraggedAppointment | null>(null);
   const [pendingMove, setPendingMove] = useState<{
     appt: DraggedAppointment;
