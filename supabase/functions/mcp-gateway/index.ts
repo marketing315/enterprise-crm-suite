@@ -803,7 +803,16 @@ Deno.serve(async (req: Request) => {
         output_redacted: { type: "resource", record_count: Array.isArray(result) ? result.length : 1 },
         latency_ms: latency,
         completed_at: new Date().toISOString(),
-        metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes },
+        metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes, trace_id: traceId },
+      });
+
+      emitSpan("gateway.fetch-resource", 200, {
+        "mcp.uri": body.uri,
+        "mcp.execution_id": execId,
+        "mcp.brand_id": body.brand_id ?? null,
+        "mcp.actor_id": internalUserId,
+        "mcp.redactions_count": redactionsCounter.n,
+        "mcp.record_count": Array.isArray(result) ? result.length : 1,
       });
 
       return tjson({ status: "success", execution_id: execId, data: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
@@ -816,7 +825,11 @@ Deno.serve(async (req: Request) => {
         error_message: errMsg.slice(0, 1000),
         latency_ms: latency,
         completed_at: new Date().toISOString(),
+        metadata: { trace_id: traceId },
       });
+      emitSpan("gateway.fetch-resource", 500, {
+        "mcp.uri": body.uri, "mcp.execution_id": execId,
+      }, errMsg);
       return tjson({ status: "failed", execution_id: execId, error: errMsg }, 500);
     }
   }
