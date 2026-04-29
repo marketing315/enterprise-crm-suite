@@ -700,14 +700,17 @@ Deno.serve(async (req: Request) => {
       }
 
       const latency = Date.now() - startTime;
+      const redactionsCounter = { n: 0 };
+      const safeResult = redactDeep(result, callerScopes, redactionsCounter);
       await updateExecution(serviceClient, execId, {
         status: "success",
         output_redacted: { type: "resource", record_count: Array.isArray(result) ? result.length : 1 },
         latency_ms: latency,
         completed_at: new Date().toISOString(),
+        metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes },
       });
 
-      return json({ status: "success", execution_id: execId, data: result, latency_ms: latency });
+      return json({ status: "success", execution_id: execId, data: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
     } catch (err) {
       const latency = Date.now() - startTime;
       const errMsg = err instanceof Error ? err.message : String(err);
