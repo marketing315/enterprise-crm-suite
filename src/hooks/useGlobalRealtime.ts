@@ -167,12 +167,34 @@ export function useGlobalRealtime() {
         if (isDisposed) return;
 
         if (status === 'SUBSCRIBED') {
+          const prev = realtimeStatusStore.snapshot().get(channelName);
+          const wasReconnecting =
+            (retryCounts[channelName] ?? 0) > 0 ||
+            prev?.status === 'reconnecting' ||
+            prev?.status === 'error';
+
           retryCounts[channelName] = 0;
           realtimeStatusStore.set(channelName, {
             status: 'connected',
             retryCount: 0,
             lastError: undefined,
           });
+
+          // RECOVERY: events emitted while the WS was down are NOT replayed by
+          // Supabase Realtime. On reconnect, force-invalidate every query mapped
+          // to the tables of this channel so the UI catches up immediately
+          // (e.g. a lead arriving during a JWT refresh window).
+          if (wasReconnecting) {
+            tables.forEach((table) => {
+              const entries = TABLE_QUERY_MAP[table];
+              entries?.forEach((entry) => {
+                queryClient.invalidateQueries({
+                  queryKey: entry.key,
+                  exact: entry.exact ?? false,
+                });
+              });
+            });
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           const attempt = (retryCounts[channelName] ?? 0) + 1;
           retryCounts[channelName] = attempt;
