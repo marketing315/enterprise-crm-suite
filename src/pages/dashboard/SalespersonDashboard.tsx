@@ -271,6 +271,8 @@ export default function SalespersonDashboard() {
         ['salesperson-my-deals'],
         ['salesperson-sales-month'],
         ['salesperson-appointments-today'],
+        ['salesperson-appt-stats'],
+        ['salesperson-upcoming-appts'],
         ['my-action-suggestions'],
       ]}
     >
