@@ -403,6 +403,7 @@ async function handleToolsCall(
   ctx: AuthCtx,
   supabase: any,
   requestId: string,
+  traceparent: string,
 ): Promise<{ res: JsonRpcRes; toolName: string | null; errorCode: string | null }> {
   const params = (req.params ?? {}) as {
     name?: string;
