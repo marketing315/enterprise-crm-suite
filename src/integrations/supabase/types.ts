@@ -5688,6 +5688,7 @@ export type Database = {
           kind: string
           last_used_at: string | null
           name: string
+          rate_limit_per_min: number
           revoked_at: string | null
           scopes: string[]
           token_hash: string
@@ -5703,6 +5704,7 @@ export type Database = {
           kind?: string
           last_used_at?: string | null
           name: string
+          rate_limit_per_min?: number
           revoked_at?: string | null
           scopes?: string[]
           token_hash: string
@@ -5718,6 +5720,7 @@ export type Database = {
           kind?: string
           last_used_at?: string | null
           name?: string
+          rate_limit_per_min?: number
           revoked_at?: string | null
           scopes?: string[]
           token_hash?: string
@@ -10437,6 +10440,31 @@ export type Database = {
         Returns: undefined
       }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
+      mcp_active_tokens: {
+        Args: never
+        Returns: {
+          avg_latency_ms: number
+          created_at: string
+          errors_24h: number
+          expires_at: string
+          id: string
+          kind: string
+          last_used_at: string
+          name: string
+          rate_limit_per_min: number
+          requests_24h: number
+          scopes: string[]
+          user_id: string
+        }[]
+      }
+      mcp_check_rate_limit: {
+        Args: { p_token_id: string }
+        Returns: {
+          allowed: boolean
+          max_per_min: number
+          used: number
+        }[]
+      }
       mcp_list_resources_for_scopes: {
         Args: { p_scopes: string[] }
         Returns: {
@@ -10461,6 +10489,11 @@ export type Database = {
           required_scope: string
           requires_approval: boolean
         }[]
+      }
+      mcp_server_kpi: { Args: { p_window_hours?: number }; Returns: Json }
+      mcp_toggle_server_kill_switch: {
+        Args: { p_enabled: boolean }
+        Returns: boolean
       }
       move_to_dlq: {
         Args: {
