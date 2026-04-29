@@ -704,7 +704,8 @@ Deno.serve(async (req) => {
           { request_id: requestId, retry_after_seconds: 60 });
         const payload = JSON.stringify(res);
         logRequest(supabase, {
-          request_id: requestId, token_id: ctx.token_id, user_id: ctx.user_id,
+          request_id: requestId, trace_id: traceId,
+          token_id: ctx.token_id, user_id: ctx.user_id,
           brand_id: ctx.brand_id, method: body.method, tool_name: null,
           status_code: 429, error_code: "RATE_LIMIT",
           duration_ms: Date.now() - startedAt,
@@ -712,12 +713,25 @@ Deno.serve(async (req) => {
           client_ip: req.headers.get("x-forwarded-for"),
           user_agent: req.headers.get("user-agent"),
         });
+        recordSpan({
+          trace_id: traceId, span_id: spanId, parent_span_id: parentSpanId,
+          service_name: SERVICE_NAME, operation_name: `mcp.${body.method}`,
+          started_at: startedAtIso, duration_ms: Date.now() - startedAt,
+          status_code: "error", http_status: 429, error_message: "rate_limit_exceeded",
+          attributes: {
+            "mcp.method": body.method, "mcp.error_code": "RATE_LIMIT",
+            "mcp.token_id": ctx.token_id, "mcp.request_id": requestId,
+            "mcp.rate_limit_used": row.used, "mcp.rate_limit_max": row.max_per_min,
+          },
+        });
         return new Response(payload, {
           status: 429,
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
             "x-request-id": requestId,
+            "traceparent": traceparentOut,
+            "x-trace-id": traceId,
             "Retry-After": "60",
             "X-RateLimit-Limit": String(row.max_per_min),
             "X-RateLimit-Remaining": "0",
