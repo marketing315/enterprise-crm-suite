@@ -71,6 +71,45 @@ export function useMcpRequestLog(limit = 100) {
   });
 }
 
+export interface McpSloAlert {
+  id: string;
+  alert_type: string;
+  severity: "info" | "warning" | "critical";
+  window_start: string;
+  window_end: string;
+  metric_value: number | null;
+  threshold: number | null;
+  details: Record<string, unknown>;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  created_at: string;
+}
+
+export function useMcpSloAlerts(limit = 50) {
+  return useQuery({
+    queryKey: ["mcp-slo-alerts", limit],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("mcp_recent_alerts", { p_limit: limit });
+      if (error) throw error;
+      return (data ?? []) as McpSloAlert[];
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useAcknowledgeMcpAlert() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (alertId: string) => {
+      const { data, error } = await supabase.rpc("mcp_acknowledge_alert", { p_alert_id: alertId });
+      if (error) throw error;
+      return data as boolean;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["mcp-slo-alerts"] }),
+  });
+}
+
 export function useToggleMcpKillSwitch() {
   const qc = useQueryClient();
   return useMutation({
