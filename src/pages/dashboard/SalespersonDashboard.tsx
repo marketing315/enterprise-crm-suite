@@ -240,13 +240,27 @@ export default function SalespersonDashboard() {
     {
       title: 'Appuntamenti oggi',
       value: appointmentsToday,
-      subtitle: 'Programmati',
+      subtitle: `${apptStats?.weekCount ?? 0} questa settimana`,
       icon: Calendar,
       variant: 'default',
     },
+    {
+      title: 'No-show rate',
+      value: `${(apptStats?.noShowRate ?? 0).toFixed(0)}%`,
+      subtitle: `Ultimi 30gg (${apptStats?.closedSample ?? 0})`,
+      icon: TrendingDown,
+      variant: (apptStats?.noShowRate ?? 0) > 15 ? 'danger' : (apptStats?.noShowRate ?? 0) > 8 ? 'warning' : 'success',
+    },
+    {
+      title: 'Follow-up pendenti',
+      value: apptStats?.pendingFollowUp ?? 0,
+      subtitle: 'Azioni in scadenza',
+      icon: AlertTriangle,
+      variant: (apptStats?.pendingFollowUp ?? 0) > 0 ? 'warning' : 'default',
+    },
   ];
 
-  const isLoading = dealsLoading || salesLoading || apptLoading;
+  const isLoading = dealsLoading || salesLoading || apptLoading || apptStatsLoading;
 
   return (
     <DashboardShell
