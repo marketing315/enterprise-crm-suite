@@ -192,6 +192,8 @@ export default function AdminMcpDashboard() {
           </Card>
         </TabsContent>
 
+        {/* TOP TOOLS */}
+        <TabsContent value="tools">
           <Card>
             <CardHeader>
               <CardTitle>Tool più chiamati</CardTitle>
