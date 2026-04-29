@@ -122,6 +122,12 @@ export default function AdminMcpDashboard() {
           <TabsTrigger value="errors" className="gap-1.5"><AlertTriangle className="h-4 w-4" /> Errori</TabsTrigger>
           <TabsTrigger value="tokens" className="gap-1.5"><Users className="h-4 w-4" /> Token</TabsTrigger>
           <TabsTrigger value="log" className="gap-1.5"><BarChart3 className="h-4 w-4" /> Request log</TabsTrigger>
+          <TabsTrigger value="subscriptions" className="gap-1.5">
+            <Radio className="h-4 w-4" /> Subscriptions
+            {(subsKpi?.active_subscriptions ?? 0) > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{subsKpi?.active_subscriptions}</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* SLO ALERTS */}
