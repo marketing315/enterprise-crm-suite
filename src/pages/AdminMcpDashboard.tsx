@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Activity, AlertTriangle, ShieldOff, Zap, Clock, Users, KeyRound, BarChart3 } from "lucide-react";
+import { Activity, AlertTriangle, ShieldOff, Zap, Clock, Users, KeyRound, BarChart3, Radio, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import {
@@ -16,6 +16,9 @@ import {
   useToggleMcpKillSwitch,
   useMcpSloAlerts,
   useAcknowledgeMcpAlert,
+  useMcpSubscriptions,
+  useMcpRecentChanges,
+  useMcpSubscriptionsKpi,
 } from "@/hooks/useMcpServerKpi";
 import { toast } from "@/hooks/use-toast";
 
@@ -25,6 +28,9 @@ export default function AdminMcpDashboard() {
   const { data: tokens = [], isLoading: tokensLoading } = useMcpActiveTokens();
   const { data: logs = [], isLoading: logsLoading } = useMcpRequestLog(100);
   const { data: alerts = [], isLoading: alertsLoading } = useMcpSloAlerts(50);
+  const { data: subscriptions = [], isLoading: subsLoading } = useMcpSubscriptions();
+  const { data: recentChanges = [], isLoading: changesLoading } = useMcpRecentChanges(50);
+  const { data: subsKpi, isLoading: subsKpiLoading } = useMcpSubscriptionsKpi();
   const ackAlert = useAcknowledgeMcpAlert();
   const toggleKill = useToggleMcpKillSwitch();
   const openAlerts = alerts.filter((a) => !a.acknowledged_at);
@@ -116,6 +122,12 @@ export default function AdminMcpDashboard() {
           <TabsTrigger value="errors" className="gap-1.5"><AlertTriangle className="h-4 w-4" /> Errori</TabsTrigger>
           <TabsTrigger value="tokens" className="gap-1.5"><Users className="h-4 w-4" /> Token</TabsTrigger>
           <TabsTrigger value="log" className="gap-1.5"><BarChart3 className="h-4 w-4" /> Request log</TabsTrigger>
+          <TabsTrigger value="subscriptions" className="gap-1.5">
+            <Radio className="h-4 w-4" /> Subscriptions
+            {(subsKpi?.active_subscriptions ?? 0) > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{subsKpi?.active_subscriptions}</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* SLO ALERTS */}
@@ -352,6 +364,156 @@ export default function AdminMcpDashboard() {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* SUBSCRIPTIONS */}
+        <TabsContent value="subscriptions" className="space-y-4">
+          {/* KPI cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard
+              icon={<Radio className="h-3.5 w-3.5" />}
+              label="Subscription attive"
+              value={subsKpi?.active_subscriptions ?? 0}
+              loading={subsKpiLoading}
+            />
+            <KpiCard
+              icon={<Users className="h-3.5 w-3.5" />}
+              label="Token sottoscritti"
+              value={subsKpi?.unique_tokens ?? 0}
+              loading={subsKpiLoading}
+            />
+            <KpiCard
+              icon={<Bell className="h-3.5 w-3.5" />}
+              label="Eventi 24h"
+              value={subsKpi?.changes_24h ?? 0}
+              loading={subsKpiLoading}
+            />
+            <KpiCard
+              icon={<Activity className="h-3.5 w-3.5" />}
+              label="Tipi risorsa"
+              value={subsKpi?.by_resource_type.length ?? 0}
+              loading={subsKpiLoading}
+            />
+          </div>
+
+          {/* By resource type */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Per tipo di risorsa</CardTitle>
+              <CardDescription>Distribuzione delle sottoscrizioni e cambiamenti per tipo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {subsKpiLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : (subsKpi?.by_resource_type.length ?? 0) === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">Nessuna sottoscrizione attiva</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo risorsa</TableHead>
+                      <TableHead className="text-right">Subscription</TableHead>
+                      <TableHead className="text-right">Eventi 24h</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {subsKpi!.by_resource_type.map((r) => (
+                      <TableRow key={r.resource_type}>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono text-xs">crm://{r.resource_type}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{r.subs}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{r.changes_24h}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Active subscriptions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Subscription attive</CardTitle>
+              <CardDescription>Token sottoscritti a risorse — push notification via long-poll</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {subsLoading ? (
+                <Skeleton className="h-32 w-full" />
+              ) : subscriptions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Nessuna sottoscrizione. I client possono iscriversi via <code className="text-xs">resources/subscribe</code>.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Token</TableHead>
+                      <TableHead>URI</TableHead>
+                      <TableHead>Creata</TableHead>
+                      <TableHead>Ultima notifica</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {subscriptions.map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-medium">{s.token_name}</TableCell>
+                        <TableCell><code className="text-xs">{s.uri}</code></TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {format(new Date(s.created_at), "d MMM HH:mm", { locale: it })}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {s.last_notified_at
+                            ? format(new Date(s.last_notified_at), "d MMM HH:mm", { locale: it })
+                            : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent changes feed */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Feed eventi recenti</CardTitle>
+              <CardDescription>Ultimi cambiamenti rilevati sulle risorse CRM (TTL 7 giorni)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {changesLoading ? (
+                <Skeleton className="h-32 w-full" />
+              ) : recentChanges.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Nessun evento registrato</p>
+              ) : (
+                <div className="space-y-1.5 max-h-96 overflow-y-auto">
+                  {recentChanges.map((c, i) => (
+                    <div
+                      key={`${c.uri}-${c.occurred_at}-${i}`}
+                      className="flex items-center gap-3 rounded-md border bg-muted/20 px-3 py-2 text-xs"
+                    >
+                      <Badge
+                        variant={
+                          c.change_type === "created" ? "default"
+                          : c.change_type === "deleted" ? "destructive"
+                          : "secondary"
+                        }
+                        className="text-[10px] uppercase"
+                      >
+                        {c.change_type}
+                      </Badge>
+                      <code className="flex-1 truncate">{c.uri}</code>
+                      <span className="text-muted-foreground tabular-nums">
+                        {format(new Date(c.occurred_at), "d MMM HH:mm:ss", { locale: it })}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
