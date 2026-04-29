@@ -424,6 +424,17 @@ Deno.serve(async (req: Request) => {
   const internalSecret = Deno.env.get("INTERNAL_SERVICE_TOKEN") ?? "";
   const isInternalCall = !!internalSecret && internalHeader === internalSecret;
 
+  // Caller scopes drive PII redaction on tool/resource responses.
+  // - Internal calls (from mcp-server): scopes derived from the validated MCP token.
+  // - Direct user calls (UI control plane): grant full access ("*"); RLS still
+  //   enforces tenant isolation, and these are first-party authenticated users.
+  const callerScopes: string[] = isInternalCall
+    ? (req.headers.get("x-mcp-scopes") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : ["*"];
+
   let internalUserId: string;
   let uniqueRoles: string[];
   let userClient: any;
