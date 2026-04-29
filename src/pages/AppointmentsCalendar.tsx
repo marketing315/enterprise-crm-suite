@@ -116,7 +116,11 @@ export default function AppointmentsCalendar() {
     enabled: !!pendingMove,
   });
 
-  const appointments = data?.appointments ?? [];
+  const allAppointments = data?.appointments ?? [];
+  const appointments = useMemo(
+    () => applyAppointmentFilter(allAppointments, activeFilter, { currentUserId: user?.id }),
+    [allAppointments, activeFilter, user?.id]
+  );
 
   const handleDragStart = (e: React.DragEvent, apt: AppointmentWithRelations) => {
     const payload: DraggedAppointment = {
