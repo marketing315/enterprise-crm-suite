@@ -885,6 +885,15 @@ Deno.serve(async (req) => {
         errorCode = out.errorCode;
         break;
       }
+      case "resources/subscribe":
+        response = await handleResourcesSubscribe(body, ctx!, supabase);
+        break;
+      case "resources/unsubscribe":
+        response = await handleResourcesUnsubscribe(body, ctx!, supabase);
+        break;
+      case "notifications/poll":
+        response = await handleNotificationsPoll(body, ctx!, supabase);
+        break;
       case "notifications/initialized":
         return new Response(null, {
           status: 202,
