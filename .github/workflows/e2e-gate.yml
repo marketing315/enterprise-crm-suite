@@ -47,6 +47,9 @@ jobs:
       - name: Seed inbound webhook source
         run: psql "$DATABASE_URL" -f scripts/seed-e2e-inbound-source.sql
 
+      - name: Seed E2E snapshot RPC (deep tests)
+        run: psql "$DATABASE_URL" -f scripts/seed-e2e-snapshot-rpc.sql
+
       - name: Generate SSL certificate for mock receiver
         run: |
           mkdir -p scripts/certs
