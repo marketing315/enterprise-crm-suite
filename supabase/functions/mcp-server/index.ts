@@ -675,9 +675,14 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // GET = long-poll endpoint for resource notifications
+  if (req.method === "GET") {
+    return await handleLongPollGet(req);
+  }
+
   if (req.method !== "POST") {
     return new Response(
-      JSON.stringify({ error: "Use POST with JSON-RPC 2.0 payload" }),
+      JSON.stringify({ error: "Use POST with JSON-RPC 2.0 payload, or GET ?since=... for long-poll" }),
       { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
