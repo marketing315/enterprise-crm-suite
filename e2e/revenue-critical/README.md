@@ -12,6 +12,7 @@ If any of these break, the business loses money.
 | 3 | Appointment Lifecycle | `03-appointment-lifecycle.e2e.spec.ts` | No-show rate = revenue impact |
 | 4 | Sales Flow | `04-sales-flow.e2e.spec.ts` | Records revenue + margins |
 | 5 | MCP Server | `05-mcp-subscriptions.e2e.spec.ts` | External AI agent integrations |
+| 1d | Lead Ingestion (DEEP) | `01-lead-ingestion-deep.e2e.spec.ts` | Verifies DB persistence: contact + lead_event row appended, dedup on duplicate phone |
 
 ## Run
 
