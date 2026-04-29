@@ -467,6 +467,33 @@ Deno.serve(async (req: Request) => {
   const spanStartedAt = Date.now();
   const spanStartedAtIso = new Date(spanStartedAt).toISOString();
 
+  // Local helper: same as json() but always propagates trace headers.
+  const tjson = (body: unknown, status = 200) => json(body, status, traceHeaders);
+
+  // Emit a span for THIS gateway request when the handler concludes.
+  // Called explicitly at every terminal point in execute-tool/fetch-resource;
+  // for other endpoints the trace is still propagated via headers.
+  const emitSpan = (
+    operation: string,
+    httpStatus: number,
+    extra: Record<string, unknown> = {},
+    errorMessage?: string,
+  ) => {
+    recordSpan({
+      trace_id: traceId,
+      span_id: spanId,
+      parent_span_id: parentSpanId,
+      service_name: SERVICE_NAME,
+      operation_name: operation,
+      started_at: spanStartedAtIso,
+      duration_ms: Date.now() - spanStartedAt,
+      status_code: httpStatus >= 500 ? "error" : httpStatus >= 400 ? "error" : "ok",
+      http_status: httpStatus,
+      error_message: errorMessage?.slice(0, 500),
+      attributes: { "gateway.path": path, ...extra },
+    });
+  };
+
   // Service client for admin operations (audit, policy reads)
   const serviceClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
