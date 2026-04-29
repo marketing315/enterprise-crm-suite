@@ -15,14 +15,70 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const INTERNAL_TOKEN = Deno.env.get("INTERNAL_SERVICE_TOKEN")!;
+const SERVICE_NAME = "mcp-server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, mcp-session-id, accept",
+    "authorization, x-client-info, apikey, content-type, mcp-session-id, accept, traceparent, tracestate",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Expose-Headers": "mcp-session-id, x-request-id",
+  "Access-Control-Expose-Headers": "mcp-session-id, x-request-id, traceparent, x-trace-id",
 };
+
+// -------------------------------------------------------------
+// W3C Trace Context (OpenTelemetry-compatible) helpers
+//   traceparent: 00-<trace_id:32hex>-<span_id:16hex>-<flags:2hex>
+// We persist spans into trace_events via the trace-ingest function
+// (best-effort, fire-and-forget — never blocks the request).
+// -------------------------------------------------------------
+function randHex(bytes: number): string {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function newTraceId(): string { return randHex(16); }
+function newSpanId(): string { return randHex(8); }
+
+const TRACEPARENT_RE = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/i;
+function parseTraceparent(value: string | null): { traceId: string; parentSpanId: string } | null {
+  if (!value) return null;
+  const m = TRACEPARENT_RE.exec(value.trim());
+  if (!m) return null;
+  // reject all-zero ids
+  if (/^0+$/.test(m[1]) || /^0+$/.test(m[2])) return null;
+  return { traceId: m[1].toLowerCase(), parentSpanId: m[2].toLowerCase() };
+}
+function buildTraceparent(traceId: string, spanId: string): string {
+  return `00-${traceId}-${spanId}-01`;
+}
+
+type SpanRecord = {
+  trace_id: string;
+  span_id: string;
+  parent_span_id?: string;
+  service_name: string;
+  operation_name: string;
+  started_at: string;
+  duration_ms: number;
+  status_code?: "ok" | "error" | "timeout";
+  http_status?: number;
+  error_message?: string;
+  attributes?: Record<string, unknown>;
+};
+
+function recordSpan(span: SpanRecord) {
+  // Fire-and-forget; never await on the hot path.
+  if (!INTERNAL_TOKEN) return;
+  const url = `${SUPABASE_URL}/functions/v1/trace-ingest`;
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-token": INTERNAL_TOKEN,
+    },
+    body: JSON.stringify({ events: [span] }),
+  }).catch(() => {/* swallow — observability must never break runtime */});
+}
 
 const SERVER_INFO = { name: "ralph-crm-mcp", version: "1.0.0" };
 const PROTOCOL_VERSION = "2024-11-05";
