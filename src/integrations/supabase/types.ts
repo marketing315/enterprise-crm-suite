@@ -5940,6 +5940,7 @@ export type Database = {
           status_code: number
           token_id: string | null
           tool_name: string | null
+          trace_id: string | null
           user_agent: string | null
           user_id: string | null
         }
@@ -5957,6 +5958,7 @@ export type Database = {
           status_code: number
           token_id?: string | null
           tool_name?: string | null
+          trace_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -5974,6 +5976,7 @@ export type Database = {
           status_code?: number
           token_id?: string | null
           tool_name?: string | null
+          trace_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
