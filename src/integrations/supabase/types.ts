@@ -5678,6 +5678,69 @@ export type Database = {
           },
         ]
       }
+      mcp_access_tokens: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          kind: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          scopes: string[]
+          token_hash: string
+          token_prefix: string
+          user_id: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          kind?: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          scopes?: string[]
+          token_hash: string
+          token_prefix: string
+          user_id?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          kind?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          scopes?: string[]
+          token_hash?: string
+          token_prefix?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_access_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_access_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mcp_approvals: {
         Row: {
           approver_user_id: string | null
@@ -5855,6 +5918,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      mcp_request_log: {
+        Row: {
+          brand_id: string | null
+          client_ip: string | null
+          created_at: string
+          duration_ms: number
+          error_code: string | null
+          id: string
+          method: string
+          request_id: string
+          request_size: number | null
+          response_size: number | null
+          status_code: number
+          token_id: string | null
+          tool_name: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          client_ip?: string | null
+          created_at?: string
+          duration_ms?: number
+          error_code?: string | null
+          id?: string
+          method: string
+          request_id: string
+          request_size?: number | null
+          response_size?: number | null
+          status_code: number
+          token_id?: string | null
+          tool_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          client_ip?: string | null
+          created_at?: string
+          duration_ms?: number
+          error_code?: string | null
+          id?: string
+          method?: string
+          request_id?: string
+          request_size?: number | null
+          response_size?: number | null
+          status_code?: number
+          token_id?: string | null
+          tool_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_request_log_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_access_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mcp_resources: {
         Row: {
@@ -10168,6 +10293,20 @@ export type Database = {
         Args: { _thread_id: string; _user_id: string }
         Returns: boolean
       }
+      issue_mcp_token: {
+        Args: {
+          p_brand_id?: string
+          p_expires_at?: string
+          p_kind?: string
+          p_name: string
+          p_scopes?: string[]
+        }
+        Returns: {
+          prefix: string
+          token: string
+          token_id: string
+        }[]
+      }
       list_capi_events: {
         Args: {
           p_brand_ids: string[]
@@ -10395,6 +10534,7 @@ export type Database = {
           match_type: string
         }[]
       }
+      revoke_mcp_token: { Args: { p_token_id: string }; Returns: boolean }
       rotate_outbound_webhook_secret: {
         Args: { p_id: string; p_new_secret: string }
         Returns: string
@@ -10747,6 +10887,16 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      validate_mcp_token: {
+        Args: { p_raw_token: string }
+        Returns: {
+          brand_id: string
+          kind: string
+          scopes: string[]
+          token_id: string
+          user_id: string
+        }[]
       }
       webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
       webhook_timeseries_24h: {
