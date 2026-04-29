@@ -381,7 +381,7 @@ async function handleNotificationsPoll(
   });
 }
 
-
+function scopeAllows(scopes: string[], required: string): boolean {
   if (scopes.includes("*") || scopes.includes(required)) return true;
   return scopes.some((s) => {
     if (!s.endsWith("*")) return false;
