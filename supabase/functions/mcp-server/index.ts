@@ -466,6 +466,7 @@ async function handleToolsCall(
         "x-mcp-on-behalf-user-id": ctx.user_id ?? "",
         "x-mcp-request-id": requestId,
         "x-mcp-scopes": (ctx.scopes ?? []).join(","),
+        "traceparent": traceparent,
       },
       body: JSON.stringify({
         request_id: requestId,
