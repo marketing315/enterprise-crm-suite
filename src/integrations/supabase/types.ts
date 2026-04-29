@@ -6134,6 +6134,48 @@ export type Database = {
           },
         ]
       }
+      mcp_slo_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          details: Json
+          id: string
+          metric_value: number | null
+          severity: string
+          threshold: number | null
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          details?: Json
+          id?: string
+          metric_value?: number | null
+          severity?: string
+          threshold?: number | null
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          metric_value?: number | null
+          severity?: string
+          threshold?: number | null
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       mcp_tools: {
         Row: {
           category: Database["public"]["Enums"]["mcp_tool_category"]
@@ -10440,6 +10482,7 @@ export type Database = {
         Returns: undefined
       }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
+      mcp_acknowledge_alert: { Args: { p_alert_id: string }; Returns: boolean }
       mcp_active_tokens: {
         Args: never
         Returns: {
@@ -10463,6 +10506,13 @@ export type Database = {
           allowed: boolean
           max_per_min: number
           used: number
+        }[]
+      }
+      mcp_evaluate_slo_alerts: {
+        Args: never
+        Returns: {
+          alert_type: string
+          inserted: boolean
         }[]
       }
       mcp_list_resources_for_scopes: {
@@ -10489,6 +10539,28 @@ export type Database = {
           required_scope: string
           requires_approval: boolean
         }[]
+      }
+      mcp_recent_alerts: {
+        Args: { p_limit?: number }
+        Returns: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          details: Json
+          id: string
+          metric_value: number | null
+          severity: string
+          threshold: number | null
+          window_end: string
+          window_start: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mcp_slo_alerts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       mcp_server_kpi: { Args: { p_window_hours?: number }; Returns: Json }
       mcp_toggle_server_kill_switch: {

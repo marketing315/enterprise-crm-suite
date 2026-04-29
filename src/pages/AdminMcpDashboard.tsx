@@ -14,6 +14,8 @@ import {
   useMcpActiveTokens,
   useMcpRequestLog,
   useToggleMcpKillSwitch,
+  useMcpSloAlerts,
+  useAcknowledgeMcpAlert,
 } from "@/hooks/useMcpServerKpi";
 import { toast } from "@/hooks/use-toast";
 
@@ -22,7 +24,10 @@ export default function AdminMcpDashboard() {
   const { data: kpi, isLoading: kpiLoading } = useMcpServerKpi(window);
   const { data: tokens = [], isLoading: tokensLoading } = useMcpActiveTokens();
   const { data: logs = [], isLoading: logsLoading } = useMcpRequestLog(100);
+  const { data: alerts = [], isLoading: alertsLoading } = useMcpSloAlerts(50);
+  const ackAlert = useAcknowledgeMcpAlert();
   const toggleKill = useToggleMcpKillSwitch();
+  const openAlerts = alerts.filter((a) => !a.acknowledged_at);
 
   const handleKillSwitch = async (enabled: boolean) => {
     try {
@@ -99,13 +104,93 @@ export default function AdminMcpDashboard() {
         <KpiCard icon={<KeyRound className="h-4 w-4" />} label="Token attivi" value={kpi?.active_tokens ?? 0} loading={kpiLoading} />
       </div>
 
-      <Tabs defaultValue="tools" className="space-y-4">
+      <Tabs defaultValue="alerts" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="alerts" className="gap-1.5">
+            <AlertTriangle className="h-4 w-4" /> Alert SLO
+            {openAlerts.length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-[10px]">{openAlerts.length}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="tools" className="gap-1.5"><Activity className="h-4 w-4" /> Top tools</TabsTrigger>
           <TabsTrigger value="errors" className="gap-1.5"><AlertTriangle className="h-4 w-4" /> Errori</TabsTrigger>
           <TabsTrigger value="tokens" className="gap-1.5"><Users className="h-4 w-4" /> Token</TabsTrigger>
           <TabsTrigger value="log" className="gap-1.5"><BarChart3 className="h-4 w-4" /> Request log</TabsTrigger>
         </TabsList>
+
+        {/* SLO ALERTS */}
+        <TabsContent value="alerts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Alert SLO</CardTitle>
+              <CardDescription>
+                Valutati ogni 5 minuti su latenza p95, error rate, auth failure storm, rate-limit storm e kill-switch.
+                Soglie e runbook in <code className="text-xs">docs/mcp-server-runbook.md</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {alertsLoading ? <Skeleton className="h-40 w-full" /> : alerts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Nessun alert nelle ultime ore 🟢</p>
+              ) : (
+                <div className="space-y-2">
+                  {alerts.map((a) => {
+                    const severityVariant: "default" | "destructive" | "secondary" =
+                      a.severity === "critical" ? "destructive" : a.severity === "warning" ? "default" : "secondary";
+                    return (
+                      <div
+                        key={a.id}
+                        className={`flex items-start justify-between gap-4 rounded-md border p-3 ${
+                          a.acknowledged_at ? "opacity-60" : ""
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <Badge variant={severityVariant} className="uppercase text-[10px]">{a.severity}</Badge>
+                            <span className="font-mono text-xs">{a.alert_type}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(a.created_at), "dd/MM HH:mm", { locale: it })}
+                            </span>
+                            {a.acknowledged_at && (
+                              <Badge variant="outline" className="text-[10px]">acknowledged</Badge>
+                            )}
+                          </div>
+                          <div className="text-sm">
+                            Valore: <span className="font-mono">{a.metric_value ?? "—"}</span>
+                            {a.threshold !== null && (
+                              <> · Soglia: <span className="font-mono">{a.threshold}</span></>
+                            )}
+                          </div>
+                          {a.details && Object.keys(a.details).length > 0 && (
+                            <pre className="mt-1 text-xs text-muted-foreground bg-muted/50 rounded p-2 overflow-x-auto">
+                              {JSON.stringify(a.details, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                        {!a.acknowledged_at && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={ackAlert.isPending}
+                            onClick={async () => {
+                              try {
+                                await ackAlert.mutateAsync(a.id);
+                                toast({ title: "Alert riconosciuto" });
+                              } catch (e) {
+                                toast({ title: "Errore", description: (e as Error).message, variant: "destructive" });
+                              }
+                            }}
+                          >
+                            Ack
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* TOP TOOLS */}
         <TabsContent value="tools">
