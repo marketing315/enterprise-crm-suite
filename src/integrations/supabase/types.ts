@@ -9670,6 +9670,7 @@ export type Database = {
         }
         Returns: Json
       }
+      e2e_revenue_snapshot: { Args: { p_phone: string }; Returns: Json }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
