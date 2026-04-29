@@ -665,6 +665,7 @@ Deno.serve(async (req) => {
       const payload = JSON.stringify(res);
       logRequest(supabase, {
         request_id: requestId,
+        trace_id: traceId,
         token_id: null,
         user_id: null,
         brand_id: null,
@@ -678,9 +679,16 @@ Deno.serve(async (req) => {
         client_ip: req.headers.get("x-forwarded-for"),
         user_agent: req.headers.get("user-agent"),
       });
+      recordSpan({
+        trace_id: traceId, span_id: spanId, parent_span_id: parentSpanId,
+        service_name: SERVICE_NAME, operation_name: `mcp.${body.method}`,
+        started_at: startedAtIso, duration_ms: Date.now() - startedAt,
+        status_code: "error", http_status: 401, error_message: "auth_failed",
+        attributes: { "mcp.method": body.method, "mcp.error_code": "AUTH", "mcp.request_id": requestId },
+      });
       return new Response(payload, {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId },
       });
     }
 
