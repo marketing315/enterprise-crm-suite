@@ -628,7 +628,8 @@ Deno.serve(async (req) => {
         { request_id: requestId });
       const payload = JSON.stringify(res);
       logRequest(supabase, {
-        request_id: requestId, token_id: null, user_id: null, brand_id: null,
+        request_id: requestId, trace_id: traceId,
+        token_id: null, user_id: null, brand_id: null,
         method: body.method, tool_name: null, status_code: 503,
         error_code: "KILL_SWITCH",
         duration_ms: Date.now() - startedAt,
@@ -636,9 +637,17 @@ Deno.serve(async (req) => {
         client_ip: req.headers.get("x-forwarded-for"),
         user_agent: req.headers.get("user-agent"),
       });
+      recordSpan({
+        trace_id: traceId, span_id: spanId, parent_span_id: parentSpanId,
+        service_name: SERVICE_NAME, operation_name: `mcp.${body.method}`,
+        started_at: startedAtIso, duration_ms: Date.now() - startedAt,
+        status_code: "error", http_status: 503,
+        error_message: "kill_switch_active",
+        attributes: { "mcp.method": body.method, "mcp.error_code": "KILL_SWITCH", "mcp.request_id": requestId },
+      });
       return new Response(payload, {
         status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId },
       });
     }
   }
