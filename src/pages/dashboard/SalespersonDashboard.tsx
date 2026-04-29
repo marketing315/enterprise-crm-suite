@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, format, subDays } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { DashboardKpiGrid, KpiItem } from '@/components/dashboard/DashboardKpiGrid';
-import { Target, Kanban, Flame, Calendar, Euro, Lightbulb, X } from 'lucide-react';
+import { Target, Kanban, Flame, Calendar, Euro, Lightbulb, X, CalendarClock, AlertTriangle, TrendingDown } from 'lucide-react';
+import { RiskScoreBadge } from '@/features/appointments/RiskScoreBadge';
+import { getStatusMeta } from '@/features/appointments/taxonomy';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
