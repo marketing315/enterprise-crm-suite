@@ -123,3 +123,111 @@ export function useToggleMcpKillSwitch() {
     },
   });
 }
+
+// ---------------------------------------------------------------
+// Subscriptions
+// ---------------------------------------------------------------
+export interface McpSubscription {
+  id: string;
+  token_id: string;
+  token_name: string;
+  uri: string;
+  resource_type: string | null;
+  created_at: string;
+  last_notified_at: string | null;
+}
+
+export interface McpResourceChange {
+  uri: string;
+  resource_type: string;
+  change_type: string;
+  occurred_at: string;
+}
+
+export interface McpSubscriptionsKpi {
+  active_subscriptions: number;
+  unique_tokens: number;
+  changes_24h: number;
+  by_resource_type: Array<{ resource_type: string; subs: number; changes_24h: number }>;
+}
+
+export function useMcpSubscriptions() {
+  return useQuery({
+    queryKey: ["mcp-subscriptions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mcp_subscriptions")
+        .select("id, token_id, uri, resource_type, created_at, last_notified_at, mcp_access_tokens(name)")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        token_id: r.token_id,
+        token_name: r.mcp_access_tokens?.name ?? "—",
+        uri: r.uri,
+        resource_type: r.resource_type,
+        created_at: r.created_at,
+        last_notified_at: r.last_notified_at,
+      })) as McpSubscription[];
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useMcpRecentChanges(limit = 50) {
+  return useQuery({
+    queryKey: ["mcp-resource-changes", limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mcp_resource_changes")
+        .select("uri, resource_type, change_type, occurred_at")
+        .order("occurred_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []) as McpResourceChange[];
+    },
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMcpSubscriptionsKpi() {
+  return useQuery({
+    queryKey: ["mcp-subscriptions-kpi"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const [{ data: subs }, { data: changes }] = await Promise.all([
+        supabase.from("mcp_subscriptions").select("token_id, resource_type").limit(1000),
+        supabase
+          .from("mcp_resource_changes")
+          .select("resource_type")
+          .gte("occurred_at", since)
+          .limit(1000),
+      ]);
+      const subsArr = subs ?? [];
+      const changesArr = changes ?? [];
+      const byType = new Map<string, { subs: number; changes_24h: number }>();
+      for (const s of subsArr) {
+        const k = s.resource_type ?? "unknown";
+        if (!byType.has(k)) byType.set(k, { subs: 0, changes_24h: 0 });
+        byType.get(k)!.subs += 1;
+      }
+      for (const c of changesArr) {
+        const k = c.resource_type ?? "unknown";
+        if (!byType.has(k)) byType.set(k, { subs: 0, changes_24h: 0 });
+        byType.get(k)!.changes_24h += 1;
+      }
+      return {
+        active_subscriptions: subsArr.length,
+        unique_tokens: new Set(subsArr.map((s: any) => s.token_id)).size,
+        changes_24h: changesArr.length,
+        by_resource_type: Array.from(byType.entries())
+          .map(([resource_type, v]) => ({ resource_type, ...v }))
+          .sort((a, b) => b.subs - a.subs),
+      } as McpSubscriptionsKpi;
+    },
+    staleTime: 30_000,
+  });
+}
+
