@@ -265,6 +265,24 @@ export default function AppointmentsCalendar() {
         </div>
       </div>
 
+      {/* Saved filters bar */}
+      <div className="flex items-center justify-between gap-2">
+        <SavedFiltersBar
+          scope="calendar"
+          activeFilter={activeFilter}
+          activeFilterId={activeFilterId}
+          onChange={(id, f) => {
+            setActiveFilterId(id);
+            setActiveFilter(f);
+          }}
+        />
+        {activeFilter && Object.keys(activeFilter).length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {appointments.length} di {allAppointments.length} mostrati
+          </span>
+        )}
+      </div>
+
       {/* Calendar grid */}
       <div className="flex-1 overflow-auto rounded-xl border bg-card shadow-sm">
         {isLoading ? (
