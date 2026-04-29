@@ -575,6 +575,18 @@ Deno.serve(async (req) => {
 
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
+  const startedAtIso = new Date(startedAt).toISOString();
+
+  // ----- OpenTelemetry trace context (W3C) -----
+  // Honour incoming traceparent if any (so external clients/IDEs that
+  // already trace can stitch the MCP call into their trace), otherwise
+  // start a fresh trace. The span_id is always fresh (this is OUR span).
+  const incoming = parseTraceparent(req.headers.get("traceparent"));
+  const traceId = incoming?.traceId ?? newTraceId();
+  const spanId = newSpanId();
+  const parentSpanId = incoming?.parentSpanId;
+  const traceparentOut = buildTraceparent(traceId, spanId);
+
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false },
   });
