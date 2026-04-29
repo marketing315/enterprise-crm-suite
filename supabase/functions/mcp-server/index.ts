@@ -275,7 +275,113 @@ async function handleResourcesList(
   });
 }
 
-function scopeAllows(scopes: string[], required: string): boolean {
+// -------------------------------------------------------------
+// Subscriptions / Notifications
+// -------------------------------------------------------------
+const URI_RE = /^crm:\/\/[a-z][a-z0-9_-]*(\/[a-zA-Z0-9_*-]+)?$/;
+
+async function handleResourcesSubscribe(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const params = (req.params ?? {}) as { uri?: string };
+  const uri = params.uri;
+  if (!uri || typeof uri !== "string" || !URI_RE.test(uri)) {
+    return rpcErr(req.id, RPC_ERR.INVALID_PARAMS, "invalid or missing uri (expected crm://<type>[/<id>|*])");
+  }
+  // Authorize: scope must allow the resource type
+  const resourceType = uri.replace("crm://", "").split("/")[0];
+  const requiredScope = `crm.read.${resourceType}`;
+  if (!scopeAllows(ctx.scopes, requiredScope) && !scopeAllows(ctx.scopes, "crm.read")) {
+    return rpcErr(req.id, RPC_ERR.AUTH, `scope not allowed for ${uri}`);
+  }
+  const { error } = await supabase.rpc("mcp_subscribe_resource", {
+    p_token_id: ctx.token_id,
+    p_uri: uri,
+  });
+  if (error) {
+    return rpcErr(req.id, RPC_ERR.INTERNAL_ERROR, `subscribe error: ${error.message}`);
+  }
+  return rpcOk(req.id, { subscribed: true, uri });
+}
+
+async function handleResourcesUnsubscribe(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const params = (req.params ?? {}) as { uri?: string };
+  const uri = params.uri;
+  if (!uri || typeof uri !== "string") {
+    return rpcErr(req.id, RPC_ERR.INVALID_PARAMS, "missing uri");
+  }
+  const { data, error } = await supabase.rpc("mcp_unsubscribe_resource", {
+    p_token_id: ctx.token_id,
+    p_uri: uri,
+  });
+  if (error) {
+    return rpcErr(req.id, RPC_ERR.INTERNAL_ERROR, `unsubscribe error: ${error.message}`);
+  }
+  return rpcOk(req.id, { unsubscribed: !!data, uri });
+}
+
+async function pollChangesForToken(
+  supabase: any,
+  tokenId: string,
+  since: string | null,
+  limit: number,
+): Promise<Array<{ uri: string; resourceType: string; changeType: string; occurredAt: string }>> {
+  const { data, error } = await supabase.rpc("mcp_poll_changes", {
+    p_token_id: tokenId,
+    p_since: since,
+    p_limit: limit,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: any) => ({
+    uri: r.uri,
+    resourceType: r.resource_type,
+    changeType: r.change_type,
+    occurredAt: r.occurred_at,
+  }));
+}
+
+async function handleNotificationsPoll(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const params = (req.params ?? {}) as { since?: string; wait_ms?: number; limit?: number };
+  const limit = Math.min(Math.max(Number(params.limit) || 100, 1), 500);
+  const waitMs = Math.min(Math.max(Number(params.wait_ms) || 0, 0), 25_000);
+  const since = typeof params.since === "string" ? params.since : null;
+
+  const deadline = Date.now() + waitMs;
+  let changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+
+  // Long-poll loop: 1s tick until deadline or first non-empty result
+  while (changes.length === 0 && Date.now() < deadline) {
+    const sleep = Math.min(1000, deadline - Date.now());
+    if (sleep <= 0) break;
+    await new Promise((r) => setTimeout(r, sleep));
+    changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+  }
+
+  return rpcOk(req.id, {
+    notifications: changes.map((c) => ({
+      method: "notifications/resources/updated",
+      params: {
+        uri: c.uri,
+        resourceType: c.resourceType,
+        changeType: c.changeType,
+        occurredAt: c.occurredAt,
+      },
+    })),
+    serverTime: new Date().toISOString(),
+  });
+}
+
+
   if (scopes.includes("*") || scopes.includes(required)) return true;
   return scopes.some((s) => {
     if (!s.endsWith("*")) return false;
