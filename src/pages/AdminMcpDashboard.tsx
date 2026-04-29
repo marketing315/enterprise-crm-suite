@@ -24,7 +24,10 @@ export default function AdminMcpDashboard() {
   const { data: kpi, isLoading: kpiLoading } = useMcpServerKpi(window);
   const { data: tokens = [], isLoading: tokensLoading } = useMcpActiveTokens();
   const { data: logs = [], isLoading: logsLoading } = useMcpRequestLog(100);
+  const { data: alerts = [], isLoading: alertsLoading } = useMcpSloAlerts(50);
+  const ackAlert = useAcknowledgeMcpAlert();
   const toggleKill = useToggleMcpKillSwitch();
+  const openAlerts = alerts.filter((a) => !a.acknowledged_at);
 
   const handleKillSwitch = async (enabled: boolean) => {
     try {
