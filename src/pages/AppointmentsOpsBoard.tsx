@@ -154,6 +154,16 @@ export default function AppointmentsOpsBoard() {
           </Select>
           <Button
             variant="outline"
+            size="sm"
+            className="rounded-xl"
+            onClick={handleExport}
+            disabled={isExportLoading}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            CSV
+          </Button>
+          <Button
+            variant="outline"
             size="icon"
             className="rounded-xl"
             onClick={() => refetch()}
