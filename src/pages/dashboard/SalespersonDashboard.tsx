@@ -27,6 +27,10 @@ export default function SalespersonDashboard() {
   const todayEnd = endOfDay(today).toISOString();
   const monthStart = startOfMonth(today).toISOString();
   const monthEnd = endOfMonth(today).toISOString();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 }).toISOString();
+  const weekEnd = endOfWeek(today, { weekStartsOn: 1 }).toISOString();
+  const last30Start = startOfDay(subDays(today, 30)).toISOString();
+  const next7End = endOfDay(addDays(today, 7)).toISOString();
 
   // My open deals
   const { data: myDeals = [], isLoading: dealsLoading } = useQuery({
