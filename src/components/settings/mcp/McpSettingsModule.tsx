@@ -1,11 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Server, Wrench, Shield, Clock, Activity, FlaskConical } from "lucide-react";
+import { Server, Wrench, Shield, Clock, Activity, FlaskConical, Plug } from "lucide-react";
 import { McpServersTab } from "./McpServersTab";
 import { McpToolsTab } from "./McpToolsTab";
 import { McpPoliciesTab } from "./McpPoliciesTab";
 import { McpApprovalsTab } from "./McpApprovalsTab";
 import { McpObservabilityTab } from "./McpObservabilityTab";
 import { McpTestConsole } from "./McpTestConsole";
+import { McpConnectionsTab } from "./McpConnectionsTab";
 import { useMcpPendingApprovals } from "@/hooks/useMcpData";
 import { Badge } from "@/components/ui/badge";
 
@@ -40,6 +41,9 @@ export function McpSettingsModule() {
             <TabsTrigger value="test" className="gap-1.5 px-3 text-xs">
               <FlaskConical className="h-3.5 w-3.5" /> Test Console
             </TabsTrigger>
+            <TabsTrigger value="connections" className="gap-1.5 px-3 text-xs">
+              <Plug className="h-3.5 w-3.5" /> Connessioni
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -49,6 +53,7 @@ export function McpSettingsModule() {
         <TabsContent value="approvals"><McpApprovalsTab /></TabsContent>
         <TabsContent value="observability"><McpObservabilityTab /></TabsContent>
         <TabsContent value="test"><McpTestConsole /></TabsContent>
+        <TabsContent value="connections"><McpConnectionsTab /></TabsContent>
       </Tabs>
     </div>
   );
