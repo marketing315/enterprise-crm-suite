@@ -9,10 +9,13 @@ import {
   Calendar as CalendarIcon,
   CheckCircle2,
   ClipboardList,
+  Download,
   RefreshCw,
   TrendingDown,
   Users,
 } from "lucide-react";
+import { toast } from "sonner";
+import { exportAppointmentsCsv } from "@/features/appointments/exportAppointmentsCsv";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointmentsOpsKpi } from "@/features/appointments/useAppointmentsOpsKpi";
 import { useAppointments } from "@/hooks/useAppointments";
