@@ -5990,6 +5990,36 @@ export type Database = {
           },
         ]
       }
+      mcp_resource_changes: {
+        Row: {
+          brand_id: string | null
+          change_type: string
+          id: number
+          occurred_at: string
+          resource_id: string | null
+          resource_type: string
+          uri: string
+        }
+        Insert: {
+          brand_id?: string | null
+          change_type: string
+          id?: number
+          occurred_at?: string
+          resource_id?: string | null
+          resource_type: string
+          uri: string
+        }
+        Update: {
+          brand_id?: string | null
+          change_type?: string
+          id?: number
+          occurred_at?: string
+          resource_id?: string | null
+          resource_type?: string
+          uri?: string
+        }
+        Relationships: []
+      }
       mcp_resources: {
         Row: {
           created_at: string
@@ -6181,6 +6211,41 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      mcp_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          last_notified_at: string | null
+          resource_type: string | null
+          token_id: string
+          uri: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_notified_at?: string | null
+          resource_type?: string | null
+          token_id: string
+          uri: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_notified_at?: string | null
+          resource_type?: string | null
+          token_id?: string
+          uri?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_subscriptions_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_access_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mcp_tools: {
         Row: {
@@ -10514,6 +10579,7 @@ export type Database = {
           used: number
         }[]
       }
+      mcp_cleanup_resource_changes: { Args: never; Returns: number }
       mcp_evaluate_slo_alerts: {
         Args: never
         Returns: {
@@ -10546,6 +10612,15 @@ export type Database = {
           requires_approval: boolean
         }[]
       }
+      mcp_poll_changes: {
+        Args: { p_limit?: number; p_since?: string; p_token_id: string }
+        Returns: {
+          change_type: string
+          occurred_at: string
+          resource_type: string
+          uri: string
+        }[]
+      }
       mcp_recent_alerts: {
         Args: { p_limit?: number }
         Returns: {
@@ -10569,8 +10644,16 @@ export type Database = {
         }
       }
       mcp_server_kpi: { Args: { p_window_hours?: number }; Returns: Json }
+      mcp_subscribe_resource: {
+        Args: { p_token_id: string; p_uri: string }
+        Returns: string
+      }
       mcp_toggle_server_kill_switch: {
         Args: { p_enabled: boolean }
+        Returns: boolean
+      }
+      mcp_unsubscribe_resource: {
+        Args: { p_token_id: string; p_uri: string }
         Returns: boolean
       }
       move_to_dlq: {

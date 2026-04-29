@@ -21,7 +21,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, mcp-session-id, accept, traceparent, tracestate",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Expose-Headers": "mcp-session-id, x-request-id, traceparent, x-trace-id",
 };
 
@@ -190,12 +190,15 @@ function handleInitialize(req: JsonRpcReq): JsonRpcRes {
     protocolVersion: params.protocolVersion ?? PROTOCOL_VERSION,
     capabilities: {
       tools: { listChanged: false },
-      resources: { listChanged: false, subscribe: false },
+      resources: { listChanged: false, subscribe: true },
       logging: {},
     },
     serverInfo: SERVER_INFO,
     instructions:
       "Ralph CRM MCP. Use tools/list and resources/list to discover capabilities. " +
+      "Subscribe to resource updates via resources/subscribe (URI patterns: " +
+      "crm://contacts/<id>, crm://contacts (collection), crm://* for all). " +
+      "Poll updates via notifications/poll or HTTP GET with ?since=<iso8601>. " +
       "All calls are authorized server-side via the CRM policy engine.",
   });
 }
@@ -269,6 +272,112 @@ async function handleResourcesList(
         dataClassification: r.data_classification,
       },
     })),
+  });
+}
+
+// -------------------------------------------------------------
+// Subscriptions / Notifications
+// -------------------------------------------------------------
+const URI_RE = /^crm:\/\/[a-z][a-z0-9_-]*(\/[a-zA-Z0-9_*-]+)?$/;
+
+async function handleResourcesSubscribe(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const params = (req.params ?? {}) as { uri?: string };
+  const uri = params.uri;
+  if (!uri || typeof uri !== "string" || !URI_RE.test(uri)) {
+    return rpcErr(req.id, RPC_ERR.INVALID_PARAMS, "invalid or missing uri (expected crm://<type>[/<id>|*])");
+  }
+  // Authorize: scope must allow the resource type
+  const resourceType = uri.replace("crm://", "").split("/")[0];
+  const requiredScope = `crm.read.${resourceType}`;
+  if (!scopeAllows(ctx.scopes, requiredScope) && !scopeAllows(ctx.scopes, "crm.read")) {
+    return rpcErr(req.id, RPC_ERR.AUTH, `scope not allowed for ${uri}`);
+  }
+  const { error } = await supabase.rpc("mcp_subscribe_resource", {
+    p_token_id: ctx.token_id,
+    p_uri: uri,
+  });
+  if (error) {
+    return rpcErr(req.id, RPC_ERR.INTERNAL_ERROR, `subscribe error: ${error.message}`);
+  }
+  return rpcOk(req.id, { subscribed: true, uri });
+}
+
+async function handleResourcesUnsubscribe(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const params = (req.params ?? {}) as { uri?: string };
+  const uri = params.uri;
+  if (!uri || typeof uri !== "string") {
+    return rpcErr(req.id, RPC_ERR.INVALID_PARAMS, "missing uri");
+  }
+  const { data, error } = await supabase.rpc("mcp_unsubscribe_resource", {
+    p_token_id: ctx.token_id,
+    p_uri: uri,
+  });
+  if (error) {
+    return rpcErr(req.id, RPC_ERR.INTERNAL_ERROR, `unsubscribe error: ${error.message}`);
+  }
+  return rpcOk(req.id, { unsubscribed: !!data, uri });
+}
+
+async function pollChangesForToken(
+  supabase: any,
+  tokenId: string,
+  since: string | null,
+  limit: number,
+): Promise<Array<{ uri: string; resourceType: string; changeType: string; occurredAt: string }>> {
+  const { data, error } = await supabase.rpc("mcp_poll_changes", {
+    p_token_id: tokenId,
+    p_since: since,
+    p_limit: limit,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: any) => ({
+    uri: r.uri,
+    resourceType: r.resource_type,
+    changeType: r.change_type,
+    occurredAt: r.occurred_at,
+  }));
+}
+
+async function handleNotificationsPoll(
+  req: JsonRpcReq,
+  ctx: AuthCtx,
+  supabase: any,
+): Promise<JsonRpcRes> {
+  const params = (req.params ?? {}) as { since?: string; wait_ms?: number; limit?: number };
+  const limit = Math.min(Math.max(Number(params.limit) || 100, 1), 500);
+  const waitMs = Math.min(Math.max(Number(params.wait_ms) || 0, 0), 25_000);
+  const since = typeof params.since === "string" ? params.since : null;
+
+  const deadline = Date.now() + waitMs;
+  let changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+
+  // Long-poll loop: 1s tick until deadline or first non-empty result
+  while (changes.length === 0 && Date.now() < deadline) {
+    const sleep = Math.min(1000, deadline - Date.now());
+    if (sleep <= 0) break;
+    await new Promise((r) => setTimeout(r, sleep));
+    changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+  }
+
+  return rpcOk(req.id, {
+    notifications: changes.map((c) => ({
+      method: "notifications/resources/updated",
+      params: {
+        uri: c.uri,
+        resourceType: c.resourceType,
+        changeType: c.changeType,
+        occurredAt: c.occurredAt,
+      },
+    })),
+    serverTime: new Date().toISOString(),
   });
 }
 
@@ -559,6 +668,55 @@ async function handleToolsCall(
 }
 
 // -------------------------------------------------------------
+// HTTP GET long-poll for resource notifications
+//   GET /functions/v1/mcp-server?since=<iso8601>&wait_ms=<n>&limit=<n>
+//   Authorization: Bearer mcp_xxx
+// Returns: { notifications: [...], serverTime, nextSince }
+// -------------------------------------------------------------
+async function handleLongPollGet(req: Request): Promise<Response> {
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+  const ctx = await authenticate(req, supabase);
+  if (!ctx) {
+    return new Response(
+      JSON.stringify({ error: "unauthorized — Bearer mcp_xxx token required" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  const url = new URL(req.url);
+  const since = url.searchParams.get("since");
+  const waitMs = Math.min(Math.max(Number(url.searchParams.get("wait_ms")) || 0, 0), 25_000);
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 100, 1), 500);
+
+  const deadline = Date.now() + waitMs;
+  let changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+  while (changes.length === 0 && Date.now() < deadline) {
+    const sleep = Math.min(1000, deadline - Date.now());
+    if (sleep <= 0) break;
+    await new Promise((r) => setTimeout(r, sleep));
+    changes = await pollChangesForToken(supabase, ctx.token_id, since, limit);
+  }
+
+  const serverTime = new Date().toISOString();
+  const body = {
+    notifications: changes.map((c) => ({
+      method: "notifications/resources/updated",
+      params: {
+        uri: c.uri,
+        resourceType: c.resourceType,
+        changeType: c.changeType,
+        occurredAt: c.occurredAt,
+      },
+    })),
+    serverTime,
+    nextSince: changes.length > 0 ? changes[0].occurredAt : serverTime,
+  };
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// -------------------------------------------------------------
 // Main handler
 // -------------------------------------------------------------
 Deno.serve(async (req) => {
@@ -566,9 +724,14 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // GET = long-poll endpoint for resource notifications
+  if (req.method === "GET") {
+    return await handleLongPollGet(req);
+  }
+
   if (req.method !== "POST") {
     return new Response(
-      JSON.stringify({ error: "Use POST with JSON-RPC 2.0 payload" }),
+      JSON.stringify({ error: "Use POST with JSON-RPC 2.0 payload, or GET ?since=... for long-poll" }),
       { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -771,6 +934,15 @@ Deno.serve(async (req) => {
         errorCode = out.errorCode;
         break;
       }
+      case "resources/subscribe":
+        response = await handleResourcesSubscribe(body, ctx!, supabase);
+        break;
+      case "resources/unsubscribe":
+        response = await handleResourcesUnsubscribe(body, ctx!, supabase);
+        break;
+      case "notifications/poll":
+        response = await handleNotificationsPoll(body, ctx!, supabase);
+        break;
       case "notifications/initialized":
         return new Response(null, {
           status: 202,
