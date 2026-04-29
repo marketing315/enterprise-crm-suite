@@ -527,10 +527,10 @@ Deno.serve(async (req: Request) => {
   if (isInternalCall) {
     const onBehalfId = req.headers.get("x-mcp-on-behalf-user-id") ?? "";
     if (!onBehalfId) {
-      return json({ error: "Internal call missing x-mcp-on-behalf-user-id" }, 400);
+      return tjson({ error: "Internal call missing x-mcp-on-behalf-user-id" }, 400);
     }
     const { data: userRow } = await serviceClient.from("users").select("id").eq("id", onBehalfId).maybeSingle();
-    if (!userRow) return json({ error: "On-behalf user not found" }, 403);
+    if (!userRow) return tjson({ error: "On-behalf user not found" }, 403);
     internalUserId = userRow.id;
     const { data: rolesData } = await serviceClient.from("user_roles").select("role").eq("user_id", internalUserId);
     uniqueRoles = [...new Set((rolesData ?? []).map((r: any) => r.role as string))];
@@ -540,7 +540,7 @@ Deno.serve(async (req: Request) => {
   } else {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized: missing token" }, 401);
+      return tjson({ error: "Unauthorized: missing token" }, 401);
     }
 
     userClient = createClient(
@@ -552,12 +552,12 @@ Deno.serve(async (req: Request) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claims?.claims) {
-      return json({ error: "Unauthorized: invalid token" }, 401);
+      return tjson({ error: "Unauthorized: invalid token" }, 401);
     }
     const authUserId = claims.claims.sub as string;
 
     const { data: userRow } = await serviceClient.from("users").select("id").eq("supabase_auth_id", authUserId).maybeSingle();
-    if (!userRow) return json({ error: "User not found" }, 403);
+    if (!userRow) return tjson({ error: "User not found" }, 403);
     internalUserId = userRow.id;
 
     const { data: rolesData } = await serviceClient.from("user_roles").select("role, brand_id").eq("user_id", internalUserId);
@@ -569,7 +569,7 @@ Deno.serve(async (req: Request) => {
     const { data: servers } = await serviceClient.from("mcp_servers").select("*").eq("kill_switch", false).order("name");
     const { data: tools } = await serviceClient.from("mcp_tools").select("*").eq("enabled", true).order("name");
     const { data: resources } = await serviceClient.from("mcp_resources").select("*").eq("enabled", true).order("name");
-    return json({ servers: servers ?? [], tools: tools ?? [], resources: resources ?? [] });
+    return tjson({ servers: servers ?? [], tools: tools ?? [], resources: resources ?? [] });
   }
 
   // ── POST /execute-tool ───────────────────────────
@@ -578,16 +578,16 @@ Deno.serve(async (req: Request) => {
     try {
       body = await req.json();
     } catch {
-      return json({ error: "Invalid JSON body" }, 400);
+      return tjson({ error: "Invalid JSON body" }, 400);
     }
 
     if (!body.request_id || !body.tool) {
-      return json({ error: "request_id and tool are required" }, 400);
+      return tjson({ error: "request_id and tool are required" }, 400);
     }
 
     // Brand scope validation
     if (!body.brand_id && !uniqueRoles.includes("admin")) {
-      return json({ error: "brand_id required for non-admin users" }, 400);
+      return tjson({ error: "brand_id required for non-admin users" }, 400);
     }
 
     // Resolve tool + server from registry
@@ -602,7 +602,7 @@ Deno.serve(async (req: Request) => {
     // Check server kill switch
     const server = toolRow?.mcp_servers;
     if (server?.kill_switch) {
-      return json({ error: "Server is disabled via kill switch", tool: body.tool }, 503);
+      return tjson({ error: "Server is disabled via kill switch", tool: body.tool }, 503);
     }
 
     // Canary rollout enforcement
@@ -610,10 +610,10 @@ Deno.serve(async (req: Request) => {
       const canaryBrands = server.canary_brand_ids ?? [];
       const canaryRoles = server.canary_role_whitelist ?? [];
       if (canaryBrands.length > 0 && (!body.brand_id || !canaryBrands.includes(body.brand_id))) {
-        return json({ error: "Server not available for this brand (canary rollout)", tool: body.tool }, 403);
+        return tjson({ error: "Server not available for this brand (canary rollout)", tool: body.tool }, 403);
       }
       if (canaryRoles.length > 0 && !canaryRoles.some((r: string) => uniqueRoles.includes(r))) {
-        return json({ error: "Server not available for your role (canary rollout)", tool: body.tool }, 403);
+        return tjson({ error: "Server not available for your role (canary rollout)", tool: body.tool }, 403);
       }
     }
 
@@ -621,7 +621,7 @@ Deno.serve(async (req: Request) => {
     if (body.idempotency_key) {
       const { isDuplicate, existingId } = await checkIdempotency(serviceClient, body.idempotency_key);
       if (isDuplicate) {
-        return json({ status: "duplicate", existing_execution_id: existingId });
+        return tjson({ status: "duplicate", existing_execution_id: existingId });
       }
     }
 
@@ -658,7 +658,7 @@ Deno.serve(async (req: Request) => {
 
     // Deny → return immediately
     if (decision === "deny") {
-      return json({ status: "denied", execution_id: execId, policy_id: policyId }, 403);
+      return tjson({ status: "denied", execution_id: execId, policy_id: policyId }, 403);
     }
 
     // Require approval → create approval record and return
@@ -668,7 +668,7 @@ Deno.serve(async (req: Request) => {
         required_by_policy: policyId,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
       });
-      return json({ status: "pending_approval", execution_id: execId, message: "Awaiting human approval" }, 202);
+      return tjson({ status: "pending_approval", execution_id: execId, message: "Awaiting human approval" }, 202);
     }
 
     // Rate limit check
@@ -676,7 +676,7 @@ Deno.serve(async (req: Request) => {
       const allowed = await checkRateLimit(serviceClient, body.tool, server.id, toolRow.rate_limit_per_min);
       if (!allowed) {
         await updateExecution(serviceClient, execId, { status: "failed", error_code: "RATE_LIMIT", error_message: "Rate limit exceeded", completed_at: new Date().toISOString(), latency_ms: Date.now() - startTime });
-        return json({ error: "Rate limit exceeded", execution_id: execId }, 429);
+        return tjson({ error: "Rate limit exceeded", execution_id: execId }, 429);
       }
     }
 
@@ -694,7 +694,7 @@ Deno.serve(async (req: Request) => {
         completed_at: new Date().toISOString(),
         metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes },
       });
-      return json({ status: "success", execution_id: execId, result: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
+      return tjson({ status: "success", execution_id: execId, result: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
     } catch (err) {
       const latency = Date.now() - startTime;
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -705,7 +705,7 @@ Deno.serve(async (req: Request) => {
         latency_ms: latency,
         completed_at: new Date().toISOString(),
       });
-      return json({ status: "failed", execution_id: execId, error: errMsg, latency_ms: latency }, 500);
+      return tjson({ status: "failed", execution_id: execId, error: errMsg, latency_ms: latency }, 500);
     }
   }
 
@@ -715,11 +715,11 @@ Deno.serve(async (req: Request) => {
     try {
       body = await req.json();
     } catch {
-      return json({ error: "Invalid JSON body" }, 400);
+      return tjson({ error: "Invalid JSON body" }, 400);
     }
 
     if (!body.request_id || !body.uri) {
-      return json({ error: "request_id and uri are required" }, 400);
+      return tjson({ error: "request_id and uri are required" }, 400);
     }
 
     // Load and evaluate policies (same as execute-tool)
@@ -750,7 +750,7 @@ Deno.serve(async (req: Request) => {
 
     // Deny → return immediately
     if (decision === "deny") {
-      return json({ status: "denied", execution_id: execId, policy_id: policyId }, 403);
+      return tjson({ status: "denied", execution_id: execId, policy_id: policyId }, 403);
     }
 
     // Require approval → create approval record and return
@@ -760,7 +760,7 @@ Deno.serve(async (req: Request) => {
         required_by_policy: policyId,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       });
-      return json({ status: "pending_approval", execution_id: execId, message: "Awaiting human approval" }, 202);
+      return tjson({ status: "pending_approval", execution_id: execId, message: "Awaiting human approval" }, 202);
     }
 
     try {
@@ -795,7 +795,7 @@ Deno.serve(async (req: Request) => {
         metadata: { redactions_count: redactionsCounter.n, scopes: callerScopes },
       });
 
-      return json({ status: "success", execution_id: execId, data: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
+      return tjson({ status: "success", execution_id: execId, data: safeResult, latency_ms: latency, redactions_count: redactionsCounter.n });
     } catch (err) {
       const latency = Date.now() - startTime;
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -806,7 +806,7 @@ Deno.serve(async (req: Request) => {
         latency_ms: latency,
         completed_at: new Date().toISOString(),
       });
-      return json({ status: "failed", execution_id: execId, error: errMsg }, 500);
+      return tjson({ status: "failed", execution_id: execId, error: errMsg }, 500);
     }
   }
 
@@ -814,14 +814,14 @@ Deno.serve(async (req: Request) => {
   if (req.method === "POST" && path === "approve") {
     // Only admins can approve
     if (!uniqueRoles.includes("admin")) {
-      return json({ error: "Only admins can approve executions" }, 403);
+      return tjson({ error: "Only admins can approve executions" }, 403);
     }
 
     let body: { approval_id: string; decision: "approved" | "rejected"; reason?: string };
     try {
       body = await req.json();
     } catch {
-      return json({ error: "Invalid JSON body" }, 400);
+      return tjson({ error: "Invalid JSON body" }, 400);
     }
 
     const { error } = await serviceClient
@@ -834,7 +834,7 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", body.approval_id);
 
-    if (error) return json({ error: error.message }, 500);
+    if (error) return tjson({ error: error.message }, 500);
 
     // If approved, update execution status to approved (actual execution is deferred)
     const { data: approval } = await serviceClient.from("mcp_approvals").select("execution_id").eq("id", body.approval_id).single();
@@ -845,8 +845,8 @@ Deno.serve(async (req: Request) => {
         .eq("id", approval.execution_id);
     }
 
-    return json({ status: "ok", decision: body.decision });
+    return tjson({ status: "ok", decision: body.decision });
   }
 
-  return json({ error: `Unknown endpoint: ${path}` }, 404);
+  return tjson({ error: `Unknown endpoint: ${path}` }, 404);
 });
