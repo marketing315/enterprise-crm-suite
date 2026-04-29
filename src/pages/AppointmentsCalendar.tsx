@@ -13,11 +13,12 @@ import {
   startOfDay,
 } from "date-fns";
 import { it } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List, Users, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List, Users, X, Download } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAppointmentConflict } from "@/features/appointments/useAppointmentConflict";
 import { BulkReassignDialog } from "@/features/appointments/BulkReassignDialog";
+import { exportAppointmentsCsv } from "@/features/appointments/exportAppointmentsCsv";
 import type { AppointmentWithRelations } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -220,6 +221,25 @@ export default function AppointmentsCalendar() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const list = selectedIds.size > 0
+                ? appointments.filter((a) => selectedIds.has(a.id))
+                : appointments;
+              if (list.length === 0) {
+                toast.info("Nessun appuntamento da esportare");
+                return;
+              }
+              const n = exportAppointmentsCsv(list, `appuntamenti-settimana-${format(weekStart, "yyyyMMdd")}`);
+              toast.success(`Esportati ${n} appuntamenti`);
+            }}
+            disabled={isLoading}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            CSV
+          </Button>
           <Button
             variant="outline"
             size="sm"
