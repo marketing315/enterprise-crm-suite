@@ -49,6 +49,7 @@ const AdminAudit = lazy(() => import("@/pages/AdminAudit"));
 const AdminSiemExport = lazy(() => import("@/pages/AdminSiemExport"));
 const AdminCompliance = lazy(() => import("@/pages/AdminCompliance"));
 const AdminObservability = lazy(() => import("@/pages/AdminObservability"));
+const AdminMcpDashboard = lazy(() => import("@/pages/AdminMcpDashboard"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Team = lazy(() => import("@/pages/Team"));
@@ -196,6 +197,7 @@ const App = () => (
                     <Route path="/admin/siem-export" element={<RoleGuard allowedRoles={['admin']}><AdminSiemExport /></RoleGuard>} />
                     <Route path="/admin/compliance" element={<RoleGuard allowedRoles={['admin']}><AdminCompliance /></RoleGuard>} />
                     <Route path="/admin/observability" element={<RoleGuard allowedRoles={['admin']}><AdminObservability /></RoleGuard>} />
+                    <Route path="/admin/mcp" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminMcpDashboard /></RoleGuard>} />
                     <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>
                   
