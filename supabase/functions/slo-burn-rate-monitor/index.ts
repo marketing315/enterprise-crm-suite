@@ -1,16 +1,21 @@
 // SLO Burn Rate Monitor
 // ─────────────────────────────────────────────────────────────────────────────
 // Reads burn rates from public.slo_definitions + calculate_slo_burn_rate(),
-// applies Google SRE multi-window burn-rate alerting thresholds, dispatches
-// to Slack (SLACK_WEBHOOK_URL secret), and dedupes via mcp_slo_alerts.
+// applies Google SRE multi-window burn-rate alerting thresholds, persists
+// alert in mcp_slo_alerts, and dispatches IN-APP notifications (bell 🔔)
+// to all active admins on the System Brand.
+//
+// NO external integrations (no Slack, no email, no PagerDuty). Everything
+// stays inside the Lovable Cloud surface — visible at /admin/observability
+// and via the notification bell.
 //
 // Schedule: every 5 min via pg_cron.
 // Auth: x-cron-secret OR Bearer service_role JWT (same pattern as sla-breach-checker).
 //
 // Thresholds (Google SRE workbook):
-//   - burn_1h >= 14.4 → SEV1 (page)  — exhausts 30d budget in 2h
-//   - burn_6h >= 6.0  → SEV2 (warn)  — exhausts 30d budget in 5h
-//   - burn_24h >= 3.0 → SEV3 (info)  — exhausts 30d budget in 10h
+//   - burn_1h >= 14.4 → SEV1  — exhausts 30d budget in 2h
+//   - burn_6h >= 6.0  → SEV2  — exhausts 30d budget in 5h
+//   - burn_24h >= 3.0 → SEV3  — exhausts 30d budget in 10h
 //
 // Dedup: if an UNACKED alert of same (slo_id, severity) exists within 1h, skip.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,6 +26,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
+
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
 
 type Severity = "SEV1" | "SEV2" | "SEV3";
 
@@ -56,20 +63,6 @@ function authOk(req: Request): boolean {
   return false;
 }
 
-async function postSlack(webhookUrl: string, text: string, blocks?: unknown[]): Promise<boolean> {
-  try {
-    const res = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(blocks ? { text, blocks } : { text }),
-    });
-    await res.text();
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 Deno.serve(async (req) => {
   const correlationId = crypto.randomUUID();
   const log = (level: "log" | "error", msg: string, extra?: Record<string, unknown>) =>
@@ -91,8 +84,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const slackUrl = Deno.env.get("SLACK_WEBHOOK_URL");
-
     // 1. Load active SLOs
     const { data: slos, error: sloErr } = await supabase
       .from("slo_definitions")
@@ -101,13 +92,22 @@ Deno.serve(async (req) => {
 
     if (sloErr) throw sloErr;
     if (!slos || slos.length === 0) {
-      return new Response(JSON.stringify({ ok: true, checked: 0, alerts: 0 }), {
+      return new Response(JSON.stringify({ ok: true, checked: 0, alerts_fired: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Pre-fetch admin recipients (active admins on System Brand) — done once per run
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .in("role", ["admin", "super_admin"])
+      .eq("is_active", true);
+    const adminUserIds = Array.from(new Set((adminRoles ?? []).map((r) => r.user_id).filter(Boolean)));
+
     let alertsFired = 0;
     let alertsSkipped = 0;
+    let notificationsCreated = 0;
     const dispatched: Array<Record<string, unknown>> = [];
 
     // 2. For each SLO compute burn rate + decide if alert
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
 
       const burnValue = burns[fired.window]!;
 
-      // 3. Persist alert (audit trail) — graceful if RLS blocks
+      // 3. Persist alert (audit trail)
       const { data: insertedRows, error: insErr } = await supabase
         .from("mcp_slo_alerts")
         .insert({
@@ -171,6 +171,7 @@ Deno.serve(async (req) => {
             burn_rate_6h: r.burn_rate_6h,
             burn_rate_24h: r.burn_rate_24h,
             triggered_window: fired.window,
+            correlation_id: correlationId,
           },
         })
         .select("id");
@@ -180,32 +181,32 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // 4. Dispatch to Slack
-      let slackDelivered = false;
-      if (slackUrl) {
-        const text = `${fired.emoji} *${fired.severity}* — SLO \`${slo.name}\` burn rate ${burnValue.toFixed(2)}× over ${fired.window}`;
-        const blocks = [
-          {
-            type: "section",
-            text: { type: "mrkdwn", text },
-          },
-          {
-            type: "section",
-            fields: [
-              { type: "mrkdwn", text: `*Service*\n${slo.service_name}` },
-              { type: "mrkdwn", text: `*Target*\n${slo.target_percentage}%` },
-              { type: "mrkdwn", text: `*Current SLI*\n${r.current_sli !== null ? Number(r.current_sli).toFixed(2) + "%" : "n/a"}` },
-              { type: "mrkdwn", text: `*Budget left*\n${r.error_budget_remaining !== null ? Number(r.error_budget_remaining).toFixed(1) + "%" : "n/a"}` },
-              { type: "mrkdwn", text: `*Burn 1h*\n${r.burn_rate_1h?.toFixed(2) ?? "—"}×` },
-              { type: "mrkdwn", text: `*Burn 6h*\n${r.burn_rate_6h?.toFixed(2) ?? "—"}×` },
-            ],
-          },
-          {
-            type: "context",
-            elements: [{ type: "mrkdwn", text: `Triggered window: *${fired.window}* | threshold: ${fired.min}× | corr: \`${correlationId}\`` }],
-          },
-        ];
-        slackDelivered = await postSlack(slackUrl, text, blocks);
+      const alertId = insertedRows?.[0]?.id ?? null;
+
+      // 4. Fan out IN-APP notifications to all active admins
+      if (adminUserIds.length > 0) {
+        const title = `${fired.emoji} SLO ${fired.severity}: ${slo.service_name}`;
+        const body = `Burn rate ${burnValue.toFixed(2)}× su finestra ${fired.window} (soglia ${fired.min}×). SLI corrente: ${r.current_sli !== null ? Number(r.current_sli).toFixed(2) + "%" : "n/a"}, budget residuo: ${r.error_budget_remaining !== null ? Number(r.error_budget_remaining).toFixed(1) + "%" : "n/a"}.`;
+
+        const notifRows = adminUserIds.map((uid) => ({
+          brand_id: SYSTEM_BRAND_ID,
+          user_id: uid,
+          type: "slo_alert" as const,
+          title,
+          body,
+          entity_type: "slo_alert",
+          entity_id: alertId,
+        }));
+
+        const { error: notifErr, count } = await supabase
+          .from("notifications")
+          .insert(notifRows, { count: "exact" });
+
+        if (notifErr) {
+          log("error", "notification insert failed", { slo_id: slo.id, err: notifErr.message });
+        } else {
+          notificationsCreated += count ?? notifRows.length;
+        }
       }
 
       alertsFired++;
@@ -214,10 +215,10 @@ Deno.serve(async (req) => {
         severity: fired.severity,
         window: fired.window,
         burn_rate: burnValue,
-        slack_delivered: slackDelivered,
-        alert_id: insertedRows?.[0]?.id,
+        alert_id: alertId,
+        recipients: adminUserIds.length,
       });
-      log("log", "alert fired", { slo: slo.name, severity: fired.severity, burn: burnValue, slack: slackDelivered });
+      log("log", "alert fired", { slo: slo.name, severity: fired.severity, burn: burnValue, recipients: adminUserIds.length });
     }
 
     return new Response(
@@ -226,7 +227,7 @@ Deno.serve(async (req) => {
         checked: slos.length,
         alerts_fired: alertsFired,
         alerts_skipped_dedup: alertsSkipped,
-        slack_configured: !!slackUrl,
+        notifications_created: notificationsCreated,
         dispatched,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

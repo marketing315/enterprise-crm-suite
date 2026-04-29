@@ -60,11 +60,11 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
-      - name: Notify on failure (scheduled runs only)
-        if: failure() && github.event_name == 'schedule' && env.SLACK_WEBHOOK_URL != ''
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Surface failure in run summary (scheduled runs)
+        if: failure() && github.event_name == 'schedule'
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\":rotating_light: *revenue-critical E2E failed* on scheduled run\\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-            "$SLACK_WEBHOOK_URL"
+          echo "## :rotating_light: Revenue-critical E2E failed (scheduled drift check)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Triage within 1h. Check the Playwright report artifact for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
