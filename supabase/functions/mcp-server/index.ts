@@ -599,14 +599,14 @@ Deno.serve(async (req) => {
   } catch (_) {
     return new Response(
       JSON.stringify(rpcErr(null, RPC_ERR.PARSE_ERROR, "invalid JSON")),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId } },
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId } },
     );
   }
 
   if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string") {
     return new Response(
       JSON.stringify(rpcErr(body?.id ?? null, RPC_ERR.INVALID_REQUEST, "expected JSON-RPC 2.0 request")),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId } },
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json", "x-request-id": requestId, "traceparent": traceparentOut, "x-trace-id": traceId } },
     );
   }
 
