@@ -12,9 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Brain, ArrowLeft, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Brain, ArrowLeft, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Download } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { arrayToCSV, downloadCSV } from "@/lib/csvExport";
+import { toast } from "sonner";
 
 const ANY = "__any__";
 const PAGE_SIZE = 50;
