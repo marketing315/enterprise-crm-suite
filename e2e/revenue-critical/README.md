@@ -13,6 +13,8 @@ If any of these break, the business loses money.
 | 4 | Sales Flow | `04-sales-flow.e2e.spec.ts` | Records revenue + margins |
 | 5 | MCP Server | `05-mcp-subscriptions.e2e.spec.ts` | External AI agent integrations |
 | 1d | Lead Ingestion (DEEP) | `01-lead-ingestion-deep.e2e.spec.ts` | Verifies DB persistence: contact + lead_event row appended, dedup on duplicate phone |
+| 2d | Pipeline Stage Move (DEEP) | `02-pipeline-stage-move-deep.e2e.spec.ts` | Snapshot RPC exposes deals counters + transitions for ingested contact |
+| 3d | Appointment Lifecycle (DEEP) | `03-appointment-lifecycle-deep.e2e.spec.ts` | Snapshot RPC exposes appointment counters + outcomes; UI no error boundary |
 
 ## Run
 
