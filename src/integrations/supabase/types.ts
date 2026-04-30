@@ -7286,6 +7286,90 @@ export type Database = {
           },
         ]
       }
+      restore_runs: {
+        Row: {
+          brand_id: string
+          completed_at: string | null
+          conflict_strategy: string
+          created_at: string
+          duration_ms: number
+          error: string | null
+          id: string
+          mode: string
+          source_brand_id: string | null
+          source_checksum: string | null
+          source_filename: string | null
+          source_run_id: string | null
+          source_scope: string | null
+          status: string
+          tables_selected: string[]
+          tables_summary: Json
+          total_rows_in_archive: number
+          total_rows_inserted: number
+          total_rows_skipped: number
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          brand_id: string
+          completed_at?: string | null
+          conflict_strategy?: string
+          created_at?: string
+          duration_ms?: number
+          error?: string | null
+          id?: string
+          mode?: string
+          source_brand_id?: string | null
+          source_checksum?: string | null
+          source_filename?: string | null
+          source_run_id?: string | null
+          source_scope?: string | null
+          status?: string
+          tables_selected?: string[]
+          tables_summary?: Json
+          total_rows_in_archive?: number
+          total_rows_inserted?: number
+          total_rows_skipped?: number
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          brand_id?: string
+          completed_at?: string | null
+          conflict_strategy?: string
+          created_at?: string
+          duration_ms?: number
+          error?: string | null
+          id?: string
+          mode?: string
+          source_brand_id?: string | null
+          source_checksum?: string | null
+          source_filename?: string | null
+          source_run_id?: string | null
+          source_scope?: string | null
+          status?: string
+          tables_selected?: string[]
+          tables_summary?: Json
+          total_rows_in_archive?: number
+          total_rows_inserted?: number
+          total_rows_skipped?: number
+          triggered_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restore_runs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restore_runs_triggered_by_user_id_fkey"
+            columns: ["triggered_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_hidden_columns: {
         Row: {
           brand_id: string
@@ -9514,6 +9598,10 @@ export type Database = {
         Returns: undefined
       }
       assert_can_backup_brand: {
+        Args: { p_brand_id: string }
+        Returns: boolean
+      }
+      assert_can_restore_brand: {
         Args: { p_brand_id: string }
         Returns: boolean
       }
