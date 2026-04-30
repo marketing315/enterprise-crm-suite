@@ -9,10 +9,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBackupRuns, useRunQuickBackup, SCOPE_DESCRIPTIONS, BackupScope } from "@/hooks/useQuickBackup";
 import { useBrand } from "@/contexts/BrandContext";
-import { Database, Download, AlertTriangle, CheckCircle2, Loader2, Shield, Upload } from "lucide-react";
+import { Database, Download, AlertTriangle, CheckCircle2, Loader2, Shield, Upload, Calendar, HardDrive } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { RestorePanel } from "@/components/admin/RestorePanel";
+import { BackupSchedulePanel } from "@/components/admin/BackupSchedulePanel";
+import { BackupArchivesPanel } from "@/components/admin/BackupArchivesPanel";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
