@@ -6686,6 +6686,127 @@ export type Database = {
           },
         ]
       }
+      notification_webhook_destinations: {
+        Row: {
+          brand_id: string
+          consecutive_failures: number
+          created_at: string
+          created_by: string | null
+          endpoint_url: string
+          hmac_secret: string
+          id: string
+          include_payload: boolean
+          is_active: boolean
+          last_error: string | null
+          last_success_at: string | null
+          name: string
+          notification_types: Database["public"]["Enums"]["notification_type"][]
+          preset: string
+          retry_max: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          consecutive_failures?: number
+          created_at?: string
+          created_by?: string | null
+          endpoint_url: string
+          hmac_secret: string
+          id?: string
+          include_payload?: boolean
+          is_active?: boolean
+          last_error?: string | null
+          last_success_at?: string | null
+          name: string
+          notification_types?: Database["public"]["Enums"]["notification_type"][]
+          preset?: string
+          retry_max?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          consecutive_failures?: number
+          created_at?: string
+          created_by?: string | null
+          endpoint_url?: string
+          hmac_secret?: string
+          id?: string
+          include_payload?: boolean
+          is_active?: boolean
+          last_error?: string | null
+          last_success_at?: string | null
+          name?: string
+          notification_types?: Database["public"]["Enums"]["notification_type"][]
+          preset?: string
+          retry_max?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_webhook_destinations_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_webhook_outbox: {
+        Row: {
+          attempts: number
+          brand_id: string
+          created_at: string
+          delivered_at: string | null
+          destination_id: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          next_retry_at: string
+          notification_id: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          payload: Json
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          brand_id: string
+          created_at?: string
+          delivered_at?: string | null
+          destination_id: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          next_retry_at?: string
+          notification_id: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          payload: Json
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          brand_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          destination_id?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          next_retry_at?: string
+          notification_id?: string
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          payload?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_webhook_outbox_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "notification_webhook_destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
@@ -9548,6 +9669,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_pending_notification_webhooks: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          destination_id: string
+          endpoint_url: string
+          hmac_secret: string
+          outbox_id: string
+          payload: Json
+          preset: string
+          retry_max: number
+        }[]
+      }
       claim_pending_siem_exports: {
         Args: { _destination_id: string }
         Returns: {
@@ -10725,6 +10859,10 @@ export type Database = {
       mark_all_notifications_read: {
         Args: { p_brand_id?: string }
         Returns: number
+      }
+      mark_notification_webhook_result: {
+        Args: { p_error?: string; p_outbox_id: string; p_success: boolean }
+        Returns: undefined
       }
       mark_notifications_read: {
         Args: { p_notification_ids: string[] }
