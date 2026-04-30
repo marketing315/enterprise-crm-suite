@@ -8450,6 +8450,9 @@ export type Database = {
           created_by: Database["public"]["Enums"]["ticket_creator"]
           deal_id: string | null
           description: string | null
+          escalated_at: string | null
+          escalated_to_user_id: string | null
+          escalation_level: number
           id: string
           opened_at: string
           priority: number
@@ -8476,6 +8479,9 @@ export type Database = {
           created_by?: Database["public"]["Enums"]["ticket_creator"]
           deal_id?: string | null
           description?: string | null
+          escalated_at?: string | null
+          escalated_to_user_id?: string | null
+          escalation_level?: number
           id?: string
           opened_at?: string
           priority?: number
@@ -8502,6 +8508,9 @@ export type Database = {
           created_by?: Database["public"]["Enums"]["ticket_creator"]
           deal_id?: string | null
           description?: string | null
+          escalated_at?: string | null
+          escalated_to_user_id?: string | null
+          escalation_level?: number
           id?: string
           opened_at?: string
           priority?: number
@@ -8561,6 +8570,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_escalated_to_user_id_fkey"
+            columns: ["escalated_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -9127,6 +9143,45 @@ export type Database = {
           },
         ]
       }
+      v_ai_override_rate_30d: {
+        Row: {
+          avg_confidence: number | null
+          avg_confidence_when_overridden: number | null
+          brand_id: string | null
+          day: string | null
+          overridden_decisions: number | null
+          override_rate_pct: number | null
+          total_decisions: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_decision_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_ai_proposal_outcomes_30d: {
+        Row: {
+          brand_id: string | null
+          cnt: number | null
+          day: string | null
+          decision:
+            | Database["public"]["Enums"]["call_action_decision_status"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_call_action_decisions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_sources_safe: {
         Row: {
           brand_id: string | null
@@ -9684,6 +9739,8 @@ export type Database = {
         }
         Returns: number
       }
+      escalate_all_brands_breached_tickets: { Args: never; Returns: Json }
+      escalate_breached_tickets: { Args: { p_brand_id: string }; Returns: Json }
       find_meta_app_by_slug: {
         Args: { p_brand_slug: string }
         Returns: {
@@ -9904,6 +9961,10 @@ export type Database = {
       }
       get_ai_metrics_overview: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_ai_override_summary: {
+        Args: { p_brand_id?: string; p_days?: number }
         Returns: Json
       }
       get_ai_quality_detailed: {
@@ -11328,6 +11389,7 @@ export type Database = {
         | "chat_message"
         | "appointment_risk_alert"
         | "slo_alert"
+        | "ticket_escalated"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       override_reason_category:
         | "wrong_priority"
@@ -11371,6 +11433,7 @@ export type Database = {
         | "category_change"
         | "comment_added"
         | "sla_breach"
+        | "sla_escalation"
       ticket_creator: "ai" | "user" | "rule"
       ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
       topic_created_by: "ai" | "user"
@@ -11696,6 +11759,7 @@ export const Constants = {
         "chat_message",
         "appointment_risk_alert",
         "slo_alert",
+        "ticket_escalated",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       override_reason_category: [
@@ -11737,6 +11801,7 @@ export const Constants = {
         "category_change",
         "comment_added",
         "sla_breach",
+        "sla_escalation",
       ],
       ticket_creator: ["ai", "user", "rule"],
       ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
