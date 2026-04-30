@@ -2359,10 +2359,14 @@ export type Database = {
           created_at: string
           duration_ms: number
           error: string | null
+          expires_at: string | null
           id: string
+          schedule_id: string | null
           scope: string
           size_bytes: number
           status: string
+          storage_path: string | null
+          storage_uploaded_at: string | null
           tables_included: string[]
           total_rows: number
           triggered_by_user_id: string | null
@@ -2375,10 +2379,14 @@ export type Database = {
           created_at?: string
           duration_ms?: number
           error?: string | null
+          expires_at?: string | null
           id?: string
+          schedule_id?: string | null
           scope: string
           size_bytes?: number
           status?: string
+          storage_path?: string | null
+          storage_uploaded_at?: string | null
           tables_included?: string[]
           total_rows?: number
           triggered_by_user_id?: string | null
@@ -2391,14 +2399,69 @@ export type Database = {
           created_at?: string
           duration_ms?: number
           error?: string | null
+          expires_at?: string | null
           id?: string
+          schedule_id?: string | null
           scope?: string
           size_bytes?: number
           status?: string
+          storage_path?: string | null
+          storage_uploaded_at?: string | null
           tables_included?: string[]
           total_rows?: number
           triggered_by_user_id?: string | null
           truncated_tables?: string[]
+        }
+        Relationships: []
+      }
+      backup_schedules: {
+        Row: {
+          brand_id: string
+          created_at: string
+          created_by_user_id: string | null
+          day_of_week: number | null
+          enabled: boolean
+          frequency: string
+          hour_utc: number
+          id: string
+          last_run_at: string | null
+          last_run_status: string | null
+          next_run_at: string | null
+          retention_days: number
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          created_by_user_id?: string | null
+          day_of_week?: number | null
+          enabled?: boolean
+          frequency?: string
+          hour_utc?: number
+          id?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          next_run_at?: string | null
+          retention_days?: number
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          day_of_week?: number | null
+          enabled?: boolean
+          frequency?: string
+          hour_utc?: number
+          id?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          next_run_at?: string | null
+          retention_days?: number
+          scope?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -10426,6 +10489,25 @@ export type Database = {
           strategy: string
         }[]
       }
+      get_backup_schedules: {
+        Args: never
+        Returns: {
+          brand_id: string
+          brand_name: string
+          created_at: string
+          day_of_week: number
+          enabled: boolean
+          frequency: string
+          hour_utc: number
+          id: string
+          last_run_at: string
+          last_run_status: string
+          next_run_at: string
+          retention_days: number
+          scope: string
+          updated_at: string
+        }[]
+      }
       get_board_slo_metrics: {
         Args: { p_brand_id?: string; p_month_start?: string }
         Returns: Json
@@ -10998,6 +11080,22 @@ export type Database = {
           prefix: string
           token: string
           token_id: string
+        }[]
+      }
+      list_backup_archives: {
+        Args: { p_brand_id: string; p_limit?: number }
+        Returns: {
+          brand_id: string
+          created_at: string
+          expires_at: string
+          run_id: string
+          scheduled: boolean
+          scope: string
+          size_bytes: number
+          status: string
+          storage_path: string
+          storage_uploaded_at: string
+          total_rows: number
         }[]
       }
       list_capi_events: {
@@ -11661,6 +11759,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_backup_schedule: {
+        Args: {
+          p_brand_id: string
+          p_day_of_week: number
+          p_enabled: boolean
+          p_frequency: string
+          p_hour_utc: number
+          p_retention_days: number
+          p_scope: string
+        }
+        Returns: string
       }
       upsert_clinical_topics_from_strings: {
         Args: {
