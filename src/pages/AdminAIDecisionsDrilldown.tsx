@@ -105,6 +105,55 @@ export default function AdminAIDecisionsDrilldown() {
     setPage(0);
   };
 
+  const handleExportCSV = () => {
+    const rows = data?.rows ?? [];
+    if (rows.length === 0) {
+      toast.error("Nessuna riga da esportare con i filtri attuali");
+      return;
+    }
+    const csv = arrayToCSV(
+      rows.map((r) => ({
+        data: format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss"),
+        brand: r.brand_name ?? "",
+        modello: r.model_version,
+        prompt: r.prompt_version,
+        confidenza_pct: r.confidence != null ? Math.round(r.confidence * 100) : "",
+        stage_iniziale: r.initial_stage_name ?? "",
+        lead_type: r.lead_type,
+        priorita: r.priority,
+        overridden: r.was_overridden ? "si" : "no",
+        override_categoria: r.override_reason_category ?? "",
+        override_motivo: r.override_reason ?? "",
+        override_da: r.overridden_by_name ?? "",
+        crea_ticket: r.should_create_ticket ? "si" : "no",
+        azione_appuntamento: r.appointment_action ?? "",
+        tags: (r.tags_to_apply ?? []).join("|"),
+        rationale: r.rationale,
+      })),
+      [
+        { key: "data", label: "Data" },
+        { key: "brand", label: "Brand" },
+        { key: "modello", label: "Modello" },
+        { key: "prompt", label: "Prompt version" },
+        { key: "confidenza_pct", label: "Confidenza %" },
+        { key: "stage_iniziale", label: "Stage iniziale" },
+        { key: "lead_type", label: "Lead type" },
+        { key: "priorita", label: "Priorità" },
+        { key: "overridden", label: "Overridden" },
+        { key: "override_categoria", label: "Categoria override" },
+        { key: "override_motivo", label: "Motivo override" },
+        { key: "override_da", label: "Override da" },
+        { key: "crea_ticket", label: "Crea ticket" },
+        { key: "azione_appuntamento", label: "Azione appuntamento" },
+        { key: "tags", label: "Tags" },
+        { key: "rationale", label: "Rationale" },
+      ],
+    );
+    const ts = format(new Date(), "yyyyMMdd-HHmm");
+    downloadCSV(csv, `ai-decisions-${ts}.csv`);
+    toast.success(`Esportate ${rows.length} decisioni (pagina corrente)`);
+  };
+
   return (
     <div className="container max-w-6xl py-8 space-y-6">
       <div className="flex items-center gap-3">
