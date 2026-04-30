@@ -205,6 +205,7 @@ const App = () => (
                     <Route path="/admin/compliance" element={<RoleGuard allowedRoles={['admin']}><AdminCompliance /></RoleGuard>} />
                     <Route path="/admin/observability" element={<RoleGuard allowedRoles={['admin']}><AdminObservability /></RoleGuard>} />
                     <Route path="/admin/mcp" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminMcpDashboard /></RoleGuard>} />
+                    <Route path="/admin/quick-backup" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminQuickBackup /></RoleGuard>} />
                     <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>
                   
