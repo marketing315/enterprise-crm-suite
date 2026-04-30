@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TicketEscalationPolicyPanel } from "@/components/admin/TicketEscalationPolicyPanel";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -20,6 +22,7 @@ import {
   CheckCircle2,
   Clock,
   ShieldAlert,
+  Settings2,
   TimerReset,
   UserX,
   XCircle,
