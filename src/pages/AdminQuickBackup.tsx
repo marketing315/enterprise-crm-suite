@@ -219,6 +219,14 @@ export default function AdminQuickBackup() {
       </Card>
         </TabsContent>
 
+        <TabsContent value="schedule" className="space-y-6">
+          <BackupSchedulePanel />
+        </TabsContent>
+
+        <TabsContent value="archives" className="space-y-6">
+          <BackupArchivesPanel />
+        </TabsContent>
+
         <TabsContent value="restore" className="space-y-6">
           <RestorePanel />
         </TabsContent>
