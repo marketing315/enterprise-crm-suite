@@ -65,6 +65,10 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false
   [functions.sheets-leads-export]
     verify_jwt = false
+  [functions.scheduled-backup-runner]
+    verify_jwt = false
+  [functions.backup-archive-signed-url]
+    verify_jwt = true
   [functions.sla-breach-checker]
     verify_jwt = false
   [functions.slo-burn-rate-monitor]

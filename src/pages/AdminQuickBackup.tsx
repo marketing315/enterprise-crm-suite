@@ -9,10 +9,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBackupRuns, useRunQuickBackup, SCOPE_DESCRIPTIONS, BackupScope } from "@/hooks/useQuickBackup";
 import { useBrand } from "@/contexts/BrandContext";
-import { Database, Download, AlertTriangle, CheckCircle2, Loader2, Shield, Upload } from "lucide-react";
+import { Database, Download, AlertTriangle, CheckCircle2, Loader2, Shield, Upload, Calendar, HardDrive } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { RestorePanel } from "@/components/admin/RestorePanel";
+import { BackupSchedulePanel } from "@/components/admin/BackupSchedulePanel";
+import { BackupArchivesPanel } from "@/components/admin/BackupArchivesPanel";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -50,7 +52,13 @@ export default function AdminQuickBackup() {
       <Tabs defaultValue="backup" className="space-y-6">
         <TabsList>
           <TabsTrigger value="backup" className="gap-2">
-            <Download className="h-4 w-4" /> Backup
+            <Download className="h-4 w-4" /> Backup manuale
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="gap-2">
+            <Calendar className="h-4 w-4" /> Pianificazione
+          </TabsTrigger>
+          <TabsTrigger value="archives" className="gap-2">
+            <HardDrive className="h-4 w-4" /> Archivi cloud
           </TabsTrigger>
           <TabsTrigger value="restore" className="gap-2">
             <Upload className="h-4 w-4" /> Restore
@@ -209,6 +217,14 @@ export default function AdminQuickBackup() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="schedule" className="space-y-6">
+          <BackupSchedulePanel />
+        </TabsContent>
+
+        <TabsContent value="archives" className="space-y-6">
+          <BackupArchivesPanel />
         </TabsContent>
 
         <TabsContent value="restore" className="space-y-6">
