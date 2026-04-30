@@ -15,6 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TicketEscalationPolicyPanel } from "@/components/admin/TicketEscalationPolicyPanel";
+import { TicketEscalationSimulator } from "@/components/admin/TicketEscalationSimulator";
 import {
   AlertTriangle,
   ArrowUpRight,
