@@ -52,7 +52,13 @@ export default function AdminQuickBackup() {
       <Tabs defaultValue="backup" className="space-y-6">
         <TabsList>
           <TabsTrigger value="backup" className="gap-2">
-            <Download className="h-4 w-4" /> Backup
+            <Download className="h-4 w-4" /> Backup manuale
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="gap-2">
+            <Calendar className="h-4 w-4" /> Pianificazione
+          </TabsTrigger>
+          <TabsTrigger value="archives" className="gap-2">
+            <HardDrive className="h-4 w-4" /> Archivi cloud
           </TabsTrigger>
           <TabsTrigger value="restore" className="gap-2">
             <Upload className="h-4 w-4" /> Restore
