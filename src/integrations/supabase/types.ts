@@ -8385,6 +8385,79 @@ export type Database = {
           },
         ]
       }
+      ticket_escalation_policies: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          level_1_minutes: number
+          level_1_roles: Database["public"]["Enums"]["app_role"][]
+          level_2_minutes: number
+          level_2_roles: Database["public"]["Enums"]["app_role"][]
+          level_3_minutes: number
+          level_3_roles: Database["public"]["Enums"]["app_role"][]
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          level_1_minutes?: number
+          level_1_roles?: Database["public"]["Enums"]["app_role"][]
+          level_2_minutes?: number
+          level_2_roles?: Database["public"]["Enums"]["app_role"][]
+          level_3_minutes?: number
+          level_3_roles?: Database["public"]["Enums"]["app_role"][]
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          level_1_minutes?: number
+          level_1_roles?: Database["public"]["Enums"]["app_role"][]
+          level_2_minutes?: number
+          level_2_roles?: Database["public"]["Enums"]["app_role"][]
+          level_3_minutes?: number
+          level_3_roles?: Database["public"]["Enums"]["app_role"][]
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_escalation_policies_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_escalation_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_escalation_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_events: {
         Row: {
           brand_id: string
@@ -10400,6 +10473,31 @@ export type Database = {
           ticket_status: string
           ticket_title: string
         }[]
+      }
+      get_ticket_escalation_policy: {
+        Args: { p_brand_id: string }
+        Returns: {
+          brand_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          level_1_minutes: number
+          level_1_roles: Database["public"]["Enums"]["app_role"][]
+          level_2_minutes: number
+          level_2_roles: Database["public"]["Enums"]["app_role"][]
+          level_3_minutes: number
+          level_3_roles: Database["public"]["Enums"]["app_role"][]
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ticket_escalation_policies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_ticket_queue_counts:
         | {
