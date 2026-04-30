@@ -9992,6 +9992,13 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      enqueue_payment_overdue_notifications: {
+        Args: { p_brand_id?: string }
+        Returns: {
+          brands_processed: number
+          notifications_created: number
+        }[]
+      }
       enqueue_webhook_delivery: {
         Args: {
           p_brand_id: string
@@ -10578,6 +10585,26 @@ export type Database = {
       get_or_create_executive_thread: {
         Args: { p_brand_id: string; p_user_id: string }
         Returns: string
+      }
+      get_overdue_installments: {
+        Args: { p_brand_id: string; p_days_ahead?: number }
+        Returns: {
+          assigned_user_id: string
+          brand_id: string
+          contact_id: string
+          contact_name: string
+          days_overdue: number
+          due_date: string
+          installment_amount: number
+          installment_index: number
+          order_id: string
+          order_number: string
+          paid_amount: number
+          payment_id: string
+          remaining_amount: number
+          status: string
+          total_amount: number
+        }[]
       }
       get_paginated_notifications: {
         Args: {
@@ -11793,6 +11820,7 @@ export type Database = {
         | "appointment_risk_alert"
         | "slo_alert"
         | "ticket_escalated"
+        | "payment_overdue"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       override_reason_category:
         | "wrong_priority"
@@ -12163,6 +12191,7 @@ export const Constants = {
         "appointment_risk_alert",
         "slo_alert",
         "ticket_escalated",
+        "payment_overdue",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       override_reason_category: [
