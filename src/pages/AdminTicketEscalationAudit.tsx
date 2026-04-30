@@ -117,6 +117,9 @@ export default function AdminTicketEscalationAudit() {
           <TabsTrigger value="policy" className="gap-1.5">
             <Settings2 className="h-4 w-4" /> Policy
           </TabsTrigger>
+          <TabsTrigger value="simulator" className="gap-1.5">
+            <FlaskConical className="h-4 w-4" /> Simulatore
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="timeline" className="space-y-6">
