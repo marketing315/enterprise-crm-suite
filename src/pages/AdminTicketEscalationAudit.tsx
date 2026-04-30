@@ -268,6 +268,10 @@ export default function AdminTicketEscalationAudit() {
         <TabsContent value="policy">
           <TicketEscalationPolicyPanel />
         </TabsContent>
+
+        <TabsContent value="simulator">
+          <TicketEscalationSimulator />
+        </TabsContent>
       </Tabs>
     </div>
   );
