@@ -27,6 +27,7 @@ import { AppointmentOutcomeDialog } from "@/features/appointments/AppointmentOut
 import { useAppointmentOutcomes } from "@/features/appointments/useAppointmentOutcomes";
 import { getOutcomeMeta, getStatusMeta } from "@/features/appointments/taxonomy";
 import { AppointmentTimeline } from "@/features/appointments/AppointmentTimeline";
+import { AppointmentCampaignAttributionCard } from "@/components/appointments/AppointmentCampaignAttributionCard";
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; className: string }> = {
   scheduled: { label: "Programmato", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
@@ -220,6 +221,9 @@ export default function AppointmentDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Campaign attribution */}
+      <AppointmentCampaignAttributionCard appointmentId={apt.id} />
 
       {/* Outcome history (append-only) */}
       <Card className="border-border/50 bg-background/60 backdrop-blur-sm">

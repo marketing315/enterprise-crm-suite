@@ -10254,6 +10254,37 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_appointment_campaign_attribution: {
+        Args: { p_appointment_id: string }
+        Returns: {
+          appointment_id: string
+          campaign_external_id: string
+          campaign_id: string
+          campaign_name: string
+          channel_id: string
+          contact_id: string
+          group_id: string
+          lead_event_at: string
+          lead_event_id: string
+          match_type: string
+          matched_at: string
+        }[]
+      }
+      get_appointments_by_campaign: {
+        Args: { p_brand_id: string; p_from_date: string; p_to_date: string }
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          cancelled_count: number
+          channel_id: string
+          completed_count: number
+          external_id: string
+          no_show_count: number
+          scheduled_count: number
+          total_appointments: number
+          unique_contacts: number
+        }[]
+      }
       get_appointments_ops_kpi: {
         Args: { p_brand_id: string; p_date_from: string; p_date_to: string }
         Returns: Json
