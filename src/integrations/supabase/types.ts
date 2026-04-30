@@ -10371,6 +10371,36 @@ export type Database = {
           thread_id: string
         }[]
       }
+      get_ticket_escalation_audit: {
+        Args: {
+          p_brand_id?: string
+          p_from?: string
+          p_level?: number
+          p_limit?: number
+          p_to?: string
+        }
+        Returns: {
+          audit_id: string
+          brand_id: string
+          escalated_at: string
+          escalated_to_name: string
+          escalated_to_user_id: string
+          escalation_level: number
+          minutes_since_breach: number
+          notification_id: string
+          notification_read_at: string
+          outcome: string
+          previous_level: number
+          sla_breached_at: string
+          suggestion_acted_on_at: string
+          suggestion_dismissed_at: string
+          suggestion_id: string
+          ticket_id: string
+          ticket_priority: number
+          ticket_status: string
+          ticket_title: string
+        }[]
+      }
       get_ticket_queue_counts:
         | {
             Args: {
