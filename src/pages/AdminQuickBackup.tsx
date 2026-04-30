@@ -209,6 +209,12 @@ export default function AdminQuickBackup() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="restore" className="space-y-6">
+          <RestorePanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
