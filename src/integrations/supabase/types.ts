@@ -2351,6 +2351,57 @@ export type Database = {
           },
         ]
       }
+      backup_runs: {
+        Row: {
+          brand_id: string
+          checksum: string | null
+          completed_at: string | null
+          created_at: string
+          duration_ms: number
+          error: string | null
+          id: string
+          scope: string
+          size_bytes: number
+          status: string
+          tables_included: string[]
+          total_rows: number
+          triggered_by_user_id: string | null
+          truncated_tables: string[]
+        }
+        Insert: {
+          brand_id: string
+          checksum?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number
+          error?: string | null
+          id?: string
+          scope: string
+          size_bytes?: number
+          status?: string
+          tables_included?: string[]
+          total_rows?: number
+          triggered_by_user_id?: string | null
+          truncated_tables?: string[]
+        }
+        Update: {
+          brand_id?: string
+          checksum?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number
+          error?: string | null
+          id?: string
+          scope?: string
+          size_bytes?: number
+          status?: string
+          tables_included?: string[]
+          total_rows?: number
+          triggered_by_user_id?: string | null
+          truncated_tables?: string[]
+        }
+        Relationships: []
+      }
       brand_assignment_state: {
         Row: {
           brand_id: string
@@ -9461,6 +9512,10 @@ export type Database = {
       apply_ai_fallback: {
         Args: { p_lead_event_id: string }
         Returns: undefined
+      }
+      assert_can_backup_brand: {
+        Args: { p_brand_id: string }
+        Returns: boolean
       }
       assign_appointment_sales: {
         Args: { p_appointment_id: string; p_sales_user_id: string }
