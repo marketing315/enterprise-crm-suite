@@ -6,6 +6,7 @@ import { useAIMetricsOverview, useAIMetricsErrors, type MetricsPeriod } from "@/
 import { MetricCard } from "@/components/admin/MetricCard";
 import { AIMetricsCharts } from "@/components/admin/AIMetricsCharts";
 import { ErrorsTable } from "@/components/admin/ErrorsTable";
+import { AIOverrideRateWidget } from "@/components/admin/AIOverrideRateWidget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -178,6 +179,9 @@ export default function AdminAIMetrics() {
           priorityDistribution={overview.priority_distribution || []}
         />
       )}
+
+      {/* AI Override Rate widget */}
+      <AIOverrideRateWidget />
 
       {/* Errors Table */}
       {loadingErrors ? (
