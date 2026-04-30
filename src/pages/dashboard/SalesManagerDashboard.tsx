@@ -12,6 +12,7 @@ import { useBrandDealScores } from '@/hooks/useDealScoring';
 import { useRevenueForecast } from '@/hooks/useForecast';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatKpi';
+import { OverduePaymentsWidget } from '@/components/sales/OverduePaymentsWidget';
 
 export default function SalesManagerDashboard() {
   const navigate = useNavigate();
@@ -206,6 +207,9 @@ export default function SalesManagerDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pagamenti rateali in ritardo / in scadenza */}
+      <OverduePaymentsWidget />
 
       {/* Salesperson KPIs */}
       <Card>
