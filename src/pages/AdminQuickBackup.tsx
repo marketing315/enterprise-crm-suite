@@ -6,11 +6,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBackupRuns, useRunQuickBackup, SCOPE_DESCRIPTIONS, BackupScope } from "@/hooks/useQuickBackup";
 import { useBrand } from "@/contexts/BrandContext";
-import { Database, Download, AlertTriangle, CheckCircle2, Loader2, Shield } from "lucide-react";
+import { Database, Download, AlertTriangle, CheckCircle2, Loader2, Shield, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { RestorePanel } from "@/components/admin/RestorePanel";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -45,15 +47,26 @@ export default function AdminQuickBackup() {
         </div>
       </div>
 
-      <Alert>
-        <Shield className="h-4 w-4" />
-        <AlertTitle>Backup logico, non sostituisce il PITR</AlertTitle>
-        <AlertDescription>
-          Per il recovery completo da incidente usa la procedura PITR documentata in{" "}
-          <code className="text-xs">docs/dr/02-pitr-restore.md</code>. Questo backup serve per
-          export rapido, audit, migrazioni e safety net prima di operazioni rischiose.
-        </AlertDescription>
-      </Alert>
+      <Tabs defaultValue="backup" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="backup" className="gap-2">
+            <Download className="h-4 w-4" /> Backup
+          </TabsTrigger>
+          <TabsTrigger value="restore" className="gap-2">
+            <Upload className="h-4 w-4" /> Restore
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="backup" className="space-y-6">
+          <Alert>
+            <Shield className="h-4 w-4" />
+            <AlertTitle>Backup logico, non sostituisce il PITR</AlertTitle>
+            <AlertDescription>
+              Per il recovery completo da incidente usa la procedura PITR documentata in{" "}
+              <code className="text-xs">docs/dr/02-pitr-restore.md</code>. Questo backup serve per
+              export rapido, audit, migrazioni e safety net prima di operazioni rischiose.
+            </AlertDescription>
+          </Alert>
 
       <Card>
         <CardHeader>
