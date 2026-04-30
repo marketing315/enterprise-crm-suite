@@ -11,6 +11,9 @@ import { test, expect } from "../fixtures/auth";
  * snapshot exposes appointment counters and they behave consistently
  * even when zero — preventing silent regressions in the snapshot RPC
  * or in the appointment_outcomes append-only contract.
+ *
+ * Extended scenarios:
+ *   - R3.D3 webhook retry storm keeps appointment counters stable
  */
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
@@ -57,6 +60,28 @@ async function snapshot(request: any, token: string, phone: string) {
   return res.json();
 }
 
+async function ingest(request: any, payload: Record<string, unknown>) {
+  return request.post(
+    `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}?api_key=${E2E_API_KEY}`,
+    { data: payload },
+  );
+}
+
+async function pollUntilFound(
+  request: any,
+  token: string,
+  phone: string,
+  maxSeconds = 15,
+) {
+  let snap: any = null;
+  for (let i = 0; i < maxSeconds; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    snap = await snapshot(request, token, phone);
+    if (snap.contact_found) break;
+  }
+  return snap;
+}
+
 test.describe("@revenue-critical Appointment Lifecycle (DEEP)", () => {
   test.skip(!SUPABASE_URL, "VITE_SUPABASE_URL not configured");
   test.skip(!email || !password, "E2E credentials not configured");
@@ -68,24 +93,14 @@ test.describe("@revenue-critical Appointment Lifecycle (DEEP)", () => {
     const phoneSuffix = String(Date.now()).slice(-7);
     const phone = `+39337${phoneSuffix}`;
 
-    await request.post(
-      `${SUPABASE_URL}/functions/v1/webhook-ingest/${E2E_SOURCE_ACTIVE_ID}?api_key=${E2E_API_KEY}`,
-      {
-        data: {
-          first_name: "E2E",
-          last_name: "Appointment",
-          phone,
-          email: `e2e-appt-${phoneSuffix}@test.local`,
-        },
-      },
-    );
+    await ingest(request, {
+      first_name: "E2E",
+      last_name: "Appointment",
+      phone,
+      email: `e2e-appt-${phoneSuffix}@test.local`,
+    });
 
-    let snap: any = null;
-    for (let i = 0; i < 15; i++) {
-      await new Promise((r) => setTimeout(r, 1000));
-      snap = await snapshot(request, token!, phone);
-      if (snap.contact_found) break;
-    }
+    const snap = await pollUntilFound(request, token!, phone);
 
     expect(snap.contact_found, "contact must be created").toBe(true);
     expect(snap.appointments, "appointments key must exist").toBeDefined();
@@ -114,5 +129,66 @@ test.describe("@revenue-critical Appointment Lifecycle (DEEP)", () => {
     await page.goto("/appointments/ops-board");
     await page.waitForLoadState("networkidle", { timeout: 20000 }).catch(() => {});
     await expect(errorOverlay).toHaveCount(0);
+  });
+
+  test("R3.D3: webhook retry storm keeps appointment counters stable", async ({
+    request,
+  }) => {
+    const token = await getAccessToken(request);
+    test.skip(!token, "could not obtain access token");
+
+    const phoneSuffix = String(Date.now()).slice(-7);
+    const phone = `+39339${phoneSuffix}`;
+    const payload = {
+      first_name: "E2E",
+      last_name: "ApptRetry",
+      phone,
+      email: `e2e-appt-retry-${phoneSuffix}@test.local`,
+    };
+
+    // First ingestion
+    const r1 = await ingest(request, payload);
+    expect([200, 202]).toContain(r1.status());
+
+    const baseline = await pollUntilFound(request, token!, phone);
+    expect(baseline.contact_found).toBe(true);
+    const baseApptTotal = baseline.appointments.total as number;
+    const baseOutcomes = baseline.appointments.recent_outcomes_10min as number;
+
+    // Burst of identical retries (provider retry storm scenario)
+    const retries = await Promise.all([
+      ingest(request, payload),
+      ingest(request, payload),
+      ingest(request, payload),
+    ]);
+    for (const r of retries) {
+      expect([200, 202, 409]).toContain(r.status());
+    }
+
+    await new Promise((r) => setTimeout(r, 5000));
+
+    // Three consecutive snapshots — must agree on totals (no flakey counter)
+    const s1 = await snapshot(request, token!, phone);
+    const s2 = await snapshot(request, token!, phone);
+    const s3 = await snapshot(request, token!, phone);
+
+    // Same contact_id throughout
+    expect(s1.contact_id).toBe(baseline.contact_id);
+    expect(s2.contact_id).toBe(baseline.contact_id);
+    expect(s3.contact_id).toBe(baseline.contact_id);
+
+    // Appointment total must not drift (no race-condition double-creation)
+    expect(s1.appointments.total).toBe(baseApptTotal);
+    expect(s2.appointments.total).toBe(baseApptTotal);
+    expect(s3.appointments.total).toBe(baseApptTotal);
+
+    // Outcomes can only grow within the 10-minute window — must be monotonic
+    expect(s1.appointments.recent_outcomes_10min).toBeGreaterThanOrEqual(baseOutcomes);
+    expect(s2.appointments.recent_outcomes_10min).toBeGreaterThanOrEqual(
+      s1.appointments.recent_outcomes_10min,
+    );
+    expect(s3.appointments.recent_outcomes_10min).toBeGreaterThanOrEqual(
+      s2.appointments.recent_outcomes_10min,
+    );
   });
 });
