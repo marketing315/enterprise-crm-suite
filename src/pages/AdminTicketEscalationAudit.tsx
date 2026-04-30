@@ -27,6 +27,7 @@ import {
   TimerReset,
   UserX,
   XCircle,
+  FlaskConical,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
