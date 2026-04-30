@@ -151,8 +151,7 @@ export default function AdminTicketEscalationAudit() {
             <TimerReset className="h-4 w-4 mr-1" />
             Aggiorna
           </Button>
-        </div>
-      </header>
+          </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -259,6 +258,12 @@ export default function AdminTicketEscalationAudit() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="policy">
+          <TicketEscalationPolicyPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
