@@ -13,9 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
-import { Webhook, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Webhook, Plus, AlertCircle, CheckCircle2, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { WebhookHealthDashboard } from "@/components/admin/WebhookHealthDashboard";
 
 const DEFAULT_TYPES = [
   "ticket_escalated",
@@ -220,11 +221,18 @@ export default function AdminNotificationWebhooks() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="destinations">
+      <Tabs defaultValue="health">
         <TabsList>
+          <TabsTrigger value="health" className="gap-1.5">
+            <Activity className="h-4 w-4" /> Health
+          </TabsTrigger>
           <TabsTrigger value="destinations">Destinazioni</TabsTrigger>
           <TabsTrigger value="outbox">Coda di consegna</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="health">
+          <WebhookHealthDashboard />
+        </TabsContent>
 
         <TabsContent value="destinations" className="space-y-3">
           {isLoading && <p className="text-muted-foreground">Caricamento…</p>}

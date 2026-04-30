@@ -10759,6 +10759,26 @@ export type Database = {
       get_user_brand_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_id: { Args: { _auth_uid: string }; Returns: string }
       get_webhook_delivery: { Args: { p_delivery_id: string }; Returns: Json }
+      get_webhook_delivery_health: {
+        Args: { p_brand_id: string; p_from_hours?: number }
+        Returns: {
+          avg_latency_seconds: number
+          consecutive_failures: number
+          dead_letter_count: number
+          destination_id: string
+          destination_name: string
+          failed_count: number
+          is_active: boolean
+          last_error: string
+          last_success_at: string
+          p95_latency_seconds: number
+          pending_count: number
+          preset: string
+          sent_count: number
+          success_rate: number
+          total_attempts: number
+        }[]
+      }
       has_finance_access: {
         Args: { p_brand_id: string; p_user_id: string }
         Returns: boolean
@@ -11153,6 +11173,10 @@ export type Database = {
       replay_outbound_dlq: {
         Args: { p_delivery_id: string; p_override_url?: string }
         Returns: Json
+      }
+      replay_webhook_dead_letter: {
+        Args: { p_outbox_id: string }
+        Returns: boolean
       }
       resolve_lead_campaign_attribution: {
         Args: {
