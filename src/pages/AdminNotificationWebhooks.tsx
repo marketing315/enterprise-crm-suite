@@ -13,9 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
-import { Webhook, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Webhook, Plus, AlertCircle, CheckCircle2, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { WebhookHealthDashboard } from "@/components/admin/WebhookHealthDashboard";
 
 const DEFAULT_TYPES = [
   "ticket_escalated",
