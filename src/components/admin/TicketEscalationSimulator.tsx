@@ -48,7 +48,8 @@ function Delta({ before, after }: { before: number; after: number }) {
 }
 
 export function TicketEscalationSimulator() {
-  const { selectedBrandId } = useBrand();
+  const { currentBrand } = useBrand();
+  const selectedBrandId = currentBrand?.id ?? null;
   const [l1, setL1] = useState(30);
   const [l2, setL2] = useState(120);
   const [l3, setL3] = useState(480);
