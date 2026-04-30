@@ -11353,6 +11353,16 @@ export type Database = {
         Args: { _severity: string; _threshold: string }
         Returns: boolean
       }
+      simulate_ticket_escalation_policy: {
+        Args: {
+          p_brand_id: string
+          p_from_days?: number
+          p_level_1_minutes: number
+          p_level_2_minutes: number
+          p_level_3_minutes: number
+        }
+        Returns: Json
+      }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
       update_appointment: {
         Args: {

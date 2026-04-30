@@ -15,6 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TicketEscalationPolicyPanel } from "@/components/admin/TicketEscalationPolicyPanel";
+import { TicketEscalationSimulator } from "@/components/admin/TicketEscalationSimulator";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -26,6 +27,7 @@ import {
   TimerReset,
   UserX,
   XCircle,
+  FlaskConical,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -114,6 +116,9 @@ export default function AdminTicketEscalationAudit() {
           </TabsTrigger>
           <TabsTrigger value="policy" className="gap-1.5">
             <Settings2 className="h-4 w-4" /> Policy
+          </TabsTrigger>
+          <TabsTrigger value="simulator" className="gap-1.5">
+            <FlaskConical className="h-4 w-4" /> Simulatore
           </TabsTrigger>
         </TabsList>
 
@@ -262,6 +267,10 @@ export default function AdminTicketEscalationAudit() {
 
         <TabsContent value="policy">
           <TicketEscalationPolicyPanel />
+        </TabsContent>
+
+        <TabsContent value="simulator">
+          <TicketEscalationSimulator />
         </TabsContent>
       </Tabs>
     </div>
