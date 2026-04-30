@@ -52,7 +52,7 @@ interface OutboxRow {
 }
 
 export default function AdminNotificationWebhooks() {
-  const { selectedBrand } = useBrand();
+  const { currentBrand } = useBrand();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
