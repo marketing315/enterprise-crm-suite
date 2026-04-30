@@ -142,7 +142,7 @@ export function useRestoreRuns() {
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      return (data ?? []) as RestoreRunRow[];
+      return (data ?? []) as unknown as RestoreRunRow[];
     },
     enabled: !!currentBrand?.id,
     staleTime: 30_000,
