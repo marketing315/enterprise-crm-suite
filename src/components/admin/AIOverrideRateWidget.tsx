@@ -128,13 +128,29 @@ export function AIOverrideRateWidget() {
             <p className="text-xs text-muted-foreground mb-2">Top motivi di override</p>
             <div className="flex flex-wrap gap-1.5">
               {summary.decisions.top_override_categories.slice(0, 6).map((c) => (
-                <Badge key={c.category} variant="outline" className="text-xs">
-                  {c.category} · {c.cnt}
-                </Badge>
+                <Link
+                  key={c.category}
+                  to={`/admin/ai-decisions?overridden=1&days=30`}
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Badge variant="outline" className="text-xs cursor-pointer">
+                    {c.category} · {c.cnt}
+                  </Badge>
+                </Link>
               ))}
             </div>
           </div>
         )}
+
+        {/* Drilldown link */}
+        <div className="border-t pt-3 flex items-center justify-end">
+          <Link
+            to="/admin/ai-decisions?days=30"
+            className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+          >
+            Apri drilldown decisioni AI <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
 
         {/* Call-action proposals */}
         <div className="border-t pt-3">
