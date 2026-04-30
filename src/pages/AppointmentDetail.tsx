@@ -222,6 +222,9 @@ export default function AppointmentDetail() {
         </Card>
       )}
 
+      {/* Campaign attribution */}
+      <AppointmentCampaignAttributionCard appointmentId={apt.id} />
+
       {/* Outcome history (append-only) */}
       <Card className="border-border/50 bg-background/60 backdrop-blur-sm">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
