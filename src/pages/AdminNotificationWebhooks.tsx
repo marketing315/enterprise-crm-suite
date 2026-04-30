@@ -221,11 +221,18 @@ export default function AdminNotificationWebhooks() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="destinations">
+      <Tabs defaultValue="health">
         <TabsList>
+          <TabsTrigger value="health" className="gap-1.5">
+            <Activity className="h-4 w-4" /> Health
+          </TabsTrigger>
           <TabsTrigger value="destinations">Destinazioni</TabsTrigger>
           <TabsTrigger value="outbox">Coda di consegna</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="health">
+          <WebhookHealthDashboard />
+        </TabsContent>
 
         <TabsContent value="destinations" className="space-y-3">
           {isLoading && <p className="text-muted-foreground">Caricamento…</p>}
