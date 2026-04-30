@@ -11793,6 +11793,7 @@ export type Database = {
         | "appointment_risk_alert"
         | "slo_alert"
         | "ticket_escalated"
+        | "payment_overdue"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       override_reason_category:
         | "wrong_priority"
@@ -12163,6 +12164,7 @@ export const Constants = {
         "appointment_risk_alert",
         "slo_alert",
         "ticket_escalated",
+        "payment_overdue",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       override_reason_category: [
