@@ -102,10 +102,23 @@ export default function AdminTicketEscalationAudit() {
             Audit Escalation Ticket
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Timeline delle escalation SLA: livello, motivazione, notifiche inviate ed esito.
+            Timeline delle escalation SLA e configurazione policy gerarchiche per brand.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+      </header>
+
+      <Tabs defaultValue="timeline" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="timeline" className="gap-1.5">
+            <ShieldAlert className="h-4 w-4" /> Timeline
+          </TabsTrigger>
+          <TabsTrigger value="policy" className="gap-1.5">
+            <Settings2 className="h-4 w-4" /> Policy
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="timeline" className="space-y-6">
+          <div className="flex flex-wrap items-center gap-2 justify-end">
           <Select value={fromDays} onValueChange={setFromDays}>
             <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>
