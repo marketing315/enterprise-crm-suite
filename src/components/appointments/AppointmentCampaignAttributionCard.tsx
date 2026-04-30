@@ -32,6 +32,7 @@ export function AppointmentCampaignAttributionCard({ appointmentId }: { appointm
         { p_appointment_id: appointmentId } as never
       );
       if (error) throw error;
+      if (!data) return null;
       const row = Array.isArray(data) ? data[0] : data;
       return (row ?? null) as Attribution | null;
     },
