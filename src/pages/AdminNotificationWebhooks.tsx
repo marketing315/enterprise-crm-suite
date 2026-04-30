@@ -63,7 +63,7 @@ export default function AdminNotificationWebhooks() {
     notification_types: [] as string[],
   });
 
-  const brandId = selectedBrand?.id ?? null;
+  const brandId = currentBrand?.id ?? null;
 
   const { data: destinations = [], isLoading } = useQuery({
     queryKey: ["notification-webhook-destinations", brandId],
