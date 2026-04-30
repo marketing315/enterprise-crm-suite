@@ -10162,6 +10162,23 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_ai_decisions_drilldown: {
+        Args: {
+          p_brand_id?: string
+          p_days?: number
+          p_initial_stage?: string
+          p_limit?: number
+          p_model_version?: string
+          p_offset?: number
+          p_only_overridden?: boolean
+          p_overridden_by_user_id?: string
+        }
+        Returns: Json
+      }
+      get_ai_decisions_filter_options: {
+        Args: { p_brand_id?: string; p_days?: number }
+        Returns: Json
+      }
       get_ai_metrics_errors: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
