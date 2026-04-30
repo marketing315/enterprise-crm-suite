@@ -256,6 +256,16 @@ export default function AdminAIDecisionsDrilldown() {
           </CardTitle>
           <div className="flex items-center gap-2 text-sm">
             <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportCSV}
+              disabled={isLoading || (data?.rows.length ?? 0) === 0}
+              className="gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Esporta CSV</span>
+            </Button>
+            <Button
               size="icon"
               variant="ghost"
               disabled={page === 0}
