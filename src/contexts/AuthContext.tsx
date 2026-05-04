@@ -139,6 +139,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // SECURITY: purge any SW-cached Supabase responses so the next
           // session doesn't inherit the previous user's authorizations.
           void purgeSupabaseBrowserCaches();
+          // GDPR: wipe React Query in-memory cache + localStorage persister
+          // so the next login on the same device cannot restore the previous
+          // user's lead/deal/ticket/brand data.
+          void clearAllQueryCaches();
         }
 
         // SECURITY: on token refresh / user update (e.g. role change applied
