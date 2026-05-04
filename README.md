@@ -1,8 +1,10 @@
-# CRM Lead Management Platform
+# CRM Gruppo Benessere
 
 > Piattaforma CRM enterprise multi-brand per la gestione completa del ciclo lead-to-deal.
 
 **Produzione:** [crm.gruppobenessere.it](https://crm.gruppobenessere.it)
+**Brand pubblico:** _CRM Gruppo Benessere_ (vedi `index.html`, `vite.config.ts` PWA manifest, email templates).
+**Codename interno / repo slug:** `ralph-hub` — usato solo per l'alias Lovable preview (`ralph-hub.lovable.app`) e in path interni come `mem://`/CODEOWNERS team handles. Non esporlo in UI utente.
 
 > L'URL del preview environment è interno al team e non viene pubblicato nel repo per evitare enumerazione/scraping di build non protette. Vedi `docs/decisions.md` o chiedi a un admin.
 
