@@ -159,9 +159,7 @@ async function processLeadChange(
   const pageId = change.value?.page_id;
   const formId = change.value?.form_id;
   const adId = change.value?.ad_id;
-  const pageId = change.value?.page_id;
-  const formId = change.value?.form_id;
-  const adId = change.value?.ad_id;
+
 
   if (!leadgenId) {
     console.warn(`[META-EVENT] Missing leadgen_id in change`);
