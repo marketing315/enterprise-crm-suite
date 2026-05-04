@@ -97,6 +97,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.ok) {
+      return new Response(JSON.stringify({ error: pwCheck.error, code: pwCheck.code }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // B02 FIX: Validate that all requested brand_ids are within caller's scope
     if (!isGlobalAdmin) {
       const unauthorizedBrands = brandIds.filter((bid: string) => !callerBrandIds.includes(bid));
