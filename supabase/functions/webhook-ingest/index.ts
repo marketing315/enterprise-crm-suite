@@ -195,7 +195,7 @@ Deno.serve(async (req: Request) => {
         source_id: resolvedSourceId,
         brand_id: resolvedBrandId,
         raw_body: rawBody, // null if JSON invalid
-        raw_body_text: jsonParseError ? bodyText : null, // Save raw text only if JSON parse failed
+        raw_body_text: rawBodyTextSanitized, // Sanitized snippet, only if JSON parse failed
         headers: filteredHeaders,
         ip_address: ipAddress,
         user_agent: userAgent,
