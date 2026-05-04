@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session — B2 FIX: wrap in try/catch/finally
+    // THEN check for existing session: wrap in try/catch/finally
     // so isLoading is ALWAYS set to false even if getSession rejects
     (async () => {
       try {
