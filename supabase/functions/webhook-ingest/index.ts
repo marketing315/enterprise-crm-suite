@@ -118,6 +118,25 @@ Deno.serve(async (req: Request) => {
     jsonParseError = true;
   }
 
+  // Sanitize raw text snippet to persist on parse failure.
+  // - Hard cap to 8KB (prevents DB bloat from 256KB junk payloads)
+  // - Strip C0/C1 control chars except \t \n \r (defense-in-depth vs ANSI escape
+  //   sequences, NULL bytes, terminal injection in admin tools / log shippers /
+  //   CSV/SIEM exports). React already escapes text children, so no DOM XSS,
+  //   but downstream non-HTML consumers are not guaranteed safe.
+  // - Replace lone surrogates with U+FFFD via JSON round-trip-safe scrubbing.
+  function sanitizeRawBodyText(input: string): string {
+    const MAX_RAW_TEXT_CHARS = 8 * 1024;
+    let out = input.length > MAX_RAW_TEXT_CHARS
+      ? input.slice(0, MAX_RAW_TEXT_CHARS) + `\n…[truncated ${input.length - MAX_RAW_TEXT_CHARS} chars]`
+      : input;
+    // Strip C0 controls except \t (0x09) \n (0x0A) \r (0x0D) and DEL/C1 range
+    // deno-lint-ignore no-control-regex
+    out = out.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "\uFFFD");
+    return out;
+  }
+  const rawBodyTextSanitized = jsonParseError ? sanitizeRawBodyText(bodyText) : null;
+
   // Extract source ID (and optional inline API key) from URL
   // Supports: /webhook-ingest/{source_id}
   //           /webhook-ingest/{source_id}/{api_key}  (for platforms like systeme.io that don't support custom headers)
@@ -176,7 +195,7 @@ Deno.serve(async (req: Request) => {
         source_id: resolvedSourceId,
         brand_id: resolvedBrandId,
         raw_body: rawBody, // null if JSON invalid
-        raw_body_text: jsonParseError ? bodyText : null, // Save raw text only if JSON parse failed
+        raw_body_text: rawBodyTextSanitized, // Sanitized snippet, only if JSON parse failed
         headers: filteredHeaders,
         ip_address: ipAddress,
         user_agent: userAgent,
