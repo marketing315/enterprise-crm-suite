@@ -1445,11 +1445,18 @@ Deno.serve(async (req: Request) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
+        // SECURITY: never propagate the service-role key as Bearer between
+        // edge functions. Use a dedicated internal token (same pattern as
+        // keplero-webhook → INTERNAL_SERVICE_TOKEN).
+        const internalToken =
+          Deno.env.get("INTERNAL_SERVICE_TOKEN") ||
+          Deno.env.get("SHEETS_INTERNAL_TOKEN") ||
+          "";
         fetch(sheetsUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "X-Internal-Token": internalToken,
           },
           body: JSON.stringify({ lead_event_id: leadEvent.id }),
           signal: controller.signal,
