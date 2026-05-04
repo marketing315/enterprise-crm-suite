@@ -25,6 +25,12 @@ export default function Login() {
       </div>
 
       <LoginForm />
+
+      <footer className="mt-8 text-center text-xs text-muted-foreground">
+        <Link to="/privacy" className="hover:text-foreground hover:underline">
+          Informativa Privacy
+        </Link>
+      </footer>
     </div>
   );
 }
