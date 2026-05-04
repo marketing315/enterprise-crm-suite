@@ -2,9 +2,9 @@
 
 > Piattaforma CRM enterprise multi-brand per la gestione completa del ciclo lead-to-deal.
 
-| Live | Preview |
-|------|---------|
-| [ralph-hub.lovable.app](https://ralph-hub.lovable.app) | [Preview](https://id-preview--08e518ba-ca82-4402-9a5d-7fc159333e6d.lovable.app) |
+**Produzione:** [crm.gruppobenessere.it](https://crm.gruppobenessere.it)
+
+> L'URL del preview environment è interno al team e non viene pubblicato nel repo per evitare enumerazione/scraping di build non protette. Vedi `docs/decisions.md` o chiedi a un admin.
 
 ---
 
