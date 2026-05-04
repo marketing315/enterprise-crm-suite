@@ -6,6 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Constant-time string comparison to prevent timing attacks on secrets
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// Compares provided secret against any of the candidates in constant time
+function timingSafeEqualAny(provided: string, ...candidates: (string | undefined)[]): boolean {
+  for (const c of candidates) {
+    if (c && timingSafeEqual(provided, c)) return true;
+  }
+  return false;
+}
+
 // ============= Types =============
 
 interface WebhookInboundEvent {
