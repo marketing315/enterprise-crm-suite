@@ -3,7 +3,7 @@
 -- ============================================================
 -- Auto-generato da: scripts/security/generate-baseline.sh
 -- Source: pg_dump --schema-only --no-owner --no-privileges --no-comments --schema=public
--- Snapshot UTC: 2026-05-04T12:22:30Z
+-- Snapshot UTC: 2026-05-04T12:24:07Z
 --
 -- ⚠️  QUESTO FILE È SOLA DOCUMENTAZIONE.
 -- - Non viene applicato dal CLI Supabase (incluso in .supabaseignore).
@@ -20,7 +20,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 9JbXL4h8MPUpRG0gUQ8px1xFHvcu2ozxwORpaeRb9cKYphcG485i194tJmi73dK
+\restrict dh0laQ6CQJSaeOD2RtGjWfnS33TpKdo6xKS0u8jGyI0Ynho0GwDNqjEzHE4oIa7
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.9
@@ -29,13 +29,12 @@ SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET transaction_timeout = 0;
-SET client_encoding = 'SQL_ASCII';
-SET standard_conforming_strings = off;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
-SET escape_string_warning = off;
 SET row_security = off;
 
 --
@@ -32698,5 +32697,5 @@ ALTER TABLE public.webhook_sources ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 9JbXL4h8MPUpRG0gUQ8px1xFHvcu2ozxwORpaeRb9cKYphcG485i194tJmi73dK
+\unrestrict dh0laQ6CQJSaeOD2RtGjWfnS33TpKdo6xKS0u8jGyI0Ynho0GwDNqjEzHE4oIa7
 
