@@ -514,6 +514,30 @@ export function TicketDetailSheet({
             </ScrollArea>
           </TabsContent>
         </Tabs>
+
+        {/* Sticky bottom CTA bar */}
+        {(() => {
+          const phones = ticket.contacts?.contact_phones;
+          const primary = phones?.find((p) => p.is_primary)?.phone_raw || phones?.[0]?.phone_raw;
+          if (!primary || !ticket.contacts) return null;
+          return (
+            <div className="shrink-0 -mx-4 sm:-mx-6 mt-3 px-4 sm:px-6 pt-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-wrap gap-2">
+              <ClickToCallButton
+                contactId={ticket.contacts.id}
+                phoneNumber={primary}
+                variant="default"
+                size="sm"
+                showLabel
+                className="flex-1 min-w-[140px]"
+              />
+              <a
+                href={`tel:${primary}`}
+                className="hidden"
+                aria-hidden
+              />
+            </div>
+          );
+        })()}
       </SheetContent>
     </Sheet>
   );
