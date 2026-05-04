@@ -3,6 +3,7 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
 import { clearAllQueryCaches } from '@/lib/queryClient';
+import { setUserScope, purgeUserScopedStorage } from '@/lib/userScopedStorage';
 import type { User, UserRole, AppRole } from '@/types/database';
 
 interface AuthContextType {
