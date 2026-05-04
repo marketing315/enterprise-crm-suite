@@ -51,29 +51,18 @@ export default function CeoDashboardView() {
     );
   }
 
-  const isLoading = finLoading || opsLoading;
-
   return (
     <DashboardShell
       title="CEO Dashboard"
       subtitle="Visione strategica: ricavi, costi, utile, forecast"
       icon={<TrendingUp className="h-6 w-6 text-primary" />}
-      queryKeys={[['ceo-dashboard-kpis'], ['ceo-operational-kpis']]}
+      queryKeys={[['ceo-dashboard-bundle']]}
     >
       <CeoPeriodSelector from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
 
       <TaxDisclaimer />
 
-      {isLoading && (
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32" />)}
-          </div>
-        </div>
-      )}
+      {isLoading && <CeoDashboardSkeleton />}
 
       {finError && (
         <Alert variant="destructive">
