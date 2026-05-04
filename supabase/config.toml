@@ -83,3 +83,7 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false
   [functions.webhook-ingest]
     verify_jwt = false
+  [functions.web-push-dispatcher]
+    verify_jwt = false
+  [functions.web-push-public-key]
+    verify_jwt = false

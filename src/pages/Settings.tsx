@@ -33,6 +33,7 @@ import { OAuthChannelsSettings } from "@/components/settings/OAuthChannelsSettin
 import { PipelineStagesSettings } from "@/components/settings/pipeline/PipelineStagesSettings";
 import { CustomFieldsSettings } from "@/components/settings/CustomFieldsSettings";
 import { NotificationPreferencesSettings } from "@/components/settings/NotificationPreferencesSettings";
+import { WebPushSettings } from "@/components/settings/WebPushSettings";
 import { VoIPSettings } from "@/components/settings/VoIPSettings";
 import { VOIspeedSettings } from "@/components/settings/VOIspeedSettings";
 import { AutomationSettings } from "@/components/settings/automation/AutomationSettings";
@@ -99,6 +100,7 @@ const settingsGroups: SettingsNavGroup[] = [
     label: "Notifiche",
     items: [
       { id: "notifications", label: "Preferenze notifiche", icon: Bell },
+      { id: "webpush", label: "Push browser/mobile", icon: Bell },
     ],
   },
   {
@@ -155,6 +157,8 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
       return <KepleroLookupSettings />;
     case "notifications":
       return <NotificationPreferencesSettings />;
+    case "webpush":
+      return <WebPushSettings />;
     case "modules":
       return <ModuleGovernanceSettings />;
     case "audit":
