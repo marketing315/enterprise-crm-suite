@@ -1,0 +1,46 @@
+name: Dependency Audit
+
+on:
+  schedule:
+    # Lunedì 06:00 UTC — prima della settimana lavorativa
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  npm-audit:
+    name: npm audit (high+critical, prod)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Hard gate: vulnerabilità HIGH/CRITICAL su deps di produzione → fail
+      - name: Audit production dependencies (high+critical)
+        run: npm audit --omit=dev --audit-level=high
+
+      # Soft gate: report informativo su tutte le deps (incluso dev), non blocca
+      - name: Full audit report (informational)
+        if: always()
+        run: npm audit --audit-level=low || true
+
+  outdated-report:
+    name: Outdated dependencies report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Report outdated packages
+        run: npm outdated || true
