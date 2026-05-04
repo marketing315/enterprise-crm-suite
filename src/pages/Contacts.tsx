@@ -24,6 +24,7 @@ import { ContactDetailSheet } from '@/components/contacts/ContactDetailSheet';
 import { TagFilter } from '@/components/tags/TagFilter';
 import { DateRangeFilter } from '@/components/contacts/DateRangeFilter';
 import { usePaginatedContactSearch } from '@/hooks/usePaginatedContactSearch';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { useBrand } from '@/contexts/BrandContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useContactsRealtime } from '@/hooks/useContactsRealtime';
@@ -73,7 +74,7 @@ export default function Contacts() {
   }, [searchParams, setSearchParams]);
   
   
-  const { contacts, isLoading, isLoadingMore, hasMore, loadMore, totalLoaded, totalCount } = usePaginatedContactSearch(
+  const { contacts, isLoading, isLoadingMore, hasMore, loadMore, totalLoaded, totalCount, isError, error, refetch } = usePaginatedContactSearch(
     searchQuery,
     {
       status: statusFilter === 'all' ? undefined : statusFilter,
@@ -314,19 +315,27 @@ export default function Contacts() {
       </div>
 
       {/* Table */}
-      <ContactsTableWithViews 
-        contacts={contactsForTable} 
-        isLoading={isLoading} 
-        showBrandColumn={isAllBrandsSelected}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
-        onLoadMore={loadMore}
-        onSortChange={handleSortChange}
-        showAll={showAll}
-        onToggleShowAll={() => setShowAll(prev => !prev)}
-        totalCount={totalCount}
-        totalLoaded={totalLoaded}
-      />
+      {isError ? (
+        <QueryErrorState
+          error={error}
+          entityLabel="i tuoi contatti"
+          onRetry={() => refetch()}
+        />
+      ) : (
+        <ContactsTableWithViews 
+          contacts={contactsForTable} 
+          isLoading={isLoading} 
+          showBrandColumn={isAllBrandsSelected}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMore}
+          onSortChange={handleSortChange}
+          showAll={showAll}
+          onToggleShowAll={() => setShowAll(prev => !prev)}
+          totalCount={totalCount}
+          totalLoaded={totalLoaded}
+        />
+      )}
 
       {/* Contact Detail Sheet */}
       <ContactDetailSheet
