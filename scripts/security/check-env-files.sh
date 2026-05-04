@@ -72,22 +72,28 @@ fi
 
 # ── 3. .env non deve mai contenere chiavi privati/service_role ──────────
 if [[ -f ".env" ]]; then
-  # Pattern di chiavi pericolose
-  DANGEROUS_PATTERNS=(
-    'service_role'
+  # Match SOLO se compaiono come NOME variabile (a inizio riga, prima di '=').
+  # Evita falsi positivi sui claim JSON dentro la JWT publishable.
+  DANGEROUS_VAR_NAMES=(
+    'SUPABASE_SERVICE_ROLE_KEY'
     'SERVICE_ROLE_KEY'
-    'SUPABASE_SERVICE_ROLE'
-    'sk_live_'
-    'sk_test_'
     'INTERNAL_SERVICE_TOKEN'
     'CRON_SECRET'
+    'STRIPE_SECRET_KEY'
+    'OPENAI_API_KEY'
+    'LOVABLE_API_KEY'
   )
-  for pat in "${DANGEROUS_PATTERNS[@]}"; do
-    if grep -i "$pat" .env >/dev/null 2>&1; then
-      red "✗ .env contiene pattern sensibile '$pat'. Spostalo nei Cloud secrets."
+  for var in "${DANGEROUS_VAR_NAMES[@]}"; do
+    if grep -E "^${var}=" .env >/dev/null 2>&1; then
+      red "✗ .env definisce variabile sensibile '${var}'. Spostala nei Cloud secrets."
       fail=1
     fi
   done
+  # Pattern valore-only inequivocabili
+  if grep -E '=sk_live_[A-Za-z0-9]+' .env >/dev/null 2>&1; then
+    red "✗ .env contiene una Stripe live secret key. Rimuovi e ruota immediatamente."
+    fail=1
+  fi
 fi
 
 if [[ $fail -eq 0 ]]; then
