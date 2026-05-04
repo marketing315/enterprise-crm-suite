@@ -472,9 +472,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    let payload: any;
+    let payload: MetaWebhookPayload;
     try {
-      payload = JSON.parse(rawBody);
+      payload = JSON.parse(rawBody) as MetaWebhookPayload;
     } catch {
       console.error(`[META-EVENT] Invalid JSON for ${brandSlug}`);
       return new Response(JSON.stringify({ error: "invalid_json" }), {
@@ -485,7 +485,8 @@ Deno.serve(async (req) => {
 
     console.log(`[META-EVENT] Received for ${brandSlug}:`, JSON.stringify(payload));
 
-    const results: any[] = [];
+    type LeadResult = Awaited<ReturnType<typeof processLeadChange>> | { leadgen_id: string; status: string };
+    const results: LeadResult[] = [];
 
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
