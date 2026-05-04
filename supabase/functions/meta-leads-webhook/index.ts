@@ -194,7 +194,7 @@ async function processLeadChange(
   const metaEventId = metaEvent.id;
 
   // 2. Fetch lead details from Graph API
-  let leadData: any = null;
+  let leadData: MetaLeadData | null = null;
   try {
     const graphUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${metaApp.access_token}`;
     const graphRes = await fetch(graphUrl);
