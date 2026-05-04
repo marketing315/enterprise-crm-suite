@@ -216,6 +216,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // SECURITY: best-effort SW cache wipe (also fires from onAuthStateChange,
     // duplicated here in case the listener races with a navigation away).
     await purgeSupabaseBrowserCaches();
+    // GDPR: wipe React Query in-memory + localStorage persister now, before
+    // the page navigates to /login (the SIGNED_OUT listener may not run if
+    // the navigation happens first).
+    await clearAllQueryCaches();
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
