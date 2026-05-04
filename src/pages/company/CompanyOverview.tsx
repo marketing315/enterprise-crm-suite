@@ -229,8 +229,8 @@ export default function CompanyOverview() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={({ category_name, percent }) => 
-                      `${category_name}: ${(percent * 100).toFixed(0)}%`
+                    label={(entry: { category_name?: string; percent?: number }) =>
+                      `${entry.category_name ?? ""}: ${((entry.percent ?? 0) * 100).toFixed(0)}%`
                     }
                   >
                     {kpis.expenses_by_category.map((_, index) => (
