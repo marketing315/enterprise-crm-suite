@@ -458,21 +458,23 @@ Deno.serve(async (req) => {
 
     console.log(`[INFO] Claimed ${claimedCount} deliveries`);
 
-    // Process batch with wall-time guard
-    const { sentOk, sentFail, remainingHint } = await processBatch(
-      supabase, 
+    // Process batch with wall-time guard, fair scheduling and per-webhook circuit breaker
+    const { sentOk, sentFail, remainingHint, circuitOpen, trippedWebhooks } = await processBatch(
+      supabase,
       deliveries as WebhookDelivery[],
       runStartTime
     );
 
-    const summary = { 
-      claimed: claimedCount, 
-      sent_ok: sentOk, 
+    const summary = {
+      claimed: claimedCount,
+      sent_ok: sentOk,
       sent_fail: sentFail,
+      circuit_open: circuitOpen,
+      tripped_webhooks: trippedWebhooks,
       remaining_hint: remainingHint,
       duration_ms: Date.now() - runStartTime
     };
-    console.log(`[SUMMARY] claimed=${claimedCount} sent_ok=${sentOk} sent_fail=${sentFail} remaining_hint=${remainingHint} duration_ms=${summary.duration_ms}`);
+    console.log(`[SUMMARY] claimed=${claimedCount} sent_ok=${sentOk} sent_fail=${sentFail} circuit_open=${circuitOpen} tripped=${trippedWebhooks.length} remaining_hint=${remainingHint} duration_ms=${summary.duration_ms}`);
 
     return new Response(JSON.stringify(summary), {
       status: 200,
