@@ -373,17 +373,14 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // PERF: indexed lookup on auth.users.email (unique index → O(1)).
+        // PERF: indexed lookup via SECURITY DEFINER RPC on auth.users.email (O(1)).
         // Replaces previous paginated listUsers() scan that degraded with auth size.
-        const normalizedEmail = email.toLowerCase();
-        const { data: existingRow } = await adminClient
-          .schema("auth" as any)
-          .from("users")
-          .select("id, email")
-          .eq("email", normalizedEmail)
-          .maybeSingle();
-        const existingAuthUser: { id: string } | null = existingRow?.id
-          ? { id: existingRow.id as string }
+        const { data: existingId } = await adminClient.rpc(
+          "get_auth_user_id_by_email",
+          { p_email: email }
+        );
+        const existingAuthUser: { id: string } | null = existingId
+          ? { id: existingId as string }
           : null;
 
         let authUserId: string;
