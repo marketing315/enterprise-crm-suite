@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { Helmet } from "react-helmet-async";
+import { useEffect } from "react";
 import {
   useAdminSetupProgress,
   useMarkSetupStep,
@@ -31,12 +31,12 @@ export default function AdminSetup() {
 
   const isComplete = (key: typeof SETUP_STEPS[number]) => (data ? isStepComplete(data, key) : false);
 
+  useEffect(() => {
+    document.title = "Configurazione iniziale | Setup amministratore";
+  }, []);
+
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">
-      <Helmet>
-        <title>Configurazione iniziale | Setup amministratore</title>
-        <meta name="description" content="Wizard di setup iniziale per amministratori: brand, utenti, webhook, SLA, integrazioni." />
-      </Helmet>
 
       <header className="mb-8 space-y-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
