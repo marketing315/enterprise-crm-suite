@@ -597,7 +597,7 @@ Deno.serve(async (req: Request) => {
           auditId,
           kepleroResponse.ok ? "success" : "failed",
           kepleroResponse.ok ? null : `keplero_handler_error: ${JSON.stringify(kepleroResult)}`,
-          kepleroResult?.lead_event_id || null
+          (typeof kepleroResult?.lead_event_id === "string" ? kepleroResult.lead_event_id : null)
         );
       }
       
