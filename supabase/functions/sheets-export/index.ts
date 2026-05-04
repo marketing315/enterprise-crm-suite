@@ -786,12 +786,14 @@ Deno.serve(async (req: Request) => {
     await ensureRiepilogoTab(accessToken, spreadsheetId, cache);
 
     // Update log to success
+    // We always append the same row to 2 tabs (all_RAW + source_raw_tab)
     await supabaseAdmin
       .from("sheets_export_logs")
       .update({ 
         status: "success",
         brand_id: leadEvent.brand_id,
         tab_name: sourceRawTab,
+        rows_exported: 2,
       })
       .eq("lead_event_id", lead_event_id);
 
