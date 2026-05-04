@@ -85,6 +85,7 @@ export function TicketsTable({
   onSelectionChange,
   showCheckboxes = false,
 }: TicketsTableProps) {
+  const isMobile = useIsMobile();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
   
