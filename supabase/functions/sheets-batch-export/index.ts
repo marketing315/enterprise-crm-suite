@@ -135,7 +135,12 @@ Deno.serve(async (req: Request) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${serviceRoleKey}`,
+            // SECURITY: use the dedicated internal token; never propagate the
+            // service-role key as Bearer between edge functions.
+            "X-Internal-Token":
+              Deno.env.get("INTERNAL_SERVICE_TOKEN") ||
+              Deno.env.get("SHEETS_INTERNAL_TOKEN") ||
+              "",
           },
           body: JSON.stringify({ lead_event_id: leadEventId, force }),
         });

@@ -440,17 +440,26 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // SECURITY: Only allow internal calls (service role or internal token)
-  const authHeader = req.headers.get("Authorization");
-  const internalToken = req.headers.get("X-Internal-Token");
-  const expectedInternalToken = Deno.env.get("SHEETS_INTERNAL_TOKEN");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  
-  const isServiceRole = !!serviceRoleKey && timingSafeEqual(authHeader || "", `Bearer ${serviceRoleKey}`);
-  const isInternalToken = !!(expectedInternalToken && internalToken && timingSafeEqual(internalToken, expectedInternalToken));
-  
-  if (!isServiceRole && !isInternalToken) {
-    console.error("Unauthorized sheets-export call - missing valid auth");
+  // SECURITY: internal-only endpoint. Accept ONLY a dedicated internal token
+  // (X-Internal-Token header). NEVER accept the service-role key as a Bearer
+  // because that would mean every caller (and every log line / tracer along
+  // the way) handles a credential that grants full DB access.
+  //
+  // Preferred secret: INTERNAL_SERVICE_TOKEN (shared across inter-function
+  // calls — same pattern used by keplero-webhook and mcp-gateway).
+  // Legacy fallback: SHEETS_INTERNAL_TOKEN (kept for backward compatibility
+  // until the secret is migrated).
+  const internalToken = req.headers.get("X-Internal-Token") || "";
+  const expectedPrimary = Deno.env.get("INTERNAL_SERVICE_TOKEN") || "";
+  const expectedLegacy = Deno.env.get("SHEETS_INTERNAL_TOKEN") || "";
+
+  const isInternalToken =
+    !!internalToken &&
+    ((expectedPrimary.length > 0 && timingSafeEqual(internalToken, expectedPrimary)) ||
+      (expectedLegacy.length > 0 && timingSafeEqual(internalToken, expectedLegacy)));
+
+  if (!isInternalToken) {
+    console.error("Unauthorized sheets-export call - missing X-Internal-Token");
     return new Response(
       JSON.stringify({ error: "Unauthorized - internal only" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
