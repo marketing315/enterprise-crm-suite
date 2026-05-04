@@ -809,14 +809,35 @@ Deno.serve(async (req: Request) => {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Sheets export error:", error);
-    
+
     if (lead_event_id) {
       try {
+        // Read current attempts to compute next backoff / DLQ
+        const { data: logRow } = await supabaseAdmin
+          .from("sheets_export_logs")
+          .select("attempts, max_attempts")
+          .eq("lead_event_id", lead_event_id)
+          .single();
+
+        const attempts = (logRow?.attempts ?? 0) + 1;
+        const maxAttempts = logRow?.max_attempts ?? 6;
+
+        // Exponential backoff in minutes: 0.5, 2, 8, 30, 120, 480
+        const backoffMinutes = [0.5, 2, 8, 30, 120, 480];
+        const idx = Math.min(attempts - 1, backoffMinutes.length - 1);
+        const nextAt = new Date(Date.now() + backoffMinutes[idx] * 60_000).toISOString();
+        const exhausted = attempts >= maxAttempts;
+
         await supabaseAdmin
           .from("sheets_export_logs")
-          .update({ 
-            status: "failed", 
+          .update({
+            status: exhausted ? "dead_letter" : "failed",
             error: message,
+            last_error: message,
+            attempts,
+            last_attempt_at: new Date().toISOString(),
+            next_attempt_at: exhausted ? null : nextAt,
+            dead_letter: exhausted,
           })
           .eq("lead_event_id", lead_event_id);
       } catch {
