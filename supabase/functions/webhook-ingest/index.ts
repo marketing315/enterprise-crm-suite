@@ -157,30 +157,8 @@ Deno.serve(async (req: Request) => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const isValidUuid = sourceId && sourceId !== "webhook-ingest" && uuidRegex.test(sourceId);
 
-  // DLQ reason mapping
-  type DlqReason = 
-    | "invalid_json"
-    | "mapping_error"
-    | "missing_required"
-    | "schema_validation_failed"
-    | "signature_failed"
-    | "rate_limited"
-    | "ai_extraction_failed"
-    | "contact_creation_failed"
-    | "unknown_error";
-
-  function mapErrorToDlqReason(errorMessage: string | null): DlqReason | null {
-    if (!errorMessage) return null;
-    if (errorMessage === "invalid_json") return "invalid_json";
-    if (errorMessage.startsWith("schema_validation_failed")) return "schema_validation_failed";
-    if (errorMessage.includes("signature") || errorMessage === "invalid_signature" || errorMessage === "invalid_signature_format") return "signature_failed";
-    if (errorMessage === "rate_limited") return "rate_limited";
-    if (errorMessage.includes("mapping")) return "mapping_error";
-    if (errorMessage.includes("ai_extraction") || errorMessage === "phone_required") return "ai_extraction_failed";
-    if (errorMessage.includes("contact_creation")) return "contact_creation_failed";
-    if (errorMessage === "missing_phone" || errorMessage.includes("missing_required")) return "missing_required";
-    return null; // Don't set dlq_reason for auth failures like invalid_api_key, source_not_found, etc.
-  }
+  // DLQ reason mapping is implemented in ../_shared/webhook-ingest/dedup.ts
+  // and imported as `mapErrorToDlqReason`.
 
   // Helper to create audit record with DLQ support
   async function createAuditRecord(
