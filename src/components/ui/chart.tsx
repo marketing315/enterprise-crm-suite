@@ -58,10 +58,23 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+// Strict allow-lists to prevent CSS/HTML injection through chart config values
+// that may originate from user-controlled data (brand names, campaign labels, etc.)
+const SAFE_IDENT_RE = /^[A-Za-z0-9_-]+$/;
+// Allow hex (#abc, #aabbcc, #aabbccdd), rgb/rgba/hsl/hsla(...) with digits/.,%/ space,
+// or a CSS var(--token) reference. Anything else (including ; { } < > url(...)) is rejected.
+const SAFE_CSS_COLOR_RE =
+  /^(#[0-9a-fA-F]{3,8}|(rgb|rgba|hsl|hsla)\(\s*[0-9.,%\s/]+\)|var\(--[A-Za-z0-9_-]+\))$/;
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
   if (!colorConfig.length) {
+    return null;
+  }
+
+  // Sanitize id: only safe identifier chars allowed inside the attribute selector.
+  if (!SAFE_IDENT_RE.test(id)) {
     return null;
   }
 
@@ -75,8 +88,13 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    if (!color) return null;
+    // Drop any key or color that is not strictly safe for CSS injection.
+    if (!SAFE_IDENT_RE.test(key)) return null;
+    if (typeof color !== "string" || !SAFE_CSS_COLOR_RE.test(color.trim())) return null;
+    return `  --color-${key}: ${color.trim()};`;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,
