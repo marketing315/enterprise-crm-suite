@@ -361,6 +361,8 @@ export function MainLayout() {
   return (
     <SidebarProvider>
       <IncomingCallPopup />
+      <WelcomeModal />
+      <AppTour />
       <div className="flex min-h-screen w-full">
         <Sidebar>
           <SidebarHeader className="border-b border-sidebar-border">
@@ -371,7 +373,7 @@ export function MainLayout() {
                 <h2 className="text-xs text-muted-foreground leading-tight">Gruppo Benessere</h2>
               </div>
             </div>
-            <div className="px-4 pb-3">
+            <div className="px-4 pb-3" data-tour="brand-selector">
               <BrandSelector compact />
             </div>
           </SidebarHeader>
