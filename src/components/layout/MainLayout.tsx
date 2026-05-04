@@ -10,6 +10,7 @@ import { userStorage } from '@/lib/userScopedStorage';
 import { BrandSelector } from './BrandSelector';
 import { PageHelpButton } from './PageHelpButton';
 import { AppearanceMenuItems } from './AppearanceMenuItems';
+import { usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
 import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
