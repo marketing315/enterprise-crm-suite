@@ -155,8 +155,8 @@ function DlqTelemetryPanel() {
       <CardContent className="space-y-6">
         {/* Breakdown by reason */}
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
-            Per motivo
+          <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide inline-flex items-center">
+            Per motivo<FieldHelp text="Causa per cui il lead non è stato processato: payload invalido, sorgente sconosciuta, duplicato, errore parsing AI o eccezione interna." />
           </h4>
           <div className="flex flex-wrap gap-2">
             {data.byReason.map(({ reason, count }) => (
