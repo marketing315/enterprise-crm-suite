@@ -1,0 +1,76 @@
+name: sbom-generation
+
+# Generates a software bill of materials (CycloneDX-like JSON) of all npm
+# dependencies, enriched with `npm audit` severity. Runs:
+#   - weekly (Mon 06:30 UTC, 30min after dependency-audit so we don't double-spend the
+#     same npm registry rate budget)
+#   - on push to main when package.json or package-lock.json changes (so the SBOM
+#     attached to releases is always current)
+#   - manually via workflow_dispatch
+#
+# The SBOM is uploaded as a workflow artifact (90d retention) — NOT committed to the
+# repo, NOT pushed to the database (the --upload mode requires PG* env which CI does
+# not have, and dependency_inventory is populated by the in-app dependency-audit job).
+#
+# Why a separate workflow vs. inlining into code-hygiene.yml: SBOM generation runs
+# `npm list --all --json` which walks the entire dependency tree (≈800 packages,
+# 60-90s) and would more than double code-hygiene latency. Hygiene must stay snappy
+# because it gates every PR.
+
+on:
+  schedule:
+    - cron: "30 6 * * 1"
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies (full tree)
+        run: npm ci
+
+      - name: Generate SBOM
+        run: bash scripts/generate-sbom.sh
+
+      - name: Summarize SBOM
+        if: always()
+        run: |
+          if [[ -f sbom.json ]]; then
+            total=$(node -e "console.log(JSON.parse(require('fs').readFileSync('sbom.json','utf8')).total_packages)")
+            vuln=$(node -e "console.log(JSON.parse(require('fs').readFileSync('sbom.json','utf8')).vulnerable_count)")
+            generated=$(node -e "console.log(JSON.parse(require('fs').readFileSync('sbom.json','utf8')).generated_at)")
+            {
+              echo "## SBOM"
+              echo ""
+              echo "- **Generated:** \`$generated\`"
+              echo "- **Total packages:** $total"
+              echo "- **Vulnerable packages:** $vuln"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::sbom.json was not produced"
+            exit 1
+          fi
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.json
+          retention-days: 90
+          if-no-files-found: error
