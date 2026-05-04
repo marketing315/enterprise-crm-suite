@@ -287,45 +287,96 @@ async function processDelivery(
 // deno-lint-ignore no-explicit-any
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
-// Process batch with parallelism limit and wall-time guard
+/**
+ * Build chunks using fair round-robin scheduling per webhook_id.
+ *
+ * Why: a naive slice(i, i+PARALLEL_LIMIT) would put 10 deliveries to the SAME
+ * slow endpoint into one chunk, blocking the wall-time for everyone else.
+ * With round-robin, each chunk contains AT MOST one delivery per webhook_id
+ * (until queues are exhausted), so a slow endpoint occupies at most 1 of
+ * PARALLEL_LIMIT slots per chunk.
+ */
+function buildFairChunks(deliveries: WebhookDelivery[]): WebhookDelivery[][] {
+  const queues = new Map<string, WebhookDelivery[]>();
+  for (const d of deliveries) {
+    const q = queues.get(d.webhook_id);
+    if (q) q.push(d);
+    else queues.set(d.webhook_id, [d]);
+  }
+  const order = Array.from(queues.keys());
+  const chunks: WebhookDelivery[][] = [];
+  let current: WebhookDelivery[] = [];
+  let exhausted = false;
+  while (!exhausted) {
+    exhausted = true;
+    for (const id of order) {
+      const q = queues.get(id)!;
+      if (q.length === 0) continue;
+      exhausted = false;
+      current.push(q.shift()!);
+      if (current.length >= PARALLEL_LIMIT) {
+        chunks.push(current);
+        current = [];
+      }
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+// Process batch with parallelism limit, fair scheduling, circuit breaker, and wall-time guard.
 async function processBatch(
   supabase: SupabaseClientAny,
   deliveries: WebhookDelivery[],
   startTime: number
-): Promise<{ sentOk: number; sentFail: number; remainingHint: boolean }> {
+): Promise<{ sentOk: number; sentFail: number; remainingHint: boolean; circuitOpen: number; trippedWebhooks: string[] }> {
   const webhookCache = new Map<string, WebhookConfig | null>();
+  const breakerState = new Map<string, number>();
+  const trippedWebhooks = new Set<string>();
   let sentOk = 0;
   let sentFail = 0;
+  let circuitOpen = 0;
 
-  // Process in chunks of PARALLEL_LIMIT
-  for (let i = 0; i < deliveries.length; i += PARALLEL_LIMIT) {
+  const chunks = buildFairChunks(deliveries);
+  let processedCount = 0;
+
+  for (let i = 0; i < chunks.length; i++) {
     // Wall-time guard: stop if we're running too long
     if (Date.now() - startTime > WALL_TIME_LIMIT_MS) {
-      const remaining = deliveries.length - i;
+      const remaining = deliveries.length - processedCount;
       console.log(`[WALL_TIME] Stopping after ${Date.now() - startTime}ms, remaining=${remaining}`);
-      return { sentOk, sentFail, remainingHint: true };
+      return { sentOk, sentFail, remainingHint: true, circuitOpen, trippedWebhooks: [...trippedWebhooks] };
     }
 
-    const chunk = deliveries.slice(i, i + PARALLEL_LIMIT);
+    const chunk = chunks[i];
     const results = await Promise.all(
-      chunk.map(d => processDelivery(supabase, d, webhookCache))
+      chunk.map(d => processDelivery(supabase, d, webhookCache, breakerState))
     );
 
     for (let j = 0; j < results.length; j++) {
       const result = results[j];
       const delivery = chunk[j];
-      
+      processedCount++;
+
       if (result.success) {
         sentOk++;
         console.log(`[OK] delivery=${delivery.id} webhook=${delivery.webhook_id} event=${delivery.event_type} status=${result.status} duration=${result.durationMs}ms`);
+      } else if (result.error === "circuit_open") {
+        circuitOpen++;
+        sentFail++;
+        // Logged at TRIP time below; keep this line terse to avoid log spam.
       } else {
         sentFail++;
         console.log(`[FAIL] delivery=${delivery.id} webhook=${delivery.webhook_id} event=${delivery.event_type} attempt=${delivery.attempt_count + 1} error=${result.error} duration=${result.durationMs}ms`);
+        if (result.circuitTripped && !trippedWebhooks.has(delivery.webhook_id)) {
+          trippedWebhooks.add(delivery.webhook_id);
+          console.warn(`[CIRCUIT_OPEN] webhook=${delivery.webhook_id} threshold=${CIRCUIT_BREAKER_THRESHOLD} reached — remaining deliveries this run will short-circuit`);
+        }
       }
     }
   }
 
-  return { sentOk, sentFail, remainingHint: false };
+  return { sentOk, sentFail, remainingHint: false, circuitOpen, trippedWebhooks: [...trippedWebhooks] };
 }
 
 Deno.serve(async (req) => {
