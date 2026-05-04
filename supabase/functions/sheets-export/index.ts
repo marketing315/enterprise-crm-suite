@@ -502,7 +502,7 @@ Deno.serve(async (req: Request) => {
   );
 
   try {
-    // RACE-SAFE IDEMPOTENCY
+    // RACE-SAFE IDEMPOTENCY + retry-aware claim
     if (!force) {
       const { error: insertError } = await supabaseAdmin
         .from("sheets_export_logs")
@@ -510,33 +510,50 @@ Deno.serve(async (req: Request) => {
           lead_event_id,
           brand_id: "00000000-0000-0000-0000-000000000000",
           status: "processing",
+          attempts: 1,
+          last_attempt_at: new Date().toISOString(),
         });
 
       if (insertError) {
         if (insertError.code === "23505") {
+          // Job already exists — claim it only if eligible (failed/pending)
           const { data: existingLog } = await supabaseAdmin
             .from("sheets_export_logs")
-            .select("status")
+            .select("status, attempts, dead_letter")
             .eq("lead_event_id", lead_event_id)
             .single();
 
-          if (existingLog?.status === "success") {
+          if (!existingLog) {
+            console.error("Conflict but no existing row for", lead_event_id);
+          } else if (existingLog.status === "success") {
             return new Response(
               JSON.stringify({ success: true, skipped: true, reason: "already_exported" }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
-          } else if (existingLog?.status === "processing") {
+          } else if (existingLog.status === "processing") {
             return new Response(
               JSON.stringify({ success: true, skipped: true, reason: "in_progress" }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
+          } else if (existingLog.status === "skipped" || existingLog.status === "dead_letter" || existingLog.dead_letter) {
+            return new Response(
+              JSON.stringify({ success: true, skipped: true, reason: existingLog.status }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } else {
+            // status = 'failed' or 'pending' → retry. Bump attempts and mark processing.
+            await supabaseAdmin
+              .from("sheets_export_logs")
+              .update({
+                status: "processing",
+                attempts: (existingLog.attempts ?? 0) + 1,
+                last_attempt_at: new Date().toISOString(),
+              })
+              .eq("lead_event_id", lead_event_id);
           }
-          return new Response(
-            JSON.stringify({ success: true, skipped: true, reason: existingLog?.status }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        } else {
+          console.error("Insert processing log error:", insertError);
         }
-        console.error("Insert processing log error:", insertError);
       }
     }
 
