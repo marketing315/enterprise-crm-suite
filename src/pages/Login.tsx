@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Building2 } from 'lucide-react';
@@ -25,6 +25,12 @@ export default function Login() {
       </div>
 
       <LoginForm />
+
+      <footer className="mt-8 text-center text-xs text-muted-foreground">
+        <Link to="/privacy" className="hover:text-foreground hover:underline">
+          Informativa Privacy
+        </Link>
+      </footer>
     </div>
   );
 }

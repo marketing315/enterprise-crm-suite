@@ -14,10 +14,12 @@ import { withModuleGuard } from "@/components/layout/withModuleGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ConsentBanner } from "@/components/legal/ConsentBanner";
 
 // Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
+import Privacy from "@/pages/Privacy";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import NotFound from "@/pages/NotFound";
 
@@ -109,6 +111,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <ErrorConsolePanel />
+      <ConsentBanner />
       <ErrorBoundary label="Applicazione">
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <AuthProvider>
@@ -118,6 +121,7 @@ const App = () => (
                   {/* Public routes */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/privacy" element={<Privacy />} />
                   <Route path="/install" element={<GuardedInstall />} />
                   <Route path="/installa" element={<Navigate to="/install" replace />} />
                   

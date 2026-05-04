@@ -3,6 +3,7 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
 import { clearAllQueryCaches } from '@/lib/queryClient';
+import { setUserScope, purgeUserScopedStorage } from '@/lib/userScopedStorage';
 import type { User, UserRole, AppRole } from '@/types/database';
 
 interface AuthContextType {
@@ -118,6 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (newSession?.user) {
           currentAuthIdRef.current = newSession.user.id;
+          // GDPR: scope UI-preference localStorage keys under this user id.
+          // If a different user was previously active, their keys are
+          // purged automatically by setUserScope().
+          setUserScope(newSession.user.id);
 
           // H02 FIX: Skip if getSession already handled this
           if (!initialFetchDoneRef.current) {
@@ -130,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           currentAuthIdRef.current = null;
           setUser(null);
           setUserRoles([]);
+          setUserScope(null);
         }
 
         if (event === 'SIGNED_OUT') {
@@ -143,6 +149,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // so the next login on the same device cannot restore the previous
           // user's lead/deal/ticket/brand data.
           void clearAllQueryCaches();
+          // GDPR: wipe per-user UI preferences (filters, saved views, …).
+          purgeUserScopedStorage();
+          setUserScope(null);
         }
 
         // SECURITY: on token refresh / user update (e.g. role change applied
@@ -165,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (existingSession?.user) {
           currentAuthIdRef.current = existingSession.user.id;
+          setUserScope(existingSession.user.id);
           await fetchUserData(existingSession.user.id);
         }
       } catch (err) {
@@ -220,6 +230,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // the page navigates to /login (the SIGNED_OUT listener may not run if
     // the navigation happens first).
     await clearAllQueryCaches();
+    // GDPR: wipe per-user UI preferences immediately.
+    purgeUserScopedStorage();
+    setUserScope(null);
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
