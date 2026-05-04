@@ -54,11 +54,8 @@ Deno.serve(async (req) => {
           const payload = JSON.parse(atob(payloadB64));
           console.log("[google-ads-sync] JWT role:", payload.role, "iss:", payload.iss);
 
-          if (payload.role === "anon" && payload.iss === "supabase") {
-            // This is the anon key from pg_cron — treat as cron call
-            isCronCall = true;
-            console.log("[google-ads-sync] Authenticated via anon JWT (cron)");
-          } else if (payload.role === "service_role") {
+          // SECURITY: anon key is public — only accept service_role JWT for cron-style calls.
+          if (payload.role === "service_role") {
             isCronCall = true;
             console.log("[google-ads-sync] Authenticated via service_role JWT");
           } else if (payload.role === "authenticated" && payload.sub) {

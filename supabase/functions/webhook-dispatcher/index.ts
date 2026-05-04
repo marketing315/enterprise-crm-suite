@@ -291,44 +291,25 @@ Deno.serve(async (req) => {
     const hasValidSecret = cronSecret && providedSecret && 
       (providedSecret === cronSecret || (cronSecretPrev && providedSecret === cronSecretPrev));
     
+    // SECURITY: only x-cron-secret or service_role JWT (verified server-side via getClaims).
+    // The anon key is public — never accept it nor role === "anon".
     let hasValidJwt = false;
     if (!hasValidSecret && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
-      
-      // Direct comparison with anon key (pg_cron sends anon JWT via pg_net)
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-      if (anonKey && token === anonKey) {
-        hasValidJwt = true;
-      } else {
-        // Try JWT claims verification for service_role tokens
-        try {
-          const verifyClient = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            anonKey!,
-            { global: { headers: { Authorization: authHeader } } }
-          );
-          const { data: { user } } = await verifyClient.auth.getUser(token);
-          // If getUser succeeds, it's a valid authenticated user — but we only allow service_role here
-          // For service_role, getUser won't work, so try manual decode
-          if (!user) {
-            // Manual JWT decode for role check
-            try {
-              const payload = JSON.parse(atob(token.split('.')[1]));
-              if (payload.role === 'service_role' || (payload.role === 'anon' && payload.iss === 'supabase')) {
-                hasValidJwt = true;
-              }
-            } catch { /* invalid JWT */ }
+      try {
+        const verifyClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          { global: { headers: { Authorization: authHeader } } }
+        );
+        const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(token);
+        if (!claimsErr && claimsData?.claims) {
+          const role = claimsData.claims.role as string;
+          if (role === "service_role") {
+            hasValidJwt = true;
           }
-        } catch {
-          // Fallback: manual JWT decode
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.role === 'service_role' || (payload.role === 'anon' && payload.iss === 'supabase')) {
-              hasValidJwt = true;
-            }
-          } catch { /* invalid JWT, fall through */ }
         }
-      }
+      } catch { /* invalid JWT, fall through */ }
     }
     
     if (!hasValidSecret && !hasValidJwt) {
