@@ -119,6 +119,7 @@ const App = () => (
                   {/* Public routes */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/privacy" element={<Privacy />} />
                   <Route path="/install" element={<GuardedInstall />} />
                   <Route path="/installa" element={<Navigate to="/install" replace />} />
                   
