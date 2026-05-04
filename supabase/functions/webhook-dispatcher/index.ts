@@ -11,6 +11,13 @@ const REQUEST_TIMEOUT_MS = 10000;
 const WALL_TIME_LIMIT_MS = 25000; // Stop processing after 25s to avoid cron overlap
 const USER_AGENT = "ralphloop-webhooks/1.0";
 
+// Circuit breaker: after N consecutive failures (timeout / 5xx / network) on the
+// SAME webhook_id within this run, short-circuit remaining deliveries for that
+// webhook to "circuit_open" without fetching. Prevents one slow/dead endpoint
+// from monopolizing wall-time and starving other webhooks.
+const CIRCUIT_BREAKER_THRESHOLD = 3;
+const CIRCUIT_TRIPPING_STATUSES = new Set<number>([408, 429, 500, 502, 503, 504]);
+
 // Constant-time comparison to mitigate timing attacks on the cron secret
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
