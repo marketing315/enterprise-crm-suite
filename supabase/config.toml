@@ -27,6 +27,8 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false
   [functions.capi-event-sender]
     verify_jwt = false
+  [functions.cron-relay]
+    verify_jwt = true
   [functions.generate-weekly-report]
     verify_jwt = false
   [functions.google-ads-sync]
