@@ -292,6 +292,18 @@ export function MainLayout() {
     navigate('/login');
   }, [signOut, navigate]);
 
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     return name
