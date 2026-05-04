@@ -152,6 +152,8 @@ function NavMenuItem({ item, isActive, disabled, hasBrandSelected, onNavigate, t
     </SidebarMenuItem>
   );
 }
+
+interface NavSectionDef {
   id: string;
   label: string;
   collapsible: boolean;
