@@ -344,86 +344,79 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 6b-6d: Timestamp checks only for non-systeme.io flows
+    // 6b-6d: Timestamp checks only for non-systeme.io flows (delegated to ../_shared/webhook-ingest/auth.ts)
     let timestamp: number | null = null;
     if (!isSystemeIo) {
-      if (!timestampHeader) {
-        console.log(JSON.stringify({ ...logContext, outcome: "missing_timestamp", status: 401 }));
-        await createAuditRecord("rejected", "missing_timestamp", sourceId, brandId);
-        return new Response(
-          JSON.stringify({ error: "missing_timestamp", message: "X-Timestamp header required for HMAC verification" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      timestamp = parseInt(timestampHeader, 10);
-      if (isNaN(timestamp)) {
-        console.log(JSON.stringify({ ...logContext, outcome: "invalid_timestamp_format", status: 400 }));
-        await createAuditRecord("rejected", "invalid_timestamp_format", sourceId, brandId);
-        return new Response(
-          JSON.stringify({ error: "invalid_timestamp", message: "X-Timestamp must be Unix timestamp in seconds" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Anti-replay check: timestamp within window
-      const nowSeconds = Math.floor(Date.now() / 1000);
       const replayWindow = source.replay_window_seconds || 300;
-      const timeDiff = Math.abs(nowSeconds - timestamp);
-
-      if (timeDiff > replayWindow) {
-        console.log(JSON.stringify({ 
-          ...logContext, 
-          outcome: "replay_detected", 
+      const replayCheck = checkReplayTimestamp(timestampHeader, replayWindow);
+      if (!replayCheck.ok) {
+        if (replayCheck.reason === "missing_timestamp") {
+          console.log(JSON.stringify({ ...logContext, outcome: "missing_timestamp", status: 401 }));
+          await createAuditRecord("rejected", "missing_timestamp", sourceId, brandId);
+          return new Response(
+            JSON.stringify({ error: "missing_timestamp", message: "X-Timestamp header required for HMAC verification" }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        if (replayCheck.reason === "invalid_timestamp_format") {
+          console.log(JSON.stringify({ ...logContext, outcome: "invalid_timestamp_format", status: 400 }));
+          await createAuditRecord("rejected", "invalid_timestamp_format", sourceId, brandId);
+          return new Response(
+            JSON.stringify({ error: "invalid_timestamp", message: "X-Timestamp must be Unix timestamp in seconds" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        // replay_detected
+        const d = replayCheck.details ?? {};
+        console.log(JSON.stringify({
+          ...logContext,
+          outcome: "replay_detected",
           status: 401,
-          timestamp,
-          now: nowSeconds,
-          diff: timeDiff,
-          window: replayWindow
+          timestamp: d.timestamp,
+          now: d.now,
+          diff: d.diff,
+          window: d.window,
         }));
-        await createAuditRecord("rejected", `replay_detected: timestamp=${timestamp}, now=${nowSeconds}, diff=${timeDiff}s, window=${replayWindow}s`, sourceId, brandId);
+        await createAuditRecord(
+          "rejected",
+          `replay_detected: timestamp=${d.timestamp}, now=${d.now}, diff=${d.diff}s, window=${d.window}s`,
+          sourceId,
+          brandId,
+        );
         return new Response(
-          JSON.stringify({ 
-            error: "replay_detected", 
-            message: `Request timestamp outside allowed window (${replayWindow}s)` 
+          JSON.stringify({
+            error: "replay_detected",
+            message: `Request timestamp outside allowed window (${replayWindow}s)`,
           }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+      timestamp = replayCheck.timestamp;
     }
 
-    // 6e. Verify HMAC signature
-    // systeme.io: signs raw payload body, signature is plain hex (no sha256= prefix)
-    // Standard: signature format sha256=<hex>, message is {timestamp}.{body}
-    let providedSignature: string;
-    let expectedSignature: string;
+    // 6e. Verify HMAC signature (delegated to ../_shared/webhook-ingest/hmac.ts)
+    const verifyResult = await verifyHmacSignature({
+      bodyText,
+      secret: source.hmac_secret,
+      signatureHeader,
+      timestampHeader,
+      isSystemeIo,
+    });
 
-    if (isSystemeIo) {
-      // systeme.io signs the raw JSON body directly with HMAC-SHA256
-      providedSignature = signatureHeader.toLowerCase();
-      expectedSignature = await computeHmacSha256(source.hmac_secret, bodyText);
-    } else {
-      const signatureMatch = signatureHeader.match(/^sha256=([a-f0-9]{64})$/i);
-      if (!signatureMatch) {
+    if (!verifyResult.ok) {
+      if (verifyResult.reason === "invalid_signature_format") {
         console.log(JSON.stringify({ ...logContext, outcome: "invalid_signature_format", status: 400 }));
         await createAuditRecord("rejected", "invalid_signature_format", sourceId, brandId);
         return new Response(
           JSON.stringify({ error: "invalid_signature", message: "X-Signature must be in format: sha256=<hex>" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      providedSignature = signatureMatch[1].toLowerCase();
-      // Standard flow: sign {timestamp}.{body}
-      const signedMessage = `${timestampHeader}.${bodyText}`;
-      expectedSignature = await computeHmacSha256(source.hmac_secret, signedMessage);
-    }
-
-    if (!constantTimeCompare(providedSignature, expectedSignature)) {
       console.log(JSON.stringify({ ...logContext, outcome: "invalid_signature", status: 401 }));
       await createAuditRecord("rejected", "invalid_signature", sourceId, brandId);
       return new Response(
         JSON.stringify({ error: "invalid_signature", message: "HMAC signature verification failed" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
