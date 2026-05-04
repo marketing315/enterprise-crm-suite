@@ -8,22 +8,44 @@ scope and risk for each non-trivial bump.
 
 ### `recharts` 2.15.4 → 3.x
 
-- **Status:** planned, not started
-- **Impact:** 22 files import from `recharts` (CEO/Sales/Marketing dashboards, KPI cards,
-  funnel/forecast charts).
-- **Why:** Recharts 3 fixes long-standing `ResponsiveContainer` resize bugs (intermittent
-  width=0 on dashboard tab switches) and ships a smaller bundle.
-- **Breaking changes to verify:**
-  - `<ResponsiveContainer>` defaults and `aspect` prop behaviour
-  - `Tooltip` content API (custom tooltips will need re-typing)
-  - Removal of legacy `defaultProps` warnings in React 18 strict mode
-- **Plan:**
-  1. Branch `chore/recharts-3-bump` — bump only `recharts`, run `tsc` and visual QA on
-     every dashboard page (CEO, Sales*, Callcenter*, Marketing*, AdminAIMetrics, Forecast).
-  2. Snapshot screenshots of charts before/after via `browser--screenshot`.
-  3. Merge only if zero TS errors, no chart visually regresses, bundle size delta < +50KB.
+- **Status:** attempted 2026-05-04, **rolled back**
+- **Outcome:** `recharts@3.8.1` installed cleanly and 22 consumer files compiled, BUT the
+  npm transitive resolution also bumped `@supabase/supabase-js` from `2.91.1` → `2.105.1`,
+  which tightened the `RejectExcessProperties` constraint on `.update()` and broke 9 hooks
+  that pass `Record<string, unknown>` payloads (`useAIConfig`, `useAutomationRules`,
+  `useBrandSettings`, `useCampaignGroups`, `useCustomFields`, `useMcpData`,
+  `useTicketBulkActions`, `useTickets`). Additionally, `chart.tsx` (shadcn wrapper) and
+  `CompanyOverview.tsx` `Pie.label` callback need rewriting for the v3 Tooltip/Legend
+  generics. Reverted to `recharts@^2.15.4` + `@supabase/supabase-js@2.91.1`.
+- **Plan v2:** open dedicated PR `chore/recharts-3-bump` that ALSO:
+  1. Pins `@supabase/supabase-js` explicitly so the bump is intentional, not transitive.
+  2. Tightens the 9 hooks to typed `Tables<"...">["Update"]` payloads instead of
+     `Record<string, unknown>`.
+  3. Rewrites `ChartTooltipContent` / `ChartLegendContent` against v3 `TooltipProps` and
+     `LegendProps` generics.
+  4. Rewrites `Pie.label` callback in `CompanyOverview.tsx` (v3 `PieLabelRenderProps` no
+     longer spreads custom data keys).
+  5. Visual QA via `browser--screenshot` on every dashboard page.
 - **Owner:** unassigned
-- **Blocker:** none — schedule when there is QA capacity.
+- **Blocker:** needs QA capacity AND the supabase-js+hook typing refactor as prerequisite.
+
+### `react-day-picker` 8.10.1 → 9.x
+
+- **Status:** attempted 2026-05-04, **rolled back** (bundled with the recharts revert).
+- **Outcome:** v9 renames `classNames` keys (`head_cell`→`weekday`, `day_*`→`selected/today/outside/disabled`,
+  `nav_button_*`→`button_previous/next`, `caption`→`month_caption`, `table`→`month_grid`,
+  `head_row`→`weekdays`, `row`→`week`) and replaces `IconLeft/IconRight` with the generic
+  `Chevron` slot. Wrapper rewrite is straightforward; deferred to keep this hygiene PR small.
+- **Plan:** standalone PR `chore/react-day-picker-9-bump` — only edits `src/components/ui/calendar.tsx`,
+  visual QA on the 11 call sites that import it.
+- **Owner:** unassigned
+
+### `@dnd-kit/*` (no upgrade needed)
+
+- `@dnd-kit/core@6.3.1` and `@dnd-kit/sortable@10.0.0` are the **latest stable** versions on
+  npm (verified 2026-05-04 via `npm view`). There is no v7/v11 to bump to. The hygiene
+  ticket "L4 dnd-kit legacy" is **not actionable**; closed as no-op.
+
 
 ## Up-to-date (verified)
 

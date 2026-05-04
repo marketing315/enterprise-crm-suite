@@ -1,0 +1,74 @@
+# CODEOWNERS — Lovable Ralph Hub
+#
+# GitHub uses this file to auto-request reviews on pull requests.
+# Last matching pattern wins, so order is significant: specific paths go LAST.
+# Any account/team listed here MUST have at least Triage access on the repo.
+#
+# This repo uses the Lovable bidirectional GitHub sync, so the @ralph-admins
+# team is the canonical fallback owner for everything Lovable-touched.
+# Replace the placeholder team handles with real GitHub teams when wiring
+# branch protection in the GitHub UI.
+
+# ---------------------------------------------------------------------------
+# Default — everything not matched below
+# ---------------------------------------------------------------------------
+*                                       @ralph-admins
+
+# ---------------------------------------------------------------------------
+# Build, CI, repo governance
+# ---------------------------------------------------------------------------
+/.github/                               @ralph-admins @ralph-platform
+/.github/workflows/                     @ralph-platform
+/.github/CODEOWNERS                     @ralph-admins
+/scripts/                               @ralph-platform
+/scripts/security/                      @ralph-platform @ralph-security
+/package.json                           @ralph-platform
+/package-lock.json                      @ralph-platform
+/tsconfig*.json                         @ralph-platform
+/vite.config.ts                         @ralph-platform
+/vitest.config.ts                       @ralph-platform
+/eslint.config.*                        @ralph-platform
+/tailwind.config.ts                     @ralph-platform
+
+# ---------------------------------------------------------------------------
+# Backend — Supabase migrations, edge functions, baseline
+# ---------------------------------------------------------------------------
+/supabase/                              @ralph-backend
+/supabase/migrations/                   @ralph-backend @ralph-security
+/supabase/baseline/                     @ralph-backend @ralph-security
+/supabase/config.toml                   @ralph-backend @ralph-platform
+/supabase/functions/                    @ralph-backend
+/supabase/functions/_shared/            @ralph-backend @ralph-platform
+/supabase/functions/webhook-ingest/     @ralph-backend @ralph-security
+/supabase/functions/mcp-server/         @ralph-backend @ralph-security
+/supabase/functions/admin-*/            @ralph-backend @ralph-security
+
+# ---------------------------------------------------------------------------
+# Frontend domains (mirror docs/domain-ownership.md)
+# ---------------------------------------------------------------------------
+/src/                                   @ralph-frontend
+/src/integrations/supabase/             @ralph-backend @ralph-frontend
+/src/components/ui/                     @ralph-design
+/src/pages/admin/                       @ralph-frontend @ralph-security
+/src/pages/marketing/                   @ralph-frontend @ralph-marketing
+/src/pages/company/                     @ralph-frontend @ralph-finance
+/src/pages/appointments/                @ralph-frontend @ralph-ops
+/src/pages/tickets/                     @ralph-frontend @ralph-ops
+/src/features/pipeline/                 @ralph-frontend @ralph-sales
+/src/features/tickets/                  @ralph-frontend @ralph-ops
+
+# ---------------------------------------------------------------------------
+# Documentation — runbooks, policies, decisions
+# ---------------------------------------------------------------------------
+/docs/                                  @ralph-admins
+/docs/dr/                               @ralph-platform @ralph-security
+/docs/decisions.md                      @ralph-admins
+/docs/audit-history.md                  @ralph-security
+/docs/migrations-policy.md              @ralph-backend @ralph-security
+/docs/edge-functions-auth-map.md        @ralph-backend @ralph-security
+/docs/mcp-server-*.md                   @ralph-backend @ralph-security
+
+# ---------------------------------------------------------------------------
+# Memory (Lovable agent rules) — high blast radius, admin-only
+# ---------------------------------------------------------------------------
+/.lovable/                              @ralph-admins
