@@ -21,7 +21,14 @@ interface BrandContextType {
   allBrandIds: string[];
 }
 
-const BrandContext = createContext<BrandContextType | undefined>(undefined);
+type BrandContextGlobal = typeof globalThis & {
+  __crmBrandContext?: React.Context<BrandContextType | undefined>;
+};
+
+const brandContextGlobal = globalThis as BrandContextGlobal;
+const BrandContext =
+  brandContextGlobal.__crmBrandContext ?? createContext<BrandContextType | undefined>(undefined);
+brandContextGlobal.__crmBrandContext = BrandContext;
 
 const BRAND_STORAGE_KEY = 'crm_selected_brand_id';
 
