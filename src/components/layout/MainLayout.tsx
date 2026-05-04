@@ -379,7 +379,9 @@ export function MainLayout() {
 
           <SidebarContent>
             {/* Sezione Quotidiano */}
-            {visibleSections.filter(s => s.id === 'daily').map(renderSection)}
+            <div data-tour="nav-daily">
+              {visibleSections.filter(s => s.id === 'daily').map(renderSection)}
+            </div>
 
             {/* Sezione Vendite & Clienti */}
             {visibleSections.filter(s => s.id === 'sales').map(renderSection)}
