@@ -33,6 +33,7 @@ const ALLOWED_TARGETS = new Set<string>([
   "notification-webhook-dispatcher",
   "ads-stats-meta",
   "google-ads-sync",
+  "sheets-export-dispatcher",
 ]);
 
 interface RelayBody {
