@@ -16,11 +16,17 @@ export default function SelectBrand() {
   const canSeeAllBrands = isAdmin || isCeo || hasAmministrazioneInAnyBrand;
 
   useEffect(() => {
-    // If already has a brand selected, go to dashboard
-    if (currentBrand && !brandLoading) {
+    if (authLoading || brandLoading) return;
+    if (currentBrand) {
+      navigate('/dashboard');
+      return;
+    }
+    // Auto-skip: utente con un solo brand e nessun accesso al system brand
+    if (brands.length === 1 && !canSeeAllBrands) {
+      setCurrentBrand(brands[0]);
       navigate('/dashboard');
     }
-  }, [currentBrand, brandLoading, navigate]);
+  }, [brands, currentBrand, brandLoading, authLoading, canSeeAllBrands, navigate, setCurrentBrand]);
 
   const handleSelectBrand = (brand: typeof brands[0]) => {
     setCurrentBrand(brand);

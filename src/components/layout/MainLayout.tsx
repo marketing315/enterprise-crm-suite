@@ -73,7 +73,10 @@ import {
   ScrollText,
   Sliders,
   HardDrive,
+  Globe,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
@@ -193,7 +196,7 @@ const ADVANCED_PREF_KEY = 'sidebar.showAdvanced';
 
 export function MainLayout() {
   const { user, signOut, isAdmin, isCeo, hasRole } = useAuth();
-  const { currentBrand, hasBrandSelected } = useBrand();
+  const { currentBrand, hasBrandSelected, brands, systemBrand, isAllBrandsSelected } = useBrand();
   const hasMarketingAccess = useHasMarketingAccess();
   const canSeeMarketingSubmenu = useCanSeeMarketingSubmenu();
   const navigate = useNavigate();
@@ -520,16 +523,40 @@ export function MainLayout() {
         <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
           <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0">
             <SidebarTrigger />
+            {currentBrand && (() => {
+              const canSwitch = brands.length > 1 || (systemBrand && brands.length >= 1);
+              const Icon = isAllBrandsSelected ? Globe : Building2;
+              const pillContent = (
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs md:text-sm font-medium text-primary transition-colors hover:bg-primary/15">
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate max-w-[140px] md:max-w-[220px]">{currentBrand.name}</span>
+                  {canSwitch && <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 opacity-70" />}
+                </span>
+              );
+              if (!canSwitch) return pillContent;
+              return (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Cambia brand"
+                      data-tour="brand-selector-header"
+                      className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
+                    >
+                      {pillContent}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[260px] p-3">
+                    <p className="text-xs text-muted-foreground mb-2">Cambia brand di lavoro</p>
+                    <BrandSelector compact />
+                  </PopoverContent>
+                </Popover>
+              );
+            })()}
             <div className="flex-1" />
             <RealtimeStatusBadge />
             <PageHelpButton />
             <NotificationBell />
-            {currentBrand && (
-              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
-                <Building2 className="h-4 w-4 hidden sm:block" />
-                <span className="truncate max-w-[120px] md:max-w-none">{currentBrand.name}</span>
-              </div>
-            )}
           </header>
           <RealtimeStatusBanner />
           <main className="flex-1 overflow-hidden p-3 md:p-6">

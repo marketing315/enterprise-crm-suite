@@ -1,36 +1,64 @@
-# Login più amichevole
+## Selezione brand più chiara
 
-Refactor di `src/components/auth/LoginForm.tsx` (unico file toccato, niente DB, niente nuove dipendenze). Tutte e 5 le richieste in un'unica passata.
+Tre interventi mirati, nessuna nuova dipendenza, nessuna migration.
 
-## Modifiche
+### 1. Auto-skip di `/select-brand` per utenti mono-brand
 
-### 1. Link "Password dimenticata?" più visibile
-Spostato da CardFooter (sotto al pulsante Accedi, oggi quasi invisibile come `variant="link"`) a una riga inline accanto alla label "Password", in stile minimal-link a destra del campo. Usa la `ForgotPasswordForm` già esistente — nessuna nuova route.
+**File**: `src/pages/SelectBrand.tsx`
 
-### 2. Messaggi di errore chiari
-Aggiunta `classifyError(message)` che mappa il `error.message` di Supabase su 4 categorie:
-- `email not confirmed` / `confirm` → "Email non confermata. Controlla la tua casella (anche lo spam) e clicca sul link di conferma prima di accedere."
-- `invalid login` / `invalid credentials` / `invalid_grant` → "Email o password non corretti. Verifica i dati e riprova."
-- `rate limit` / `too many` → "Troppi tentativi. Riprova fra qualche minuto."
-- fallback → messaggio originale
+Estendere l'`useEffect` di redirect: se `brands.length === 1`, `!systemBrand-eligible` e nessun brand attualmente selezionato, chiamare automaticamente `setCurrentBrand(brands[0])` e navigare a `/dashboard`.
 
-L'errore viene mostrato come `<Alert>` inline sopra al form (variant `destructive` salvo `email_not_confirmed` che usa `default` con icona `MailWarning`). Il toast resta solo come fallback per la categoria `generic`, per non duplicare il messaggio.
+```ts
+useEffect(() => {
+  if (brandLoading || authLoading) return;
+  if (currentBrand) { navigate('/dashboard'); return; }
+  // Auto-select se l'utente ha un solo brand e non può vedere il system brand
+  if (brands.length === 1 && !canSeeAllBrands) {
+    setCurrentBrand(brands[0]);
+    navigate('/dashboard');
+  }
+}, [brands, currentBrand, brandLoading, authLoading, canSeeAllBrands, navigate, setCurrentBrand]);
+```
 
-### 3. Toggle Mostra/nascondi password
-`useState(showPassword)` + bottone interno all'input (assolutamente posizionato a destra, `pr-10`). Icone `Eye` / `EyeOff` da lucide. `aria-label` dinamico, `tabIndex={-1}` per non rompere il flow tastiera.
+Nota: la persistenza in `localStorage` (chiave `crm_selected_brand_id`) e il restore automatico esistono già in `BrandContext.tsx` (linee 70-89). Non serve modificare nulla — è già implementato.
 
-### 4. Email di supporto
-Riga di testo nel CardFooter sotto il pulsante: "Hai bisogno di aiuto? Contatta il tuo amministratore all'indirizzo support@gruppobenessere.it" — l'email è un `<a href="mailto:…">`. Costante `SUPPORT_EMAIL` in cima al file (facilmente modificabile in seguito o promovibile a env).
+### 2. Brand pill prominente nell'header
 
-### 5. Caps Lock indicator
-- `useEffect` con listener `keydown`/`keyup` su `window` che usa `e.getModifierState('CapsLock')` (globale così funziona anche durante la digitazione dell'email, non solo password).
-- Quando attivo, sotto al campo password compare una riga ambra: icona `ArrowUpToLine` + "Bloc Maiusc è attivo".
+**File**: `src/components/layout/MainLayout.tsx` (linee 521-533)
 
-## Cosa NON cambia
-- Niente nuove route, niente migration, niente nuove dipendenze.
-- `ForgotPasswordForm`, `ResetPassword.tsx`, `AuthContext.signIn` invariati.
-- Nessun cambio testuale al titolo/CardDescription.
-- Nessun update a memoria (modifica isolata, non architetturale).
+Sostituire la riga testuale `currentBrand` a destra dell'header con un **pill cliccabile** che apre direttamente il selettore brand. Il pill:
+- Mostra icona (`Building2` per brand specifico, `Globe` per system brand)
+- Nome brand in evidenza
+- Icona `ArrowLeftRight` (switch) sul lato destro
+- Background colorato con `bg-primary/10 text-primary border border-primary/20`
+- Cliccabile: apre un Popover che incapsula il `<BrandSelector compact />` esistente (riuso del componente, no duplicazione)
+- Visibile solo se l'utente ha più di un brand accessibile O può vedere il system brand; altrimenti resta un badge non interattivo
 
-## File toccati
-- **Modificato**: `src/components/auth/LoginForm.tsx`
+Layout proposto del nuovo header:
+```text
+[≡] [pill brand cliccabile] ............ [realtime] [help] [🔔]
+```
+
+Il pill viene spostato a sinistra, accanto al `SidebarTrigger`, per renderlo il primo elemento visibile dopo il logo. La sezione di destra resta dedicata a notifiche/help/realtime.
+
+Il `BrandSelector` nella sidebar viene mantenuto (utile per utenti con molti brand e per la scoperta), ma il pill nell'header diventa il punto di switch primario.
+
+### 3. Persistenza ultimo brand (già esistente — verifica)
+
+Già implementata in `BrandContext.tsx`:
+- Set: `setCurrentBrand` scrive `localStorage.setItem(BRAND_STORAGE_KEY, brand.id)` (linea 109)
+- Get: `fetchBrands` legge `BRAND_STORAGE_KEY` e ripristina lo stato (linee 71-84)
+- Cleanup: se il brand salvato non è più accessibile, viene resettato
+
+Nessuna modifica necessaria su questo punto. Lo confermo nel changelog.
+
+### Tecnico — file toccati
+
+- `src/pages/SelectBrand.tsx` — auto-skip mono-brand
+- `src/components/layout/MainLayout.tsx` — header brand pill (Popover che wrappa `BrandSelector`)
+
+Nessuna nuova dipendenza (Popover, Button, lucide icons già presenti). Nessuna migration. Nessun cambio di RLS o RPC.
+
+### Note di sicurezza
+
+L'auto-skip rispetta i ruoli: se l'utente ha permessi per il system brand (`isAdmin || isCeo || hasAmministrazione`) la pagina di selezione resta visibile per dargli la scelta tra brand singolo e vista globale.
