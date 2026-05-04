@@ -115,6 +115,7 @@ const App = () => (
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <AuthProvider>
             <BrandProvider>
+            <PersonalizationProvider>
               <ChunkLoadErrorBoundary>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
@@ -207,11 +208,13 @@ const App = () => (
                 </Routes>
               </Suspense>
               </ChunkLoadErrorBoundary>
+            </PersonalizationProvider>
             </BrandProvider>
           </AuthProvider>
         </BrowserRouter>
       </ErrorBoundary>
     </TooltipProvider>
+    </ThemeProvider>
   </PersistQueryClientProvider>
 );
 
