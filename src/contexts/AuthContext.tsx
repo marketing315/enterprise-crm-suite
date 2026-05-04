@@ -135,6 +135,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           currentAuthIdRef.current = null;
           setUser(null);
           setUserRoles([]);
+          // SECURITY: purge any SW-cached Supabase responses so the next
+          // session doesn't inherit the previous user's authorizations.
+          void purgeSupabaseBrowserCaches();
+        }
+
+        // SECURITY: on token refresh / user update (e.g. role change applied
+        // server-side) drop SW caches so stale RLS-filtered responses are
+        // not replayed from cache.
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          void purgeSupabaseBrowserCaches();
         }
       }
     );
