@@ -231,10 +231,11 @@ const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.C
           onClick?.(event);
           toggleSidebar();
         }}
+        aria-label="Apri o chiudi la barra di navigazione"
         {...props}
       >
         <PanelLeft />
-        <span className="sr-only">Toggle Sidebar</span>
+        <span className="sr-only">Apri o chiudi la barra di navigazione</span>
       </Button>
     );
   },
