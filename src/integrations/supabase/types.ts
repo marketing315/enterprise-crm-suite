@@ -10576,6 +10576,7 @@ export type Database = {
           strategy: string
         }[]
       }
+      get_auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       get_backup_schedules: {
         Args: never
         Returns: {

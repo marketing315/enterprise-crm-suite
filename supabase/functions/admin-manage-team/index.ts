@@ -373,23 +373,15 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // H09 FIX: Use paginated search to find existing auth user
-        let existingAuthUser: any = null;
-        let page = 1;
-        const perPage = 50;
-        while (true) {
-          const { data: pageData } = await adminClient.auth.admin.listUsers({ page, perPage });
-          if (!pageData?.users?.length) break;
-          const found = pageData.users.find(
-            (u: any) => u.email?.toLowerCase() === email.toLowerCase()
-          );
-          if (found) {
-            existingAuthUser = found;
-            break;
-          }
-          if (pageData.users.length < perPage) break;
-          page++;
-        }
+        // PERF: indexed lookup via SECURITY DEFINER RPC on auth.users.email (O(1)).
+        // Replaces previous paginated listUsers() scan that degraded with auth size.
+        const { data: existingId } = await adminClient.rpc(
+          "get_auth_user_id_by_email",
+          { p_email: email }
+        );
+        const existingAuthUser: { id: string } | null = existingId
+          ? { id: existingId as string }
+          : null;
 
         let authUserId: string;
         let isNewUser = false;

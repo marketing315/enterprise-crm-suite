@@ -132,16 +132,22 @@ Deno.serve(async (req: Request) => {
 
     if (createError) {
       if (createError.message?.includes("already been registered") || (createError as any).code === "email_exists") {
-        // User already exists in auth — look them up
-        const { data: listData, error: listError } = await adminClient.auth.admin.listUsers();
-        const existingAuthUser = listData?.users?.find(u => u.email === email);
-        if (listError || !existingAuthUser) {
+        // User already exists in auth — look up by email via SECURITY DEFINER RPC
+        // (auth.users.email has a unique index → O(1), unlike listUsers() which scans all users).
+        // RPC is GRANTed only to service_role.
+        const { data: existingId, error: lookupError } = await adminClient.rpc(
+          "get_auth_user_id_by_email",
+          { p_email: email }
+        );
+
+        if (lookupError || !existingId) {
+          console.error("Error looking up existing auth user:", lookupError);
           return new Response(JSON.stringify({ error: "Utente esistente ma non trovato in auth" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        authUserId = existingAuthUser.id;
+        authUserId = existingId as string;
         isExistingUser = true;
       } else {
         console.error("Error creating auth user:", createError);
