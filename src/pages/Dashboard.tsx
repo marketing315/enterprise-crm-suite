@@ -122,68 +122,75 @@ export default function Dashboard() {
         <TutorialSheet />
       </div>
 
-      {/* Primary KPIs */}
-      <DashboardKpiGrid items={primaryKpis} isLoading={isLoading} />
+      {/* Empty-state guidato per workspace vuoti */}
+      {!isLoading && totalContacts === 0 && openDeals === 0 && newDeals === 0 ? (
+        <DashboardEmptyState />
+      ) : (
+        <>
+          {/* Primary KPIs */}
+          <DashboardKpiGrid items={primaryKpis} isLoading={isLoading} />
 
-      {/* Secondary KPIs Row */}
-      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        {secondaryKpis.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <Card 
-              key={index} 
-              className={
-                item.variant === "destructive" 
-                  ? "border-destructive/50 bg-destructive/5" 
-                  : item.variant === "warning"
-                  ? "border-amber-500/30 bg-amber-500/5"
-                  : ""
-              }
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
-                <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
-                  {item.title}
-                </CardTitle>
-                <div className={
-                  item.variant === "destructive" 
-                    ? "p-1.5 rounded-lg bg-destructive/10 text-destructive" 
-                    : item.variant === "warning"
-                    ? "p-1.5 rounded-lg bg-amber-500/10 text-amber-600"
-                    : item.variant === "success"
-                    ? "p-1.5 rounded-lg bg-green-500/10 text-green-600"
-                    : "p-1.5 rounded-lg bg-primary/10 text-primary"
-                }>
-                  <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                </div>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-                <div className="text-xl md:text-2xl font-bold">{item.value}</div>
-                <p className="text-xs text-muted-foreground hidden sm:block">{item.subtitle}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+          {/* Secondary KPIs Row */}
+          <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+            {secondaryKpis.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <Card 
+                  key={index} 
+                  className={
+                    item.variant === "destructive" 
+                      ? "border-destructive/50 bg-destructive/5" 
+                      : item.variant === "warning"
+                      ? "border-amber-500/30 bg-amber-500/5"
+                      : ""
+                  }
+                >
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+                    <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
+                      {item.title}
+                    </CardTitle>
+                    <div className={
+                      item.variant === "destructive" 
+                        ? "p-1.5 rounded-lg bg-destructive/10 text-destructive" 
+                        : item.variant === "warning"
+                        ? "p-1.5 rounded-lg bg-amber-500/10 text-amber-600"
+                        : item.variant === "success"
+                        ? "p-1.5 rounded-lg bg-green-500/10 text-green-600"
+                        : "p-1.5 rounded-lg bg-primary/10 text-primary"
+                    }>
+                      <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                    <div className="text-xl md:text-2xl font-bold">{item.value}</div>
+                    <p className="text-xs text-muted-foreground hidden sm:block">{item.subtitle}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-      {/* Action Guide - Neuromarketing oriented */}
-      <ActionGuide 
-        openDeals={openDeals}
-        newDeals={newDeals}
-        openTickets={openTickets}
-        slaBreaches={slaBreachedTickets}
-      />
+          {/* Action Guide - Neuromarketing oriented */}
+          <ActionGuide 
+            openDeals={openDeals}
+            newDeals={newDeals}
+            openTickets={openTickets}
+            slaBreaches={slaBreachedTickets}
+          />
 
-      {/* Charts & Status */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <DashboardTrendChart data={trendData} isLoading={isTrendLoading} />
-        <DashboardSystemStatus />
-      </div>
+          {/* Charts & Status */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <DashboardTrendChart data={trendData} isLoading={isTrendLoading} />
+            <DashboardSystemStatus />
+          </div>
 
-      {/* Todo List & Milestones */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <AdminTodoList />
-        <DashboardMilestones />
-      </div>
+          {/* Todo List & Milestones */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <AdminTodoList />
+            <DashboardMilestones />
+          </div>
+        </>
+      )}
     </div>
   );
 }
