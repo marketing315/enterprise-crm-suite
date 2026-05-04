@@ -150,12 +150,15 @@ interface MetaAppConfig {
 }
 
 async function processLeadChange(
-  supabase: any,
+  supabase: ReturnType<typeof createClient>,
   metaApp: MetaAppConfig,
-  change: any,
+  change: MetaChange,
   brandSlug: string,
 ): Promise<{ leadgen_id: string; status: string; lead_event_id?: string; contact_id?: string | null; deal_id?: string | null }> {
   const leadgenId = change.value?.leadgen_id;
+  const pageId = change.value?.page_id;
+  const formId = change.value?.form_id;
+  const adId = change.value?.ad_id;
   const pageId = change.value?.page_id;
   const formId = change.value?.form_id;
   const adId = change.value?.ad_id;
