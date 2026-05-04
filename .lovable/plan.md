@@ -1,77 +1,91 @@
-# Sidebar cognitive load reduction
+# Onboarding alla prima login
 
-Refactor di `src/components/layout/MainLayout.tsx` (unico file toccato). Nessuna route nuova, solo riorganizzazione + collapsible + filtro audience.
+Tre componenti incrementali, isolati, senza modificare flussi esistenti.
 
-## 1. Nuova tassonomia di gruppi
+## 1. Schema DB additivo
 
-Sostituisco `baseMenuItems` + `adminMenuItems` con `NAV_SECTIONS`, una struttura tipata che mappa ogni voce al suo gruppo, ruolo richiesto e audience.
+Migration additiva su `public.users` (rispetta vincolo Data Safety: solo nuove colonne nullable):
 
-```text
-Quotidiano        (sempre aperto, audience: daily)
-  Dashboard, Contatti, Eventi, Pipeline, Appuntamenti, Ticket, Chat
-
-Vendite & Clienti (sempre aperto, audience: daily)
-  Vendite, Prodotti (admin/ceo), Azienda
-
-Marketing         (collapsible, defaultOpen=false salvo route attiva)
-  voci attuali invariate, gating useHasMarketingAccess
-
-Insight           (collapsible, defaultOpen=false salvo route attiva, audience: weekly)
-  Analytics, Dashboard CEO (admin/ceo), KPI Venditori, KPI Call Center,
-  Trend Ticket, AI Metrics
-
-Configurazione    (sempre aperto per admin, audience: daily)
-  Impostazioni, Team, Gestione AI
-
-Sistema           (admin/ceo, collapsible, defaultOpen=false, audience: rare)
-  Webhook Monitor, DLQ, CAPI Monitor, SLO Board, Security Review,
-  Audit & Compliance, Quick Backup
+```sql
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS preferred_name      text,
+  ADD COLUMN IF NOT EXISTS primary_role_hint   text,         -- "sales" | "callcenter" | "admin" | "marketing" | "ceo" | "other"
+  ADD COLUMN IF NOT EXISTS preferred_brand_id  uuid REFERENCES public.brands(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS welcome_completed_at timestamptz,
+  ADD COLUMN IF NOT EXISTS tour_completed_at    timestamptz;
 ```
 
-## 2. Audience filter
+RPC `complete_welcome(p_preferred_name, p_primary_role_hint, p_preferred_brand_id)` SECURITY DEFINER `search_path=public` — scrive le 4 colonne sull'utente corrente via `get_user_id(auth.uid())`. RPC `complete_tour()` analoga ma scrive solo `tour_completed_at`. REVOKE EXECUTE FROM anon su entrambe.
 
-Ogni voce riceve `audience: 'daily' | 'weekly' | 'rare'`.
+`user_module_access` non toccato. Nessuna RLS riscritta.
 
-- Stato locale `showAdvanced` (persistito in `userScopedStorage` con chiave `sidebar.showAdvanced`, default `false`).
-- Quando `showAdvanced=false`: filtro via solo le voci `weekly` e `rare`. Le sezioni `Insight` e `Sistema` diventano completamente nascoste (non solo collassate) finché l'utente non clicca il toggle, **salvo** se la route corrente cade dentro: in quel caso forziamo `showAdvanced=true` per non rompere la navigazione.
-- In fondo alla sidebar (sopra al footer utente) un `SidebarMenuButton` ghost: "Mostra strumenti avanzati" / "Nascondi strumenti avanzati" con icona `Sliders`. Niente conferma, toggle istantaneo.
+## 2. Welcome Modal post-signup
 
-## 3. Collapsible sections
+Nuovo `src/components/onboarding/WelcomeModal.tsx`:
 
-Estraggo un componente locale `<NavSection>` riusabile basato su `Collapsible` + `SidebarGroup` (stesso pattern già usato per Marketing nel file attuale). Props:
+- Si apre automaticamente quando `user.welcome_completed_at IS NULL` (lettura via nuovo hook `useOnboardingStatus`).
+- Form a 3 campi: Nome preferito (default = primo token di `full_name`), Ruolo principale (Select con 6 opzioni), Brand di riferimento (Select alimentato da `useBrand()` brands list — opzionale).
+- CTA "Inizia" → chiama `complete_welcome` RPC, invalida `["onboarding-status"]`, chiude modal.
+- Posizionato in `MainLayout` (subito dopo `IncomingCallPopup`) per essere visibile su qualsiasi pagina post-login.
+- Niente "skip": ma il modal è dismissibile via ESC senza persistere → al prossimo login riappare finché non viene completato. Esplicito nel footer: "Compila per personalizzare la tua esperienza".
 
-- `label`, `items`, `collapsible: boolean`, `defaultOpen: boolean`
-- `defaultOpen` calcolato come `items.some(i => location.pathname.startsWith(i.path))`
-- `Quotidiano`, `Vendite & Clienti`, `Configurazione`: `collapsible={false}` (resta sempre aperto, label visibile come oggi)
-- `Marketing`, `Insight`, `Sistema`: `collapsible={true}`, `defaultOpen` come sopra
+## 3. Empty-state guidato sulla Dashboard
 
-Le sezioni collassate mostrano un chevron rotante (riuso del pattern Marketing già presente alle righe 246-276).
+Nuovo `src/components/onboarding/DashboardEmptyState.tsx`:
 
-## 4. Role gating raffinato
+- Mostrato in `Dashboard.tsx` (dopo l'header, prima dei KPI) quando `totalContacts === 0 && openDeals === 0 && newDeals === 0` AND `!isLoading`.
+- 3 card minimal-glassmorphism con icona+titolo+microcopy+CTA:
+  - **Aggiungi il primo contatto** → `navigate('/contacts?create=true')` (URL param già supportato, vedi mem chat-quick-actions).
+  - **Configura un webhook inbound** → `navigate('/admin/webhooks')` (mostrato solo se `isAdmin`; altrimenti card "Importa contatti da CSV" → `/contacts?import=true` se la route esiste, fallback a `/contacts`).
+  - **Invita un collega** → `navigate('/team?invite=true')` (mostrato solo se `isAdmin`).
+- Nasconde i KPI vuoti quando l'empty-state è visibile per ridurre rumore. I grafici/trend restano nascosti finché ci sono ≥1 contatto.
 
-`requiresRole` resta come oggi sulle singole voci. In più, intere sezioni vengono nascoste se vuote dopo il filtro:
+Niente nuove tabelle: il check è puramente derivato dai dati esistenti già in `useDashboardData`.
 
-- `Sistema`: visibile solo se `isAdmin || isCeo`
-- `Insight`: visibile per tutti i ruoli che hanno almeno una voce permessa (admin/ceo/responsabile_*)
-- `Configurazione → Gestione AI / Team`: rimangono admin-only come oggi
+## 4. Tour interattivo
 
-## 5. Badge ticket
+Aggiungo dipendenza **`driver.js`** (vanilla, ~5KB gz, no React-deps, no peer-issue con React 18 — `react-joyride` ha bundle 3x e known issues con StrictMode).
 
-Resta sulla voce `Ticket` (sezione Quotidiano), stessa logica dei contatori `ticketActivityCount` + `slaBreachCount` invariata.
+Nuovo `src/components/onboarding/AppTour.tsx`:
 
-## 6. Memory
+- Si avvia automaticamente quando `welcome_completed_at IS NOT NULL && tour_completed_at IS NULL && hasBrandSelected`.
+- 4 step: brand selector (`[data-tour="brand-selector"]`), sezione Quotidiano (`[data-tour="nav-daily"]`), bottone NotificationBell (`[data-tour="notifications"]`), CTA "Nuovo contatto" su Dashboard empty-state (`[data-tour="new-contact"]`).
+- Ai dati attributes vengono aggiunti su: `BrandSelector` (root), `MainLayout` SidebarGroup "Quotidiano", `NotificationBell`, `DashboardEmptyState` prima card.
+- "Salta tour" e "Fine" entrambi chiamano `complete_tour` RPC.
+- Pulsante "Riavvia tour" già esiste? No: lo aggiungo come voce nel dropdown utente del footer sidebar ("Rivedi il tour iniziale") che azzera `tour_completed_at` localmente (state) e riavvia, senza scrivere in DB.
 
-Aggiungo `mem://style/sidebar-information-architecture.md` con la tassonomia delle 6 sezioni e la regola "nuove voci admin → audience `rare` di default, vivono in `Sistema`". Linko nell'index.
+## 5. Hook condiviso
 
-## File modificati
+`src/hooks/useOnboardingStatus.ts`:
 
-- `src/components/layout/MainLayout.tsx` — refactor (no API change verso il resto dell'app)
-- `mem://style/sidebar-information-architecture.md` — nuovo
-- `mem://index.md` — riga aggiunta
+```ts
+export function useOnboardingStatus() {
+  // useQuery su users.{welcome_completed_at, tour_completed_at, preferred_name, ...}
+  // staleTime: Infinity (cambia solo su mutazione esplicita)
+  // ritorna { needsWelcome, needsTour, isLoading, refetch }
+}
+```
+
+Mutazioni `useCompleteWelcome` / `useCompleteTour` che chiamano gli RPC e fanno `queryClient.invalidateQueries(["onboarding-status"])`.
+
+## File toccati
+
+**Nuovi**:
+- `supabase/migrations/<ts>_user_onboarding.sql`
+- `src/hooks/useOnboardingStatus.ts`
+- `src/components/onboarding/WelcomeModal.tsx`
+- `src/components/onboarding/DashboardEmptyState.tsx`
+- `src/components/onboarding/AppTour.tsx`
+- `mem://features/user-onboarding-flow.md` + index entry
+
+**Modificati**:
+- `src/components/layout/MainLayout.tsx` — monta `<WelcomeModal/>` e `<AppTour/>`, aggiunge `data-tour` su SidebarGroup "Quotidiano" e wrapper `BrandSelector`. Aggiunge voce dropdown utente "Rivedi tour".
+- `src/pages/Dashboard.tsx` — render condizionale `<DashboardEmptyState/>` + nasconde KPI/charts quando empty.
+- `src/components/notifications/NotificationBell.tsx` — aggiunge `data-tour="notifications"` su trigger.
+- `package.json` — `npm install driver.js`.
 
 ## Cosa NON faccio
 
-- Nessuna route rimossa o spostata: tutti i path attuali restano raggiungibili.
-- Nessuna modifica a `RoleGuard` o RLS.
-- Nessuna modifica responsive: l'offcanvas mobile eredita automaticamente la nuova struttura.
-- Nessun A/B test o feature flag: il rollout è diretto.
+- Nessuna migrazione di utenti esistenti: `welcome_completed_at` parte NULL anche per chi è già nel sistema → vedrà il modal una volta. **Mitigazione**: il modal pre-popola tutti i campi con `full_name`/brand corrente, quindi l'utente esistente lo chiude in 2 secondi. Se non ti va, lo backfilliamo con `UPDATE users SET welcome_completed_at = created_at WHERE created_at < now()` come step finale della migration — ditemelo e lo aggiungo, di default lo includo per non spammare i 50+ utenti già attivi.
+- Nessun cambio al flusso `/select-brand`.
+- Niente A/B test, niente analytics esterni.

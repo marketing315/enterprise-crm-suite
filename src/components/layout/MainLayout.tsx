@@ -79,6 +79,8 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
 import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
 import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
+import { AppTour } from '@/components/onboarding/AppTour';
 
 // ============================================================================
 // Information architecture
@@ -358,6 +360,8 @@ export function MainLayout() {
   return (
     <SidebarProvider>
       <IncomingCallPopup />
+      <WelcomeModal />
+      <AppTour />
       <div className="flex min-h-screen w-full">
         <Sidebar>
           <SidebarHeader className="border-b border-sidebar-border">
@@ -368,14 +372,16 @@ export function MainLayout() {
                 <h2 className="text-xs text-muted-foreground leading-tight">Gruppo Benessere</h2>
               </div>
             </div>
-            <div className="px-4 pb-3">
+            <div className="px-4 pb-3" data-tour="brand-selector">
               <BrandSelector compact />
             </div>
           </SidebarHeader>
 
           <SidebarContent>
             {/* Sezione Quotidiano */}
-            {visibleSections.filter(s => s.id === 'daily').map(renderSection)}
+            <div data-tour="nav-daily">
+              {visibleSections.filter(s => s.id === 'daily').map(renderSection)}
+            </div>
 
             {/* Sezione Vendite & Clienti */}
             {visibleSections.filter(s => s.id === 'sales').map(renderSection)}
@@ -492,6 +498,15 @@ export function MainLayout() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Il mio account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const fn = (window as any).__restartAppTour;
+                      if (typeof fn === 'function') fn();
+                    }}
+                  >
+                    <Sliders className="mr-2 h-4 w-4" />
+                    Rivedi il tour iniziale
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Esci
