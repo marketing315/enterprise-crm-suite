@@ -108,6 +108,7 @@ interface NavItem {
   audience: 'daily' | 'weekly' | 'rare';
   requiresRole?: AdvancedRole[];
   adminOnly?: boolean; // shorthand per isAdmin
+  description?: string; // tooltip esplicativo per non-tech
 }
 
 interface NavSectionDef {

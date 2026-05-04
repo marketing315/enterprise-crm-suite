@@ -1,44 +1,55 @@
-## Header e azioni globali
+## Microcopy: rinominare le voci tecniche del menu
 
-Tre aggiunte all'header. Tutte basate su componenti già presenti (cmdk, breadcrumb.tsx, DropdownMenu).
+Tutte le modifiche su `src/components/layout/MainLayout.tsx` (sezione `navSections` righe 125-186 e renderer voce). Nessuna modifica a path/route — solo etichette + tooltip esplicativi.
 
-### 1. Ricerca globale Cmd+K / Ctrl+K
+### Rinomine
 
-Nuovo componente `src/components/search/GlobalSearchDialog.tsx`:
+| Oggi | Nuovo | Path (invariato) |
+|---|---|---|
+| Eventi | Lead in arrivo | `/events` |
+| DLQ | Webhook in errore | `/admin/dlq` |
+| CAPI Monitor | Eventi Facebook | `/admin/capi` |
+| SLO Board | Stato del servizio | `/admin/slo-board` |
+| Webhook Monitor | Stato webhook | `/admin/webhooks` |
+| AI Metrics | Statistiche AI | `/admin/ai-metrics` |
+| Gestione AI | Assistente AI | `/admin/ai` |
+| KPI Venditori | Performance venditori | `/team/salespersons` |
+| KPI Call Center | Performance call center | `/admin/callcenter-kpi` |
+| Trend Ticket | Andamento ticket | `/admin/ticket-trend` |
+| Security Review | Controlli sicurezza | `/admin/security-reviews` |
+| Audit & Compliance | Storico modifiche | `/admin/audit` |
 
-- Usa `<CommandDialog>` (`src/components/ui/command.tsx`, già basato su cmdk).
-- Listener globale tastiera in MainLayout: `Cmd+K` / `Ctrl+K` apre il dialog (anche `/` opzionale, ma teniamo solo Cmd+K per evitare collisioni con campi di input).
-- Input con debounce 200ms.
-- Fan-out di 3 query parallele (limit 5 per gruppo) tramite `useQueries`, scoped al `currentBrand`:
-  - **Contatti**: `contacts.select('id, first_name, last_name, contact_phones(phone_normalized)').or('first_name.ilike.%q%,last_name.ilike.%q%').eq('brand_id', currentBrand.id).limit(5)` — usa il pattern già presente in `useContacts`. Non usiamo `contact_search_index` perché richiede `to_tsquery` e l'overhead non si giustifica per top-5.
-  - **Deal**: `deals.select('id, value, status, contact:contacts(first_name,last_name)').eq('brand_id', currentBrand.id).limit(5)` filtrando lato client per matching sul nome contatto, oppure JOIN; pratico: query separata che usa la sub-search sui contatti e mostra i deal collegati.
-  - **Ticket**: `tickets.select('id, title, status').eq('brand_id', currentBrand.id).ilike('title', '%q%').limit(5)`.
-- Risultati raggruppati con `<CommandGroup heading="Contatti|Deal|Ticket">`. Ogni `<CommandItem onSelect={...}>` naviga a `/contacts?id=…`, `/pipeline?deal=…`, `/tickets?id=…` (i pattern già esistenti).
-- Empty state: "Inizia a digitare per cercare contatti, deal o ticket".
-- Footer del dialog con la scorciatoia mostrata: `↵ apri · esc chiude · ⌘K`.
-- Bottone in header (icona `Search` + label "Cerca…" con badge `⌘K` su md+) come affordance visuale.
+Restano invariati (già parlanti): Dashboard, Contatti, Pipeline, Appuntamenti, Ticket, Chat, Vendite, Prodotti, Azienda, Analytics, Dashboard CEO, Impostazioni, Team, Quick Backup.
 
-### 2. Avatar utente in header
+### Tooltip esplicativi sulle voci ambigue
 
-Nuovo blocco in `MainLayout.tsx` accanto a `NotificationBell`:
+Aggiunto un campo opzionale `description?: string` all'interfaccia `NavItem`. Quando presente, viene passato al `tooltip` di `<SidebarMenuButton>` (sostituisce solo il fallback "Seleziona prima un brand", che resta prioritario).
 
-- `<DropdownMenu>` con trigger = `<Avatar>` (riuso degli stessi componenti già usati nel SidebarFooter, righe 488-518).
-- Menù: nome utente + email come label, separatore, "Rivedi il tour iniziale" (`__restartAppTour`), "Esci" (`handleLogout`).
-- L'avatar nel SidebarFooter viene **mantenuto** (utility per chi tiene la sidebar aperta) ma è ora ridondante. Non lo rimuoviamo per non rompere screenshot/onboarding tour: il dropdown è identico tra le due posizioni.
+Tooltip da aggiungere:
 
-### 3. Breadcrumbs sotto l'header
+- **Pipeline** → "Le tue trattative in corso, divise per fase"
+- **Lead in arrivo** → "Nuovi contatti acquisiti dai canali marketing"
+- **Webhook in errore** → "Messaggi che non sono riusciti ad arrivare: vanno controllati e rimandati"
+- **Eventi Facebook** → "Conversioni inviate a Meta (CAPI) per le campagne pubblicitarie"
+- **Stato del servizio** → "Salute generale del sistema e affidabilità nel tempo"
+- **Stato webhook** → "Connessioni in entrata: chi ci sta mandando dati e con quale qualità"
+- **Statistiche AI** → "Quanto e come l'AI viene usata nel CRM"
+- **Assistente AI** → "Configurazione del comportamento dell'assistente AI"
+- **Storico modifiche** → "Chi ha cambiato cosa e quando, per audit e conformità"
+- **Controlli sicurezza** → "Revisione periodica di accessi e permessi"
 
-Nuovo componente `src/components/layout/AppBreadcrumbs.tsx`:
+### Modifica al renderer
 
-- Mappa `useLocation().pathname` in segmenti leggibili (es. `/appointments/ops-board` → "Appuntamenti › Ops Board"). Mappa statica `LABELS: Record<string, string>` per le rotte note (riusa la stessa naming usata in `navItems` di MainLayout).
-- Per segmenti UUID/ID (es. `/appointments/abc-123`) mostra "Dettaglio" come label (no fetch sincrono — semplice e veloce).
-- Render con `<Breadcrumb>` da `src/components/ui/breadcrumb.tsx`.
-- **Visibilità**: solo se `pathname.split('/').filter(Boolean).length >= 2` (pagine profonde). Niente breadcrumb su `/dashboard`, `/contacts`, etc.
-- Posizionato in una riga sottile (`h-9`, sfondo `bg-muted/30`) tra `<header>` e `<main>` in `MainLayout.tsx` (linea ~566 prima di `<RealtimeStatusBanner />`).
+In `renderItem` (righe 318-341), passare `item.description` come `tooltip` quando `hasBrandSelected` è true:
 
-### File toccati / creati
+```tsx
+tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : item.description}
+```
 
-- **Creati**: `src/components/search/GlobalSearchDialog.tsx`, `src/components/layout/AppBreadcrumbs.tsx`.
-- **Modificati**: `src/components/layout/MainLayout.tsx` (header: search trigger + avatar dropdown + listener Cmd+K; render `<AppBreadcrumbs />`).
+`SidebarMenuButton` di shadcn già accetta una stringa per `tooltip` e la mostra solo quando la sidebar è collassata. Per renderla visibile anche con sidebar espansa serve il pattern `tooltip={{ children: ..., hidden: false }}`. Useremo questo per le voci con `description`, così il tooltip compare in hover anche con sidebar aperta — esattamente quello che serve per i termini ambigui.
 
-Nessuna nuova dipendenza, nessuna migration, nessuna RPC. Le query rispettano il `currentBrand.id` già imposto in tutto il CRM.
+### File toccati
+
+- **Modificato**: `src/components/layout/MainLayout.tsx` (etichette in `navSections`, interfaccia `NavItem`, render del tooltip).
+
+Nessuna nuova dipendenza, nessuna migration, nessun cambio di route.
