@@ -75,8 +75,11 @@ import {
   HardDrive,
   Globe,
   ArrowLeftRight,
+  Search,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { GlobalSearchDialog } from '@/components/search/GlobalSearchDialog';
+import { AppBreadcrumbs } from './AppBreadcrumbs';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
