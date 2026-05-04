@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqual } from "../_shared/crypto.ts";
+import { safeJson } from "../_shared/safe-json.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
