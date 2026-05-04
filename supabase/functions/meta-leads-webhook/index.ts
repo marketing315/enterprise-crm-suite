@@ -59,19 +59,63 @@ async function verifySignature(payload: string, signature: string, secret: strin
   return timingSafeEqual(computedSig, expectedSig);
 }
 
+// ===== Meta Graph API types =====
+interface MetaFieldData {
+  name?: string;
+  values?: string[];
+}
+
+interface MetaLeadData {
+  id?: string;
+  created_time?: string;
+  field_data?: MetaFieldData[];
+  ad_id?: string;
+  ad_name?: string;
+  adset_id?: string;
+  adset_name?: string;
+  campaign_id?: string;
+  campaign_name?: string;
+  form_id?: string;
+  platform?: string;
+}
+
+interface MetaChangeValue {
+  leadgen_id?: string;
+  page_id?: string;
+  form_id?: string;
+  ad_id?: string;
+  created_time?: number;
+}
+
+interface MetaChange {
+  field?: string;
+  value?: MetaChangeValue;
+}
+
+interface MetaEntry {
+  id?: string;
+  time?: number;
+  changes?: MetaChange[];
+}
+
+interface MetaWebhookPayload {
+  object?: string;
+  entry?: MetaEntry[];
+}
+
 // Helper to detect Meta test lead placeholder data
 function isTestPlaceholder(value: string | null): boolean {
   return value !== null && value.includes("<test lead:");
 }
 
 // Extract field from Meta field_data array
-function getField(fieldData: any[], name: string): string | null {
-  const field = fieldData.find((f: any) => f.name?.toLowerCase() === name.toLowerCase());
+function getField(fieldData: MetaFieldData[], name: string): string | null {
+  const field = fieldData.find((f) => f.name?.toLowerCase() === name.toLowerCase());
   return field?.values?.[0] || null;
 }
 
 // Build combined message from non-standard fields
-function buildLeadMessage(fieldData: any[]): string {
+function buildLeadMessage(fieldData: MetaFieldData[]): string {
   const leadMessage = getField(fieldData, "message") || getField(fieldData, "messaggio") || 
     getField(fieldData, "note") || getField(fieldData, "notes") ||
     getField(fieldData, "additional_info") || getField(fieldData, "informazioni_aggiuntive") || 
@@ -106,15 +150,16 @@ interface MetaAppConfig {
 }
 
 async function processLeadChange(
-  supabase: any,
+  supabase: ReturnType<typeof createClient>,
   metaApp: MetaAppConfig,
-  change: any,
+  change: MetaChange,
   brandSlug: string,
 ): Promise<{ leadgen_id: string; status: string; lead_event_id?: string; contact_id?: string | null; deal_id?: string | null }> {
   const leadgenId = change.value?.leadgen_id;
   const pageId = change.value?.page_id;
   const formId = change.value?.form_id;
   const adId = change.value?.ad_id;
+
 
   if (!leadgenId) {
     console.warn(`[META-EVENT] Missing leadgen_id in change`);
@@ -149,7 +194,7 @@ async function processLeadChange(
   const metaEventId = metaEvent.id;
 
   // 2. Fetch lead details from Graph API
-  let leadData: any = null;
+  let leadData: MetaLeadData | null = null;
   try {
     const graphUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${metaApp.access_token}`;
     const graphRes = await fetch(graphUrl);
@@ -191,9 +236,12 @@ async function processLeadChange(
   if (isTestPlaceholder(firstName)) firstName = "Test";
   if (isTestPlaceholder(lastName)) lastName = "Meta Lead";
   if (isTestPlaceholder(phone)) {
-    const leadSuffix = leadgenId.slice(-6);
-    phone = `3331234${leadSuffix}`;
-    console.log(`[META-EVENT] Generated synthetic phone for test lead: ${phone}`);
+    // Use reserved test prefix that cannot collide with real Italian mobile numbers.
+    // Italian mobiles start with 3xx; "+39 000…" is impossible in E.164 IT numbering plan.
+    // We pad with the leadgenId suffix to keep traceability and uniqueness across test leads.
+    const leadSuffix = (leadgenId.slice(-9) || "000000000").padStart(9, "0");
+    phone = `+39000${leadSuffix}`;
+    console.log(`[META-EVENT] Generated synthetic test phone (reserved range): ${phone}`);
   }
   if (isTestPlaceholder(cap)) cap = "00100";
 
@@ -424,9 +472,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    let payload: any;
+    let payload: MetaWebhookPayload;
     try {
-      payload = JSON.parse(rawBody);
+      payload = JSON.parse(rawBody) as MetaWebhookPayload;
     } catch {
       console.error(`[META-EVENT] Invalid JSON for ${brandSlug}`);
       return new Response(JSON.stringify({ error: "invalid_json" }), {
@@ -437,7 +485,8 @@ Deno.serve(async (req) => {
 
     console.log(`[META-EVENT] Received for ${brandSlug}:`, JSON.stringify(payload));
 
-    const results: any[] = [];
+    type LeadResult = Awaited<ReturnType<typeof processLeadChange>> | { leadgen_id: string; status: string };
+    const results: LeadResult[] = [];
 
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
