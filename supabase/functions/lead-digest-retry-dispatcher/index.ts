@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqualAny } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,8 +33,7 @@ Deno.serve(async (req) => {
   }
 
   // Accept cron calls via: x-cron-secret header
-  const isCronCall =
-    cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
+  const isCronCall = !!(cronSecret && timingSafeEqualAny(cronSecret, expectedSecret, cronSecretPrev));
 
   let isSystemCall = false;
   let isAdminCall = false;

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -505,8 +506,8 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const expectedCronSecret = Deno.env.get("CRON_SECRET");
   
-  const isServiceRole = authHeader === `Bearer ${serviceRoleKey}`;
-  const isCronJob = cronSecret && cronSecret === expectedCronSecret;
+  const isServiceRole = !!serviceRoleKey && timingSafeEqual(authHeader || "", `Bearer ${serviceRoleKey}`);
+  const isCronJob = !!(cronSecret && expectedCronSecret && timingSafeEqual(cronSecret, expectedCronSecret));
   
   if (!isServiceRole && !isCronJob) {
     return new Response(

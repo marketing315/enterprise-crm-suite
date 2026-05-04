@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
     let isAdminCall = false;
 
     // Check x-cron-secret header first
-    if (cronSecret && expectedCronSecret && cronSecret === expectedCronSecret) {
+    if (cronSecret && expectedCronSecret && timingSafeEqual(cronSecret, expectedCronSecret)) {
       isCronCall = true;
       console.log("[google-ads-sync] Authenticated via x-cron-secret");
     }

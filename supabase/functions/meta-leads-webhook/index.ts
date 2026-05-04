@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +56,7 @@ async function verifySignature(payload: string, signature: string, secret: strin
   const computedSig = Array.from(new Uint8Array(signatureBuffer))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  return computedSig === expectedSig;
+  return timingSafeEqual(computedSig, expectedSig);
 }
 
 // Helper to detect Meta test lead placeholder data

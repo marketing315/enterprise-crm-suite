@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -445,8 +446,8 @@ Deno.serve(async (req: Request) => {
   const expectedInternalToken = Deno.env.get("SHEETS_INTERNAL_TOKEN");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   
-  const isServiceRole = authHeader === `Bearer ${serviceRoleKey}`;
-  const isInternalToken = expectedInternalToken && internalToken === expectedInternalToken;
+  const isServiceRole = !!serviceRoleKey && timingSafeEqual(authHeader || "", `Bearer ${serviceRoleKey}`);
+  const isInternalToken = !!(expectedInternalToken && internalToken && timingSafeEqual(internalToken, expectedInternalToken));
   
   if (!isServiceRole && !isInternalToken) {
     console.error("Unauthorized sheets-export call - missing valid auth");
