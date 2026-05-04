@@ -1,0 +1,20 @@
+{
+  "account": {
+    "title": "My account",
+    "logout": "Sign out",
+    "tour": "Replay onboarding tour"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "theme": "Theme",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "theme_system": "System",
+    "density": "Table density",
+    "density_comfortable": "Comfortable",
+    "density_compact": "Compact",
+    "language": "Language",
+    "language_it": "Italian",
+    "language_en": "English"
+  }
+}

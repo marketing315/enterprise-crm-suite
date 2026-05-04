@@ -144,3 +144,17 @@ All colors MUST be HSL.
     min-height: 44px;
   }
 }
+
+/* ============================================================
+   Table density (controlled via <html data-density="...">)
+   - "comfortable" (default): no overrides
+   - "compact": reduce vertical padding inside tables for higher info density
+   ============================================================ */
+[data-density="compact"] table th,
+[data-density="compact"] table td {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+[data-density="compact"] [data-row-density] {
+  min-height: 32px;
+}

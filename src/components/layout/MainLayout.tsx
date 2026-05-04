@@ -9,6 +9,7 @@ import { useHasMarketingAccess, useCanSeeMarketingSubmenu } from '@/hooks/useMar
 import { userStorage } from '@/lib/userScopedStorage';
 import { BrandSelector } from './BrandSelector';
 import { PageHelpButton } from './PageHelpButton';
+import { AppearanceMenuItems } from './AppearanceMenuItems';
 import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -519,6 +520,8 @@ export function MainLayout() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Il mio account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <AppearanceMenuItems />
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => {
                       const fn = (window as any).__restartAppTour;
@@ -611,6 +614,8 @@ export function MainLayout() {
                     <span className="text-xs text-muted-foreground font-normal truncate">{user?.email}</span>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <AppearanceMenuItems />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
