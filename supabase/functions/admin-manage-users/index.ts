@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { validatePassword } from "../_shared/password-policy.ts";
 
 type AppRole = 
   | "admin" 
@@ -369,8 +370,9 @@ Deno.serve(async (req: Request) => {
         const { user_id, new_password } = body as ResetPasswordRequest;
         await assertCanManageUser(user_id);
 
-        if (!new_password || new_password.length < 6) {
-          return new Response(JSON.stringify({ error: "La password deve essere di almeno 6 caratteri" }), {
+        const pwCheck = validatePassword(new_password);
+        if (!pwCheck.ok) {
+          return new Response(JSON.stringify({ error: pwCheck.error, code: pwCheck.code }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });

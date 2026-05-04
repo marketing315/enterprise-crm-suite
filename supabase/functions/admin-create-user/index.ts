@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { validatePassword } from "../_shared/password-policy.ts";
 
 interface CreateUserRequest {
   email: string;
@@ -91,6 +92,14 @@ Deno.serve(async (req: Request) => {
 
     if (!email || !password || !full_name || brandIds.length === 0 || !role) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.ok) {
+      return new Response(JSON.stringify({ error: pwCheck.error, code: pwCheck.code }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
