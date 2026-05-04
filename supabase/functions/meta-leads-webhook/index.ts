@@ -59,19 +59,63 @@ async function verifySignature(payload: string, signature: string, secret: strin
   return timingSafeEqual(computedSig, expectedSig);
 }
 
+// ===== Meta Graph API types =====
+interface MetaFieldData {
+  name?: string;
+  values?: string[];
+}
+
+interface MetaLeadData {
+  id?: string;
+  created_time?: string;
+  field_data?: MetaFieldData[];
+  ad_id?: string;
+  ad_name?: string;
+  adset_id?: string;
+  adset_name?: string;
+  campaign_id?: string;
+  campaign_name?: string;
+  form_id?: string;
+  platform?: string;
+}
+
+interface MetaChangeValue {
+  leadgen_id?: string;
+  page_id?: string;
+  form_id?: string;
+  ad_id?: string;
+  created_time?: number;
+}
+
+interface MetaChange {
+  field?: string;
+  value?: MetaChangeValue;
+}
+
+interface MetaEntry {
+  id?: string;
+  time?: number;
+  changes?: MetaChange[];
+}
+
+interface MetaWebhookPayload {
+  object?: string;
+  entry?: MetaEntry[];
+}
+
 // Helper to detect Meta test lead placeholder data
 function isTestPlaceholder(value: string | null): boolean {
   return value !== null && value.includes("<test lead:");
 }
 
 // Extract field from Meta field_data array
-function getField(fieldData: any[], name: string): string | null {
-  const field = fieldData.find((f: any) => f.name?.toLowerCase() === name.toLowerCase());
+function getField(fieldData: MetaFieldData[], name: string): string | null {
+  const field = fieldData.find((f) => f.name?.toLowerCase() === name.toLowerCase());
   return field?.values?.[0] || null;
 }
 
 // Build combined message from non-standard fields
-function buildLeadMessage(fieldData: any[]): string {
+function buildLeadMessage(fieldData: MetaFieldData[]): string {
   const leadMessage = getField(fieldData, "message") || getField(fieldData, "messaggio") || 
     getField(fieldData, "note") || getField(fieldData, "notes") ||
     getField(fieldData, "additional_info") || getField(fieldData, "informazioni_aggiuntive") || 
