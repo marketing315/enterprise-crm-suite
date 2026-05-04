@@ -59,7 +59,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const body: CallRequestBody = await req.json();
+    let body: CallRequestBody;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { phone_number, contact_id, deal_id, brand_id } = body;
 
     if (!phone_number || !contact_id || !brand_id) {
