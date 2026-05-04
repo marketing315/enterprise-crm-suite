@@ -11,6 +11,13 @@ const REQUEST_TIMEOUT_MS = 10000;
 const WALL_TIME_LIMIT_MS = 25000; // Stop processing after 25s to avoid cron overlap
 const USER_AGENT = "ralphloop-webhooks/1.0";
 
+// Circuit breaker: after N consecutive failures (timeout / 5xx / network) on the
+// SAME webhook_id within this run, short-circuit remaining deliveries for that
+// webhook to "circuit_open" without fetching. Prevents one slow/dead endpoint
+// from monopolizing wall-time and starving other webhooks.
+const CIRCUIT_BREAKER_THRESHOLD = 3;
+const CIRCUIT_TRIPPING_STATUSES = new Set<number>([408, 429, 500, 502, 503, 504]);
+
 // Constant-time comparison to mitigate timing attacks on the cron secret
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -112,9 +119,23 @@ function flattenObject(
 async function processDelivery(
   supabase: SupabaseClientAny,
   delivery: WebhookDelivery,
-  webhookCache: Map<string, WebhookConfig | null>
-): Promise<{ success: boolean; status?: number; error?: string; durationMs: number }> {
+  webhookCache: Map<string, WebhookConfig | null>,
+  breakerState: Map<string, number>
+): Promise<{ success: boolean; status?: number; error?: string; durationMs: number; circuitTripped?: boolean }> {
   const startTime = Date.now();
+
+  // Circuit breaker: short-circuit if this webhook already failed too many times in this run.
+  const failures = breakerState.get(delivery.webhook_id) ?? 0;
+  if (failures >= CIRCUIT_BREAKER_THRESHOLD) {
+    const durationMs = Date.now() - startTime;
+    await supabase.rpc("record_delivery_result", {
+      p_delivery_id: delivery.id,
+      p_success: false,
+      p_error: "circuit_open",
+      p_duration_ms: durationMs,
+    });
+    return { success: false, error: "circuit_open", durationMs };
+  }
 
   try {
     // Get webhook config (with cache)
@@ -224,14 +245,26 @@ async function processDelivery(
       p_duration_ms: durationMs,
     });
 
+    // Update circuit breaker: reset on success, increment on tripping statuses (5xx/timeout/429).
+    let circuitTripped = false;
+    if (isSuccess) {
+      breakerState.delete(delivery.webhook_id);
+    } else if (CIRCUIT_TRIPPING_STATUSES.has(response.status)) {
+      const next = (breakerState.get(delivery.webhook_id) ?? 0) + 1;
+      breakerState.set(delivery.webhook_id, next);
+      if (next >= CIRCUIT_BREAKER_THRESHOLD) circuitTripped = true;
+    }
+    // 4xx other than 408/429 are treated as terminal client errors and do NOT trip the breaker.
+
     return {
       success: isSuccess,
       status: response.status,
       durationMs: Date.now() - startTime,
+      circuitTripped,
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    const errorMessage = error instanceof Error 
+    const errorMessage = error instanceof Error
       ? (error.name === "AbortError" ? "timeout" : error.message.slice(0, 200))
       : "unknown_error";
 
@@ -242,52 +275,108 @@ async function processDelivery(
       p_duration_ms: durationMs,
     });
 
-    return { success: false, error: errorMessage, durationMs };
+    // Network/timeout failures always trip the breaker.
+    const next = (breakerState.get(delivery.webhook_id) ?? 0) + 1;
+    breakerState.set(delivery.webhook_id, next);
+    const circuitTripped = next >= CIRCUIT_BREAKER_THRESHOLD;
+
+    return { success: false, error: errorMessage, durationMs, circuitTripped };
   }
 }
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
-// Process batch with parallelism limit and wall-time guard
+/**
+ * Build chunks using fair round-robin scheduling per webhook_id.
+ *
+ * Why: a naive slice(i, i+PARALLEL_LIMIT) would put 10 deliveries to the SAME
+ * slow endpoint into one chunk, blocking the wall-time for everyone else.
+ * With round-robin, each chunk contains AT MOST one delivery per webhook_id
+ * (until queues are exhausted), so a slow endpoint occupies at most 1 of
+ * PARALLEL_LIMIT slots per chunk.
+ */
+function buildFairChunks(deliveries: WebhookDelivery[]): WebhookDelivery[][] {
+  const queues = new Map<string, WebhookDelivery[]>();
+  for (const d of deliveries) {
+    const q = queues.get(d.webhook_id);
+    if (q) q.push(d);
+    else queues.set(d.webhook_id, [d]);
+  }
+  const order = Array.from(queues.keys());
+  const chunks: WebhookDelivery[][] = [];
+  let current: WebhookDelivery[] = [];
+  let exhausted = false;
+  while (!exhausted) {
+    exhausted = true;
+    for (const id of order) {
+      const q = queues.get(id)!;
+      if (q.length === 0) continue;
+      exhausted = false;
+      current.push(q.shift()!);
+      if (current.length >= PARALLEL_LIMIT) {
+        chunks.push(current);
+        current = [];
+      }
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+// Process batch with parallelism limit, fair scheduling, circuit breaker, and wall-time guard.
 async function processBatch(
   supabase: SupabaseClientAny,
   deliveries: WebhookDelivery[],
   startTime: number
-): Promise<{ sentOk: number; sentFail: number; remainingHint: boolean }> {
+): Promise<{ sentOk: number; sentFail: number; remainingHint: boolean; circuitOpen: number; trippedWebhooks: string[] }> {
   const webhookCache = new Map<string, WebhookConfig | null>();
+  const breakerState = new Map<string, number>();
+  const trippedWebhooks = new Set<string>();
   let sentOk = 0;
   let sentFail = 0;
+  let circuitOpen = 0;
 
-  // Process in chunks of PARALLEL_LIMIT
-  for (let i = 0; i < deliveries.length; i += PARALLEL_LIMIT) {
+  const chunks = buildFairChunks(deliveries);
+  let processedCount = 0;
+
+  for (let i = 0; i < chunks.length; i++) {
     // Wall-time guard: stop if we're running too long
     if (Date.now() - startTime > WALL_TIME_LIMIT_MS) {
-      const remaining = deliveries.length - i;
+      const remaining = deliveries.length - processedCount;
       console.log(`[WALL_TIME] Stopping after ${Date.now() - startTime}ms, remaining=${remaining}`);
-      return { sentOk, sentFail, remainingHint: true };
+      return { sentOk, sentFail, remainingHint: true, circuitOpen, trippedWebhooks: [...trippedWebhooks] };
     }
 
-    const chunk = deliveries.slice(i, i + PARALLEL_LIMIT);
+    const chunk = chunks[i];
     const results = await Promise.all(
-      chunk.map(d => processDelivery(supabase, d, webhookCache))
+      chunk.map(d => processDelivery(supabase, d, webhookCache, breakerState))
     );
 
     for (let j = 0; j < results.length; j++) {
       const result = results[j];
       const delivery = chunk[j];
-      
+      processedCount++;
+
       if (result.success) {
         sentOk++;
         console.log(`[OK] delivery=${delivery.id} webhook=${delivery.webhook_id} event=${delivery.event_type} status=${result.status} duration=${result.durationMs}ms`);
+      } else if (result.error === "circuit_open") {
+        circuitOpen++;
+        sentFail++;
+        // Logged at TRIP time below; keep this line terse to avoid log spam.
       } else {
         sentFail++;
         console.log(`[FAIL] delivery=${delivery.id} webhook=${delivery.webhook_id} event=${delivery.event_type} attempt=${delivery.attempt_count + 1} error=${result.error} duration=${result.durationMs}ms`);
+        if (result.circuitTripped && !trippedWebhooks.has(delivery.webhook_id)) {
+          trippedWebhooks.add(delivery.webhook_id);
+          console.warn(`[CIRCUIT_OPEN] webhook=${delivery.webhook_id} threshold=${CIRCUIT_BREAKER_THRESHOLD} reached — remaining deliveries this run will short-circuit`);
+        }
       }
     }
   }
 
-  return { sentOk, sentFail, remainingHint: false };
+  return { sentOk, sentFail, remainingHint: false, circuitOpen, trippedWebhooks: [...trippedWebhooks] };
 }
 
 Deno.serve(async (req) => {
@@ -369,21 +458,23 @@ Deno.serve(async (req) => {
 
     console.log(`[INFO] Claimed ${claimedCount} deliveries`);
 
-    // Process batch with wall-time guard
-    const { sentOk, sentFail, remainingHint } = await processBatch(
-      supabase, 
+    // Process batch with wall-time guard, fair scheduling and per-webhook circuit breaker
+    const { sentOk, sentFail, remainingHint, circuitOpen, trippedWebhooks } = await processBatch(
+      supabase,
       deliveries as WebhookDelivery[],
       runStartTime
     );
 
-    const summary = { 
-      claimed: claimedCount, 
-      sent_ok: sentOk, 
+    const summary = {
+      claimed: claimedCount,
+      sent_ok: sentOk,
       sent_fail: sentFail,
+      circuit_open: circuitOpen,
+      tripped_webhooks: trippedWebhooks,
       remaining_hint: remainingHint,
       duration_ms: Date.now() - runStartTime
     };
-    console.log(`[SUMMARY] claimed=${claimedCount} sent_ok=${sentOk} sent_fail=${sentFail} remaining_hint=${remainingHint} duration_ms=${summary.duration_ms}`);
+    console.log(`[SUMMARY] claimed=${claimedCount} sent_ok=${sentOk} sent_fail=${sentFail} circuit_open=${circuitOpen} tripped=${trippedWebhooks.length} remaining_hint=${remainingHint} duration_ms=${summary.duration_ms}`);
 
     return new Response(JSON.stringify(summary), {
       status: 200,
