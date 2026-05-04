@@ -9351,9 +9351,14 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          preferred_brand_id: string | null
+          preferred_name: string | null
+          primary_role_hint: string | null
           supabase_auth_id: string
+          tour_completed_at: string | null
           updated_at: string
           voispeed_ext: string | null
+          welcome_completed_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -9361,9 +9366,14 @@ export type Database = {
           email: string
           full_name?: string | null
           id?: string
+          preferred_brand_id?: string | null
+          preferred_name?: string | null
+          primary_role_hint?: string | null
           supabase_auth_id: string
+          tour_completed_at?: string | null
           updated_at?: string
           voispeed_ext?: string | null
+          welcome_completed_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -9371,11 +9381,24 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          preferred_brand_id?: string | null
+          preferred_name?: string | null
+          primary_role_hint?: string | null
           supabase_auth_id?: string
+          tour_completed_at?: string | null
           updated_at?: string
           voispeed_ext?: string | null
+          welcome_completed_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_preferred_brand_id_fkey"
+            columns: ["preferred_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       voispeed_configs: {
         Row: {
@@ -10070,6 +10093,15 @@ export type Database = {
       cleanup_webhook_dedup: { Args: never; Returns: number }
       complete_ai_tag_job: {
         Args: { p_error?: string; p_job_id: string }
+        Returns: undefined
+      }
+      complete_tour: { Args: never; Returns: undefined }
+      complete_welcome: {
+        Args: {
+          p_preferred_brand_id: string
+          p_preferred_name: string
+          p_primary_role_hint: string
+        }
         Returns: undefined
       }
       compute_appointment_risk_score: {
