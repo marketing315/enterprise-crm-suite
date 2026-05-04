@@ -322,11 +322,11 @@ export function MainLayout() {
         isActive={location.pathname === item.path}
         onClick={() => navigate(item.path)}
         disabled={!hasBrandSelected && item.path !== '/dashboard'}
-        tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
+        tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : item.description}
         data-testid={item.path === '/admin/webhooks' ? 'nav-webhooks-dashboard' : undefined}
       >
         <item.icon className="h-4 w-4" />
-        <span className="flex-1">{item.label}</span>
+        <span className="flex-1" title={item.description}>{item.label}</span>
         {item.path === '/tickets' && ticketActivityCount > 0 && (
           <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-ticket-badge">
             {ticketActivityCount > 99 ? '99+' : ticketActivityCount}
