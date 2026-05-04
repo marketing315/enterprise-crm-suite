@@ -486,7 +486,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[META-EVENT] Received for ${brandSlug}:`, JSON.stringify(payload));
+    // GDPR: log structured metadata only, never the full payload.
+    // The Meta webhook envelope itself carries only leadgen_id/form_id/page_id/ad_id
+    // (PII is fetched separately via Graph API and never logged), but we lock this down
+    // explicitly so future schema changes can't accidentally leak PII into stdout/SIEM.
+    const entryCount = payload.entry?.length ?? 0;
+    const changeCount = (payload.entry || []).reduce(
+      (sum, e) => sum + (e.changes?.length ?? 0),
+      0,
+    );
+    console.log(
+      `[META-EVENT] Received brand=${brandSlug} object=${payload.object ?? "unknown"} entries=${entryCount} changes=${changeCount}`,
+    );
 
     type LeadResult = Awaited<ReturnType<typeof processLeadChange>> | { leadgen_id: string; status: string };
     const results: LeadResult[] = [];
