@@ -553,9 +553,15 @@ Deno.serve(async (req: Request) => {
     if (eventError || !event) {
       await supabaseAdmin
         .from("sheets_export_logs")
-        .update({ status: "failed", error: "Lead event not found" })
+        .update({
+          status: "dead_letter",
+          error: "Lead event not found",
+          last_error: "Lead event not found",
+          dead_letter: true,
+          last_attempt_at: new Date().toISOString(),
+        })
         .eq("lead_event_id", lead_event_id);
-        
+
       return new Response(
         JSON.stringify({ error: "Lead event not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
