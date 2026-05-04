@@ -40,6 +40,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { FieldHelp } from "@/components/ui/FieldHelp";
 import { TicketStatusBadge } from "./TicketStatusBadge";
 import { TicketPriorityBadge } from "./TicketPriorityBadge";
 import { 
@@ -277,12 +278,16 @@ export function TicketsTable({
               </TableHead>
             )}
             <TableHead className="w-[90px]">Stato</TableHead>
-            <TableHead className="w-[50px]">P.</TableHead>
+            <TableHead className="w-[50px]">
+              <span className="inline-flex items-center">P.<FieldHelp text="Priorità AI: calcolata su urgenza richiesta, valore deal collegato e SLA residuo. Modificabile manualmente." /></span>
+            </TableHead>
             <TableHead className="min-w-[120px]">Contatto</TableHead>
             <TableHead className="min-w-[150px]">Titolo</TableHead>
             <TableHead className="w-[100px]">Categoria</TableHead>
             <TableHead className="min-w-[120px]">Assegnato</TableHead>
-            <TableHead className="w-[110px]">Aging</TableHead>
+            <TableHead className="w-[110px]">
+              <span className="inline-flex items-center">Aging<FieldHelp text="Tempo trascorso dall'apertura. Badge SLA rosso = ticket oltre soglia di risposta per la sua priorità." /></span>
+            </TableHead>
             {onTakeOwnership && <TableHead className="w-[80px]">Azione</TableHead>}
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
