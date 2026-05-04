@@ -43,8 +43,8 @@ Deno.serve(async (req) => {
     const payload = decodeJwtPayload(bearerToken);
     const role = payload?.role as string | undefined;
 
-    if (role === "anon" || role === "service_role") {
-      // pg_cron uses anon key; service role used by internal systems
+    if (role === "service_role") {
+      // SECURITY: only service_role JWT — anon key is public and must NOT be accepted
       isSystemCall = true;
     } else if (role === "authenticated") {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || bearerToken;

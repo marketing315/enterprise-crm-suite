@@ -120,14 +120,11 @@ async function getAuthMethod(req: Request): Promise<string | null> {
     }
   }
 
-  // 2. Bearer token: check CRON_ANON_JWT or verify via getClaims
+  // 2. Bearer token: accept ONLY service_role JWT verified via getClaims.
+  // SECURITY: the anon key is public (committed in client bundle), so we never accept it.
   const authHeader = req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
-    const cronAnonJwt = Deno.env.get("CRON_ANON_JWT");
-    if (cronAnonJwt && token === cronAnonJwt) {
-      return "jwt_anon_key";
-    }
     try {
       const verifyClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
@@ -138,7 +135,6 @@ async function getAuthMethod(req: Request): Promise<string | null> {
       if (!claimsErr && claimsData?.claims) {
         const role = claimsData.claims.role as string;
         if (role === "service_role") return "jwt_service_role";
-        if (role === "anon") return "jwt_anon_key";
       }
     } catch {
       // Invalid JWT — fall through

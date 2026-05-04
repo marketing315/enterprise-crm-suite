@@ -55,9 +55,8 @@ function authOk(req: Request): boolean {
   const auth = req.headers.get("authorization") || "";
   if (auth.startsWith("Bearer ")) {
     const token = auth.replace("Bearer ", "");
-    const cronAnonJwt = Deno.env.get("CRON_ANON_JWT");
+    // SECURITY: anon key is public — only accept the service-role key.
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (cronAnonJwt && token === cronAnonJwt) return true;
     if (serviceKey && token === serviceKey) return true;
   }
   return false;
