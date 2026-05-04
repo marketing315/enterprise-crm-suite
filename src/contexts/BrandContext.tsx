@@ -82,7 +82,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
             }
           }
         }
-        // R08: If stored brand is no longer valid/accessible, reset selection
+        // If stored brand is no longer valid/accessible, reset selection
         if (!restored) {
           setCurrentBrandState(null);
           localStorage.removeItem(BRAND_STORAGE_KEY);

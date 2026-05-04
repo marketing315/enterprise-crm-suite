@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // R01 FIX: Require cron secret or service_role JWT (reject anon)
+    // Require cron secret or service_role JWT (reject anon)
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedSecret = Deno.env.get("CRON_SECRET");
     const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");

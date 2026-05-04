@@ -11,7 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 // Global storage for the install prompt so it persists across component mounts
 let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
-// R09: Track whether the global listener has been registered to prevent HMR duplicates
+// Track whether the global listener has been registered to prevent HMR duplicates
 let globalListenerRegistered = false;
 
 function ensureGlobalListener() {
@@ -50,7 +50,7 @@ export function usePWAInstall() {
       setIsInstallable(true);
     }
 
-    // R09: Only listen for the custom event and appinstalled — no duplicate beforeinstallprompt listener
+    // Only listen for the custom event and appinstalled — no duplicate beforeinstallprompt listener
     const handlePromptAvailable = () => {
       setDeferredPrompt(globalDeferredPrompt);
       setIsInstallable(true);

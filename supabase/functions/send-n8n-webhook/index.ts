@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     const isCronCall = !!(cronSecret && timingSafeEqualAny(cronSecret, expectedSecret, cronSecretPrev));
 
-    // B04 FIX: Verify JWT server-side instead of trusting decoded payload
+    // Verify JWT server-side instead of trusting decoded payload
     let isJwtCronCall = false;
     if (!isCronCall && authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");

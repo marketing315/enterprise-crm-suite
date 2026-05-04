@@ -88,8 +88,8 @@ async function verifyAdmin(authHeader: string): Promise<{ adminClient: ReturnTyp
     throw new Error("User not found");
   }
 
-  // R02 FIX: Fetch all admin roles with their brand_ids for scoping
-  // B07 FIX: Only consider active admin roles
+  // Fetch all admin roles with their brand_ids for scoping
+  // Only consider active admin roles
   const { data: adminRoles, error: roleError } = await adminClient
     .from("user_roles")
     .select("id, brand_id")
@@ -127,11 +127,11 @@ Deno.serve(async (req: Request) => {
     const { adminClient, callerBrandIds } = await verifyAdmin(authHeader);
     const body: RequestBody = await req.json();
 
-    // R02 FIX: Helper to check if caller can manage a given brand
+    // Helper to check if caller can manage a given brand
     const isGlobalAdmin = callerBrandIds.length === 0;
     const canManageBrand = (brandId: string) => isGlobalAdmin || callerBrandIds.includes(brandId);
 
-    // R02 FIX: Helper to verify target user belongs to caller's brands
+    // Helper to verify target user belongs to caller's brands
     async function assertCanManageUser(userId: string) {
       if (isGlobalAdmin) return;
       const { data: targetRoles } = await adminClient
@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // R02 FIX: Helper to verify target role belongs to caller's brands
+    // Helper to verify target role belongs to caller's brands
     async function assertCanManageRole(roleId: string) {
       if (isGlobalAdmin) return;
       const { data: role } = await adminClient
@@ -233,7 +233,7 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // B04 FIX: Delete auth.users FIRST — if this fails, application data remains intact
+        // Delete auth.users FIRST — if this fails, application data remains intact
         // and the operation can be safely retried. The reverse order would leave orphaned
         // auth records if application-level deletes fail.
         const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(

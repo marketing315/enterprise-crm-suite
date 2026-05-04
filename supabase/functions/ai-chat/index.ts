@@ -246,7 +246,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // B09 FIX: Verify user belongs to the requested brand
+    // Verify user belongs to the requested brand
     const { data: crmUser } = await supabase
       .from("users")
       .select("id")

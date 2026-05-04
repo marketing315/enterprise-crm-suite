@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // B11 FIX: Verify user belongs to the requested brand
+    // Verify user belongs to the requested brand
     const { data: userBrandRole } = await supabase
       .from("user_roles")
       .select("id")
@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // B11 FIX: Verify contact belongs to the same brand
+    // Verify contact belongs to the same brand
     const { data: contactCheck } = await supabase
       .from("contacts")
       .select("id")

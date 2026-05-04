@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const brandId = body.brand_id;
 
-    // B16 FIX: Verify user has admin/ceo role on this brand
+    // Verify user has admin/ceo role on this brand
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: crmUser } = await serviceClient
       .from("users")
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
 
-    // H05 FIX: Sign state with HMAC to prevent tampering; don't include raw token
+    // Sign state with HMAC to prevent tampering; don't include raw token
     const statePayload = { brand_id: brandId, user_id: crmUser.id, exp: Date.now() + 600_000 };
     const stateJson = JSON.stringify(statePayload);
     const hmacSecret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

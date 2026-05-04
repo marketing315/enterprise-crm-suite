@@ -106,7 +106,7 @@ interface Tracking {
   client_user_agent: string | null;
 }
 
-// H04 FIX: Validate cron secret or verify JWT server-side (not just decode)
+// Validate cron secret or verify JWT server-side (not just decode)
 async function getAuthMethod(req: Request): Promise<string | null> {
   // 1. Primary: x-cron-secret header — accepts CRON_SECRET or CRON_SECRET_PREVIOUS
   const cronSecret = req.headers.get("x-cron-secret");
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // H04 FIX: Strict auth validation (now async)
+  // Strict auth validation (now async)
   const authMethod = await getAuthMethod(req);
   if (!authMethod) {
     console.error("[CAPI] Unauthorized: no valid cron secret or service role key");
@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
 
     if (metaAppsError || !metaApps) {
       console.error("[CAPI] Failed to fetch meta_apps:", metaAppsError);
-      // H07 FIX: Mark all as failed in parallel
+      // Mark all as failed in parallel
       await Promise.all(
         (claimedEvents as CapiEvent[]).map((event) =>
           supabase.rpc("update_capi_event_status", {
@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
       metaAppMap.set(app.id, app);
     }
 
-    // 4. Fetch all contacts, phones, tracking IN PARALLEL (H10 FIX)
+    // 4. Fetch all contacts, phones, tracking IN PARALLEL
     const contactIds = [...new Set((claimedEvents as CapiEvent[]).map((e) => e.contact_id).filter(Boolean))] as string[];
     let contactMap = new Map<string, Contact>();
     let phoneMap = new Map<string, string>();
@@ -299,7 +299,7 @@ Deno.serve(async (req) => {
       const metaApp = metaAppMap.get(metaAppId);
       if (!metaApp || !metaApp.pixel_id || !metaApp.capi_token_key) {
         console.error(`[CAPI] Missing config for meta_app ${metaAppId}`);
-        // H07 FIX: parallel updates
+        // parallel updates
         await Promise.all(
           events.map((event) =>
             supabase.rpc("update_capi_event_status", {
@@ -380,7 +380,7 @@ Deno.serve(async (req) => {
       try {
         console.log(`[CAPI] Sending ${capiData.length} events to pixel ${metaApp.pixel_id}`);
 
-        // H12 FIX: Only log payload in non-production
+        // Only log payload in non-production
         if (!isProduction) {
           console.log(`[CAPI] Payload preview:`, JSON.stringify({ data: capiData, test_event_code: requestBody.test_event_code }, null, 2).slice(0, 2000));
         }
@@ -401,7 +401,7 @@ Deno.serve(async (req) => {
         try { responseData = JSON.parse(responseText); } catch { responseData = { raw: responseText }; }
 
         if (response.ok && responseData.events_received) {
-          // H05 FIX: Check partial success
+          // Check partial success
           const received = responseData.events_received;
           const expectedCount = capiData.length;
 

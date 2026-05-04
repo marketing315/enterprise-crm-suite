@@ -664,7 +664,7 @@ async function buildKepleroPayload(
     },
     tracking: {
       first_touch_at: contact?.created_at || null,
-      // B15 FIX: Use correct schema field names (client_ip, client_user_agent)
+      // Use correct schema field names (client_ip, client_user_agent)
       client: {
         ip: tracking?.client_ip || null,
         user_agent: tracking?.client_user_agent || null,
@@ -975,7 +975,7 @@ async function processEvent(
   const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
   
   for (const rule of sortedRules) {
-    // B14 FIX: Explicit wildcard vs exact match to prevent false positives
+    // Explicit wildcard vs exact match to prevent false positives
     const triggerType = rule.trigger_event_type;
     let matches = false;
     if (triggerType.endsWith(".*")) {
@@ -1083,7 +1083,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
   
-  // B01 FIX: Validate cron secret OR verify JWT signature server-side
+  // Validate cron secret OR verify JWT signature server-side
   const cronSecret = req.headers.get("x-cron-secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
   const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");

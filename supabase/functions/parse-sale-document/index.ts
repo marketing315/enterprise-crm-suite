@@ -145,7 +145,7 @@ Rispondi SOLO con JSON valido, senza markdown.`
         confidence: 0.1,
         raw_text: content,
       };
-      // B3 FIX: Return parsed:false so consumers know this is a fallback
+      // Return parsed:false so consumers know this is a fallback
       return new Response(
         JSON.stringify({ 
           success: true, 
