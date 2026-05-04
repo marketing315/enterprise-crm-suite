@@ -1,68 +1,79 @@
 ## Obiettivo
 
-Aggiungere a `NotificationBell` e Dashboard tre miglioramenti di "attenzione utente":
+Migliorare l'accessibilità (a11y) con interventi globali ad alto leverage, evitando di toccare 50+ file. Focus su:
 
-1. Suono opzionale su nuove notifiche critiche (default: ticket SLA breach + appuntamenti a rischio), con preferenza salvata per utente.
-2. Badge nel `document.title` del browser (`(3) Ralph CRM`) quando la tab è in background e ci sono notifiche non lette.
-3. Riassunto giornaliero in cima alla Dashboard ("Oggi hai X nuovi lead, Y ticket SLA in scadenza, Z appuntamenti").
+1. Reduced motion globale via CSS (copre tutte le animazioni esistenti).
+2. Touch target minimi 44×44px su mobile per tutti i bottoni icon-only.
+3. Contrasto: rinforzare il token `--muted-foreground` per garantire ≥ 4.5:1.
+4. `aria-label` mirati sui bottoni icon-only delle aree più visibili (sidebar, header, NotificationBell, mobile cards).
+5. Focus-visible ring più evidente su `SidebarMenuButton` e voci Collapsible.
 
-Nessuna nuova dipendenza, nessuna migration: riusiamo `user_push_preferences` (già esistente) per la preferenza suono e i dati già forniti da `useDashboardData`.
+Niente refactor strutturali, niente nuove dipendenze, niente migration.
 
 ---
 
-## 1. Suono opzionale su notifiche critiche
+## 1. Reduced motion globale
 
-**Nuovo file** `src/hooks/useNotificationSound.ts`:
-- Espone `{ soundEnabled, setSoundEnabled, playSound }`.
-- Legge/scrive una riga in `user_push_preferences` con `notification_type = 'sound_critical'` (riusa la tabella esistente, niente migration).
-- `playSound()` usa Web Audio API (`AudioContext` + `OscillatorNode`, due beep brevi 880Hz/660Hz) — zero asset, zero file mp3.
-- Espone wrapper sicuro: niente errori se l'utente non ha mai interagito con la pagina (browser autoplay policy → catch & ignore).
+**Modifica** `src/index.css`: aggiungere alla fine
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+Copre Collapsible, Sidebar, fade-in, hover-scale, e ogni altra animazione tailwind/Radix esistente.
 
-**Modifica** `src/components/notifications/NotificationBell.tsx`:
-- Lista tipi "critici": `['ticket_created', 'appointment_risk_alert', 'slo_alert', 'ticket_escalated']` (quelli SLA-related già presenti nei type label / memory).
-- In `handleNewNotification`: se `soundEnabled === true` e `notification.type` è critico → `playSound()`.
-- Aggiungere nel popover header un piccolo toggle icon (`Volume2`/`VolumeX`) con `Tooltip` "Suono notifiche critiche".
+## 2. Touch target 44×44 su mobile
 
-## 2. Badge sul title della tab
+**Modifica** `src/index.css`: aggiungere
+```css
+@media (max-width: 768px) and (pointer: coarse) {
+  button[data-size="icon"],
+  .h-7.w-7,
+  .h-8.w-8,
+  [role="button"][aria-label]:not([data-touch-ok]) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+```
+Approccio non invasivo: alza il min-size solo su touch mobile, lascia il padding interno invariato (l'icona resta visivamente piccola, ma l'area cliccabile è ≥44×44).
 
-**Nuovo file** `src/hooks/useDocumentTitleBadge.ts`:
-- Hook montato una sola volta (in `MainLayout`).
-- Legge `useUnreadNotificationCount()` + `document.visibilityState`.
-- Quando la tab è `hidden` e `unread > 0`: imposta `document.title = "(N) <titolo originale>"`.
-- Quando torna `visible` o `unread === 0`: ripristina il titolo originale memorizzato in un ref.
-- Listener su `visibilitychange`; cleanup ripristina sempre il titolo.
+## 3. Contrasto su `--muted-foreground`
 
-**Modifica** `src/components/layout/MainLayout.tsx`:
-- Chiamata `useDocumentTitleBadge()` (insieme al resto degli hook globali già presenti).
+**Verifica** `src/index.css`: leggere i valori HSL attuali di `--muted-foreground` in `:root` e `.dark`. Se la luminosità in light mode è > 60% (testo grigio chiaro su sfondo bianco — sotto 4.5:1), portarla a circa 38–42%. In dark mode garantire L ≥ 64%.
 
-## 3. Riassunto giornaliero in Dashboard
+Modifica solo i due token `--muted-foreground`, niente altro. Tutti i `text-muted-foreground` nel codice ne beneficiano automaticamente.
 
-**Nuovo componente** `src/components/dashboard/DailyBriefing.tsx`:
-- Card glassmorphism in cima alla dashboard (sopra ai KPI primari).
-- Saluto contestuale ora-del-giorno: "Buongiorno" (<12), "Buon pomeriggio" (<18), "Buonasera" — usa `preferred_name` da `users` se disponibile via `useAuth().userProfile`, fallback al nome generico.
-- Frase a una riga, costruita componendo solo i numeri ≠ 0 da `useDashboardData()`:
-  - `leadsToday` → "X nuovi lead"
-  - `slaBreachedTickets` → "Y ticket SLA in scadenza"  
-  - `appointmentsToday` → "Z appuntamenti oggi"
-- Se tutti zero: "Nessuna emergenza in vista. Buon lavoro!".
-- Mini-CTA inline (link a `/events`, `/tickets?slaBreach=true`, `/appointments/calendar`) per ogni numero > 0.
-- Scheletro skeleton durante `isLoading`.
+## 4. Aria-label mirati (sweep selettivo)
 
-**Modifica** `src/pages/Dashboard.tsx`:
-- Importare e renderizzare `<DailyBriefing />` subito dopo l'header (riga ~123), prima del check empty-state. Mostrato solo quando `hasBrandSelected` è true e non siamo in puro empty state (dato che tutti i numeri saranno comunque zero, mostrerà la frase "Nessuna emergenza").
+Aggiungere/rinforzare `aria-label` su:
+- **`SidebarTrigger`** (`src/components/ui/sidebar.tsx`): cambiare `<span class="sr-only">` in `aria-label="Apri o chiudi la sidebar"` (in italiano + esplicito).
+- **`NotificationBell`** già ha `aria-label="Notifiche"` ✓ — verificato.
+- **`MainLayout`** header (Cerca, Menu utente, Cambia brand) — già presenti ✓.
+- **Card mobile** `ContactCardMobile.tsx` e `TicketCardMobile.tsx`: aggiungere `aria-label` alle icone `MoreVertical`/`Phone` se mancanti.
+- **`PageHelpButton`** e simili: sweep solo su `src/components/layout/*`.
+
+Sweep limitato ai componenti di layout/global navigation. Le pagine admin/settings restano per un futuro audit.
+
+## 5. Focus-visible su sidebar e Collapsible
+
+**Modifica** `src/components/ui/sidebar.tsx` (className di `SidebarMenuButton`, riga ~415): la stringa esistente ha già `focus-visible:ring-2`. Aggiungere `focus-visible:ring-offset-2 focus-visible:ring-primary` per renderlo più visibile su sfondo chiaro.
+
+Verificare che le voci Collapsible usate in `MainLayout.tsx` (Insight/Sistema) abbiano `<CollapsibleTrigger>` come `<button>` nativo (Radix lo è già) — se viene wrappato custom, assicurarsi che il focus arrivi al trigger e non al contenuto interno.
 
 ---
 
 ## File toccati
 
-Nuovi:
-- `src/hooks/useNotificationSound.ts`
-- `src/hooks/useDocumentTitleBadge.ts`
-- `src/components/dashboard/DailyBriefing.tsx`
-
 Modificati:
-- `src/components/notifications/NotificationBell.tsx` (toggle suono + play su tipi critici)
-- `src/components/layout/MainLayout.tsx` (1 riga: hook title badge)
-- `src/pages/Dashboard.tsx` (1 riga: render `<DailyBriefing />`)
+- `src/index.css` (reduced motion + touch target + token contrasto)
+- `src/components/ui/sidebar.tsx` (aria-label SidebarTrigger + focus ring)
+- `src/components/contacts/ContactCardMobile.tsx` (aria-label icone)
+- `src/components/tickets/TicketCardMobile.tsx` (aria-label icone)
 
-Nessuna migration, nessun edge function, nessuna dipendenza npm. Tutta la persistenza preferenza usa la tabella `user_push_preferences` esistente.
+Nessun nuovo file, nessuna dipendenza npm, nessuna migration. Audit completo con axe-core/Lighthouse resta un'attività manuale post-deploy.
