@@ -31,6 +31,8 @@ import { ContactStatusBadge } from "./ContactStatusBadge";
 import { ContactDetailSheet } from "./ContactDetailSheet";
 import { ContactsBulkActionsBar } from "./ContactsBulkActionsBar";
 import { ClickToCallButton } from "./ClickToCallButton";
+import { ContactCardMobile } from "./ContactCardMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { TableViewSelector } from "./views/TableViewSelector";
 import { SaveViewDialog } from "./views/SaveViewDialog";
 import { EditViewDialog } from "./views/EditViewDialog";
@@ -84,6 +86,7 @@ export function ContactsTableWithViews({
   totalCount,
   totalLoaded,
 }: ContactsTableProps) {
+  const isMobile = useIsMobile();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -578,6 +581,42 @@ export function ContactsTableWithViews({
         return null;
     }
   };
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="space-y-3">
+          {processedContacts.map((contact) => (
+            <ContactCardMobile
+              key={contact.id}
+              contact={contact}
+              showBrand={showBrandColumn}
+              onOpen={() => setSelectedContactId(contact.id)}
+              onDelete={() => handleDeleteClick(contact, { stopPropagation: () => {} } as React.MouseEvent)}
+            />
+          ))}
+          {isLoadingMore && (
+            <div className="flex justify-center py-3 text-sm text-muted-foreground">
+              Caricamento...
+            </div>
+          )}
+          {hasMore && !isLoadingMore && onLoadMore && (
+            <div className="flex justify-center py-2">
+              <Button variant="outline" size="sm" onClick={onLoadMore}>
+                Carica altri
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <ContactDetailSheet
+          contactId={selectedContactId}
+          open={!!selectedContactId}
+          onOpenChange={(open) => !open && setSelectedContactId(null)}
+        />
+      </>
+    );
+  }
 
   return (
     <>

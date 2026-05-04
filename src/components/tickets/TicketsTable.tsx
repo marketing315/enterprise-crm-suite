@@ -60,6 +60,8 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { TicketCardMobile } from "./TicketCardMobile";
 
 interface TicketsTableProps {
   tickets: TicketWithRelations[];
@@ -83,6 +85,7 @@ export function TicketsTable({
   onSelectionChange,
   showCheckboxes = false,
 }: TicketsTableProps) {
+  const isMobile = useIsMobile();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
   
@@ -231,6 +234,31 @@ export function TicketsTable({
       setTicketToDelete(null);
     }
   };
+
+  if (isMobile) {
+    if (tickets.length === 0) {
+      return (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Nessun ticket in coda"
+          description="Quando un cliente apre una richiesta o viene segnalato un problema, lo vedrai qui."
+        />
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {tickets.map((ticket) => (
+          <TicketCardMobile
+            key={ticket.id}
+            ticket={ticket}
+            onClick={() => onTicketClick(ticket)}
+            onTakeOwnership={onTakeOwnership ? (e) => onTakeOwnership(ticket, e) : undefined}
+            isSlaBreached={showSlaIndicator && isSlaBreached(ticket, slaThresholds)}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <>
