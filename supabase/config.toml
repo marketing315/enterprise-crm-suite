@@ -87,3 +87,47 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false
   [functions.web-push-public-key]
     verify_jwt = false
+  # --- Functions previously inheriting Supabase default (true). All validate auth in code. ---
+  # See docs/edge-functions-auth-map.md for the full classification matrix.
+  [functions.ai-call-apply]
+    verify_jwt = false   # client invoke -> getUser() in code
+  [functions.ai-call-proposals]
+    verify_jwt = false   # client invoke -> getUser() in code
+  [functions.ai-generate-webhook-mapping]
+    verify_jwt = false   # client invoke -> getUser() in code
+  [functions.audit-alert-dispatcher]
+    verify_jwt = false   # admin client invoke; HMAC outbound
+  [functions.calculate-lead-score]
+    verify_jwt = false   # client invoke; server-side validation in code
+  [functions.ga4-measurement-protocol]
+    verify_jwt = false   # internal CAPI sender; called server-to-server
+  [functions.ga4-stats-sync]
+    verify_jwt = false   # admin client invoke (Google OAuth token in code)
+  [functions.health-check]
+    verify_jwt = false   # public dashboard health probe
+  [functions.mcp-gateway]
+    verify_jwt = false   # client invoke + x-internal-token for inter-function
+  [functions.mcp-server]
+    verify_jwt = false   # external MCP clients; Bearer mcp_xxx validated in code
+  [functions.notification-webhook-dispatcher]
+    verify_jwt = false   # cron-relay target (x-cron-secret); HMAC outbound
+  [functions.parse-sale-document]
+    verify_jwt = false   # client invoke -> getUser() in code
+  [functions.payment-overdue-runner]
+    verify_jwt = false   # cron-driven
+  [functions.quick-backup-runner]
+    verify_jwt = false   # admin client invoke -> getUser() + has_role in code
+  [functions.quick-restore-runner]
+    verify_jwt = false   # admin client invoke -> getUser() + has_role in code
+  [functions.sheets-advanced-export]
+    verify_jwt = false   # x-cron-secret OR service-role Bearer
+  [functions.sheets-batch-export]
+    verify_jwt = false   # service-role Bearer validated in code
+  [functions.sheets-export-dispatcher]
+    verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
+  [functions.siem-exporter]
+    verify_jwt = false   # admin client invoke; HMAC outbound to SIEM
+  [functions.ticket-escalation-runner]
+    verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
+  [functions.trace-ingest]
+    verify_jwt = false   # internal-only; x-internal-token validated in code
