@@ -656,36 +656,47 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         )}
 
         {/* Sticky bottom CTA bar */}
-        {contact && !isEditing && (
-          <div className="shrink-0 -mx-4 sm:-mx-6 mt-3 px-4 sm:px-6 pt-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-wrap gap-2">
-            <ClickToCallButton
-              contactId={contact.id}
-              phoneNumber={getPrimaryPhone()}
-              variant="default"
-              size="sm"
-              showLabel
-              className="flex-1 min-w-[120px]"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 min-w-[120px]"
-              onClick={() => setTicketDialogOpen(true)}
-            >
-              <Ticket className="h-4 w-4 mr-1.5" />
-              Crea ticket
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 min-w-[120px]"
-              onClick={() => navigate(`/appointments?contactId=${contact.id}`)}
-            >
-              <Calendar className="h-4 w-4 mr-1.5" />
-              Appuntamento
-            </Button>
-          </div>
-        )}
+        {contact && !isEditing && (() => {
+          const primaryPhone =
+            contact.contact_phones?.find((p) => p.is_primary && p.is_active)?.phone_normalized ||
+            contact.contact_phones?.[0]?.phone_normalized;
+          return (
+            <div className="shrink-0 -mx-4 sm:-mx-6 mt-3 px-4 sm:px-6 pt-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-wrap gap-2">
+              {primaryPhone ? (
+                <ClickToCallButton
+                  contactId={contact.id}
+                  phoneNumber={primaryPhone}
+                  variant="default"
+                  size="sm"
+                  showLabel
+                  className="flex-1 min-w-[120px]"
+                />
+              ) : (
+                <Button variant="default" size="sm" className="flex-1 min-w-[120px]" disabled>
+                  <Phone className="h-4 w-4 mr-1.5" /> Chiama
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 min-w-[120px]"
+                onClick={() => setTicketDialogOpen(true)}
+              >
+                <Ticket className="h-4 w-4 mr-1.5" />
+                Crea ticket
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 min-w-[120px]"
+                onClick={() => navigate(`/appointments?contactId=${contact.id}`)}
+              >
+                <Calendar className="h-4 w-4 mr-1.5" />
+                Appuntamento
+              </Button>
+            </div>
+          );
+        })()}
 
         {/* Create Ticket Dialog */}
         {contact && (
