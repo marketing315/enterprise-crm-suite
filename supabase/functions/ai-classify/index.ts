@@ -447,7 +447,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // B02 FIX: Validate cron secret OR verify JWT signature server-side
+  // Validate cron secret OR verify JWT signature server-side
   const cronSecret = Deno.env.get("CRON_SECRET");
   const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
   const providedSecret = req.headers.get("x-cron-secret");

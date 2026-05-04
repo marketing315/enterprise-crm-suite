@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // B08 FIX: Require cron secret or verified JWT
+  // Require cron secret or verified JWT
   const cronSecret = req.headers.get("x-cron-secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
   const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
 
   console.log("[automation-jobs-dispatcher] Starting dispatch cycle");
 
-  // B07 FIX: Atomic claim via RPC (FOR UPDATE SKIP LOCKED)
+  // Atomic claim via RPC (FOR UPDATE SKIP LOCKED)
   const { data: jobs, error: fetchError } = await supabaseAdmin
     .rpc("claim_automation_jobs", { p_limit: 50 });
 

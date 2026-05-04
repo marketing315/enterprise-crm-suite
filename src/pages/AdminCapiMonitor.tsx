@@ -90,7 +90,7 @@ export default function AdminCapiMonitor() {
   const [period, setPeriod] = useState("7d");
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
-  // H11 FIX: refreshKey forces recalculation of from/to on manual refresh
+  // refreshKey forces recalculation of from/to on manual refresh
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { from, to } = useMemo(() => {
@@ -144,7 +144,7 @@ export default function AdminCapiMonitor() {
 
   const isLoading = loadingSummary || loadingEvents;
   const handleRefresh = () => {
-    // H11 FIX: Recalculate time range on manual refresh
+    // Recalculate time range on manual refresh
     setRefreshKey((k) => k + 1);
   };
 

@@ -397,7 +397,7 @@ Deno.serve(async (req) => {
   const runStartTime = Date.now();
 
   try {
-    // SECURITY [B01]: Validate cron secret OR verify JWT server-side (service_role ONLY)
+    // SECURITY: Validate cron secret OR verify JWT server-side (service_role ONLY)
     // CRITICAL: anon tokens are NOT accepted — this function uses SUPABASE_SERVICE_ROLE_KEY
     const cronSecret = Deno.env.get("CRON_SECRET");
     const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");

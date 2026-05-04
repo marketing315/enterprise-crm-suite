@@ -48,12 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // H01 FIX: Track current auth user ID to prevent stale fetches
+  // Track current auth user ID to prevent stale fetches
   const currentAuthIdRef = useRef<string | null>(null);
-  // H02 FIX: Track if initial fetch is done to prevent double fetch
+  // Track if initial fetch is done to prevent double fetch
   const initialFetchDoneRef = useRef(false);
 
-  // H01 FIX: Stable fetchUserData with stale-check via ref
+  // Stable fetchUserData with stale-check via ref
   const fetchUserData = useCallback(async (authUserId: string) => {
     // If the auth user changed while we were fetching, abort
     if (currentAuthIdRef.current !== authUserId) return;
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (userError) {
         console.error('Error fetching user:', userError);
-        // R07: Reset state on error to prevent stale privileges
+        // Reset state on error to prevent stale privileges
         setUser(null);
         setUserRoles([]);
         return;
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentAuthIdRef.current !== authUserId) return;
 
       if (!userData) {
-        // R07: No user record found — reset to prevent stale state
+        // No user record found — reset to prevent stale state
         setUser(null);
         setUserRoles([]);
         return;
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (rolesError) {
         console.error('Error fetching roles:', rolesError);
-        // R07: Reset roles on error
+        // Reset roles on error
         setUserRoles([]);
       } else {
         setUserRoles((rolesData || []) as UserRole[]);
@@ -124,12 +124,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // purged automatically by setUserScope().
           setUserScope(newSession.user.id);
 
-          // H02 FIX: Skip if getSession already handled this
+          // Skip if getSession already handled this
           if (!initialFetchDoneRef.current) {
             // Will be handled by getSession below
             return;
           }
-          // H01 FIX: Direct call, no setTimeout
+          // Direct call, no setTimeout
           fetchUserData(newSession.user.id);
         } else {
           currentAuthIdRef.current = null;
@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserRoles([]);
         setIsRealtimeReady(false);
       } finally {
-        // H03 FIX: Only set loading false AFTER fetchUserData completes
+        // Only set loading false AFTER fetchUserData completes
         initialFetchDoneRef.current = true;
         setIsLoading(false);
       }

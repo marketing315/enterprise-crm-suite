@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // R01 FIX: Require cron secret or service_role JWT (reject anon)
+  // Require cron secret or service_role JWT (reject anon)
   const cronSecret = req.headers.get("x-cron-secret");
   const expectedSecret = Deno.env.get("CRON_SECRET");
   const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");

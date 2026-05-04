@@ -25,7 +25,7 @@ export function ProtectedRoute({ children, requireBrand = false }: ProtectedRout
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // B1 FIX: Enforce requireBrand — redirect to brand selection if no brand chosen
+  // Enforce requireBrand — redirect to brand selection if no brand chosen
   if (requireBrand && !currentBrand) {
     return <Navigate to="/select-brand" state={{ from: location }} replace />;
   }

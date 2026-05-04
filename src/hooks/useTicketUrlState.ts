@@ -39,7 +39,7 @@ function decodeCursor(str: string): TicketCursor | null {
   const parts = str.split("|");
   if (parts.length !== 3) return null;
   const priority = parseInt(parts[0], 10);
-  // R03: Validate cursor fields rigorously — NaN priority or empty segments → fallback to null
+  // Validate cursor fields rigorously — NaN priority or empty segments → fallback to null
   if (isNaN(priority) || !parts[1] || !parts[2]) return null;
   // Validate opened_at is a parseable date
   const dateCheck = new Date(parts[1]);

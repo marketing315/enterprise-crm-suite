@@ -93,7 +93,7 @@ export function ContactsBulkActionsBar({
       const contactIds = selectedContacts.map(c => c.id);
       const tagIds = Array.from(selectedTagIds);
       
-      // R03 FIX: Use each contact's own brand_id instead of currentBrand.id
+      // Use each contact's own brand_id instead of currentBrand.id
       // to avoid writing system brand or wrong brand in all-brands view
       const contactBrandMap = new Map(selectedContacts.map(c => [c.id, c.brand_id]));
       const assignments = contactIds.flatMap(contactId =>

@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // B07 fix: validate required env vars before use
+  // validate required env vars before use
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) {
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
   // Create admin client early for audit logging
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-  // B04 fix: prefer platform-injected headers over client-controlled ones
+  // prefer platform-injected headers over client-controlled ones
   // Priority: cf-connecting-ip (Cloudflare edge) > x-real-ip (reverse proxy) > x-forwarded-for (spoofable)
   const cfIp = req.headers.get("cf-connecting-ip");
   const realIp = req.headers.get("x-real-ip");
@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
   const userAgent = req.headers.get("user-agent") || null;
   const filteredHeaders = filterHeaders(req.headers);
 
-  // B03 fix: enforce max body size (256 KB) to prevent DoS via oversized payloads
+  // enforce max body size (256 KB) to prevent DoS via oversized payloads
   const MAX_BODY_BYTES = 256 * 1024;
   const contentLength = req.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
   let bodyText: string;
   try {
     bodyText = await req.text();
-    // B05 FIX: Measure actual byte length, not UTF-16 char count, to prevent
+    // Measure actual byte length, not UTF-16 char count, to prevent
     // multibyte characters bypassing the size limit
     const actualByteLength = new TextEncoder().encode(bodyText).byteLength;
     if (actualByteLength > MAX_BODY_BYTES) {
@@ -129,7 +129,7 @@ Deno.serve(async (req: Request) => {
   const sourceId = afterIngest[0] || "";
   const apiKeyFromPath = afterIngest.length > 1 ? afterIngest[1] : null;
   
-  // B06: Also check query string for api_key (supported for platforms without custom header support)
+  // Also check query string for api_key (supported for platforms without custom header support)
   const apiKeyFromQuery = url.searchParams.get("api_key");
 
   // Google Ads Lead Forms: extract google_key from body as API key
@@ -206,7 +206,7 @@ Deno.serve(async (req: Request) => {
   ) {
     const dlqReason = mapErrorToDlqReason(errorMessage);
     
-    // B09 fix: check update result and log failures explicitly
+    // check update result and log failures explicitly
     const { error: updateError } = await supabaseAdmin
       .from("incoming_requests")
       .update({
@@ -242,7 +242,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. Early auth gate — reject requests with NO credentials before source lookup
-  //    This prevents source enumeration via 404 responses (B01 fix)
+  //    This prevents source enumeration via 404 responses
   //    Also accept api_key as query parameter for platforms that don't support custom headers (e.g. systeme.io)
   const hasApiKey = !!(req.headers.get("x-api-key") || apiKeyFromQuery || apiKeyFromPath || apiKeyFromBody);
   const hasSignature = !!req.headers.get("x-signature") || !!req.headers.get("x-webhook-signature");
@@ -285,7 +285,7 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // B06 FIX: If HMAC is enabled but hmac_secret is missing, reject as misconfigured
+  // If HMAC is enabled but hmac_secret is missing, reject as misconfigured
   if (source.hmac_enabled && !source.hmac_secret) {
     console.log(JSON.stringify({ ...logContext, outcome: "hmac_misconfigured", status: 500 }));
     await createAuditRecord("rejected", "hmac_enabled_without_secret", sourceId, brandId);
@@ -423,7 +423,7 @@ Deno.serve(async (req: Request) => {
     console.log(JSON.stringify({ ...logContext, hmac_verified: true, timestamp }));
   }
 
-  // B08 fix: validate JSON BEFORE consuming rate-limit token
+  // validate JSON BEFORE consuming rate-limit token
   // This prevents malformed requests from exhausting the source's quota
   if (jsonParseError || !rawBody) {
     console.log(JSON.stringify({ ...logContext, outcome: "invalid_json", status: 400 }));
@@ -434,7 +434,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // B09: Per-source payload schema validation (optional)
+  // Per-source payload schema validation (optional)
   // Runs BEFORE dedup/rate-limit so malformed payloads don't burn quota or dedup slots
   if (source.payload_schema) {
     const validationResult = validatePayloadSchema(
@@ -466,7 +466,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // B10: Replay/duplicate detection (idempotency)
+  // Replay/duplicate detection (idempotency)
   // Computes a fingerprint of the request and rejects if the same fingerprint
   // was already processed within the source's replay_window_seconds.
   // Fingerprint priority:
@@ -753,7 +753,7 @@ Deno.serve(async (req: Request) => {
     if (hasAnyTracking) {
       try {
         const now = new Date().toISOString();
-        // B04 fix: insert first-touch row only if none exists (DO NOTHING on conflict).
+        // insert first-touch row only if none exists (DO NOTHING on conflict).
         // first_touch_at is set ONLY here and never overwritten.
         const { error: insertErr } = await supabaseAdmin
           .from("contact_tracking")

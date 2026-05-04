@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// H06 FIX: HTML-escape to prevent XSS
+// HTML-escape to prevent XSS
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // H05 FIX: Parse and verify HMAC-signed state
+    // Parse and verify HMAC-signed state
     let brandId: string;
     let stateUserId: string;
     try {
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // H05 FIX: Verify the user from state has admin/ceo role on the brand
+    // Verify the user from state has admin/ceo role on the brand
     const supabaseService = createClient(supabaseUrl, serviceKey);
     const { data: adminRole } = await supabaseService
       .from("user_roles")

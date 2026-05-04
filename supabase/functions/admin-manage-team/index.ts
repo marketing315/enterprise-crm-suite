@@ -83,7 +83,7 @@ async function getCallerContext(authHeader: string) {
   return { adminClient, callerId: internalUser.id, authUserId: user.id };
 }
 
-// B03 FIX: Only grant global access if admin/ceo role is on a system/sentinel brand,
+// Only grant global access if admin/ceo role is on a system/sentinel brand,
 // not on any arbitrary brand. This prevents cross-brand privilege escalation.
 const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -413,7 +413,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (!internalUser) {
-          // B10 FIX: Use upsert on supabase_auth_id to handle race conditions
+          // Use upsert on supabase_auth_id to handle race conditions
           // (e.g. trigger or parallel invite creating the row concurrently)
           const { data: upsertedUser, error: createError } = await adminClient
             .from("users")
@@ -680,8 +680,8 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // B08 FIX: Caller must be able to manage ALL target roles, not just one.
-        // B09 FIX: Fetch caller context once (system brands + caller roles) to avoid N+1 queries.
+        // Caller must be able to manage ALL target roles, not just one.
+        // Fetch caller context once (system brands + caller roles) to avoid N+1 queries.
         const { data: systemBrands } = await adminClient
           .from("brands")
           .select("id")

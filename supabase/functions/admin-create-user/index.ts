@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Check if requesting user is admin and get their brand scope
-    // B07 FIX: Only consider active admin roles
+    // Only consider active admin roles
     const { data: adminRoles, error: roleError } = await adminClient
       .from("user_roles")
       .select("id, brand_id")
@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // B02 FIX: Determine caller's administrable brands
+    // Determine caller's administrable brands
     const callerBrandIds = adminRoles.map(r => r.brand_id);
     const isGlobalAdmin = callerBrandIds.includes("00000000-0000-0000-0000-000000000000");
 
@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // B02 FIX: Validate that all requested brand_ids are within caller's scope
+    // Validate that all requested brand_ids are within caller's scope
     if (!isGlobalAdmin) {
       const unauthorizedBrands = brandIds.filter((bid: string) => !callerBrandIds.includes(bid));
       if (unauthorizedBrands.length > 0) {
