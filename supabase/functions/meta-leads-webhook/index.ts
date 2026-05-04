@@ -236,9 +236,12 @@ async function processLeadChange(
   if (isTestPlaceholder(firstName)) firstName = "Test";
   if (isTestPlaceholder(lastName)) lastName = "Meta Lead";
   if (isTestPlaceholder(phone)) {
-    const leadSuffix = leadgenId.slice(-6);
-    phone = `3331234${leadSuffix}`;
-    console.log(`[META-EVENT] Generated synthetic phone for test lead: ${phone}`);
+    // Use reserved test prefix that cannot collide with real Italian mobile numbers.
+    // Italian mobiles start with 3xx; "+39 000…" is impossible in E.164 IT numbering plan.
+    // We pad with the leadgenId suffix to keep traceability and uniqueness across test leads.
+    const leadSuffix = (leadgenId.slice(-9) || "000000000").padStart(9, "0");
+    phone = `+39000${leadSuffix}`;
+    console.log(`[META-EVENT] Generated synthetic test phone (reserved range): ${phone}`);
   }
   if (isTestPlaceholder(cap)) cap = "00100";
 
