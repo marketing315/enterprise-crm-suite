@@ -99,8 +99,13 @@ const GuardedInstall = withModuleGuard("pwa_install", Install);
 // AuthContext.signOut can wipe them on logout (GDPR data minimization).
 
 
+import "@/i18n";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { PersonalizationProvider } from "@/components/providers/PersonalizationProvider";
+
 const App = () => (
   <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+    <ThemeProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
