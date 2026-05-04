@@ -979,7 +979,6 @@ Deno.serve(async (req: Request) => {
       } catch (err) {
         console.warn("Sync sheets export setup error (dispatcher will retry):", err);
       }
-    }
     } else if (isDuplicate) {
       console.log(JSON.stringify({
         ...logContext,
