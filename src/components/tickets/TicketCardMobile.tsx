@@ -84,8 +84,8 @@ export function TicketCardMobile({
             </span>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 -mt-1" tabIndex={-1}>
-          <MoreVertical className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 -mt-1" tabIndex={-1} aria-label="Altre azioni">
+          <MoreVertical className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
 
