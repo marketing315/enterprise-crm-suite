@@ -105,6 +105,72 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
     return parts.length > 0 ? parts.join(' ') : 'Senza nome';
   };
 
+  if (isMobile) {
+    return (
+      <>
+        <div className="space-y-3">
+          {contacts.map((contact) => (
+            <ContactCardMobile
+              key={contact.id}
+              contact={contact}
+              onOpen={() => setSelectedContactId(contact.id)}
+              onDelete={() => handleDeleteClick(contact)}
+            />
+          ))}
+        </div>
+
+        <ContactDetailSheet
+          contactId={selectedContactId}
+          open={!!selectedContactId}
+          onOpenChange={(open) => !open && setSelectedContactId(null)}
+        />
+
+        {/* First confirmation dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminare questo contatto?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Stai per eliminare <strong>{contactToDelete ? [contactToDelete.first_name, contactToDelete.last_name].filter(Boolean).join(' ') || 'questo contatto' : ''}</strong>.
+                Questa azione richiede una doppia conferma.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancelDelete}>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleFirstConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Continua
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-destructive">⚠️ Conferma eliminazione definitiva</AlertDialogTitle>
+              <AlertDialogDescription>
+                Sei sicuro? Il contatto e tutti i dati associati verranno eliminati permanentemente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancelDelete}>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleFinalDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteContact.isPending}
+              >
+                {deleteContact.isPending ? 'Eliminazione...' : 'Elimina definitivamente'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="rounded-md border overflow-x-auto">
