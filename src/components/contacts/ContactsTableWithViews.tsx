@@ -582,6 +582,42 @@ export function ContactsTableWithViews({
     }
   };
 
+  if (isMobile) {
+    return (
+      <>
+        <div className="space-y-3">
+          {processedContacts.map((contact) => (
+            <ContactCardMobile
+              key={contact.id}
+              contact={contact}
+              showBrand={showBrandColumn}
+              onOpen={() => setSelectedContactId(contact.id)}
+              onDelete={() => handleDeleteClick(contact, { stopPropagation: () => {} } as React.MouseEvent)}
+            />
+          ))}
+          {isLoadingMore && (
+            <div className="flex justify-center py-3 text-sm text-muted-foreground">
+              Caricamento...
+            </div>
+          )}
+          {hasMore && !isLoadingMore && onLoadMore && (
+            <div className="flex justify-center py-2">
+              <Button variant="outline" size="sm" onClick={onLoadMore}>
+                Carica altri
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <ContactDetailSheet
+          contactId={selectedContactId}
+          open={!!selectedContactId}
+          onOpenChange={(open) => !open && setSelectedContactId(null)}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       {/* Toolbar */}
