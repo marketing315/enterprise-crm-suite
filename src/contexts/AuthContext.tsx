@@ -208,6 +208,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setSupabaseUser(null);
     setIsRealtimeReady(false);
+    // SECURITY: best-effort SW cache wipe (also fires from onAuthStateChange,
+    // duplicated here in case the listener races with a navigation away).
+    await purgeSupabaseBrowserCaches();
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
