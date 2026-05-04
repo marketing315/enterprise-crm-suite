@@ -9,11 +9,12 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Skeleton } from "@/components/ui/skeleton";
 import { withModuleGuard } from "@/components/layout/withModuleGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ChunkLoadErrorBoundary } from "@/components/ui/ChunkLoadErrorBoundary";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { ConsentBanner } from "@/components/legal/ConsentBanner";
 
 // Eager: critical path pages (login, dashboard redirect)
@@ -91,15 +92,8 @@ const GuardedAdminAnalytics = withModuleGuard("analytics_advanced", AdminAnalyti
 const GuardedAdminCapiMonitor = withModuleGuard("capi_monitor", AdminCapiMonitor);
 const GuardedInstall = withModuleGuard("pwa_install", Install);
 
-/** Minimal loading fallback */
-function PageLoader() {
-  return (
-    <div className="flex flex-col gap-4 p-6">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-64 w-full" />
-    </div>
-  );
-}
+// PageLoader vive in @/components/ui/PageLoader e include un timeout
+// di cortesia che mostra una CTA "Ricarica" se il chunk non arriva.
 
 // queryClient + persistOptions are defined in @/lib/queryClient so that
 // AuthContext.signOut can wipe them on logout (GDPR data minimization).
@@ -116,6 +110,7 @@ const App = () => (
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <AuthProvider>
             <BrandProvider>
+              <ChunkLoadErrorBoundary>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public routes */}
@@ -206,6 +201,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              </ChunkLoadErrorBoundary>
             </BrandProvider>
           </AuthProvider>
         </BrowserRouter>
