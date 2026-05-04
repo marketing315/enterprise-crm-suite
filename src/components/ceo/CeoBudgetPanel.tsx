@@ -49,7 +49,7 @@ export function CeoBudgetPanel({ from }: CeoBudgetPanelProps) {
   };
 
   return (
-    <Card>
+    <Card className="min-h-[280px]">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Budget del Periodo</CardTitle>
         <div className="flex gap-1">
