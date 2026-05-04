@@ -25,7 +25,7 @@ export function DashboardKpiGrid({ items, isLoading }: DashboardKpiGridProps) {
     return (
       <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
+          <Card key={i} className="min-h-[110px]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
               <Skeleton className="h-4 w-20" />
               <Skeleton className="h-4 w-4 rounded" />
@@ -58,7 +58,7 @@ export function DashboardKpiGrid({ items, isLoading }: DashboardKpiGridProps) {
       {items.map((item, index) => {
         const Icon = item.icon;
         return (
-          <Card key={index} className={cn("transition-all hover:shadow-md", getVariantStyles(item.variant))}>
+          <Card key={index} className={cn("min-h-[110px] transition-all hover:shadow-md", getVariantStyles(item.variant))}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
               <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                 {item.title}

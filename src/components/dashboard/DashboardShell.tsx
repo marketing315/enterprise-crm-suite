@@ -165,7 +165,7 @@ export function DashboardShell({
       )}
 
       {/* Content */}
-      {children}
+      <div className="min-h-[60vh]">{children}</div>
     </div>
   );
 }
