@@ -88,6 +88,7 @@ import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
 import { useDocumentTitleBadge } from '@/hooks/useDocumentTitleBadge';
 import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
 import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
+import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { AppTour } from '@/components/onboarding/AppTour';
 
