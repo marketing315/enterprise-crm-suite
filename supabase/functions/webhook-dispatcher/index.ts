@@ -213,6 +213,13 @@ async function processDelivery(
 
     let response: Response;
     try {
+      // Idempotency contract exposed to subscribers:
+      //   - Idempotency-Key / X-Webhook-Event-Id: STABLE per business event.
+      //     Re-sent unchanged on every retry/replay of the same event so the
+      //     receiver can safely deduplicate (RFC draft "The Idempotency-Key HTTP Header Field").
+      //   - X-Webhook-Delivery-Id: per-row delivery identifier (changes on replay).
+      //   - X-Webhook-Attempt: 1-based attempt counter for this delivery row.
+      const attemptNumber = (delivery.attempt_count ?? 0) + 1;
       response = await fetch(targetUrl, {
         method: "POST",
         headers: {
@@ -221,6 +228,9 @@ async function processDelivery(
           "X-Webhook-Event": delivery.event_type,
           "X-Webhook-Id": delivery.webhook_id,
           "X-Webhook-Delivery-Id": delivery.id,
+          "X-Webhook-Event-Id": delivery.event_id,
+          "Idempotency-Key": delivery.event_id,
+          "X-Webhook-Attempt": attemptNumber.toString(),
           "X-Webhook-Timestamp": timestamp.toString(),
           "X-Webhook-Signature": `sha256=${signature}`,
         },
