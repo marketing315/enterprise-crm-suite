@@ -10,6 +10,18 @@ const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3-flash-preview";
 const MAX_MESSAGE_LENGTH = 2000;
 
+// Hard cap totale sul payload inviato al modello (system + entity + history + msg corrente).
+// 12.000 char ≈ 3.000 token. Protegge da context bloat (entity gigante, history lunga, abuse iterativo).
+const MAX_TOTAL_INPUT_CHARS = 12_000;
+
+// Quota giornaliera per-utente per ai-chat. Sforata → HTTP 429.
+const DAILY_QUOTA_AI_CHAT = 300;
+
+// Cap per singola voce di context per evitare che una sola sezione consumi tutto il budget.
+const MAX_ENTITY_CONTEXT_CHARS = 6_000;
+const MAX_HISTORY_MESSAGES = 10;
+const MAX_HISTORY_MSG_CHARS = 1_500;
+
 interface EntityContext {
   type: string;
   id: string;
