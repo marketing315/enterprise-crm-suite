@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
 import type { User, UserRole, AppRole } from '@/types/database';
 
 interface AuthContextType {
