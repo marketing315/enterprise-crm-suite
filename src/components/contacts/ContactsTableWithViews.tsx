@@ -31,6 +31,8 @@ import { ContactStatusBadge } from "./ContactStatusBadge";
 import { ContactDetailSheet } from "./ContactDetailSheet";
 import { ContactsBulkActionsBar } from "./ContactsBulkActionsBar";
 import { ClickToCallButton } from "./ClickToCallButton";
+import { ContactCardMobile } from "./ContactCardMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { TableViewSelector } from "./views/TableViewSelector";
 import { SaveViewDialog } from "./views/SaveViewDialog";
 import { EditViewDialog } from "./views/EditViewDialog";
@@ -84,6 +86,7 @@ export function ContactsTableWithViews({
   totalCount,
   totalLoaded,
 }: ContactsTableProps) {
+  const isMobile = useIsMobile();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
