@@ -265,15 +265,40 @@ export function useSendAIMessage() {
       const { data, error } = await supabase.functions.invoke("ai-chat", {
         body: { threadId, message, entityType, entityId, brandId },
       });
-      if (error) throw error;
+      if (error) {
+        // Prova a estrarre il body JSON della risposta non-2xx (functions.invoke incapsula in error.context)
+        let serverPayload: { error?: string; code?: string; daily_limit?: number } | null = null;
+        try {
+          const ctx = (error as unknown as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            serverPayload = await ctx.clone().json();
+          }
+        } catch {
+          /* ignore: body non JSON */
+        }
+        const enriched = new Error(serverPayload?.error ?? error.message) as Error & {
+          code?: string;
+          dailyLimit?: number;
+        };
+        enriched.code = serverPayload?.code;
+        enriched.dailyLimit = serverPayload?.daily_limit;
+        throw enriched;
+      }
       return data as { message: string; messageId: string };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["chat-messages", variables.threadId] });
       queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error & { code?: string; dailyLimit?: number }) => {
       console.error("Error sending AI message:", error);
+      if (error.code === "AI_DAILY_QUOTA_EXCEEDED") {
+        toast.error(
+          error.message ||
+            `Hai raggiunto il limite giornaliero di ${error.dailyLimit ?? 300} richieste AI. Riprova domani.`
+        );
+        return;
+      }
       toast.error("Errore nella risposta AI");
     },
   });

@@ -1271,6 +1271,45 @@ export type Database = {
           },
         ]
       }
+      ai_request_quota: {
+        Row: {
+          brand_id: string
+          created_at: string
+          day: string
+          endpoint: string
+          id: string
+          last_request_at: string
+          request_count: number
+          total_input_chars: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          day?: string
+          endpoint: string
+          id?: string
+          last_request_at?: string
+          request_count?: number
+          total_input_chars?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          day?: string
+          endpoint?: string
+          id?: string
+          last_request_at?: string
+          request_count?: number
+          total_input_chars?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_tag_deal_jobs: {
         Row: {
           attempts: number | null
@@ -10036,6 +10075,16 @@ export type Database = {
       compute_appointment_risk_score: {
         Args: { p_appointment_id: string }
         Returns: number
+      }
+      consume_ai_quota: {
+        Args: {
+          p_brand_id: string
+          p_daily_limit?: number
+          p_endpoint: string
+          p_input_chars: number
+          p_user_id: string
+        }
+        Returns: Json
       }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
