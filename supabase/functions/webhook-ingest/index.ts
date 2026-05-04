@@ -478,11 +478,8 @@ Deno.serve(async (req: Request) => {
     const sigHeader =
       req.headers.get("x-signature") ||
       req.headers.get("x-webhook-signature") ||
-      "";
-    const fingerprintInput = sigHeader
-      ? `sig:${sigHeader}`
-      : `body:${await hashSha256(bodyText)}`;
-    const fingerprint = fingerprintInput.slice(0, 256);
+      null;
+    const fingerprint = await computeFingerprint(sigHeader, bodyText);
 
     const expiresAt = new Date(Date.now() + replayWindow * 1000).toISOString();
 
