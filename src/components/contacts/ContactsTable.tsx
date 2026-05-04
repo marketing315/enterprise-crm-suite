@@ -26,7 +26,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ContactStatusBadge } from './ContactStatusBadge';
 import { ContactDetailSheet } from './ContactDetailSheet';
 import { ClickToCallButton } from './ClickToCallButton';
+import { ContactCardMobile } from './ContactCardMobile';
 import { useDeleteContact } from '@/hooks/useContacts';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import type { ContactWithPhones } from '@/types/database';
 
@@ -36,6 +38,7 @@ interface ContactsTableProps {
 }
 
 export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
+  const isMobile = useIsMobile();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
