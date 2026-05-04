@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Mail, Eye, Trash2 } from 'lucide-react';
+import { Mail, Eye, Trash2, Users } from 'lucide-react';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   Table,
   TableBody,
@@ -83,10 +84,11 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
 
   if (contacts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <p className="text-lg">Nessun contatto trovato</p>
-        <p className="text-sm">I contatti appariranno qui quando arriveranno via webhook</p>
-      </div>
+      <EmptyState
+        icon={Users}
+        title="Ancora nessun contatto"
+        description="I contatti arrivano automaticamente dai canali marketing collegati. Quando il primo lead viene acquisito, lo vedrai qui."
+      />
     );
   }
 
