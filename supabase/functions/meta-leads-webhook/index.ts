@@ -199,13 +199,15 @@ async function processLeadChange(
   try {
     const graphUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${metaApp.access_token}`;
     const graphRes = await fetch(graphUrl);
-    if (graphRes.ok) {
-      leadData = await graphRes.json();
+    const parsed = await safeJson<MetaLeadData>(graphRes);
+    if (parsed.ok) {
+      leadData = parsed.data;
       console.log(`[META-EVENT] Graph API OK for ${leadgenId}`);
     } else {
-      const errText = await graphRes.text();
-      // Redact access_token from error logs
-      console.error(`[META-EVENT] Graph API error for ${leadgenId}: status=${graphRes.status}`);
+      // Never log access_token. Status + error code + truncated body are safe.
+      console.error(
+        `[META-EVENT] Graph API ${parsed.error} for ${leadgenId}: status=${parsed.status} fallback=${parsed.fallback} body="${parsed.body.slice(0, 200)}"`,
+      );
     }
   } catch (graphErr) {
     console.error(`[META-EVENT] Graph API fetch error:`, graphErr);
