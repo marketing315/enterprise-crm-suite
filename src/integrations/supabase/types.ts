@@ -4051,6 +4051,53 @@ export type Database = {
           },
         ]
       }
+      deal_table_views: {
+        Row: {
+          brand_id: string | null
+          brand_scope: string
+          columns: Json
+          created_at: string
+          filters: Json
+          id: string
+          is_default: boolean
+          name: string
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          brand_scope?: string
+          columns?: Json
+          created_at?: string
+          filters?: Json
+          id?: string
+          is_default?: boolean
+          name: string
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          brand_scope?: string
+          columns?: Json
+          created_at?: string
+          filters?: Json
+          id?: string
+          is_default?: boolean
+          name?: string
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_table_views_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           assigned_user_id: string | null
@@ -8925,6 +8972,53 @@ export type Database = {
           },
         ]
       }
+      ticket_table_views: {
+        Row: {
+          brand_id: string | null
+          brand_scope: string
+          columns: Json
+          created_at: string
+          filters: Json
+          id: string
+          is_default: boolean
+          name: string
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          brand_scope?: string
+          columns?: Json
+          created_at?: string
+          filters?: Json
+          id?: string
+          is_default?: boolean
+          name: string
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          brand_scope?: string
+          columns?: Json
+          created_at?: string
+          filters?: Json
+          id?: string
+          is_default?: boolean
+          name?: string
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_table_views_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           archived: boolean
@@ -9339,6 +9433,41 @@ export type Database = {
             foreignKeyName: "user_roles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_ui_preferences: {
+        Row: {
+          density: string
+          language: string
+          preferences: Json
+          theme: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          density?: string
+          language?: string
+          preferences?: Json
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          density?: string
+          language?: string
+          preferences?: Json
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_ui_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
