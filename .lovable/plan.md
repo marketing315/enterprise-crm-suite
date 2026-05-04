@@ -1,99 +1,78 @@
-## Personalizzazione minima
+## Performance percepita
 
-### 1. Tema chiaro / scuro (next-themes già installato)
+### 1. Layout shift — `min-h` sulle card della Dashboard
 
-- **Nuovo file `src/components/providers/ThemeProvider.tsx`**: wrapper su `next-themes` `ThemeProvider` con `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange` per evitare flash sul primo render.
-- **`src/main.tsx`** o **`src/App.tsx`**: avvolgere l'app con `<ThemeProvider>` (mantenere ordine: AuthProvider → BrandProvider → ThemeProvider all'esterno per evitare re-mount al login).
-- **`src/index.css`**: i token `--*` sotto `.dark` esistono già (controllato), nessuna modifica al design system.
-- **`src/components/layout/MainLayout.tsx`** (riga ~519, dropdown "Il mio account", presente in 2 punti — desktop ~505 e mobile ~601):
-  - Nuovo sub-menu **Aspetto** con `DropdownMenuSub` o 3 voci dirette: "Tema chiaro" / "Tema scuro" / "Sistema" con check accanto al tema attivo (`useTheme()`).
-  - Icona `Sun` / `Moon` / `Monitor` da lucide.
+Oggi `DashboardKpiGrid` mostra Skeleton senza altezza fissa: la card collassa quando arriva il dato (testi più piccoli/più grandi del placeholder) → CLS visibile.
 
-### 2. Densità tabelle (compact / comoda) + preferenze UI persistite
+- **`src/components/dashboard/DashboardKpiGrid.tsx`**: aggiungo `className="min-h-[110px]"` alla `<Card>` (sia loading che caricato), così l'altezza è fissa e il numero KPI non spinge il layout.
+- **`src/components/ceo/CeoOperationalCards.tsx`** e **`CeoKpiCards.tsx`**: stessa cosa, `min-h-[120px]` sulle card.
+- **`CeoExpensesPanel` / `CeoBudgetPanel` / `CeoCostBreakdown` / `BudgetBaselineCard`**: contenitori con `min-h-[280px]` per evitare che la griglia a 2 colonne si riposizioni quando i dati arrivano in tempi diversi.
+- **`DashboardShell`**: wrappo `{children}` in un div con `min-h-[60vh]` come fallback per evitare flash di pagina vuota.
 
-Niente colonna `ui_preferences` su `users` (la tabella oggi non ce l'ha): più sicuro creare una tabella dedicata, evita di ampliare `users` ed è coerente con le memory di data-safety.
+Niente token nuovi: solo classi Tailwind utility.
 
-**Migrazione SQL (additive-only):**
-```sql
-create table public.user_ui_preferences (
-  user_id uuid primary key references public.users(id) on delete cascade,
-  theme text,                       -- 'light' | 'dark' | 'system' (mirror lato server, opzionale)
-  density text not null default 'comfortable', -- 'comfortable' | 'compact'
-  language text not null default 'it',
-  preferences jsonb not null default '{}'::jsonb,
-  updated_at timestamptz not null default now()
-);
-alter table public.user_ui_preferences enable row level security;
-create policy "ui_prefs_self_select" on public.user_ui_preferences for select
-  using (user_id = public.get_user_id(auth.uid()));
-create policy "ui_prefs_self_upsert" on public.user_ui_preferences for insert
-  with check (user_id = public.get_user_id(auth.uid()));
-create policy "ui_prefs_self_update" on public.user_ui_preferences for update
-  using (user_id = public.get_user_id(auth.uid()));
-```
+### 2. Skeleton strutturali (page-shape, non rettangoli)
 
-**Frontend:**
-- **Nuovo `src/hooks/useUIPreferences.ts`**: TanStack Query GET/UPSERT su `user_ui_preferences`. Cache locale via `userScopedStorage` per applicare la densità immediatamente al boot prima della query (evita flash).
-- **Nuovo `src/components/providers/DensityProvider.tsx`**: legge la preferenza, applica `data-density="compact"` su `document.documentElement`.
-- **`src/index.css`**: regole CSS basate su attributo:
-  ```css
-  [data-density="compact"] table th,
-  [data-density="compact"] table td { padding-top: 6px; padding-bottom: 6px; }
-  [data-density="compact"] [data-row] { min-height: 32px; }
-  ```
-  (Niente toccare i token globali — solo override dentro tabelle.)
-- **Dropdown utente**: aggiungere voce "Densità tabelle" con scelta Comoda / Compatta.
+Creiamo 2 skeleton "schema-pagina" riutilizzabili:
 
-### 3. Estensione `useTableViews` a Deal e Ticket
+- **Nuovo `src/components/dashboard/skeletons/DashboardPageSkeleton.tsx`** — replica la struttura: header (titolo + breadcrumb), riga 4 KPI card (con icona placeholder in alto a destra), griglia 2 card grandi, tabella con 5 righe placeholder. Usa lo stesso layout grid del componente reale così la transizione non sposta nulla.
+- **Nuovo `src/components/dashboard/skeletons/CeoDashboardSkeleton.tsx`** — pattern dedicato CEO: KPI period selector (riga top), 4 operational cards, 4 financial KPI cards, pipeline overview (5 stage bars), 2 colonne expense/budget panels. Sostituisce il blocco generico in `CeoDashboardView` (linee 67–76).
+- **`CeoDashboardView`**: il blocco `isLoading && <Skeleton…>` viene sostituito con `<CeoDashboardSkeleton />`.
+- **`Dashboard.tsx`** e **`DashboardOverview.tsx`**: durante loading mostrano `<DashboardPageSkeleton />`.
+- **`PageLoader`** rimane per il fallback Suspense; le skeleton strutturali sono per gli stati "componente caricato, dati ancora in volo".
 
-Oggi `contact_table_views` è specifico per Contatti (FK `owner_user_id`, payload `columns`/`filters`). Generalizziamo senza rompere l'esistente.
+Ogni skeleton usa le stesse classi `min-h-*` del componente vero → zero CLS al swap.
 
-**Migrazione SQL (additive):**
-- Nuove tabelle gemelle **`deal_table_views`** e **`ticket_table_views`** con schema identico a `contact_table_views` (stesse colonne, stessi index, stesse policy). Motivo: zero rischio per i dati esistenti, types.ts auto-generato pulito, niente migrazione dati.
-- (Alternativa più pulita ma più invasiva: tabella unica `table_views` con `entity_type`. Scartata per memory di data-safety: non vogliamo migrare le view esistenti dei Contatti.)
+### 3. Prefetch al hover sui link di navigazione
 
-**Frontend:**
-- **Refactor `src/hooks/useTableViews.ts`** in factory: estrai `createTableViewsHook({ table, defaultColumns })` che ritorna `{ useTableViews, useActiveTableView, useSaveTableView, useDeleteTableView, useUpdateTableView }`.
-- **Nuovi `src/hooks/useDealTableViews.ts`** e **`src/hooks/useTicketTableViews.ts`** che istanziano la factory.
-- **`src/components/contacts/views/*`** (TableViewSelector, SaveViewDialog, EditViewDialog, ColumnManager): rendere agnostici al tipo (props `viewsHook`, `defaultColumns`). Spostare in `src/components/shared/views/` e re-export per i Contacts esistenti per non rompere import.
-- **Pagine Deal e Ticket**: dove esistono filtri/colonne (es. `DealsListPage`, `TicketsTable`), agganciare lo stesso selettore di view + colonne configurabili. Se la tabella Ticket non supporta ancora colonne dinamiche, primo step: solo salvataggio filtri (status, assignee, priority, sla).
+- **Nuovo `src/hooks/usePrefetchOnHover.ts`** — esporta `prefetchForRoute(path, queryClient, ctx)` con una mappa path→prefetch:
+  - `/dashboard*` → ricarica le 5 query già in `usePrefetchOnLogin` (fattorizzo l'array in un modulo condiviso `src/lib/prefetchRecipes.ts` per evitare duplicazione).
+  - `/contacts` → query `['contacts', brandKey, undefined]`.
+  - `/pipeline` → `['pipeline-stages']` + `['deals', brandKey]`.
+  - `/tickets` → `['tickets', brandKey, 'open']`.
+  - `/appointments` → `['appointments', brandKey, today]`.
+  - Default: nessun prefetch (no-op silenzioso).
+- **`src/components/layout/MainLayout.tsx`** (riga 322 `renderItem`): aggiungo `onMouseEnter` e `onFocus` su `SidebarMenuButton` che chiama `prefetchForRoute(item.path, queryClient, { brandIds, isAllBrandsSelected })`. Debounce 80ms via `setTimeout` cancellato su `onMouseLeave` per evitare prefetch su hover di passaggio.
+- Le ricette riutilizzano `staleTime` esistenti → se la query è già fresh, TanStack Query è no-op.
+- **Coordinazione con `usePrefetchOnLogin`**: estraggo la logica delle 5 query in `prefetchRecipes.ts`, sia il login-prefetch sia l'hover-prefetch importano lo stesso modulo. Niente regressioni, comportamento identico al login.
 
-### 4. Struttura i18n con react-i18next (preparazione, no full translation)
+### 4. CEO Dashboard — consolidamento query
 
-- **Dipendenze**: `i18next`, `react-i18next`, `i18next-browser-languagedetector`.
-- **Nuovo `src/i18n/index.ts`**: init con `lng: 'it'`, `fallbackLng: 'it'`, `supportedLngs: ['it', 'en']`, `interpolation.escapeValue: false`. Detector che legge prima `user_ui_preferences.language`, poi `navigator.language`.
-- **Nuovi file risorse**:
-  - `src/i18n/locales/it/common.json` (label dropdown utente, "Esci", "Tema", "Densità", "Lingua", "Comoda", "Compatta", "Chiaro", "Scuro", "Sistema").
-  - `src/i18n/locales/en/common.json` con le stesse chiavi tradotte (per sanity check struttura).
-- **`src/main.tsx`**: `import './i18n'` prima di `ReactDOM.createRoot`.
-- **Adozione iniziale**: usare `t()` SOLO nelle nuove voci del menu Aspetto/Densità/Lingua e nel toggle lingua. **Non** sweep massivo dei testi italiani esistenti — la struttura è pronta ma la migrazione progressiva avverrà file-per-file in PR future.
-- **Voce "Lingua"** nel dropdown utente: Italiano / English. Salva in `user_ui_preferences.language` e chiama `i18n.changeLanguage()`.
+**Stato attuale** (verificato leggendo `CeoDashboardView.tsx`):
+- Solo 2 RPC pesanti per il "core dashboard": `get_ceo_dashboard_kpis` + `get_ceo_operational_kpis`.
+- Le altre query (`useExpenses`, `useBudgets`, `useExpenseCategories`) sono dentro pannelli **interattivi** (CeoExpensesPanel/CeoBudgetPanel) con dialog di crea/elimina: sono CRUD vivi, NON candidati alla consolidazione (perché altrimenti dovremmo invalidare tutto il blob ad ogni mutazione, peggiorando UX).
 
-### Out of scope (esplicito)
+**Proposta misurata** (no over-engineering):
+- **Nuova RPC `get_ceo_dashboard_bundle(p_brand_id, p_brand_ids?, p_from, p_to)`** che ritorna `{ financial: <get_ceo_dashboard_kpis output>, operational: <get_ceo_operational_kpis output> }` chiamando internamente le due funzioni esistenti (riuso, niente ri-implementazione SQL). `SECURITY DEFINER`, `search_path = public`, autorizzazione via `has_role(get_user_id(auth.uid()), 'ceo' OR 'admin')`.
+- **Nuovo hook `useCeoDashboardBundle(from, to)`** — singola query, ritorna `{ financial, operational }`. Mantiene gli stessi `staleTime: 2min` / `refetchInterval: 5min`.
+- **`CeoDashboardView`**: sostituisce `useCeoDashboard` + `useCeoOperationalKpis` con `useCeoDashboardBundle`. **Mantiene** i due hook esistenti (deprecati, non rimossi) per evitare di rompere altri consumer (cerco con `rg useCeoDashboard\\|useCeoOperationalKpis` per verificare).
+- **Tabelle/CRUD**: `useExpenses`/`useBudgets` rimangono separate per poter invalidare in modo granulare dopo create/delete senza rifetchare il bundle pesante.
 
-- Migrazione delle stringhe italiane hardcoded esistenti a `t()` (sweep separato).
-- Skin/temi colore custom oltre chiaro/scuro.
-- Salvataggio densità per-tabella (per ora globale).
+**Risultato**: 2 round-trip → 1 round-trip per il primo paint del CEO (≈50% latenza percepita sul header KPI). Le mutazioni sui pannelli sotto restano invariate.
+
+### Out of scope
+
+- Concatenazione di tutte le query Expense/Budget/Categories nel bundle (peggiorerebbe le mutazioni interattive).
+- Service Worker route caching (gestito già da PWA Cache Auth Hardening).
+- Migrazione altre dashboard (Salesperson/Callcenter): valutabile dopo aver misurato l'impatto sul CEO.
 
 ### File toccati / creati
 
 **Nuovi:**
-- `src/components/providers/ThemeProvider.tsx`
-- `src/components/providers/DensityProvider.tsx`
-- `src/hooks/useUIPreferences.ts`
-- `src/hooks/useDealTableViews.ts`
-- `src/hooks/useTicketTableViews.ts`
-- `src/components/shared/views/*` (spostati da `contacts/views/`)
-- `src/i18n/index.ts`, `src/i18n/locales/{it,en}/common.json`
-- 1 migration SQL (tabelle `user_ui_preferences`, `deal_table_views`, `ticket_table_views` + RLS)
+- `src/components/dashboard/skeletons/DashboardPageSkeleton.tsx`
+- `src/components/dashboard/skeletons/CeoDashboardSkeleton.tsx`
+- `src/lib/prefetchRecipes.ts` (estrazione condivisa)
+- `src/hooks/usePrefetchOnHover.ts`
+- `src/hooks/useCeoDashboardBundle.ts`
+- 1 migration SQL: `get_ceo_dashboard_bundle()` (composizione delle 2 RPC esistenti)
 
 **Modificati:**
-- `src/main.tsx` (i18n + Theme + Density provider)
-- `src/components/layout/MainLayout.tsx` (sub-menu Aspetto / Densità / Lingua, 2 occorrenze desktop+mobile)
-- `src/index.css` (regole `[data-density="compact"]`)
-- `src/hooks/useTableViews.ts` (factory)
-- `src/components/contacts/ContactsTableWithViews.tsx` (import dal nuovo path shared)
-- `package.json` (3 deps i18n)
+- `src/components/dashboard/DashboardKpiGrid.tsx` (min-h su Card)
+- `src/components/ceo/CeoOperationalCards.tsx`, `CeoKpiCards.tsx`, `CeoExpensesPanel.tsx`, `CeoBudgetPanel.tsx`, `CeoCostBreakdown.tsx`, `BudgetBaselineCard.tsx` (min-h)
+- `src/components/dashboard/DashboardShell.tsx` (min-h fallback)
+- `src/pages/dashboard/CeoDashboardView.tsx` (skeleton strutturale + bundle hook)
+- `src/pages/Dashboard.tsx`, `src/pages/dashboard/DashboardOverview.tsx` (skeleton strutturale)
+- `src/hooks/usePrefetchOnLogin.ts` (refactor verso `prefetchRecipes`)
+- `src/components/layout/MainLayout.tsx` (hover prefetch su `renderItem`)
 
-**Memory da aggiornare dopo l'implementazione:**
-- Nuova memory `mem://features/personalization-preferences` con tabella `user_ui_preferences`, struttura i18n, tabelle `*_table_views` parallele.
+**Memory aggiornata**: `mem://technical/performance-perceived` (nuova) — pattern min-h su card dashboard, skeleton strutturali, hover-prefetch via prefetchRecipes, bundle RPC pattern.

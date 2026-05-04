@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { TrendingUp, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CeoDashboardSkeleton } from '@/components/dashboard/skeletons/CeoDashboardSkeleton';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
-import { useCeoDashboard } from '@/hooks/useCeoDashboard';
-import { useCeoOperationalKpis } from '@/hooks/useCeoOperationalKpis';
+import { useCeoDashboardBundle } from '@/hooks/useCeoDashboardBundle';
 import { TaxDisclaimer } from '@/components/ceo/TaxDisclaimer';
 import { CeoPeriodSelector } from '@/components/ceo/CeoPeriodSelector';
 import { CeoOperationalCards } from '@/components/ceo/CeoOperationalCards';
@@ -26,8 +25,9 @@ export default function CeoDashboardView() {
   const [from, setFrom] = useState(() => startOfMonth(new Date()));
   const [to, setTo] = useState(() => endOfMonth(new Date()));
 
-  const { data: finData, isLoading: finLoading, error: finError } = useCeoDashboard(from, to);
-  const { data: opsData, isLoading: opsLoading } = useCeoOperationalKpis(from, to);
+  const { data: bundle, isLoading, error: finError } = useCeoDashboardBundle(from, to);
+  const finData = bundle?.financial;
+  const opsData = bundle?.operational;
 
   if (!isAdmin && !isCeo) {
     return (
@@ -51,29 +51,18 @@ export default function CeoDashboardView() {
     );
   }
 
-  const isLoading = finLoading || opsLoading;
-
   return (
     <DashboardShell
       title="CEO Dashboard"
       subtitle="Visione strategica: ricavi, costi, utile, forecast"
       icon={<TrendingUp className="h-6 w-6 text-primary" />}
-      queryKeys={[['ceo-dashboard-kpis'], ['ceo-operational-kpis']]}
+      queryKeys={[['ceo-dashboard-bundle']]}
     >
       <CeoPeriodSelector from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
 
       <TaxDisclaimer />
 
-      {isLoading && (
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32" />)}
-          </div>
-        </div>
-      )}
+      {isLoading && <CeoDashboardSkeleton />}
 
       {finError && (
         <Alert variant="destructive">

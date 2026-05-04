@@ -10,6 +10,7 @@ import { userStorage } from '@/lib/userScopedStorage';
 import { BrandSelector } from './BrandSelector';
 import { PageHelpButton } from './PageHelpButton';
 import { AppearanceMenuItems } from './AppearanceMenuItems';
+import { usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
 import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -111,6 +112,45 @@ interface NavItem {
   requiresRole?: AdvancedRole[];
   adminOnly?: boolean; // shorthand per isAdmin
   description?: string; // tooltip esplicativo per non-tech
+}
+
+interface NavMenuItemProps {
+  item: NavItem;
+  isActive: boolean;
+  disabled: boolean;
+  hasBrandSelected: boolean;
+  onNavigate: (path: string) => void;
+  ticketActivityCount: number;
+  slaBreachCount: number;
+}
+
+function NavMenuItem({ item, isActive, disabled, hasBrandSelected, onNavigate, ticketActivityCount, slaBreachCount }: NavMenuItemProps) {
+  const hoverHandlers = usePrefetchOnHover(item.path);
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={isActive}
+        onClick={() => onNavigate(item.path)}
+        disabled={disabled}
+        tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : item.description}
+        data-testid={item.path === '/admin/webhooks' ? 'nav-webhooks-dashboard' : undefined}
+        {...hoverHandlers}
+      >
+        <item.icon className="h-4 w-4" />
+        <span className="flex-1" title={item.description}>{item.label}</span>
+        {item.path === '/tickets' && ticketActivityCount > 0 && (
+          <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-ticket-badge">
+            {ticketActivityCount > 99 ? '99+' : ticketActivityCount}
+          </Badge>
+        )}
+        {item.path === '/tickets' && slaBreachCount > 0 && (
+          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-sla-badge">
+            SLA {slaBreachCount > 99 ? '99+' : slaBreachCount}
+          </Badge>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
 }
 
 interface NavSectionDef {
@@ -318,30 +358,18 @@ export function MainLayout() {
       .slice(0, 2);
   };
 
-  // Renderer di una singola voce (con badge ticket)
+  // Renderer di una singola voce (con badge ticket + hover prefetch)
   const renderItem = (item: NavItem) => (
-    <SidebarMenuItem key={item.path}>
-      <SidebarMenuButton
-        isActive={location.pathname === item.path}
-        onClick={() => navigate(item.path)}
-        disabled={!hasBrandSelected && item.path !== '/dashboard'}
-        tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : item.description}
-        data-testid={item.path === '/admin/webhooks' ? 'nav-webhooks-dashboard' : undefined}
-      >
-        <item.icon className="h-4 w-4" />
-        <span className="flex-1" title={item.description}>{item.label}</span>
-        {item.path === '/tickets' && ticketActivityCount > 0 && (
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-ticket-badge">
-            {ticketActivityCount > 99 ? '99+' : ticketActivityCount}
-          </Badge>
-        )}
-        {item.path === '/tickets' && slaBreachCount > 0 && (
-          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-sla-badge">
-            SLA {slaBreachCount > 99 ? '99+' : slaBreachCount}
-          </Badge>
-        )}
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+    <NavMenuItem
+      key={item.path}
+      item={item}
+      isActive={location.pathname === item.path}
+      disabled={!hasBrandSelected && item.path !== '/dashboard'}
+      hasBrandSelected={hasBrandSelected}
+      onNavigate={navigate}
+      ticketActivityCount={ticketActivityCount}
+      slaBreachCount={slaBreachCount}
+    />
   );
 
   // Renderer di una sezione (collapsible o flat)

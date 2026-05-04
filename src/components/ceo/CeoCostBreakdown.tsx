@@ -78,7 +78,7 @@ export function CeoCostBreakdown({ costsByCenter, costsByCategory }: CeoCostBrea
   };
 
   return (
-    <Card>
+    <Card className="min-h-[280px]">
       <CardHeader>
         <CardTitle className="text-lg">Breakdown Costi</CardTitle>
       </CardHeader>

@@ -59,7 +59,7 @@ export function CeoExpensesPanel({ from, to }: CeoExpensesPanelProps) {
   const displayExpenses = (expenses || []).slice(0, 10);
 
   return (
-    <Card>
+    <Card className="min-h-[280px]">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Costi Recenti</CardTitle>
         <div className="flex gap-1">

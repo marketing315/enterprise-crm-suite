@@ -16,7 +16,7 @@ export function BudgetBaselineCard({ data }: BudgetBaselineCardProps) {
   const isOverBudget = data.variance < 0;
   
   return (
-    <Card>
+    <Card className="min-h-[280px]">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Wallet className="h-5 w-5" />

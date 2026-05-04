@@ -46,7 +46,7 @@ export function CeoOperationalCards({ data }: CeoOperationalCardsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.title} className="relative">
+        <Card key={card.title} className="relative min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {card.title}
