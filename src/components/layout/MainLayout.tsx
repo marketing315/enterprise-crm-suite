@@ -498,6 +498,15 @@ export function MainLayout() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Il mio account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const fn = (window as any).__restartAppTour;
+                      if (typeof fn === 'function') fn();
+                    }}
+                  >
+                    <Sliders className="mr-2 h-4 w-4" />
+                    Rivedi il tour iniziale
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Esci

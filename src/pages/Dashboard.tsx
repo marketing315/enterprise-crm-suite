@@ -9,6 +9,7 @@ import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemSta
 import { TutorialSheet } from '@/components/dashboard/TutorialSheet';
 import { ActionGuide } from '@/components/dashboard/ActionGuide';
 import { AdminTodoList } from '@/components/dashboard/AdminTodoList';
+import { DashboardEmptyState } from '@/components/onboarding/DashboardEmptyState';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function Dashboard() {
