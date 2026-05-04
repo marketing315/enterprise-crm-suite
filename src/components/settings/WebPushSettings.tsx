@@ -44,7 +44,7 @@ export function WebPushSettings() {
       const { data: userRes } = await supabase.auth.getUser();
       const authUid = userRes.user?.id;
       if (!authUid) throw new Error("not authenticated");
-      const { data: internal } = await supabase.rpc("get_user_id", { p_auth_id: authUid });
+      const { data: internal } = await supabase.rpc("get_user_id", { _auth_uid: authUid });
       const internalId = internal as unknown as string;
       const { error } = await supabase
         .from("user_push_preferences")
@@ -124,7 +124,7 @@ export function WebPushSettings() {
                 } else {
                   const ok = await subscribe();
                   if (ok) toast.success("Push attivate");
-                  else if (permission === "denied")
+                  else if ((Notification as unknown as { permission: string }).permission === "denied")
                     toast.error("Permessi negati dal browser");
                 }
               }}

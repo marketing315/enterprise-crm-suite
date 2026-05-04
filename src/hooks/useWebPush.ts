@@ -74,7 +74,7 @@ export function useWebPush() {
       // 4) Subscribe via PushManager
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey).buffer as ArrayBuffer,
       });
 
       const json = sub.toJSON() as {
@@ -96,7 +96,7 @@ export function useWebPush() {
 
       // Map to internal user_id
       const { data: internal } = await supabase.rpc("get_user_id", {
-        p_auth_id: authUid,
+        _auth_uid: authUid,
       });
       const internalId = internal as unknown as string | null;
       if (!internalId) {
