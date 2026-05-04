@@ -119,9 +119,23 @@ function flattenObject(
 async function processDelivery(
   supabase: SupabaseClientAny,
   delivery: WebhookDelivery,
-  webhookCache: Map<string, WebhookConfig | null>
-): Promise<{ success: boolean; status?: number; error?: string; durationMs: number }> {
+  webhookCache: Map<string, WebhookConfig | null>,
+  breakerState: Map<string, number>
+): Promise<{ success: boolean; status?: number; error?: string; durationMs: number; circuitTripped?: boolean }> {
   const startTime = Date.now();
+
+  // Circuit breaker: short-circuit if this webhook already failed too many times in this run.
+  const failures = breakerState.get(delivery.webhook_id) ?? 0;
+  if (failures >= CIRCUIT_BREAKER_THRESHOLD) {
+    const durationMs = Date.now() - startTime;
+    await supabase.rpc("record_delivery_result", {
+      p_delivery_id: delivery.id,
+      p_success: false,
+      p_error: "circuit_open",
+      p_duration_ms: durationMs,
+    });
+    return { success: false, error: "circuit_open", durationMs };
+  }
 
   try {
     // Get webhook config (with cache)
