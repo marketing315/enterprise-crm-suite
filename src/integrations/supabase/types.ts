@@ -8129,31 +8129,52 @@ export type Database = {
       }
       sheets_export_logs: {
         Row: {
+          attempts: number
           brand_id: string
           created_at: string
+          dead_letter: boolean
           error: string | null
           id: string
+          last_attempt_at: string | null
+          last_error: string | null
           lead_event_id: string
+          max_attempts: number
+          next_attempt_at: string | null
+          payload: Json | null
           rows_exported: number | null
           status: string
           tab_name: string | null
         }
         Insert: {
+          attempts?: number
           brand_id: string
           created_at?: string
+          dead_letter?: boolean
           error?: string | null
           id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           lead_event_id: string
+          max_attempts?: number
+          next_attempt_at?: string | null
+          payload?: Json | null
           rows_exported?: number | null
           status: string
           tab_name?: string | null
         }
         Update: {
+          attempts?: number
           brand_id?: string
           created_at?: string
+          dead_letter?: boolean
           error?: string | null
           id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           lead_event_id?: string
+          max_attempts?: number
+          next_attempt_at?: string | null
+          payload?: Json | null
           rows_exported?: number | null
           status?: string
           tab_name?: string | null
