@@ -73,7 +73,10 @@ import {
   ScrollText,
   Sliders,
   HardDrive,
+  Globe,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
