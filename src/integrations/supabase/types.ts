@@ -11419,7 +11419,6 @@ export type Database = {
             }
             Returns: Json
           }
-      private_cron_secret: { Args: never; Returns: string }
       provincia_to_regione: { Args: { p_sigla: string }; Returns: string }
       reactivate_pipeline_stage: { Args: { p_stage_id: string }; Returns: Json }
       read_email_batch: {
