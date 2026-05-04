@@ -11505,6 +11505,14 @@ export type Database = {
         Args: { p_delivery_id: string; p_override_url?: string }
         Returns: Json
       }
+      replay_outbound_webhook_delivery: {
+        Args: { p_delivery_id: string; p_force_new_event_id?: boolean }
+        Returns: {
+          delivery_id: string
+          event_id: string
+          reused: boolean
+        }[]
+      }
       replay_webhook_dead_letter: {
         Args: { p_outbox_id: string }
         Returns: boolean
