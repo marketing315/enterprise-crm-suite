@@ -174,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (existingSession?.user) {
           currentAuthIdRef.current = existingSession.user.id;
+          setUserScope(existingSession.user.id);
           await fetchUserData(existingSession.user.id);
         }
       } catch (err) {
