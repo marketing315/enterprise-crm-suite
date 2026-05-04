@@ -235,6 +235,31 @@ export function TicketsTable({
     }
   };
 
+  if (isMobile) {
+    if (tickets.length === 0) {
+      return (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Nessun ticket in coda"
+          description="Quando un cliente apre una richiesta o viene segnalato un problema, lo vedrai qui."
+        />
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {tickets.map((ticket) => (
+          <TicketCardMobile
+            key={ticket.id}
+            ticket={ticket}
+            onClick={() => onTicketClick(ticket)}
+            onTakeOwnership={onTakeOwnership ? (e) => onTakeOwnership(ticket, e) : undefined}
+            isSlaBreached={showSlaIndicator && isSlaBreached(ticket, slaThresholds)}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <>
     <div className="rounded-md border overflow-x-auto">
