@@ -1,0 +1,20 @@
+{
+  "account": {
+    "title": "Il mio account",
+    "logout": "Esci",
+    "tour": "Rivedi il tour iniziale"
+  },
+  "appearance": {
+    "title": "Aspetto",
+    "theme": "Tema",
+    "theme_light": "Chiaro",
+    "theme_dark": "Scuro",
+    "theme_system": "Sistema",
+    "density": "Densità tabelle",
+    "density_comfortable": "Comoda",
+    "density_compact": "Compatta",
+    "language": "Lingua",
+    "language_it": "Italiano",
+    "language_en": "Inglese"
+  }
+}
