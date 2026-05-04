@@ -1,78 +1,107 @@
-## Performance percepita
+## Onboarding amministratore: wizard `/setup`
 
-### 1. Layout shift — `min-h` sulle card della Dashboard
+### Obiettivo
+Pagina `/setup` accessibile solo agli admin che mostra una checklist a 5 step con progress bar. Ogni step può essere completato inline (mini-form embedded) o "saltato" (rimane nello stato pending). Persistenza in DB così sopravvive ai reload e ai cambi device.
 
-Oggi `DashboardKpiGrid` mostra Skeleton senza altezza fissa: la card collassa quando arriva il dato (testi più piccoli/più grandi del placeholder) → CLS visibile.
+### 1. Persistenza stato setup
 
-- **`src/components/dashboard/DashboardKpiGrid.tsx`**: aggiungo `className="min-h-[110px]"` alla `<Card>` (sia loading che caricato), così l'altezza è fissa e il numero KPI non spinge il layout.
-- **`src/components/ceo/CeoOperationalCards.tsx`** e **`CeoKpiCards.tsx`**: stessa cosa, `min-h-[120px]` sulle card.
-- **`CeoExpensesPanel` / `CeoBudgetPanel` / `CeoCostBreakdown` / `BudgetBaselineCard`**: contenitori con `min-h-[280px]` per evitare che la griglia a 2 colonne si riposizioni quando i dati arrivano in tempi diversi.
-- **`DashboardShell`**: wrappo `{children}` in un div con `min-h-[60vh]` come fallback per evitare flash di pagina vuota.
+**Nuova tabella `admin_setup_progress`** (per-utente, non per-brand: l'admin vede il proprio progress globale):
+- `user_id uuid` (PK, FK → users.id)
+- `brand_created_at timestamptz`
+- `users_invited_at timestamptz`
+- `webhook_source_created_at timestamptz`
+- `ticket_sla_configured_at timestamptz`
+- `integration_connected_at timestamptz` (Meta o Google, conta come "tentato anche se solo skippato")
+- `dismissed_at timestamptz` (l'admin può dismissare l'intero wizard)
+- `created_at`, `updated_at`
 
-Niente token nuovi: solo classi Tailwind utility.
+RLS: solo il proprietario (`get_user_id(auth.uid()) = user_id`) o admin può leggere/scrivere il proprio record.
 
-### 2. Skeleton strutturali (page-shape, non rettangoli)
+**RPC `mark_setup_step_complete(p_step text)`** — SECURITY DEFINER, valida `p_step IN (...)`, fa upsert sul proprio record settando il timestamp del campo corrispondente. Restituisce il record aggiornato. Solo per admin.
 
-Creiamo 2 skeleton "schema-pagina" riutilizzabili:
+**RPC `get_admin_setup_progress()`** — ritorna il record dell'utente corrente + un campo derivato `auto_detected` che verifica davvero lo stato (vedi §3) per non far apparire come "da fare" cose già fatte prima dell'introduzione del wizard.
 
-- **Nuovo `src/components/dashboard/skeletons/DashboardPageSkeleton.tsx`** — replica la struttura: header (titolo + breadcrumb), riga 4 KPI card (con icona placeholder in alto a destra), griglia 2 card grandi, tabella con 5 righe placeholder. Usa lo stesso layout grid del componente reale così la transizione non sposta nulla.
-- **Nuovo `src/components/dashboard/skeletons/CeoDashboardSkeleton.tsx`** — pattern dedicato CEO: KPI period selector (riga top), 4 operational cards, 4 financial KPI cards, pipeline overview (5 stage bars), 2 colonne expense/budget panels. Sostituisce il blocco generico in `CeoDashboardView` (linee 67–76).
-- **`CeoDashboardView`**: il blocco `isLoading && <Skeleton…>` viene sostituito con `<CeoDashboardSkeleton />`.
-- **`Dashboard.tsx`** e **`DashboardOverview.tsx`**: durante loading mostrano `<DashboardPageSkeleton />`.
-- **`PageLoader`** rimane per il fallback Suspense; le skeleton strutturali sono per gli stati "componente caricato, dati ancora in volo".
+### 2. Pagina `/setup`
 
-Ogni skeleton usa le stesse classi `min-h-*` del componente vero → zero CLS al swap.
+**Nuovo `src/pages/AdminSetup.tsx`** (rotta `/setup`, gated da `RoleGuard allowedRoles={['admin']}`).
 
-### 3. Prefetch al hover sui link di navigazione
+Layout C-Level:
+- Header con titolo "Configurazione iniziale", sottotitolo "5 passi per essere operativi", e una `<Progress>` shadcn (% completati) ben visibile.
+- 5 card numerate (1→5), ognuna con: icona, titolo, descrizione 1-riga, badge stato (`Completato` / `Da fare` / `Saltato`), bottone azione contestuale.
+- Card "completata" mostra check verde + timestamp; cliccabile per ri-aprire.
+- In fondo: "Salta il setup" (set `dismissed_at`) + "Vai alla dashboard".
 
-- **Nuovo `src/hooks/usePrefetchOnHover.ts`** — esporta `prefetchForRoute(path, queryClient, ctx)` con una mappa path→prefetch:
-  - `/dashboard*` → ricarica le 5 query già in `usePrefetchOnLogin` (fattorizzo l'array in un modulo condiviso `src/lib/prefetchRecipes.ts` per evitare duplicazione).
-  - `/contacts` → query `['contacts', brandKey, undefined]`.
-  - `/pipeline` → `['pipeline-stages']` + `['deals', brandKey]`.
-  - `/tickets` → `['tickets', brandKey, 'open']`.
-  - `/appointments` → `['appointments', brandKey, today]`.
-  - Default: nessun prefetch (no-op silenzioso).
-- **`src/components/layout/MainLayout.tsx`** (riga 322 `renderItem`): aggiungo `onMouseEnter` e `onFocus` su `SidebarMenuButton` che chiama `prefetchForRoute(item.path, queryClient, { brandIds, isAllBrandsSelected })`. Debounce 80ms via `setTimeout` cancellato su `onMouseLeave` per evitare prefetch su hover di passaggio.
-- Le ricette riutilizzano `staleTime` esistenti → se la query è già fresh, TanStack Query è no-op.
-- **Coordinazione con `usePrefetchOnLogin`**: estraggo la logica delle 5 query in `prefetchRecipes.ts`, sia il login-prefetch sia l'hover-prefetch importano lo stesso modulo. Niente regressioni, comportamento identico al login.
+**Auto-redirect**: se l'admin loggato non ha mai completato setup AND `dismissed_at IS NULL` AND nessuno step auto-detected è completato, primo accesso → redirect da `/dashboard` a `/setup`. Dopo aver dismissato o completato tutti gli step, mai più auto-redirect.
 
-### 4. CEO Dashboard — consolidamento query
+**Punto di ingresso permanente**: voce nel dropdown utente "Configurazione iniziale" (visibile solo agli admin), per riaprire il wizard quando vogliono.
 
-**Stato attuale** (verificato leggendo `CeoDashboardView.tsx`):
-- Solo 2 RPC pesanti per il "core dashboard": `get_ceo_dashboard_kpis` + `get_ceo_operational_kpis`.
-- Le altre query (`useExpenses`, `useBudgets`, `useExpenseCategories`) sono dentro pannelli **interattivi** (CeoExpensesPanel/CeoBudgetPanel) con dialog di crea/elimina: sono CRUD vivi, NON candidati alla consolidazione (perché altrimenti dovremmo invalidare tutto il blob ad ogni mutazione, peggiorando UX).
+### 3. Auto-detection dello stato (cruciale)
 
-**Proposta misurata** (no over-engineering):
-- **Nuova RPC `get_ceo_dashboard_bundle(p_brand_id, p_brand_ids?, p_from, p_to)`** che ritorna `{ financial: <get_ceo_dashboard_kpis output>, operational: <get_ceo_operational_kpis output> }` chiamando internamente le due funzioni esistenti (riuso, niente ri-implementazione SQL). `SECURITY DEFINER`, `search_path = public`, autorizzazione via `has_role(get_user_id(auth.uid()), 'ceo' OR 'admin')`.
-- **Nuovo hook `useCeoDashboardBundle(from, to)`** — singola query, ritorna `{ financial, operational }`. Mantiene gli stessi `staleTime: 2min` / `refetchInterval: 5min`.
-- **`CeoDashboardView`**: sostituisce `useCeoDashboard` + `useCeoOperationalKpis` con `useCeoDashboardBundle`. **Mantiene** i due hook esistenti (deprecati, non rimossi) per evitare di rompere altri consumer (cerco con `rg useCeoDashboard\\|useCeoOperationalKpis` per verificare).
-- **Tabelle/CRUD**: `useExpenses`/`useBudgets` rimangono separate per poter invalidare in modo granulare dopo create/delete senza rifetchare il bundle pesante.
+Per gli admin esistenti con dati già presenti, gli step già completati devono mostrare check verde subito, senza che debbano "rifarli". RPC `get_admin_setup_progress()` aggiunge:
 
-**Risultato**: 2 round-trip → 1 round-trip per il primo paint del CEO (≈50% latenza percepita sul header KPI). Le mutazioni sui pannelli sotto restano invariate.
+- `brand_created`: TRUE se esiste almeno 1 brand nella tabella `brands` non-system.
+- `users_invited`: TRUE se ci sono ≥3 record in `users` (self-count incluso).
+- `webhook_source_created`: TRUE se esiste ≥1 riga in `webhook_sources` per i brand dell'admin.
+- `ticket_sla_configured`: TRUE se esiste ≥1 riga in `ticket_escalation_policies` o se esistono ticket con SLA configurato.
+- `integration_connected`: TRUE se Meta/Google OAuth connection presente (controllo `oauth_integrations` o equivalente — verifico schema con linter).
+
+Lo step si mostra completato se **OR** dei due flag (manuale `*_at` oppure auto-detected). Niente lavoro doppio.
+
+### 4. Step 1-5: implementazione delle card
+
+**Step 1 — Crea il primo brand**
+- Card con form inline (Nome + Slug auto-derivato), riusa la logica di `BrandSelector.createBrandMutation` (estraggo in `useCreateBrand` hook condiviso per evitare duplicazione).
+- Dopo successo → `mark_setup_step_complete('brand_created')` + auto-select del nuovo brand.
+
+**Step 2 — Invita 2-3 utenti**
+- Card con mini-form ripetibile (max 3 righe): email + ruolo (Select da `AppRole`).
+- Riusa edge function esistente `admin-create-user` (un invio per utente).
+- Step completato quando ne è stato invitato almeno 1; etichetta mostra "1/3 invitati" e suggerisce di continuare (ma è già "Completato").
+
+**Step 3 — Configura una sorgente webhook inbound di test**
+- CTA "Apri configurazione sorgenti" → naviga a `/settings?section=inbound-sources` (mantiene il flusso esistente, non ricreare UI complessa).
+- Step auto-completato dall'auto-detection appena viene creato il primo webhook source.
+- In alternativa: bottone "Crea sorgente di test" che fa POST a `webhook_sources` con un preset (`name: "Test webhook"`, `provider: "generic"`, brand corrente).
+
+**Step 4 — Configura SLA ticket**
+- Card con form inline: 3 input numerici (L1/L2/L3 minutes) + Select brand applicabile.
+- Submit fa upsert in `ticket_escalation_policies` (RPC esistente o insert diretto, verifico).
+- Default suggeriti: 30 / 120 / 480 (allineati al cron escalation runner).
+
+**Step 5 — Collega Meta o Google (opzionale)**
+- Card con 2 CTA: "Collega Meta Ads" → `/settings?section=meta-apps`, "Collega Google Ads" → `/settings?section=oauth-channels`.
+- Bottone "Salta questo passo" → `mark_setup_step_complete('integration_connected')` con `dismissed_at` solo per questo step (interpretato come "skippato consapevolmente").
+
+### 5. Riduzione attrito
+
+- Dopo completamento di tutti gli step → toast "Setup completato" + redirect a `/dashboard`.
+- Banner persistente in cima alle pagine admin se `setup_progress` è < 60% e `dismissed_at IS NULL`: "Hai 2/5 passi rimanenti — completa la configurazione" con link a `/setup`. Si chiude con X (set `dismissed_at`).
 
 ### Out of scope
 
-- Concatenazione di tutte le query Expense/Budget/Categories nel bundle (peggiorerebbe le mutazioni interattive).
-- Service Worker route caching (gestito già da PWA Cache Auth Hardening).
-- Migrazione altre dashboard (Salesperson/Callcenter): valutabile dopo aver misurato l'impatto sul CEO.
+- Onboarding non-admin (già coperto da `WelcomeModal` + `AppTour`).
+- Configurazione avanzata (categorie spese, custom fields, pipeline stages personalizzati): rimangono in Settings. Il wizard punta solo all'essenziale per essere operativi.
+- Wizard multi-tenant (un wizard separato per ogni nuovo brand): fuori scope, primo brand è sufficiente.
 
-### File toccati / creati
+### File creati / modificati
 
 **Nuovi:**
-- `src/components/dashboard/skeletons/DashboardPageSkeleton.tsx`
-- `src/components/dashboard/skeletons/CeoDashboardSkeleton.tsx`
-- `src/lib/prefetchRecipes.ts` (estrazione condivisa)
-- `src/hooks/usePrefetchOnHover.ts`
-- `src/hooks/useCeoDashboardBundle.ts`
-- 1 migration SQL: `get_ceo_dashboard_bundle()` (composizione delle 2 RPC esistenti)
+- `src/pages/AdminSetup.tsx` — pagina wizard.
+- `src/components/setup/SetupStepCard.tsx` — card riutilizzabile (props: number, title, description, status, children).
+- `src/components/setup/steps/Step1CreateBrand.tsx`
+- `src/components/setup/steps/Step2InviteUsers.tsx`
+- `src/components/setup/steps/Step3WebhookSource.tsx`
+- `src/components/setup/steps/Step4TicketSla.tsx`
+- `src/components/setup/steps/Step5Integrations.tsx`
+- `src/components/setup/SetupReminderBanner.tsx` — banner top-page persistente.
+- `src/hooks/useAdminSetupProgress.ts` — query + mutation `markStepComplete`.
+- `src/hooks/useCreateBrand.ts` — estratto da `BrandSelector` per riuso.
+- 1 migration SQL: tabella `admin_setup_progress` + 2 RPC + RLS.
 
 **Modificati:**
-- `src/components/dashboard/DashboardKpiGrid.tsx` (min-h su Card)
-- `src/components/ceo/CeoOperationalCards.tsx`, `CeoKpiCards.tsx`, `CeoExpensesPanel.tsx`, `CeoBudgetPanel.tsx`, `CeoCostBreakdown.tsx`, `BudgetBaselineCard.tsx` (min-h)
-- `src/components/dashboard/DashboardShell.tsx` (min-h fallback)
-- `src/pages/dashboard/CeoDashboardView.tsx` (skeleton strutturale + bundle hook)
-- `src/pages/Dashboard.tsx`, `src/pages/dashboard/DashboardOverview.tsx` (skeleton strutturale)
-- `src/hooks/usePrefetchOnLogin.ts` (refactor verso `prefetchRecipes`)
-- `src/components/layout/MainLayout.tsx` (hover prefetch su `renderItem`)
+- `src/App.tsx` — aggiunge rotta `/setup` con `RoleGuard admin`.
+- `src/components/auth/ProtectedRoute.tsx` o `DashboardRedirect` — auto-redirect primo accesso admin senza setup.
+- `src/components/layout/MainLayout.tsx` — voce dropdown "Configurazione iniziale" (solo admin) + render `<SetupReminderBanner />` sopra `<Outlet/>`.
+- `src/components/layout/BrandSelector.tsx` — refactor minimo per usare `useCreateBrand`.
 
-**Memory aggiornata**: `mem://technical/performance-perceived` (nuova) — pattern min-h su card dashboard, skeleton strutturali, hover-prefetch via prefetchRecipes, bundle RPC pattern.
+**Memory aggiornata**: `mem://features/admin-setup-wizard` (nuova) — flusso 5 step, auto-detection, persistenza per-utente.

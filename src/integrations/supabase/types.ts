@@ -513,6 +513,42 @@ export type Database = {
           },
         ]
       }
+      admin_setup_progress: {
+        Row: {
+          brand_created_at: string | null
+          created_at: string
+          dismissed_at: string | null
+          integration_connected_at: string | null
+          ticket_sla_configured_at: string | null
+          updated_at: string
+          user_id: string
+          users_invited_at: string | null
+          webhook_source_created_at: string | null
+        }
+        Insert: {
+          brand_created_at?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          integration_connected_at?: string | null
+          ticket_sla_configured_at?: string | null
+          updated_at?: string
+          user_id: string
+          users_invited_at?: string | null
+          webhook_source_created_at?: string | null
+        }
+        Update: {
+          brand_created_at?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          integration_connected_at?: string | null
+          ticket_sla_configured_at?: string | null
+          updated_at?: string
+          user_id?: string
+          users_invited_at?: string | null
+          webhook_source_created_at?: string | null
+        }
+        Relationships: []
+      }
       admin_todos: {
         Row: {
           brand_id: string
@@ -10672,6 +10708,7 @@ export type Database = {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
       }
+      get_admin_setup_progress: { Args: never; Returns: Json }
       get_ai_decisions_drilldown: {
         Args: {
           p_brand_id?: string
@@ -11498,6 +11535,26 @@ export type Database = {
       map_stage_to_contact_status: {
         Args: { p_stage_name: string }
         Returns: Database["public"]["Enums"]["contact_status"]
+      }
+      mark_admin_setup_step: {
+        Args: { p_step: string }
+        Returns: {
+          brand_created_at: string | null
+          created_at: string
+          dismissed_at: string | null
+          integration_connected_at: string | null
+          ticket_sla_configured_at: string | null
+          updated_at: string
+          user_id: string
+          users_invited_at: string | null
+          webhook_source_created_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "admin_setup_progress"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       mark_all_notifications_read: {
         Args: { p_brand_id?: string }

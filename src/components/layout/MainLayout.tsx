@@ -88,6 +88,7 @@ import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
 import { useDocumentTitleBadge } from '@/hooks/useDocumentTitleBadge';
 import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
 import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
+import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { AppTour } from '@/components/onboarding/AppTour';
 
@@ -550,6 +551,12 @@ export function MainLayout() {
                   <DropdownMenuSeparator />
                   <AppearanceMenuItems />
                   <DropdownMenuSeparator />
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/setup')}>
+                      <Sliders className="mr-2 h-4 w-4" />
+                      Configurazione iniziale
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={() => {
                       const fn = (window as any).__restartAppTour;
@@ -663,6 +670,7 @@ export function MainLayout() {
           </header>
           <AppBreadcrumbs />
           <RealtimeStatusBanner />
+          {isAdmin && <SetupReminderBanner />}
           <main className="flex-1 overflow-hidden p-3 md:p-6">
             <ErrorBoundary label="Pagina">
               <Outlet />

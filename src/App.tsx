@@ -37,6 +37,7 @@ const SalesAvailability = lazy(() => import("@/pages/SalesAvailability"));
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const AdminSetup = lazy(() => import("@/pages/AdminSetup"));
 const AdminAIMetrics = lazy(() => import("@/pages/AdminAIMetrics"));
 const AdminAI = lazy(() => import("@/pages/AdminAI"));
 const AdminCallcenterKpi = lazy(() => import("@/pages/AdminCallcenterKpi"));
@@ -145,6 +146,7 @@ const App = () => (
                     }
                   >
                     <Route path="/dashboard" element={<DashboardRedirect />} />
+                    <Route path="/setup" element={<RoleGuard allowedRoles={['admin']}><AdminSetup /></RoleGuard>} />
                     <Route path="/dashboard/overview" element={<Dashboard />} />
                     <Route path="/dashboard/admin" element={<RoleGuard allowedRoles={['admin']}><AdminDashboard /></RoleGuard>} />
                     <Route path="/dashboard/ceo" element={<RoleGuard allowedRoles={['admin', 'ceo']}><CeoDashboardView /></RoleGuard>} />
