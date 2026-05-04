@@ -1,5 +1,12 @@
 import { assertEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { normalizePhone, tryExtractPhone, tryExtractContactFields } from "./extract.ts";
+import {
+  normalizePhone,
+  tryExtractPhone,
+  tryExtractContactFields,
+  sanitizePayloadForAI,
+  validateExtractedContactData,
+  extractContactDataWithAI,
+} from "./extract.ts";
 
 Deno.test("normalizePhone: IT prefix stripped when >10 digits", () => {
   const n = normalizePhone("+39 333 1234567");
