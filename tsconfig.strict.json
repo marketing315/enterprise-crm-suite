@@ -1,0 +1,18 @@
+{
+  "//": "Strict-mode informativo. NON usato per il build (vite/tsc usa tsconfig.app.json). Eseguito in CI con `tsc -p tsconfig.strict.json --noEmit` per misurare il debito di tipi mancanti / null-safety. Lo script `scripts/security/check-strict-baseline.sh` confronta il numero di errori vs la baseline e fallisce solo se cresce.",
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": false,
+    "noUncheckedIndexedAccess": false,
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": ["src/integrations/supabase/types.ts", "src/test/**"]
+}
