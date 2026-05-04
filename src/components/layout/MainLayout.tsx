@@ -81,7 +81,6 @@ import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
 import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { AppTour } from '@/components/onboarding/AppTour';
-import { Sparkles as SparklesIcon } from 'lucide-react';
 
 // ============================================================================
 // Information architecture
