@@ -12,7 +12,14 @@ export type SetupStepKey =
 
 export interface AdminSetupProgress {
   user_id: string;
-  manual: Record<Exclude<SetupStepKey, "">, string | null>;
+  manual: {
+    brand_created_at: string | null;
+    users_invited_at: string | null;
+    webhook_source_created_at: string | null;
+    ticket_sla_configured_at: string | null;
+    integration_connected_at: string | null;
+    dismissed_at: string | null;
+  };
   auto_detected: Record<Exclude<SetupStepKey, "dismissed">, boolean>;
   counts: {
     brands: number;
