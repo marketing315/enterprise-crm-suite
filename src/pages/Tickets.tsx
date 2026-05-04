@@ -23,6 +23,7 @@ import { useBrand } from "@/contexts/BrandContext";
 import { useBrandOperators } from "@/hooks/useBrandOperators";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { exportTicketsToCSV } from "@/lib/ticketCsvExport";
+import { QueryErrorState } from "@/components/ui/QueryErrorState";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 50;
@@ -72,7 +73,7 @@ export default function Tickets() {
   const isOperator = hasRole("admin") || hasRole("operatore_callcenter") || hasRole("responsabile_callcenter");
 
   // Server-side search with cursor pagination
-  const { data: searchResult, isLoading } = useTicketsSearch({
+  const { data: searchResult, isLoading, isError, error, refetch } = useTicketsSearch({
     queueTab: activeTab,
     searchQuery: searchQuery.trim() || undefined,
     tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
@@ -374,7 +375,13 @@ export default function Tickets() {
       )}
 
       {/* Table */}
-      {isLoading ? (
+      {isError ? (
+        <QueryErrorState
+          error={error}
+          entityLabel="i ticket"
+          onRetry={() => refetch()}
+        />
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
