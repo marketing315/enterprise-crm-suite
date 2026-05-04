@@ -111,6 +111,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <ErrorConsolePanel />
+      <ConsentBanner />
       <ErrorBoundary label="Applicazione">
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <AuthProvider>
