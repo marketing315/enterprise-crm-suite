@@ -62,7 +62,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TicketCardMobile } from "./TicketCardMobile";
-import { EmptyState } from "@/components/ui/EmptyState";
 
 interface TicketsTableProps {
   tickets: TicketWithRelations[];
