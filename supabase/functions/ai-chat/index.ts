@@ -328,19 +328,20 @@ Deno.serve(async (req: Request) => {
       entityContext = await fetchEntityContext(supabase, entityType, entityId, brandId);
     }
 
-    // Fetch recent messages for context
+    // Fetch recent messages for context (cap su quantità)
     const { data: recentMessages } = await supabase
       .from("chat_messages")
       .select("sender_type, message_text")
       .eq("thread_id", threadId)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(MAX_HISTORY_MESSAGES);
 
     const messagesForAI = (recentMessages || [])
       .reverse()
       .map((m: { sender_type: string; message_text: string }) => ({
         role: m.sender_type === "ai" ? "assistant" : "user",
-        content: m.message_text,
+        // Cap per messaggio storico: una risposta AI verbosa non deve gonfiare i turni successivi
+        content: (m.message_text || "").slice(0, MAX_HISTORY_MSG_CHARS),
       }));
 
     // Add current message wrapped to prevent context escape
@@ -349,11 +350,66 @@ Deno.serve(async (req: Request) => {
       content: `[Domanda Utente]: ${message}\n\n[Fine Domanda - Rispondi solo alla domanda sopra]`,
     });
 
-    // Build system prompt with context
-    const systemPrompt = SYSTEM_PROMPT.replace(
-      "{entity_context}",
-      entityContext ? JSON.stringify(entityContext, null, 2) : "Nessun contesto entità disponibile"
-    );
+    // Build system prompt with context — cap entity context JSON
+    let entityJson = entityContext
+      ? JSON.stringify(entityContext, null, 2)
+      : "Nessun contesto entità disponibile";
+    if (entityJson.length > MAX_ENTITY_CONTEXT_CHARS) {
+      entityJson = entityJson.slice(0, MAX_ENTITY_CONTEXT_CHARS) + "\n…[contesto troncato per limiti dimensionali]";
+    }
+    const systemPrompt = SYSTEM_PROMPT.replace("{entity_context}", entityJson);
+
+    // --- Hard cap totale: tronca history dal più vecchio se necessario ---
+    const computeTotalChars = (): number =>
+      systemPrompt.length + messagesForAI.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
+
+    // Tieni sempre l'ultimo messaggio (la domanda corrente). Droppa i più vecchi finché entriamo nel budget.
+    while (computeTotalChars() > MAX_TOTAL_INPUT_CHARS && messagesForAI.length > 1) {
+      messagesForAI.shift();
+    }
+    // Se anche solo system + ultimo messaggio sfora, tronca l'ultimo messaggio (caso patologico)
+    if (computeTotalChars() > MAX_TOTAL_INPUT_CHARS) {
+      const last = messagesForAI[messagesForAI.length - 1];
+      const overflow = computeTotalChars() - MAX_TOTAL_INPUT_CHARS;
+      last.content = last.content.slice(0, Math.max(0, last.content.length - overflow - 50)) + "\n…[troncato]";
+    }
+
+    const totalInputChars = computeTotalChars();
+
+    // --- Quota check (atomic increment via RPC) ---
+    const { data: quotaResult, error: quotaErr } = await supabase.rpc("consume_ai_quota", {
+      p_user_id: crmUser.id,
+      p_brand_id: brandId,
+      p_endpoint: "ai-chat",
+      p_input_chars: totalInputChars,
+      p_daily_limit: DAILY_QUOTA_AI_CHAT,
+    });
+
+    if (quotaErr) {
+      console.error("[AI-CHAT] consume_ai_quota error:", quotaErr);
+      // Fail-closed: se non riusciamo a contare, non serviamo. Evita abuso silenzioso.
+      return new Response(
+        JSON.stringify({ error: "Quota service unavailable, retry later." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const quota = quotaResult as { allowed: boolean; remaining: number; daily_limit: number; used: number };
+    if (!quota?.allowed) {
+      console.warn("[AI-CHAT] quota exceeded", {
+        user_id: user.id,
+        brand_id: brandId,
+        daily_limit: quota?.daily_limit,
+      });
+      return new Response(
+        JSON.stringify({
+          error: `Hai raggiunto il limite giornaliero di ${quota?.daily_limit ?? DAILY_QUOTA_AI_CHAT} richieste AI. Riprova domani.`,
+          code: "AI_DAILY_QUOTA_EXCEEDED",
+          daily_limit: quota?.daily_limit,
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Call AI
     const response = await fetch(AI_GATEWAY_URL, {
