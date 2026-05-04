@@ -32,7 +32,6 @@ export function createTableViewsHooks(table: EntityViewsTable, queryKeyPrefix: s
       queryFn: async (): Promise<EntityTableView[]> => {
         if (!user) return [];
         const { data, error } = await supabase
-          // @ts-expect-error - dynamic table name
           .from(table)
           .select("*")
           .eq("owner_user_id", user.id)
@@ -67,7 +66,6 @@ export function createTableViewsHooks(table: EntityViewsTable, queryKeyPrefix: s
       }) => {
         if (!user) throw new Error("Not authenticated");
         const { data, error } = await supabase
-          // @ts-expect-error - dynamic table name
           .from(table)
           .insert({
             owner_user_id: user.id,
@@ -100,7 +98,6 @@ export function createTableViewsHooks(table: EntityViewsTable, queryKeyPrefix: s
         updates: Partial<{ name: string; columns: TableColumn[]; filters: TableFilters; is_default: boolean }>;
       }) => {
         const { data, error } = await supabase
-          // @ts-expect-error - dynamic table name
           .from(table)
           .update(params.updates as never)
           .eq("id", params.id)
@@ -123,7 +120,6 @@ export function createTableViewsHooks(table: EntityViewsTable, queryKeyPrefix: s
     return useMutation({
       mutationFn: async (id: string) => {
         const { error } = await supabase
-          // @ts-expect-error - dynamic table name
           .from(table)
           .delete()
           .eq("id", id);
