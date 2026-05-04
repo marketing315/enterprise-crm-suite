@@ -18,6 +18,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 // Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
+import Privacy from "@/pages/Privacy";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import NotFound from "@/pages/NotFound";
 
