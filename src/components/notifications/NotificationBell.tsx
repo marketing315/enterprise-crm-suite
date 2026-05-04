@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, ChevronRight } from "lucide-react";
+import { Bell, ChevronRight, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { Link, useNavigate } from "react-router-dom";
@@ -18,6 +19,7 @@ import {
   useNotificationRealtime,
   Notification,
 } from "@/hooks/useNotifications";
+import { useNotificationSound, CRITICAL_NOTIFICATION_TYPES } from "@/hooks/useNotificationSound";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCallback } from "react";
@@ -62,13 +64,17 @@ export function NotificationBell() {
   const { data: notifications = [], isLoading } = useNotifications(30);
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const markRead = useMarkNotificationsRead();
+  const { soundEnabled, setSoundEnabled, playSound } = useNotificationSound();
 
   // Realtime subscription (hook manages its own lifecycle now)
   const handleNewNotification = useCallback((notification: Notification) => {
     toast.info(notification.title, {
       description: notification.body || undefined,
     });
-  }, []);
+    if (CRITICAL_NOTIFICATION_TYPES.has(notification.type)) {
+      playSound();
+    }
+  }, [playSound]);
   useNotificationRealtime(handleNewNotification);
 
   // Mark as read when popover opens
@@ -119,11 +125,35 @@ export function NotificationBell() {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between border-b p-3">
           <h4 className="font-semibold">Notifiche</h4>
-          {unreadCount > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {unreadCount} non lette
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {unreadCount} non lette
+              </span>
+            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    aria-label={soundEnabled ? "Disattiva suono" : "Attiva suono"}
+                  >
+                    {soundEnabled ? (
+                      <Volume2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <VolumeX className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  Suono notifiche critiche
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
         <ScrollArea className="h-80">
           {isLoading ? (

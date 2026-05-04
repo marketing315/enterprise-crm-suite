@@ -1,104 +1,68 @@
-## Mobile-first sui flussi quotidiani
+## Obiettivo
 
-Tre interventi mirati su Contatti, Ticket e detail-sheet senza toccare la logica esistente: sotto i 768px le tabelle diventano card impilate, le CTA principali diventano sticky in fondo allo sheet, e il click-to-call resta visibile in lista.
+Aggiungere a `NotificationBell` e Dashboard tre miglioramenti di "attenzione utente":
 
-### 1. Card mobile per la lista Contatti
+1. Suono opzionale su nuove notifiche critiche (default: ticket SLA breach + appuntamenti a rischio), con preferenza salvata per utente.
+2. Badge nel `document.title` del browser (`(3) Ralph CRM`) quando la tab è in background e ci sono notifiche non lette.
+3. Riassunto giornaliero in cima alla Dashboard ("Oggi hai X nuovi lead, Y ticket SLA in scadenza, Z appuntamenti").
 
-Nuovo componente `src/components/contacts/ContactCardMobile.tsx`:
-- Card con padding generoso (`p-4`), nome in `font-semibold` + `ContactStatusBadge` in alto a destra.
-- Riga telefono = link `tel:` ben visibile + `<ClickToCallButton variant="default" size="sm" showLabel>` a destra.
-- Email troncata e città/CAP su righe separate `text-sm text-muted-foreground`.
-- Tap sulla card (non sui bottoni) apre `ContactDetailSheet`.
-- Pulsanti azione (Vedi, Elimina) in un `DropdownMenu` "kebab" in alto a destra.
+Nessuna nuova dipendenza, nessuna migration: riusiamo `user_push_preferences` (già esistente) per la preferenza suono e i dati già forniti da `useDashboardData`.
 
-In `ContactsTableWithViews.tsx`:
-- `import { useIsMobile } from "@/hooks/use-mobile"`.
-- Subito dopo l'`if (isLoading)` esistente, aggiungere:
-  ```tsx
-  if (isMobile) {
-    return (
-      <div className="space-y-3">
-        {sortedContacts.map(c => (
-          <ContactCardMobile
-            key={c.id}
-            contact={c}
-            onOpen={() => setSelectedContactId(c.id)}
-            onDelete={() => handleDeleteClick(c)}
-          />
-        ))}
-        {/* riusa hasMore + load more bottone esistenti */}
-      </div>
-    );
-  }
-  ```
-- La `<ContactDetailSheet>` rimane montata fuori dal branch.
+---
 
-Stesso trattamento — ma più snello — per `ContactsTable.tsx` (versione "semplice" usata altrove): sotto 768px stampa le stesse card.
+## 1. Suono opzionale su notifiche critiche
 
-### 2. Card mobile per la lista Ticket
+**Nuovo file** `src/hooks/useNotificationSound.ts`:
+- Espone `{ soundEnabled, setSoundEnabled, playSound }`.
+- Legge/scrive una riga in `user_push_preferences` con `notification_type = 'sound_critical'` (riusa la tabella esistente, niente migration).
+- `playSound()` usa Web Audio API (`AudioContext` + `OscillatorNode`, due beep brevi 880Hz/660Hz) — zero asset, zero file mp3.
+- Espone wrapper sicuro: niente errori se l'utente non ha mai interagito con la pagina (browser autoplay policy → catch & ignore).
 
-Nuovo componente `src/components/tickets/TicketCardMobile.tsx`:
-- Card con titolo in `font-semibold`, `TicketPriorityBadge` + `TicketStatusBadge` allineati.
-- Nome contatto cliccabile (`tel:` se ha telefono primario), categoria in `text-xs text-muted-foreground`.
-- Riga "Aging" (riusa la logica esistente in `TicketsTable`).
-- Bottone "Prendi in carico" se `onTakeOwnership` passato.
-- Tap apre `TicketDetailSheet` via `onTicketClick`.
+**Modifica** `src/components/notifications/NotificationBell.tsx`:
+- Lista tipi "critici": `['ticket_created', 'appointment_risk_alert', 'slo_alert', 'ticket_escalated']` (quelli SLA-related già presenti nei type label / memory).
+- In `handleNewNotification`: se `soundEnabled === true` e `notification.type` è critico → `playSound()`.
+- Aggiungere nel popover header un piccolo toggle icon (`Volume2`/`VolumeX`) con `Tooltip` "Suono notifiche critiche".
 
-In `TicketsTable.tsx` rendere il branch mobile prima del `<Table>`:
-```tsx
-if (isMobile) {
-  return (
-    <div className="space-y-3">
-      {tickets.map(t => <TicketCardMobile key={t.id} ticket={t} ... />)}
-    </div>
-  );
-}
-```
+## 2. Badge sul title della tab
 
-### 3. CTA sticky in `ContactDetailSheet`
+**Nuovo file** `src/hooks/useDocumentTitleBadge.ts`:
+- Hook montato una sola volta (in `MainLayout`).
+- Legge `useUnreadNotificationCount()` + `document.visibilityState`.
+- Quando la tab è `hidden` e `unread > 0`: imposta `document.title = "(N) <titolo originale>"`.
+- Quando torna `visible` o `unread === 0`: ripristina il titolo originale memorizzato in un ref.
+- Listener su `visibilitychange`; cleanup ripristina sempre il titolo.
 
-In fondo a `<SheetContent>` (riga 668), prima della `</SheetContent>`, aggiungere una barra:
-```tsx
-{contact && (
-  <div className="sticky bottom-0 -mx-6 px-6 py-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex gap-2">
-    <ClickToCallButton
-      contactId={contact.id}
-      phoneNumber={getPrimaryPhone()}
-      variant="default"
-      size="sm"
-      showLabel
-      className="flex-1"
-    />
-    <Button variant="outline" size="sm" className="flex-1" onClick={() => setTicketDialogOpen(true)}>
-      <Ticket className="h-4 w-4 mr-1.5" /> Crea ticket
-    </Button>
-    <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/appointments?contactId=${contact.id}`)}>
-      <Calendar className="h-4 w-4 mr-1.5" /> Appuntamento
-    </Button>
-  </div>
-)}
-```
-La struttura esistente del Sheet già è `flex flex-col` quindi `sticky bottom-0` funziona dentro lo `ScrollArea` parent. Verificheremo: se la `ScrollArea` interna scava, useremo invece un wrapper flex con la barra fuori dal `Tabs` e contenuto `flex-1 overflow-hidden`.
+**Modifica** `src/components/layout/MainLayout.tsx`:
+- Chiamata `useDocumentTitleBadge()` (insieme al resto degli hook globali già presenti).
 
-### 4. CTA sticky in `TicketDetailSheet`
+## 3. Riassunto giornaliero in Dashboard
 
-Stessa logica: barra sticky con bottoni "Chiama contatto" (se ticket ha contact con phone), "Aggiungi nota" (focus chat), "Cambia stato" (apre lo `Select` esistente o un piccolo dialog). Riusiamo `ClickToCallButton`.
+**Nuovo componente** `src/components/dashboard/DailyBriefing.tsx`:
+- Card glassmorphism in cima alla dashboard (sopra ai KPI primari).
+- Saluto contestuale ora-del-giorno: "Buongiorno" (<12), "Buon pomeriggio" (<18), "Buonasera" — usa `preferred_name` da `users` se disponibile via `useAuth().userProfile`, fallback al nome generico.
+- Frase a una riga, costruita componendo solo i numeri ≠ 0 da `useDashboardData()`:
+  - `leadsToday` → "X nuovi lead"
+  - `slaBreachedTickets` → "Y ticket SLA in scadenza"  
+  - `appointmentsToday` → "Z appuntamenti oggi"
+- Se tutti zero: "Nessuna emergenza in vista. Buon lavoro!".
+- Mini-CTA inline (link a `/events`, `/tickets?slaBreach=true`, `/appointments/calendar`) per ogni numero > 0.
+- Scheletro skeleton durante `isLoading`.
 
-### 5. Verifica click-to-call in lista
+**Modifica** `src/pages/Dashboard.tsx`:
+- Importare e renderizzare `<DailyBriefing />` subito dopo l'header (riga ~123), prima del check empty-state. Mostrato solo quando `hasBrandSelected` è true e non siamo in puro empty state (dato che tutti i numeri saranno comunque zero, mostrerà la frase "Nessuna emergenza").
 
-Già presente in `ContactsTable.tsx` riga 128 e `ContactsTableWithViews.tsx`. Il rischio è che sulle nuove card mobile sparisca: i nuovi `ContactCardMobile` lo ri-includono in modo prominente (icona + label "Chiama"). Anche `TicketCardMobile` ha "Chiama contatto" se il contatto associato ha telefono primario.
+---
 
-### File toccati
+## File toccati
 
-**Creati**
-- `src/components/contacts/ContactCardMobile.tsx`
-- `src/components/tickets/TicketCardMobile.tsx`
+Nuovi:
+- `src/hooks/useNotificationSound.ts`
+- `src/hooks/useDocumentTitleBadge.ts`
+- `src/components/dashboard/DailyBriefing.tsx`
 
-**Modificati**
-- `src/components/contacts/ContactsTable.tsx` (branch mobile)
-- `src/components/contacts/ContactsTableWithViews.tsx` (branch mobile + import `useIsMobile`)
-- `src/components/tickets/TicketsTable.tsx` (branch mobile + import `useIsMobile`)
-- `src/components/contacts/ContactDetailSheet.tsx` (CTA sticky in fondo)
-- `src/components/tickets/TicketDetailSheet.tsx` (CTA sticky in fondo)
+Modificati:
+- `src/components/notifications/NotificationBell.tsx` (toggle suono + play su tipi critici)
+- `src/components/layout/MainLayout.tsx` (1 riga: hook title badge)
+- `src/pages/Dashboard.tsx` (1 riga: render `<DailyBriefing />`)
 
-Nessuna nuova dipendenza, nessuna migration, nessuna RLS. La logica VOIspeed/`tel:` resta invariata: passa attraverso `ClickToCallButton` che già fa fallback a `tel:` su mobile.
+Nessuna migration, nessun edge function, nessuna dipendenza npm. Tutta la persistenza preferenza usa la tabella `user_push_preferences` esistente.

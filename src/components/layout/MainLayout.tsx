@@ -83,6 +83,7 @@ import { AppBreadcrumbs } from './AppBreadcrumbs';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
+import { useDocumentTitleBadge } from '@/hooks/useDocumentTitleBadge';
 import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
 import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
@@ -211,6 +212,7 @@ export function MainLayout() {
 
   useGlobalRealtime();
   usePrefetchOnLogin();
+  useDocumentTitleBadge();
 
   // Toggle "Mostra strumenti avanzati" — persistito per-utente.
   // Se l'utente sta navigando in una route weekly/rare, forziamo true per non rompere la nav.
