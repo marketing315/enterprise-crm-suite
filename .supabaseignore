@@ -1,0 +1,5 @@
+# Esclude la cartella baseline dal CLI Supabase.
+# Il file 20260601_baseline.sql è uno snapshot read-only generato da
+# pg_dump per code review e per il linter SQL in CI; NON deve mai
+# essere applicato come migrazione (vedi supabase/baseline/README.md).
+supabase/baseline/
