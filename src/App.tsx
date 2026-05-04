@@ -14,6 +14,7 @@ import { withModuleGuard } from "@/components/layout/withModuleGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ConsentBanner } from "@/components/legal/ConsentBanner";
 
 // Eager: critical path pages (login, dashboard redirect)
 import Login from "@/pages/Login";
