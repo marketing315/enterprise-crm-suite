@@ -51,17 +51,28 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB
+        // SECURITY: never cache Supabase API/Auth/Realtime/Storage signed URLs.
+        // Caching auth/role/RLS responses leads to stale privileges after a role
+        // change or signOut. Only cache public Storage assets (images served
+        // from /storage/v1/object/public/*).
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//, /^\/auth\//],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
+            // Public storage assets only (images, etc.) — safe to cache short-term
+            urlPattern: ({ url }) =>
+              /\.supabase\.co$/i.test(url.hostname) &&
+              url.pathname.startsWith("/storage/v1/object/public/"),
+            handler: "StaleWhileRevalidate",
             options: {
-              cacheName: "supabase-cache",
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
-              },
+              cacheName: "supabase-public-assets",
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 }, // 1h
             },
+          },
+          {
+            // Everything else on Supabase: NEVER cache (auth, rest, rpc,
+            // realtime, signed storage URLs, edge functions)
+            urlPattern: ({ url }) => /\.supabase\.co$/i.test(url.hostname),
+            handler: "NetworkOnly",
           },
         ],
       },

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
 import type { User, UserRole, AppRole } from '@/types/database';
 
 interface AuthContextType {
@@ -134,6 +135,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           currentAuthIdRef.current = null;
           setUser(null);
           setUserRoles([]);
+          // SECURITY: purge any SW-cached Supabase responses so the next
+          // session doesn't inherit the previous user's authorizations.
+          void purgeSupabaseBrowserCaches();
+        }
+
+        // SECURITY: on token refresh / user update (e.g. role change applied
+        // server-side) drop SW caches so stale RLS-filtered responses are
+        // not replayed from cache.
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          void purgeSupabaseBrowserCaches();
         }
       }
     );
@@ -197,6 +208,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setSupabaseUser(null);
     setIsRealtimeReady(false);
+    // SECURITY: best-effort SW cache wipe (also fires from onAuthStateChange,
+    // duplicated here in case the listener races with a navigation away).
+    await purgeSupabaseBrowserCaches();
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
