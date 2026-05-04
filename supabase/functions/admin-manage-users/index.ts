@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { validatePassword } from "../_shared/password-policy.ts";
 
 type AppRole = 
   | "admin" 
