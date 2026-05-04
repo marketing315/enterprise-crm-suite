@@ -25,8 +25,9 @@ export default function CeoDashboardView() {
   const [from, setFrom] = useState(() => startOfMonth(new Date()));
   const [to, setTo] = useState(() => endOfMonth(new Date()));
 
-  const { data: finData, isLoading: finLoading, error: finError } = useCeoDashboard(from, to);
-  const { data: opsData, isLoading: opsLoading } = useCeoOperationalKpis(from, to);
+  const { data: bundle, isLoading, error: finError } = useCeoDashboardBundle(from, to);
+  const finData = bundle?.financial;
+  const opsData = bundle?.operational;
 
   if (!isAdmin && !isCeo) {
     return (
