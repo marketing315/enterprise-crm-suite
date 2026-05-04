@@ -795,11 +795,15 @@ Deno.serve(async (req: Request) => {
     // We always append the same row to 2 tabs (all_RAW + source_raw_tab)
     await supabaseAdmin
       .from("sheets_export_logs")
-      .update({ 
+      .update({
         status: "success",
         brand_id: leadEvent.brand_id,
         tab_name: sourceRawTab,
         rows_exported: 2,
+        last_attempt_at: new Date().toISOString(),
+        next_attempt_at: null,
+        last_error: null,
+        dead_letter: false,
       })
       .eq("lead_event_id", lead_event_id);
 
