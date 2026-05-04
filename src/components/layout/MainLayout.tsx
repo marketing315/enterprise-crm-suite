@@ -569,16 +569,70 @@ export function MainLayout() {
               );
             })()}
             <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="hidden md:inline-flex items-center gap-2 h-8 px-3 rounded-md border bg-muted/40 text-xs text-muted-foreground hover:bg-muted transition-colors"
+              aria-label="Cerca (Cmd+K)"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span>Cerca…</span>
+              <kbd className="ml-2 font-mono text-[10px] rounded bg-background border px-1.5 py-0.5">⌘K</kbd>
+            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Cerca"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
             <RealtimeStatusBadge />
             <PageHelpButton />
             <NotificationBell />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="Menu utente">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatar_url || undefined} />
+                    <AvatarFallback>{getInitials(user?.full_name)}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user?.full_name || 'Utente'}</span>
+                    <span className="text-xs text-muted-foreground font-normal truncate">{user?.email}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    const fn = (window as any).__restartAppTour;
+                    if (typeof fn === 'function') fn();
+                  }}
+                >
+                  <Sliders className="mr-2 h-4 w-4" />
+                  Rivedi il tour iniziale
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Esci
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </header>
+          <AppBreadcrumbs />
           <RealtimeStatusBanner />
           <main className="flex-1 overflow-hidden p-3 md:p-6">
             <ErrorBoundary label="Pagina">
               <Outlet />
             </ErrorBoundary>
           </main>
+          <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
         </SidebarInset>
       </div>
     </SidebarProvider>
