@@ -1,6 +1,7 @@
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
-import { User, Clock, Hand, AlertTriangle, Archive, ArchiveRestore, Trash2, MoreHorizontal, UserPlus, Tag, Circle, ChevronRight } from "lucide-react";
+import { User, Clock, Hand, AlertTriangle, Archive, ArchiveRestore, Trash2, MoreHorizontal, UserPlus, Tag, Circle, ChevronRight, Ticket as TicketIcon } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Table,
   TableBody,
@@ -261,8 +262,12 @@ export function TicketsTable({
         <TableBody>
           {tickets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={colSpan} className="text-center py-8 text-muted-foreground">
-                Nessun ticket trovato
+              <TableCell colSpan={colSpan} className="p-0">
+                <EmptyState
+                  icon={TicketIcon}
+                  title="Nessun ticket in coda"
+                  description="Quando un cliente apre una richiesta o viene segnalato un problema, lo vedrai qui."
+                />
               </TableCell>
             </TableRow>
           ) : (

@@ -40,7 +40,7 @@ export function usePaginatedContactSearch(
 
   const offset = showAll ? 0 : page * PAGE_SIZE;
 
-  const { data: pageData = [], isLoading, isFetching, isError } = useContactSearch(
+  const { data: pageData = [], isLoading, isFetching, isError, error, refetch } = useContactSearch(
     query,
     filters,
     effectiveLimit,
@@ -88,6 +88,9 @@ export function usePaginatedContactSearch(
     contacts,
     isLoading: isLoading && page === 0,
     isLoadingMore: isFetching && page > 0,
+    isError,
+    error,
+    refetch,
     hasMore,
     loadMore,
     totalLoaded: allResults.length,

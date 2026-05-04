@@ -1,55 +1,71 @@
-## Microcopy: rinominare le voci tecniche del menu
+## Stati vuoti, errori e caricamento più umani
 
-Tutte le modifiche su `src/components/layout/MainLayout.tsx` (sezione `navSections` righe 125-186 e renderer voce). Nessuna modifica a path/route — solo etichette + tooltip esplicativi.
+Tre componenti riusabili + collegamento alle 3 liste principali e all'`ErrorBoundary` globale. Niente migrazioni, niente nuove dipendenze.
 
-### Rinomine
+### 1. Nuovo componente `EmptyState` (`src/components/ui/EmptyState.tsx`)
 
-| Oggi | Nuovo | Path (invariato) |
-|---|---|---|
-| Eventi | Lead in arrivo | `/events` |
-| DLQ | Webhook in errore | `/admin/dlq` |
-| CAPI Monitor | Eventi Facebook | `/admin/capi` |
-| SLO Board | Stato del servizio | `/admin/slo-board` |
-| Webhook Monitor | Stato webhook | `/admin/webhooks` |
-| AI Metrics | Statistiche AI | `/admin/ai-metrics` |
-| Gestione AI | Assistente AI | `/admin/ai` |
-| KPI Venditori | Performance venditori | `/team/salespersons` |
-| KPI Call Center | Performance call center | `/admin/callcenter-kpi` |
-| Trend Ticket | Andamento ticket | `/admin/ticket-trend` |
-| Security Review | Controlli sicurezza | `/admin/security-reviews` |
-| Audit & Compliance | Storico modifiche | `/admin/audit` |
+Props: `icon: LucideIcon`, `title: string`, `description?: string`, `actionLabel?: string`, `onAction?: () => void`, `secondaryLabel?: string`, `onSecondary?: () => void`.
 
-Restano invariati (già parlanti): Dashboard, Contatti, Pipeline, Appuntamenti, Ticket, Chat, Vendite, Prodotti, Azienda, Analytics, Dashboard CEO, Impostazioni, Team, Quick Backup.
+Layout C-Level: cerchio `bg-muted/40` con icona, titolo, descrizione `text-muted-foreground`, CTA primaria + opzionale secondaria. Sostituisce gli attuali "Nessun X trovato" testuali.
 
-### Tooltip esplicativi sulle voci ambigue
+### 2. Nuovo componente `QueryErrorState` (`src/components/ui/QueryErrorState.tsx`)
 
-Aggiunto un campo opzionale `description?: string` all'interfaccia `NavItem`. Quando presente, viene passato al `tooltip` di `<SidebarMenuButton>` (sostituisce solo il fallback "Seleziona prima un brand", che resta prioritario).
+Props: `error: Error | unknown`, `entityLabel?: string` (es. "i tuoi contatti"), `onRetry?: () => void`.
 
-Tooltip da aggiungere:
+Mostra:
+- Icona `AlertTriangle` in cerchio `bg-destructive/10`
+- "Non siamo riusciti a caricare {entityLabel}." (default "i dati")
+- Sotto, in piccolo: "Riprova fra un attimo. Se il problema continua, contatta l'amministratore."
+- Bottoni: "Ricarica" (chiama `onRetry` o `window.location.reload()`) + link ghost "Segnala il problema" → `mailto:supporto@gruppobenessere.it?subject=Errore CRM&body=ID errore: {errorId}` con `errorId` = `crypto.randomUUID().slice(0,8)` generato al mount.
+- `<details>` collassato con `error.message` (no stack), per power user.
 
-- **Pipeline** → "Le tue trattative in corso, divise per fase"
-- **Lead in arrivo** → "Nuovi contatti acquisiti dai canali marketing"
-- **Webhook in errore** → "Messaggi che non sono riusciti ad arrivare: vanno controllati e rimandati"
-- **Eventi Facebook** → "Conversioni inviate a Meta (CAPI) per le campagne pubblicitarie"
-- **Stato del servizio** → "Salute generale del sistema e affidabilità nel tempo"
-- **Stato webhook** → "Connessioni in entrata: chi ci sta mandando dati e con quale qualità"
-- **Statistiche AI** → "Quanto e come l'AI viene usata nel CRM"
-- **Assistente AI** → "Configurazione del comportamento dell'assistente AI"
-- **Storico modifiche** → "Chi ha cambiato cosa e quando, per audit e conformità"
-- **Controlli sicurezza** → "Revisione periodica di accessi e permessi"
+### 3. `PageLoader` migliorato (`src/components/ui/PageLoader.tsx`)
 
-### Modifica al renderer
+Aggiungere due stati di cortesia:
+- **>2s**: messaggio inline `text-muted-foreground` "Stiamo caricando…" sotto lo skeleton.
+- **>5s**: card "Sta richiedendo più del previsto. Vuoi riprovare?" + bottoni `Ricarica` (esistente) + `Continua ad attendere` (chiude solo l'avviso).
+- **>8s** resta l'attuale messaggio "Caricamento più lento del previsto" (compatibile col fallback `slowAfterMs`).
 
-In `renderItem` (righe 318-341), passare `item.description` come `tooltip` quando `hasBrandSelected` è true:
+Implementazione: due `useState`+`useEffect` con timer 2000/5000ms (oltre all'attuale 8000ms).
 
+### 4. `ErrorBoundary` globale arricchito (`src/components/ui/ErrorBoundary.tsx`)
+
+In `getDerivedStateFromError` generare un `errorId = Math.random().toString(36).slice(2,10).toUpperCase()` e salvarlo in `state`. Nel render full-page (non `compact`):
+- Mantenere icona + titolo + messaggio user-friendly ("Qualcosa è andato storto. Niente panico, i tuoi dati sono salvi.")
+- Aggiungere riga "ID errore: `{errorId}`" copiabile (`navigator.clipboard.writeText` con toast).
+- Aggiungere bottone "Torna alla dashboard" → `window.location.assign('/dashboard')`.
+- Pulsanti finali: `Riprova` (esistente), `Torna alla dashboard` (nuovo), `Ricarica pagina` (esistente).
+- `<details>` con `error.message` per supporto.
+
+### 5. Collegamento alle 3 liste
+
+**`src/components/contacts/ContactsTable.tsx`** (riga 84-91): sostituire empty state inline con `<EmptyState icon={Users} title="Ancora nessun contatto" description="I contatti arrivano automaticamente dai webhook marketing oppure puoi crearne uno manualmente." actionLabel="Nuovo contatto" onAction={...} />`. Per `onAction` useremo `window.dispatchEvent(new CustomEvent('contacts:new'))` oppure import del dialog se già esistente — verificheremo pattern esistente in `Contacts.tsx` durante l'implementazione.
+
+**`src/components/tickets/TicketsTable.tsx`** (riga 262-267): sostituire la cella "Nessun ticket trovato" con `<TableRow><TableCell colSpan={colSpan}><EmptyState icon={Ticket} title="Nessun ticket aperto" description="Quando un cliente apre una richiesta apparirà qui." actionLabel="Crea ticket" onAction={...} /></TableCell></TableRow>`.
+
+**`src/pages/Pipeline.tsx`** (righe 157/167/177): passare `<EmptyState>` come children/render prop a `ClosedDealsTable` — manteniamo `emptyMessage` come fallback se la prop ricca non è disponibile, oppure rendiamo la sostituzione direttamente in `ClosedDealsTable` (lo verifichiamo). Su Kanban (`KanbanBoard`) per ora niente cambi: già ha logica per-colonna.
+
+### 6. Error state nelle liste
+
+Nelle 3 pagine (`Contacts.tsx`, `Tickets.tsx`, `Pipeline.tsx`) leggere `isError`/`error`/`refetch` dagli hook esistenti (`usePaginatedContactSearch`, `useTicketsSearch`, hook deals) e, prima del render della tabella:
 ```tsx
-tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : item.description}
+if (isError) return <QueryErrorState error={error} entityLabel="i tuoi contatti" onRetry={refetch} />;
 ```
-
-`SidebarMenuButton` di shadcn già accetta una stringa per `tooltip` e la mostra solo quando la sidebar è collassata. Per renderla visibile anche con sidebar espansa serve il pattern `tooltip={{ children: ..., hidden: false }}`. Useremo questo per le voci con `description`, così il tooltip compare in hover anche con sidebar aperta — esattamente quello che serve per i termini ambigui.
+Verificheremo che ogni hook esponga `isError`/`refetch` (TanStack Query lo fa di default).
 
 ### File toccati
 
-- **Modificato**: `src/components/layout/MainLayout.tsx` (etichette in `navSections`, interfaccia `NavItem`, render del tooltip).
+**Creati**
+- `src/components/ui/EmptyState.tsx`
+- `src/components/ui/QueryErrorState.tsx`
 
-Nessuna nuova dipendenza, nessuna migration, nessun cambio di route.
+**Modificati**
+- `src/components/ui/PageLoader.tsx` (timer 2s/5s)
+- `src/components/ui/ErrorBoundary.tsx` (errorId + "Torna alla dashboard" + copy umana)
+- `src/components/contacts/ContactsTable.tsx` (empty state)
+- `src/components/tickets/TicketsTable.tsx` (empty state)
+- `src/pages/Contacts.tsx` (error state)
+- `src/pages/Tickets.tsx` (error state + loader inline migliorato)
+- `src/pages/Pipeline.tsx` (error state e empty state per ClosedDealsTable)
+
+Nessuna nuova dipendenza, nessuna migration, nessuna RLS.
