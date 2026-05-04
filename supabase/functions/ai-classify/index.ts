@@ -452,8 +452,8 @@ Deno.serve(async (req: Request) => {
   const providedSecret = req.headers.get("x-cron-secret");
   const authHeader = req.headers.get("authorization") || "";
   
-  const hasValidCronSecret = cronSecret && providedSecret && 
-    (providedSecret === cronSecret || (cronSecretPrev && providedSecret === cronSecretPrev));
+  const hasValidCronSecret = !!(cronSecret && providedSecret &&
+    timingSafeEqualAny(providedSecret, cronSecret, cronSecretPrev));
   
   // SECURITY: accept ONLY x-cron-secret or service_role JWT (verified server-side).
   // The anon key is public — never accept role === "anon".

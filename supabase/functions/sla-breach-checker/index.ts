@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqualAny } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,8 +22,8 @@ Deno.serve(async (req) => {
   const providedSecret = req.headers.get("x-cron-secret");
   const authHeader = req.headers.get("authorization") || "";
   
-  const hasValidSecret = cronSecret && providedSecret && 
-    (providedSecret === cronSecret || (cronSecretPrev && providedSecret === cronSecretPrev));
+  const hasValidSecret = !!(cronSecret && providedSecret &&
+    timingSafeEqualAny(providedSecret, cronSecret, cronSecretPrev));
   
   // SECURITY: only x-cron-secret or service_role JWT verified server-side.
   let hasValidJwt = false;

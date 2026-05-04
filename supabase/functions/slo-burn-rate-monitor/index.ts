@@ -21,6 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual, timingSafeEqualAny } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,7 +50,7 @@ function authOk(req: Request): boolean {
   const cronSecret = Deno.env.get("CRON_SECRET");
   const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
   const provided = req.headers.get("x-cron-secret");
-  if (cronSecret && provided && (provided === cronSecret || (cronSecretPrev && provided === cronSecretPrev))) {
+  if (cronSecret && provided && timingSafeEqualAny(provided, cronSecret, cronSecretPrev)) {
     return true;
   }
   const auth = req.headers.get("authorization") || "";
@@ -57,7 +58,7 @@ function authOk(req: Request): boolean {
     const token = auth.replace("Bearer ", "");
     // SECURITY: anon key is public — only accept the service-role key.
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (serviceKey && token === serviceKey) return true;
+    if (serviceKey && timingSafeEqual(token, serviceKey)) return true;
   }
   return false;
 }

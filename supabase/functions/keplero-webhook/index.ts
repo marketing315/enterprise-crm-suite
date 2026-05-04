@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHash } from "node:crypto";
+import { timingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -159,8 +160,8 @@ Deno.serve(async (req: Request) => {
   const kepleroSecret = req.headers.get("x-keplero-secret");
   const expectedSecret = Deno.env.get("KEPLERO_WEBHOOK_SECRET");
 
-  const isInternalCall = internalServiceToken && internalForward && internalForward === internalServiceToken;
-  const isDirectCall = expectedSecret && kepleroSecret === expectedSecret;
+  const isInternalCall = !!(internalServiceToken && internalForward && timingSafeEqual(internalForward, internalServiceToken));
+  const isDirectCall = !!(expectedSecret && kepleroSecret && timingSafeEqual(kepleroSecret, expectedSecret));
 
   if (!isInternalCall && !isDirectCall) {
     console.error("[Keplero] Unauthorized: no valid internal token or keplero secret");

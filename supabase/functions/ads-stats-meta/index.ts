@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqualAny } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,7 +125,7 @@ Deno.serve(async (req) => {
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
     
     // Allow: x-cron-secret header/param, anon/service_role JWT (pg_cron), or authenticated admin user
-    const isCronSecret = !!(cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev));
+    const isCronSecret = !!(cronSecret && timingSafeEqualAny(cronSecret, expectedSecret, cronSecretPrev));
     
     // Decode JWT payload (base64url) to check role without crypto verification
     // This is safe because pg_cron uses our own project JWT signed by Supabase

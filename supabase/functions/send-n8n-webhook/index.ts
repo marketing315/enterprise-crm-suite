@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqualAny } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
     const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
     const authHeader = req.headers.get("Authorization");
 
-    const isCronCall = cronSecret && (cronSecret === expectedSecret || cronSecret === cronSecretPrev);
+    const isCronCall = !!(cronSecret && timingSafeEqualAny(cronSecret, expectedSecret, cronSecretPrev));
 
     // B04 FIX: Verify JWT server-side instead of trusting decoded payload
     let isJwtCronCall = false;

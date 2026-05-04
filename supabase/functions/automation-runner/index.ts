@@ -1071,8 +1071,8 @@ Deno.serve(async (req: Request) => {
   const cronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
   const authHeader = req.headers.get("authorization");
   
-  const hasValidCronSecret = expectedSecret && cronSecret && 
-    (cronSecret === expectedSecret || (cronSecretPrev && cronSecret === cronSecretPrev));
+  const hasValidCronSecret = !!(expectedSecret && cronSecret &&
+    timingSafeEqualAny(cronSecret, expectedSecret, cronSecretPrev));
   
   // SECURITY: only x-cron-secret or service_role JWT verified server-side.
   let hasValidJwt = false;
