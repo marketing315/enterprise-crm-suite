@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useCallback, memo } from 'react';
+import { useEffect, useMemo, useCallback, useState, memo } from 'react';
 import type { AppRole } from '@/types/database';
+import type { LucideIcon } from 'lucide-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useHasMarketingAccess, useCanSeeMarketingSubmenu } from '@/hooks/useMarketingAccess';
+import { userStorage } from '@/lib/userScopedStorage';
 import { BrandSelector } from './BrandSelector';
 import { PageHelpButton } from './PageHelpButton';
 import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
@@ -69,6 +71,8 @@ import {
   Target,
   ShieldCheck,
   ScrollText,
+  Sliders,
+  HardDrive,
 } from 'lucide-react';
 import { useTicketRealtime } from '@/hooks/useTicketRealtime';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -76,17 +80,102 @@ import { useGlobalRealtime } from '@/hooks/useGlobalRealtime';
 import { usePrefetchOnLogin } from '@/hooks/usePrefetchOnLogin';
 import { RealtimeStatusBanner, RealtimeStatusBadge } from './RealtimeStatusIndicator';
 
-// Base menu items (always visible if brand selected)
-const baseMenuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: Users, label: 'Contatti', path: '/contacts' },
-  { icon: Inbox, label: 'Eventi', path: '/events' },
-  { icon: Kanban, label: 'Pipeline', path: '/pipeline' },
-  { icon: ShoppingCart, label: 'Vendite', path: '/sales' },
-  { icon: Calendar, label: 'Appuntamenti', path: '/appointments' },
-  { icon: Ticket, label: 'Ticket', path: '/tickets' },
-  { icon: MessageSquare, label: 'Chat', path: '/chat' },
-  { icon: Briefcase, label: 'Azienda', path: '/azienda' },
+// ============================================================================
+// Information architecture
+// ============================================================================
+// Sezioni orientate al lavoro, non alla struttura tecnica.
+// `audience` filtra cosa è visibile di default:
+//   - 'daily':   sempre visibile (lavoro quotidiano)
+//   - 'weekly':  visibile solo se "Mostra strumenti avanzati" attivo
+//   - 'rare':    visibile solo se "Mostra strumenti avanzati" attivo
+// `requiresRole`: restrizione su ruolo specifico (sopra al filtro audience).
+// Vedi mem://style/sidebar-information-architecture.md
+
+type AdvancedRole = 'admin' | 'ceo' | 'responsabile_venditori' | 'responsabile_callcenter' | 'amministrazione';
+
+interface NavItem {
+  icon: LucideIcon;
+  label: string;
+  path: string;
+  audience: 'daily' | 'weekly' | 'rare';
+  requiresRole?: AdvancedRole[];
+  adminOnly?: boolean; // shorthand per isAdmin
+}
+
+interface NavSectionDef {
+  id: string;
+  label: string;
+  collapsible: boolean;
+  items: NavItem[];
+  // Visibilità intera sezione
+  adminOnly?: boolean;
+  ceoOrAdminOnly?: boolean;
+}
+
+const NAV_SECTIONS: NavSectionDef[] = [
+  {
+    id: 'daily',
+    label: 'Quotidiano',
+    collapsible: false,
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', audience: 'daily' },
+      { icon: Users, label: 'Contatti', path: '/contacts', audience: 'daily' },
+      { icon: Inbox, label: 'Eventi', path: '/events', audience: 'daily' },
+      { icon: Kanban, label: 'Pipeline', path: '/pipeline', audience: 'daily' },
+      { icon: Calendar, label: 'Appuntamenti', path: '/appointments', audience: 'daily' },
+      { icon: Ticket, label: 'Ticket', path: '/tickets', audience: 'daily' },
+      { icon: MessageSquare, label: 'Chat', path: '/chat', audience: 'daily' },
+    ],
+  },
+  {
+    id: 'sales',
+    label: 'Vendite & Clienti',
+    collapsible: false,
+    items: [
+      { icon: ShoppingCart, label: 'Vendite', path: '/sales', audience: 'daily' },
+      { icon: Package, label: 'Prodotti', path: '/products', audience: 'daily', requiresRole: ['admin', 'ceo'] },
+      { icon: Briefcase, label: 'Azienda', path: '/azienda', audience: 'daily' },
+    ],
+  },
+  {
+    id: 'insight',
+    label: 'Insight',
+    collapsible: true,
+    items: [
+      { icon: BarChart3, label: 'Analytics', path: '/admin/analytics', audience: 'weekly', adminOnly: true },
+      { icon: LineChart, label: 'Dashboard CEO', path: '/ceo-dashboard', audience: 'weekly', requiresRole: ['admin', 'ceo'] },
+      { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons', audience: 'weekly', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
+      { icon: Headphones, label: 'KPI Call Center', path: '/admin/callcenter-kpi', audience: 'weekly', adminOnly: true },
+      { icon: TrendingUp, label: 'Trend Ticket', path: '/admin/ticket-trend', audience: 'weekly', adminOnly: true },
+      { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics', audience: 'weekly', adminOnly: true },
+    ],
+  },
+  {
+    id: 'config',
+    label: 'Configurazione',
+    collapsible: false,
+    adminOnly: true,
+    items: [
+      { icon: Settings, label: 'Impostazioni', path: '/settings', audience: 'daily', adminOnly: true },
+      { icon: UsersRound, label: 'Team', path: '/team', audience: 'daily', adminOnly: true },
+      { icon: Brain, label: 'Gestione AI', path: '/admin/ai', audience: 'daily', adminOnly: true },
+    ],
+  },
+  {
+    id: 'system',
+    label: 'Sistema',
+    collapsible: true,
+    ceoOrAdminOnly: true,
+    items: [
+      { icon: Webhook, label: 'Webhook Monitor', path: '/admin/webhooks', audience: 'rare', adminOnly: true },
+      { icon: AlertTriangle, label: 'DLQ', path: '/admin/dlq', audience: 'rare', adminOnly: true },
+      { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi', audience: 'rare', adminOnly: true },
+      { icon: Target, label: 'SLO Board', path: '/admin/slo-board', audience: 'rare', requiresRole: ['admin', 'ceo'] },
+      { icon: ShieldCheck, label: 'Security Review', path: '/admin/security-reviews', audience: 'rare', requiresRole: ['admin', 'ceo'] },
+      { icon: ScrollText, label: 'Audit & Compliance', path: '/admin/audit', audience: 'rare', requiresRole: ['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter'] },
+      { icon: HardDrive, label: 'Quick Backup', path: '/admin/quick-backup', audience: 'rare', requiresRole: ['admin', 'ceo'] },
+    ],
+  },
 ];
 
 // Marketing submenu items
@@ -98,32 +187,7 @@ const marketingSubItems = [
   { icon: FileText, label: 'Report', path: '/marketing/report' },
 ];
 
-// Analytics (admin only)
-const analyticsMenuItem = { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' };
-
-// Admin menu items with optional role requirements
-const adminMenuItems: Array<{
-  icon: typeof UsersRound;
-  label: string;
-  path: string;
-  requiresRole?: ('admin' | 'ceo' | 'responsabile_venditori' | 'responsabile_callcenter' | 'amministrazione')[];
-}> = [
-  { icon: LineChart, label: 'Dashboard CEO', path: '/ceo-dashboard', requiresRole: ['admin', 'ceo'] },
-  { icon: UsersRound, label: 'Team', path: '/team' },
-  { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
-  { icon: Package, label: 'Prodotti', path: '/products', requiresRole: ['admin', 'ceo'] },
-  { icon: Settings, label: 'Impostazioni', path: '/settings' },
-  { icon: Brain, label: 'Gestione AI', path: '/admin/ai' },
-  { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics' },
-  { icon: Headphones, label: 'KPI Call Center', path: '/admin/callcenter-kpi' },
-  { icon: TrendingUp, label: 'Trend Ticket', path: '/admin/ticket-trend' },
-  { icon: Webhook, label: 'Webhook Monitor', path: '/admin/webhooks' },
-  { icon: AlertTriangle, label: 'DLQ', path: '/admin/dlq' },
-  { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi' },
-  { icon: Target, label: 'SLO Board', path: '/admin/slo-board', requiresRole: ['admin', 'ceo'] },
-  { icon: ShieldCheck, label: 'Security Review', path: '/admin/security-reviews', requiresRole: ['admin', 'ceo'] },
-  { icon: ScrollText, label: 'Audit & Compliance', path: '/admin/audit', requiresRole: ['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter'] },
-];
+const ADVANCED_PREF_KEY = 'sidebar.showAdvanced';
 
 export function MainLayout() {
   const { user, signOut, isAdmin, isCeo, hasRole } = useAuth();
@@ -132,43 +196,83 @@ export function MainLayout() {
   const canSeeMarketingSubmenu = useCanSeeMarketingSubmenu();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Realtime ticket notifications
+
   const { newTicketsCount, myNewAssignmentsCount, slaBreachCount, resetCounts } = useTicketRealtime();
   const ticketActivityCount = newTicketsCount + myNewAssignmentsCount;
 
-  // Global realtime subscriptions for all data tables
   useGlobalRealtime();
-
-  // Smart prefetch: pre-warm cache for dashboard/pipeline/contacts on login
   usePrefetchOnLogin();
 
-  // Build menu items based on permissions
-  const menuItems = useMemo(() => {
-    const items = [...baseMenuItems];
-    
-    // Add Analytics only for admin/ceo
-    if (isAdmin || isCeo) {
-      items.push(analyticsMenuItem);
-    }
-    
-    return items;
-  }, [isAdmin, isCeo]);
+  // Toggle "Mostra strumenti avanzati" — persistito per-utente.
+  // Se l'utente sta navigando in una route weekly/rare, forziamo true per non rompere la nav.
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
+    return userStorage.getItem(ADVANCED_PREF_KEY) === 'true';
+  });
 
-  // Check if any marketing path is active
+  // Permission check riusabile
+  const itemAllowed = useCallback((item: NavItem): boolean => {
+    if (item.adminOnly && !isAdmin) return false;
+    if (item.requiresRole) {
+      const ok = item.requiresRole.some(role => {
+        if (role === 'admin') return isAdmin;
+        if (role === 'ceo') return isCeo;
+        return currentBrand && hasRole(role as AppRole, currentBrand.id);
+      });
+      if (!ok) return false;
+    }
+    return true;
+  }, [isAdmin, isCeo, currentBrand, hasRole]);
+
+  // Auto-attiva advanced se la route corrente è dietro al toggle
+  useEffect(() => {
+    if (showAdvanced) return;
+    const inAdvanced = NAV_SECTIONS.some(sec =>
+      sec.items.some(it =>
+        it.audience !== 'daily' &&
+        itemAllowed(it) &&
+        location.pathname.startsWith(it.path)
+      )
+    );
+    if (inAdvanced) setShowAdvanced(true);
+  }, [location.pathname, showAdvanced, itemAllowed]);
+
+  const toggleAdvanced = useCallback(() => {
+    setShowAdvanced(prev => {
+      const next = !prev;
+      userStorage.setItem(ADVANCED_PREF_KEY, next ? 'true' : 'false');
+      return next;
+    });
+  }, []);
+
+  // Sezioni filtrate per ruolo + audience
+  const visibleSections = useMemo(() => {
+    return NAV_SECTIONS.map(sec => {
+      // Visibilità sezione
+      if (sec.adminOnly && !isAdmin) return null;
+      if (sec.ceoOrAdminOnly && !(isAdmin || isCeo)) return null;
+
+      const items = sec.items.filter(it => {
+        if (!itemAllowed(it)) return false;
+        if (!showAdvanced && it.audience !== 'daily') return false;
+        return true;
+      });
+
+      if (items.length === 0) return null;
+      return { ...sec, items };
+    }).filter((s): s is NavSectionDef => s !== null);
+  }, [isAdmin, isCeo, itemAllowed, showAdvanced]);
+
+  // Ci sono voci avanzate disponibili (per ruolo) ma nascoste? → mostra il toggle
+  const hasAdvancedAvailable = useMemo(() => {
+    return NAV_SECTIONS.some(sec => {
+      if (sec.adminOnly && !isAdmin) return false;
+      if (sec.ceoOrAdminOnly && !(isAdmin || isCeo)) return false;
+      return sec.items.some(it => it.audience !== 'daily' && itemAllowed(it));
+    });
+  }, [isAdmin, isCeo, itemAllowed]);
+
   const isMarketingActive = location.pathname.startsWith('/marketing');
 
-  // Filter admin menu items based on role requirements (memoized)
-  const filteredAdminItems = useMemo(() => adminMenuItems.filter(item => {
-    if (!item.requiresRole) return true;
-    return item.requiresRole.some(role => {
-      if (role === 'admin') return isAdmin;
-      if (role === 'ceo') return isCeo;
-      return currentBrand && hasRole(role as AppRole, currentBrand.id);
-    });
-  }), [isAdmin, isCeo, currentBrand, hasRole]);
-
-  // Reset badge when viewing tickets page
   useEffect(() => {
     if (location.pathname === '/tickets') {
       resetCounts();
@@ -190,9 +294,69 @@ export function MainLayout() {
       .slice(0, 2);
   };
 
+  // Renderer di una singola voce (con badge ticket)
+  const renderItem = (item: NavItem) => (
+    <SidebarMenuItem key={item.path}>
+      <SidebarMenuButton
+        isActive={location.pathname === item.path}
+        onClick={() => navigate(item.path)}
+        disabled={!hasBrandSelected && item.path !== '/dashboard'}
+        tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
+        data-testid={item.path === '/admin/webhooks' ? 'nav-webhooks-dashboard' : undefined}
+      >
+        <item.icon className="h-4 w-4" />
+        <span className="flex-1">{item.label}</span>
+        {item.path === '/tickets' && ticketActivityCount > 0 && (
+          <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-ticket-badge">
+            {ticketActivityCount > 99 ? '99+' : ticketActivityCount}
+          </Badge>
+        )}
+        {item.path === '/tickets' && slaBreachCount > 0 && (
+          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-sla-badge">
+            SLA {slaBreachCount > 99 ? '99+' : slaBreachCount}
+          </Badge>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+
+  // Renderer di una sezione (collapsible o flat)
+  const renderSection = (sec: NavSectionDef) => {
+    const sectionActive = sec.items.some(it => location.pathname.startsWith(it.path));
+
+    if (!sec.collapsible) {
+      return (
+        <SidebarGroup key={sec.id}>
+          <SidebarGroupLabel>{sec.label}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{sec.items.map(renderItem)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      );
+    }
+
+    // Collapsible: defaultOpen solo se la route corrente è dentro la sezione
+    return (
+      <SidebarGroup key={sec.id}>
+        <Collapsible defaultOpen={sectionActive} className="group/section">
+          <SidebarGroupLabel asChild>
+            <CollapsibleTrigger className="flex w-full items-center justify-between hover:text-sidebar-foreground transition-colors">
+              <span>{sec.label}</span>
+              <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/section:rotate-90" />
+            </CollapsibleTrigger>
+          </SidebarGroupLabel>
+          <CollapsibleContent>
+            <SidebarGroupContent>
+              <SidebarMenu>{sec.items.map(renderItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </SidebarGroup>
+    );
+  };
+
   return (
     <SidebarProvider>
-      {/* Screen-pop per chiamate in arrivo VOIspeed */}
       <IncomingCallPopup />
       <div className="flex min-h-screen w-full">
         <Sidebar>
@@ -208,108 +372,102 @@ export function MainLayout() {
               <BrandSelector compact />
             </div>
           </SidebarHeader>
-          
+
           <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Menu principale</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.path}>
-                      <SidebarMenuButton
-                        isActive={location.pathname === item.path}
-                        onClick={() => navigate(item.path)}
-                        disabled={!hasBrandSelected && item.path !== '/dashboard'}
-                        tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span className="flex-1">{item.label}</span>
-                        {/* Badge for ticket activity (new tickets + assignments) */}
-                        {item.path === '/tickets' && ticketActivityCount > 0 && (
-                          <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-ticket-badge">
-                            {ticketActivityCount > 99 ? '99+' : ticketActivityCount}
-                          </Badge>
-                        )}
-                        {/* Badge for SLA breaches (red, separate) */}
-                        {item.path === '/tickets' && slaBreachCount > 0 && (
-                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs" data-testid="sidebar-sla-badge">
-                            SLA {slaBreachCount > 99 ? '99+' : slaBreachCount}
-                          </Badge>
-                        )}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                  
-                  {/* Marketing: full submenu for Admin/CEO/Amministrazione, single link for Responsabili */}
-                  {hasMarketingAccess && (
-                    canSeeMarketingSubmenu ? (
-                      <Collapsible defaultOpen={isMarketingActive} className="group/collapsible">
-                        <SidebarMenuItem>
-                          <CollapsibleTrigger asChild>
+            {/* Sezione Quotidiano */}
+            {visibleSections.filter(s => s.id === 'daily').map(renderSection)}
+
+            {/* Sezione Vendite & Clienti */}
+            {visibleSections.filter(s => s.id === 'sales').map(renderSection)}
+
+            {/* Marketing — collapsible dedicato (logica accesso esistente preservata) */}
+            {hasMarketingAccess && (
+              <SidebarGroup>
+                {canSeeMarketingSubmenu ? (
+                  <Collapsible defaultOpen={isMarketingActive} className="group/marketing">
+                    <SidebarGroupLabel asChild>
+                      <CollapsibleTrigger className="flex w-full items-center justify-between hover:text-sidebar-foreground transition-colors">
+                        <span>Marketing</span>
+                        <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/marketing:rotate-90" />
+                      </CollapsibleTrigger>
+                    </SidebarGroupLabel>
+                    <CollapsibleContent>
+                      <SidebarGroupContent>
+                        <SidebarMenu>
+                          <SidebarMenuItem>
                             <SidebarMenuButton
-                              className={isMarketingActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}
+                              isActive={location.pathname === '/marketing'}
+                              onClick={() => navigate('/marketing')}
                               disabled={!hasBrandSelected}
-                              tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
                             >
                               <Megaphone className="h-4 w-4" />
-                              <span className="flex-1">Marketing</span>
-                              <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                              <span>Panoramica</span>
                             </SidebarMenuButton>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <SidebarMenu className="ml-4 mt-1 border-l border-sidebar-border pl-2">
-                              {marketingSubItems.map((subItem) => (
-                                <SidebarMenuItem key={subItem.path}>
-                                  <SidebarMenuButton
-                                    isActive={location.pathname === subItem.path}
-                                    onClick={() => navigate(subItem.path)}
-                                    className="h-8"
-                                  >
-                                    <subItem.icon className="h-3.5 w-3.5" />
-                                    <span className="text-sm">{subItem.label}</span>
-                                  </SidebarMenuButton>
-                                </SidebarMenuItem>
-                              ))}
-                            </SidebarMenu>
-                          </CollapsibleContent>
+                          </SidebarMenuItem>
+                          {marketingSubItems.filter(s => s.path !== '/marketing').map(subItem => (
+                            <SidebarMenuItem key={subItem.path}>
+                              <SidebarMenuButton
+                                isActive={location.pathname === subItem.path}
+                                onClick={() => navigate(subItem.path)}
+                              >
+                                <subItem.icon className="h-4 w-4" />
+                                <span>{subItem.label}</span>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          ))}
+                        </SidebarMenu>
+                      </SidebarGroupContent>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : (
+                  <>
+                    <SidebarGroupLabel>Marketing</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            isActive={location.pathname === '/marketing'}
+                            onClick={() => navigate('/marketing')}
+                            disabled={!hasBrandSelected}
+                            tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
+                          >
+                            <Megaphone className="h-4 w-4" />
+                            <span>Marketing</span>
+                          </SidebarMenuButton>
                         </SidebarMenuItem>
-                      </Collapsible>
-                    ) : (
-                      /* Responsabili: solo link diretto alla dashboard */
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={location.pathname === '/marketing'}
-                          onClick={() => navigate('/marketing')}
-                          disabled={!hasBrandSelected}
-                          tooltip={!hasBrandSelected ? 'Seleziona prima un brand' : undefined}
-                        >
-                          <Megaphone className="h-4 w-4" />
-                          <span>Marketing</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )
-                  )}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </>
+                )}
+              </SidebarGroup>
+            )}
 
-            {isAdmin && (
+            {/* Sezione Insight (collapsible, default chiuso salvo route attiva) */}
+            {visibleSections.filter(s => s.id === 'insight').map(renderSection)}
+
+            {/* Sezione Configurazione */}
+            {visibleSections.filter(s => s.id === 'config').map(renderSection)}
+
+            {/* Sezione Sistema (collapsible, default chiuso salvo route attiva) */}
+            {visibleSections.filter(s => s.id === 'system').map(renderSection)}
+
+            {/* Toggle "Strumenti avanzati" */}
+            {hasAdvancedAvailable && (
               <SidebarGroup>
-                <SidebarGroupLabel>Amministrazione</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {filteredAdminItems.map((item) => (
-                      <SidebarMenuItem key={item.path}>
+                    <SidebarMenuItem>
                       <SidebarMenuButton
-                          isActive={location.pathname === item.path}
-                          onClick={() => navigate(item.path)}
-                          data-testid={item.path === '/admin/webhooks' ? 'nav-webhooks-dashboard' : undefined}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                        onClick={toggleAdvanced}
+                        className="text-muted-foreground hover:text-sidebar-foreground"
+                        tooltip={showAdvanced ? 'Nascondi Insight e Sistema' : 'Mostra Insight e Sistema'}
+                      >
+                        <Sliders className="h-4 w-4" />
+                        <span className="text-xs">
+                          {showAdvanced ? 'Nascondi strumenti avanzati' : 'Mostra strumenti avanzati'}
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
