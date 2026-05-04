@@ -926,21 +926,38 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fire-and-forget downstream integrations ONLY for non-duplicate, non-archived leads
+    // Downstream integrations ONLY for non-duplicate, non-archived leads.
+    // Pattern: enqueue first (durable), then attempt sync best-effort. The
+    // sheets-export-dispatcher cron is the source of truth for retries.
     if (leadEvent?.id && !isDuplicate && !isOptedOut) {
-      // Google Sheets export
+      // 1) Enqueue durable job. Idempotent thanks to unique(lead_event_id).
+      try {
+        const { error: enqueueErr } = await supabase
+          .from("sheets_export_logs")
+          .insert({
+            lead_event_id: leadEvent.id,
+            brand_id: brandId,
+            status: "pending",
+            next_attempt_at: new Date(Date.now() + 30_000).toISOString(),
+            attempts: 0,
+          });
+        if (enqueueErr && enqueueErr.code !== "23505") {
+          console.error("Failed to enqueue sheets export job:", enqueueErr.message);
+        }
+      } catch (err) {
+        console.error("Enqueue sheets export error:", err);
+      }
+
+      // 2) Best-effort sync attempt for low-latency exports. Any failure is
+      //    silently absorbed - the dispatcher will retry from the queue.
       const sheetsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sheets-export`;
+      const internalToken =
+        Deno.env.get("INTERNAL_SERVICE_TOKEN") ||
+        Deno.env.get("SHEETS_INTERNAL_TOKEN") ||
+        "";
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        // SECURITY: never propagate the service-role key as Bearer between
-        // edge functions. Use a dedicated internal token (same pattern as
-        // keplero-webhook → INTERNAL_SERVICE_TOKEN).
-        const internalToken =
-          Deno.env.get("INTERNAL_SERVICE_TOKEN") ||
-          Deno.env.get("SHEETS_INTERNAL_TOKEN") ||
-          "";
         fetch(sheetsUrl, {
           method: "POST",
           headers: {
@@ -953,15 +970,14 @@ Deno.serve(async (req: Request) => {
           .then((res) => {
             clearTimeout(timeoutId);
             if (!res.ok) {
-              console.error("Sheets export failed:", res.status);
+              console.warn(`Sync sheets export non-2xx (${res.status}); dispatcher will retry.`);
             }
           })
-          .catch((err) => {
+          .catch(() => {
             clearTimeout(timeoutId);
-            console.error("Sheets export error (non-blocking):", err.message);
           });
       } catch (err) {
-        console.error("Sheets export setup error:", err);
+        console.warn("Sync sheets export setup error (dispatcher will retry):", err);
       }
     } else if (isDuplicate) {
       console.log(JSON.stringify({

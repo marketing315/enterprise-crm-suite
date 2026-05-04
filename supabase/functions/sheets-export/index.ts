@@ -502,7 +502,7 @@ Deno.serve(async (req: Request) => {
   );
 
   try {
-    // RACE-SAFE IDEMPOTENCY
+    // RACE-SAFE IDEMPOTENCY + retry-aware claim
     if (!force) {
       const { error: insertError } = await supabaseAdmin
         .from("sheets_export_logs")
@@ -510,33 +510,50 @@ Deno.serve(async (req: Request) => {
           lead_event_id,
           brand_id: "00000000-0000-0000-0000-000000000000",
           status: "processing",
+          attempts: 1,
+          last_attempt_at: new Date().toISOString(),
         });
 
       if (insertError) {
         if (insertError.code === "23505") {
+          // Job already exists — claim it only if eligible (failed/pending)
           const { data: existingLog } = await supabaseAdmin
             .from("sheets_export_logs")
-            .select("status")
+            .select("status, attempts, dead_letter")
             .eq("lead_event_id", lead_event_id)
             .single();
 
-          if (existingLog?.status === "success") {
+          if (!existingLog) {
+            console.error("Conflict but no existing row for", lead_event_id);
+          } else if (existingLog.status === "success") {
             return new Response(
               JSON.stringify({ success: true, skipped: true, reason: "already_exported" }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
-          } else if (existingLog?.status === "processing") {
+          } else if (existingLog.status === "processing") {
             return new Response(
               JSON.stringify({ success: true, skipped: true, reason: "in_progress" }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
+          } else if (existingLog.status === "skipped" || existingLog.status === "dead_letter" || existingLog.dead_letter) {
+            return new Response(
+              JSON.stringify({ success: true, skipped: true, reason: existingLog.status }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } else {
+            // status = 'failed' or 'pending' → retry. Bump attempts and mark processing.
+            await supabaseAdmin
+              .from("sheets_export_logs")
+              .update({
+                status: "processing",
+                attempts: (existingLog.attempts ?? 0) + 1,
+                last_attempt_at: new Date().toISOString(),
+              })
+              .eq("lead_event_id", lead_event_id);
           }
-          return new Response(
-            JSON.stringify({ success: true, skipped: true, reason: existingLog?.status }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        } else {
+          console.error("Insert processing log error:", insertError);
         }
-        console.error("Insert processing log error:", insertError);
       }
     }
 
@@ -553,9 +570,15 @@ Deno.serve(async (req: Request) => {
     if (eventError || !event) {
       await supabaseAdmin
         .from("sheets_export_logs")
-        .update({ status: "failed", error: "Lead event not found" })
+        .update({
+          status: "dead_letter",
+          error: "Lead event not found",
+          last_error: "Lead event not found",
+          dead_letter: true,
+          last_attempt_at: new Date().toISOString(),
+        })
         .eq("lead_event_id", lead_event_id);
-        
+
       return new Response(
         JSON.stringify({ error: "Lead event not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -789,11 +812,15 @@ Deno.serve(async (req: Request) => {
     // We always append the same row to 2 tabs (all_RAW + source_raw_tab)
     await supabaseAdmin
       .from("sheets_export_logs")
-      .update({ 
+      .update({
         status: "success",
         brand_id: leadEvent.brand_id,
         tab_name: sourceRawTab,
         rows_exported: 2,
+        last_attempt_at: new Date().toISOString(),
+        next_attempt_at: null,
+        last_error: null,
+        dead_letter: false,
       })
       .eq("lead_event_id", lead_event_id);
 
@@ -809,14 +836,35 @@ Deno.serve(async (req: Request) => {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Sheets export error:", error);
-    
+
     if (lead_event_id) {
       try {
+        // Read current attempts to compute next backoff / DLQ
+        const { data: logRow } = await supabaseAdmin
+          .from("sheets_export_logs")
+          .select("attempts, max_attempts")
+          .eq("lead_event_id", lead_event_id)
+          .single();
+
+        const attempts = (logRow?.attempts ?? 0) + 1;
+        const maxAttempts = logRow?.max_attempts ?? 6;
+
+        // Exponential backoff in minutes: 0.5, 2, 8, 30, 120, 480
+        const backoffMinutes = [0.5, 2, 8, 30, 120, 480];
+        const idx = Math.min(attempts - 1, backoffMinutes.length - 1);
+        const nextAt = new Date(Date.now() + backoffMinutes[idx] * 60_000).toISOString();
+        const exhausted = attempts >= maxAttempts;
+
         await supabaseAdmin
           .from("sheets_export_logs")
-          .update({ 
-            status: "failed", 
+          .update({
+            status: exhausted ? "dead_letter" : "failed",
             error: message,
+            last_error: message,
+            attempts,
+            last_attempt_at: new Date().toISOString(),
+            next_attempt_at: exhausted ? null : nextAt,
+            dead_letter: exhausted,
           })
           .eq("lead_event_id", lead_event_id);
       } catch {
