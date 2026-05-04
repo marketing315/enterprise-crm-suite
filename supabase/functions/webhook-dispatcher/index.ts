@@ -11,6 +11,23 @@ const REQUEST_TIMEOUT_MS = 10000;
 const WALL_TIME_LIMIT_MS = 25000; // Stop processing after 25s to avoid cron overlap
 const USER_AGENT = "ralphloop-webhooks/1.0";
 
+// Constant-time comparison to mitigate timing attacks on the cron secret
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function timingSafeEqualAny(provided: string, ...candidates: (string | undefined)[]): boolean {
+  for (const c of candidates) {
+    if (c && timingSafeEqual(provided, c)) return true;
+  }
+  return false;
+}
+
 interface WebhookDelivery {
   id: string;
   webhook_id: string;
