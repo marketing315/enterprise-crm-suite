@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
+import { clearAllQueryCaches } from '@/lib/queryClient';
 import type { User, UserRole, AppRole } from '@/types/database';
 
 interface AuthContextType {
@@ -138,6 +139,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // SECURITY: purge any SW-cached Supabase responses so the next
           // session doesn't inherit the previous user's authorizations.
           void purgeSupabaseBrowserCaches();
+          // GDPR: wipe React Query in-memory cache + localStorage persister
+          // so the next login on the same device cannot restore the previous
+          // user's lead/deal/ticket/brand data.
+          void clearAllQueryCaches();
         }
 
         // SECURITY: on token refresh / user update (e.g. role change applied
@@ -211,6 +216,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // SECURITY: best-effort SW cache wipe (also fires from onAuthStateChange,
     // duplicated here in case the listener races with a navigation away).
     await purgeSupabaseBrowserCaches();
+    // GDPR: wipe React Query in-memory + localStorage persister now, before
+    // the page navigates to /login (the SIGNED_OUT listener may not run if
+    // the navigation happens first).
+    await clearAllQueryCaches();
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {

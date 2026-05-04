@@ -2,9 +2,8 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { localStoragePersister } from "@/lib/queryPersister";
+import { queryClient, persistOptions } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BrandProvider } from "@/contexts/BrandContext";
@@ -100,22 +99,9 @@ function PageLoader() {
   );
 }
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60,
-      gcTime: 1000 * 60 * 15,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+// queryClient + persistOptions are defined in @/lib/queryClient so that
+// AuthContext.signOut can wipe them on logout (GDPR data minimization).
 
-const persistOptions = {
-  persister: localStoragePersister,
-  maxAge: 1000 * 60 * 60 * 4, // 4 hours
-  buster: 'v1',
-};
 
 const App = () => (
   <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
