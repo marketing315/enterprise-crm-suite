@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,10 +113,10 @@ async function getAuthMethod(req: Request): Promise<string | null> {
   if (cronSecret && cronSecret.length > 0) {
     const current = Deno.env.get("CRON_SECRET");
     const previous = Deno.env.get("CRON_SECRET_PREVIOUS");
-    if (current && current.length > 0 && cronSecret === current) {
+    if (current && current.length > 0 && timingSafeEqual(cronSecret, current)) {
       return "cron_secret_current";
     }
-    if (previous && previous.length > 0 && cronSecret === previous) {
+    if (previous && previous.length > 0 && timingSafeEqual(cronSecret, previous)) {
       return "cron_secret_previous";
     }
   }

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual as sharedTimingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,14 +99,9 @@ async function computeHmacSha256(secret: string, message: string): Promise<strin
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Constant-time string comparison to prevent timing attacks
+// Constant-time string comparison to prevent timing attacks (re-exported from _shared/crypto.ts)
 function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
+  return sharedTimingSafeEqual(a, b);
 }
 
 // Verify API key using constant-time comparison

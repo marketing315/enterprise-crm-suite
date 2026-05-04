@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { timingSafeEqual } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -507,7 +508,7 @@ Deno.serve(async (req: Request) => {
   //      validated the MCP token and resolved identity)
   const internalHeader = req.headers.get("x-mcp-internal") ?? "";
   const internalSecret = Deno.env.get("INTERNAL_SERVICE_TOKEN") ?? "";
-  const isInternalCall = !!internalSecret && internalHeader === internalSecret;
+  const isInternalCall = !!internalSecret && timingSafeEqual(internalHeader, internalSecret);
 
   // Caller scopes drive PII redaction on tool/resource responses.
   // - Internal calls (from mcp-server): scopes derived from the validated MCP token.
