@@ -129,8 +129,8 @@ const NAV_SECTIONS: NavSectionDef[] = [
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', audience: 'daily' },
       { icon: Users, label: 'Contatti', path: '/contacts', audience: 'daily' },
-      { icon: Inbox, label: 'Eventi', path: '/events', audience: 'daily' },
-      { icon: Kanban, label: 'Pipeline', path: '/pipeline', audience: 'daily' },
+      { icon: Inbox, label: 'Lead in arrivo', path: '/events', audience: 'daily', description: 'Nuovi contatti acquisiti dai canali marketing' },
+      { icon: Kanban, label: 'Pipeline', path: '/pipeline', audience: 'daily', description: 'Le tue trattative in corso, divise per fase' },
       { icon: Calendar, label: 'Appuntamenti', path: '/appointments', audience: 'daily' },
       { icon: Ticket, label: 'Ticket', path: '/tickets', audience: 'daily' },
       { icon: MessageSquare, label: 'Chat', path: '/chat', audience: 'daily' },
@@ -153,10 +153,10 @@ const NAV_SECTIONS: NavSectionDef[] = [
     items: [
       { icon: BarChart3, label: 'Analytics', path: '/admin/analytics', audience: 'weekly', adminOnly: true },
       { icon: LineChart, label: 'Dashboard CEO', path: '/ceo-dashboard', audience: 'weekly', requiresRole: ['admin', 'ceo'] },
-      { icon: TrendingUp, label: 'KPI Venditori', path: '/team/salespersons', audience: 'weekly', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
-      { icon: Headphones, label: 'KPI Call Center', path: '/admin/callcenter-kpi', audience: 'weekly', adminOnly: true },
-      { icon: TrendingUp, label: 'Trend Ticket', path: '/admin/ticket-trend', audience: 'weekly', adminOnly: true },
-      { icon: BarChart3, label: 'AI Metrics', path: '/admin/ai-metrics', audience: 'weekly', adminOnly: true },
+      { icon: TrendingUp, label: 'Performance venditori', path: '/team/salespersons', audience: 'weekly', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
+      { icon: Headphones, label: 'Performance call center', path: '/admin/callcenter-kpi', audience: 'weekly', adminOnly: true },
+      { icon: TrendingUp, label: 'Andamento ticket', path: '/admin/ticket-trend', audience: 'weekly', adminOnly: true },
+      { icon: BarChart3, label: 'Statistiche AI', path: '/admin/ai-metrics', audience: 'weekly', adminOnly: true, description: "Quanto e come l'AI viene usata nel CRM" },
     ],
   },
   {
@@ -167,7 +167,7 @@ const NAV_SECTIONS: NavSectionDef[] = [
     items: [
       { icon: Settings, label: 'Impostazioni', path: '/settings', audience: 'daily', adminOnly: true },
       { icon: UsersRound, label: 'Team', path: '/team', audience: 'daily', adminOnly: true },
-      { icon: Brain, label: 'Gestione AI', path: '/admin/ai', audience: 'daily', adminOnly: true },
+      { icon: Brain, label: 'Assistente AI', path: '/admin/ai', audience: 'daily', adminOnly: true, description: "Configurazione del comportamento dell'assistente AI" },
     ],
   },
   {
@@ -176,12 +176,12 @@ const NAV_SECTIONS: NavSectionDef[] = [
     collapsible: true,
     ceoOrAdminOnly: true,
     items: [
-      { icon: Webhook, label: 'Webhook Monitor', path: '/admin/webhooks', audience: 'rare', adminOnly: true },
-      { icon: AlertTriangle, label: 'DLQ', path: '/admin/dlq', audience: 'rare', adminOnly: true },
-      { icon: Zap, label: 'CAPI Monitor', path: '/admin/capi', audience: 'rare', adminOnly: true },
-      { icon: Target, label: 'SLO Board', path: '/admin/slo-board', audience: 'rare', requiresRole: ['admin', 'ceo'] },
-      { icon: ShieldCheck, label: 'Security Review', path: '/admin/security-reviews', audience: 'rare', requiresRole: ['admin', 'ceo'] },
-      { icon: ScrollText, label: 'Audit & Compliance', path: '/admin/audit', audience: 'rare', requiresRole: ['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter'] },
+      { icon: Webhook, label: 'Stato webhook', path: '/admin/webhooks', audience: 'rare', adminOnly: true, description: 'Connessioni in entrata: chi ci sta mandando dati e con quale qualità' },
+      { icon: AlertTriangle, label: 'Webhook in errore', path: '/admin/dlq', audience: 'rare', adminOnly: true, description: 'Messaggi che non sono riusciti ad arrivare: vanno controllati e rimandati' },
+      { icon: Zap, label: 'Eventi Facebook', path: '/admin/capi', audience: 'rare', adminOnly: true, description: 'Conversioni inviate a Meta (CAPI) per le campagne pubblicitarie' },
+      { icon: Target, label: 'Stato del servizio', path: '/admin/slo-board', audience: 'rare', requiresRole: ['admin', 'ceo'], description: 'Salute generale del sistema e affidabilità nel tempo' },
+      { icon: ShieldCheck, label: 'Controlli sicurezza', path: '/admin/security-reviews', audience: 'rare', requiresRole: ['admin', 'ceo'], description: 'Revisione periodica di accessi e permessi' },
+      { icon: ScrollText, label: 'Storico modifiche', path: '/admin/audit', audience: 'rare', requiresRole: ['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter'], description: 'Chi ha cambiato cosa e quando, per audit e conformità' },
       { icon: HardDrive, label: 'Quick Backup', path: '/admin/quick-backup', audience: 'rare', requiresRole: ['admin', 'ceo'] },
     ],
   },
