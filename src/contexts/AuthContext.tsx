@@ -230,6 +230,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // the page navigates to /login (the SIGNED_OUT listener may not run if
     // the navigation happens first).
     await clearAllQueryCaches();
+    // GDPR: wipe per-user UI preferences immediately.
+    purgeUserScopedStorage();
+    setUserScope(null);
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
