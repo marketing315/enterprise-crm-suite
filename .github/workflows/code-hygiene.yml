@@ -1,0 +1,63 @@
+name: code-hygiene
+
+# Aggregates non-security code-quality gates that should fail PRs but are
+# semantically distinct from secrets-scan (exfil prevention) and dependency-audit
+# (CVE scanning). Each step is independent and runs to completion via `if: always()`
+# so reviewers see ALL violations in one run, not just the first one.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # check-types-drift.mjs reads recent migrations (default 14d) — needs
+          # enough history to find them. Default fetch-depth=1 is too shallow.
+          fetch-depth: 50
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # ---------------------------------------------------------------
+      # 1. Inline audit codes (B01/H02/Rxx) — must live in docs/audit-history.md
+      # ---------------------------------------------------------------
+      - name: Check inline audit codes
+        if: always()
+        run: bash scripts/security/check-audit-codes.sh
+
+      # ---------------------------------------------------------------
+      # 2. Edge functions config completeness — every function MUST have an
+      #    explicit [functions.<name>] block in supabase/config.toml
+      # ---------------------------------------------------------------
+      - name: Check edge functions config
+        if: always()
+        run: bash scripts/security/check-edge-functions-config.sh
+
+      # ---------------------------------------------------------------
+      # 3. TS strict baseline — no new `any` outside ANY_BASELINE in eslint.config
+      # ---------------------------------------------------------------
+      - name: Check strict baseline
+        if: always()
+        run: bash scripts/security/check-strict-baseline.sh
+
+      # ---------------------------------------------------------------
+      # 4. Supabase types drift — recent migrations MUST be reflected in types.ts
+      # ---------------------------------------------------------------
+      - name: Check supabase types drift
+        if: always()
+        run: node scripts/security/check-types-drift.mjs
+
+      # ---------------------------------------------------------------
+      # 5. .env files governance — no .env.e2e or service_role in tracked .env
+      # ---------------------------------------------------------------
+      - name: Check env files
+        if: always()
+        run: bash scripts/security/check-env-files.sh
