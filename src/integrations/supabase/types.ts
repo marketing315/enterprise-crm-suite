@@ -10844,6 +10844,15 @@ export type Database = {
         Args: { p_brand_ids: string[]; p_from: string; p_to: string }
         Returns: Json
       }
+      get_ceo_dashboard_bundle: {
+        Args: {
+          p_brand_id: string
+          p_brand_ids?: string[]
+          p_from: string
+          p_to: string
+        }
+        Returns: Json
+      }
       get_ceo_dashboard_kpis: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
