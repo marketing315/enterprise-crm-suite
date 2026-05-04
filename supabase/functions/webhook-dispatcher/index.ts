@@ -245,14 +245,26 @@ async function processDelivery(
       p_duration_ms: durationMs,
     });
 
+    // Update circuit breaker: reset on success, increment on tripping statuses (5xx/timeout/429).
+    let circuitTripped = false;
+    if (isSuccess) {
+      breakerState.delete(delivery.webhook_id);
+    } else if (CIRCUIT_TRIPPING_STATUSES.has(response.status)) {
+      const next = (breakerState.get(delivery.webhook_id) ?? 0) + 1;
+      breakerState.set(delivery.webhook_id, next);
+      if (next >= CIRCUIT_BREAKER_THRESHOLD) circuitTripped = true;
+    }
+    // 4xx other than 408/429 are treated as terminal client errors and do NOT trip the breaker.
+
     return {
       success: isSuccess,
       status: response.status,
       durationMs: Date.now() - startTime,
+      circuitTripped,
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    const errorMessage = error instanceof Error 
+    const errorMessage = error instanceof Error
       ? (error.name === "AbortError" ? "timeout" : error.message.slice(0, 200))
       : "unknown_error";
 
@@ -263,7 +275,12 @@ async function processDelivery(
       p_duration_ms: durationMs,
     });
 
-    return { success: false, error: errorMessage, durationMs };
+    // Network/timeout failures always trip the breaker.
+    const next = (breakerState.get(delivery.webhook_id) ?? 0) + 1;
+    breakerState.set(delivery.webhook_id, next);
+    const circuitTripped = next >= CIRCUIT_BREAKER_THRESHOLD;
+
+    return { success: false, error: errorMessage, durationMs, circuitTripped };
   }
 }
 
