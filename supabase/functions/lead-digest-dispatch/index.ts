@@ -19,6 +19,21 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
+    // Cron secret path (cron-relay forwards x-cron-secret from CRON_SECRET env)
+    function timingSafeEqual(a: string, b: string): boolean {
+      if (a.length !== b.length) return false;
+      let result = 0;
+      for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+      return result === 0;
+    }
+    const providedCronSecret = req.headers.get("x-cron-secret");
+    const expectedCronSecret = Deno.env.get("CRON_SECRET");
+    const expectedCronSecretPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
+    const hasValidCronSecret = !!(providedCronSecret && (
+      (expectedCronSecret && timingSafeEqual(providedCronSecret, expectedCronSecret)) ||
+      (expectedCronSecretPrev && timingSafeEqual(providedCronSecret, expectedCronSecretPrev))
+    ));
+
     // Decode JWT payload without verification to inspect role/iss
     // (signature is verified by Supabase infra; we trust the token is valid if it reaches us)
     function decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -31,12 +46,12 @@ Deno.serve(async (req) => {
       } catch { return null; }
     }
 
-    let isSystemCall = false; // cron or service role
+    let isSystemCall = hasValidCronSecret; // cron-relay or service role
     let isAdminCall = false;
     let userId: string | null = null;
     let triggerType: string = "scheduled";
 
-    if (bearerToken) {
+    if (!isSystemCall && bearerToken) {
       const payload = decodeJwtPayload(bearerToken);
       const role = payload?.role as string | undefined;
 
