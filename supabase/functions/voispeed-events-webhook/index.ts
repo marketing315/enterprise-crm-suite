@@ -42,6 +42,16 @@ function timingSafeEqual(a: string, b: string): boolean {
   return sharedTimingSafeEqual(a, b);
 }
 
+async function hmacSha256Hex(secret: string, data: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req: Request) => {
   // VOIspeed sends events as GET with querystring
   const url = new URL(req.url);
@@ -60,6 +70,24 @@ Deno.serve(async (req: Request) => {
       console.warn("[VOIspeed] Unauthorized request - invalid or missing token");
       return new Response("Unauthorized", { status: 401 });
     }
+
+    // --- C8: optional HMAC + timestamp anti-replay (opt-in via VOISPEED_HMAC_SECRET) ---
+    const hmacSecret = Deno.env.get("VOISPEED_HMAC_SECRET");
+    if (hmacSecret) {
+      const sigHeader = req.headers.get("x-voispeed-signature") ?? "";
+      const tsHeader = req.headers.get("x-voispeed-timestamp") ?? "";
+      const ts = Number(tsHeader);
+      if (!ts || Math.abs(Date.now() / 1000 - ts) > 300) {
+        console.warn("[VOIspeed] HMAC ts skew or missing");
+        return new Response("Unauthorized", { status: 401 });
+      }
+      const expectedSig = await hmacSha256Hex(hmacSecret, `${ts}.${url.search}`);
+      if (!sigHeader || !timingSafeEqual(sigHeader, expectedSig)) {
+        console.warn("[VOIspeed] HMAC signature mismatch");
+        return new Response("Unauthorized", { status: 401 });
+      }
+    }
+
 
     // --- Validated, proceed with event processing ---
     console.log("[VOIspeed] Event received:", { event_name: params.event_name, ext: params.ext });
