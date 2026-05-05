@@ -2,6 +2,7 @@
 // Cron-driven (1min). Consegna notifiche di escalation/override/SLO/anomalie verso webhook esterni.
 // Supporta preset: generic (HMAC SHA-256), google_sheets (Apps Script), n8n, slack_compatible.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
