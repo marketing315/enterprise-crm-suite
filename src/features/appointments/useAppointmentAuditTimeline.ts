@@ -15,7 +15,7 @@ export interface AppointmentTimelineEvent {
 
 /**
  * Unified timeline for an appointment:
- *  - audit_log entries (create, update, assign, status_change)
+ *  - audit_log_unified view (legacy audit_log + new audit_events) — A4-bis
  *  - appointment_outcomes (executed, no-show, cancelled, ...)
  * Sorted DESC by occurred_at.
  */
@@ -28,7 +28,8 @@ export function useAppointmentAuditTimeline(appointmentId: string | undefined) {
 
       const [auditRes, outcomesRes] = await Promise.all([
         supabase
-          .from("audit_log")
+          // A4-bis: read from unified view (audit_events ∪ audit_log)
+          .from("audit_log_unified" as never)
           .select("id, action, actor_user_id, old_value, new_value, metadata, created_at")
           .eq("entity_type", "appointment")
           .eq("entity_id", appointmentId)
