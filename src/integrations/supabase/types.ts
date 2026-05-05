@@ -10617,6 +10617,7 @@ export type Database = {
         }
       }
       cleanup_auth_rate_limit: { Args: never; Returns: number }
+      cleanup_oauth_sessions: { Args: never; Returns: number }
       cleanup_old_traces: { Args: never; Returns: number }
       cleanup_outbound_webhook_deliveries: {
         Args: { p_limit?: number }
