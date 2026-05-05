@@ -270,15 +270,22 @@ Deno.serve(async (req: Request) => {
       .update({ status: "ringing" })
       .eq("id", callLog.id);
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        call_log_id: callLog.id,
-        ext_id: extId,
-        message: "Call initiated successfully",
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const okBody = {
+      success: true,
+      call_log_id: callLog.id,
+      ext_id: extId,
+      message: "Call initiated successfully",
+    };
+    if (idemHandle) {
+      await idemHandle.complete(200, okBody);
+    }
+    return new Response(JSON.stringify(okBody), {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        ...(idemKey ? { "Idempotency-Key": idemKey, "Idempotency-Replay": "false" } : {}),
+      },
+    });
 
   } catch (error) {
     return safeErrorResponse(error, {
