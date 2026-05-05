@@ -16,7 +16,8 @@ export type SessionEventType =
   | "mfa_enroll"
   | "mfa_unenroll"
   | "mfa_challenge_success"
-  | "mfa_challenge_failed";
+  | "mfa_challenge_failed"
+  | "idle_timeout";
 
 interface LogOptions {
   sessionId?: string | null;

@@ -11996,16 +11996,27 @@ export type Database = {
         }
         Returns: string
       }
-      log_session_event: {
-        Args: {
-          p_event_type: string
-          p_ip_address?: string
-          p_metadata?: Json
-          p_session_id?: string
-          p_user_agent?: string
-        }
-        Returns: string
-      }
+      log_session_event:
+        | {
+            Args: {
+              p_event_type: string
+              p_ip_address?: unknown
+              p_metadata?: Json
+              p_session_id?: string
+              p_user_agent?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_event_type: string
+              p_ip_address?: string
+              p_metadata?: Json
+              p_session_id?: string
+              p_user_agent?: string
+            }
+            Returns: string
+          }
       map_stage_to_contact_status: {
         Args: { p_stage_name: string }
         Returns: Database["public"]["Enums"]["contact_status"]
