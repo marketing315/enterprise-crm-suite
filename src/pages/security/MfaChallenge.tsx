@@ -85,14 +85,13 @@ export default function MfaChallenge() {
         logSessionEvent("mfa_challenge_success"),
       );
 
-      // BUGFIX: prima di navigare, forziamo il refresh della session e
-      // aspettiamo che `getAuthenticatorAssuranceLevel` riporti aal2.
-      // Senza questo, il MfaGuard vede ancora aal1 in memoria, ti rispedisce
-      // a /security/mfa-challenge, MfaChallenge si rimonta e crea una NUOVA
-      // challenge che revoca il token → logout immediato.
-      try {
-        await supabase.auth.refreshSession();
-      } catch { /* best-effort */ }
+      // BUGFIX: NON chiamare refreshSession() qui. Il refresh_token è stato
+      // emesso al login (AAL1) e re-issuerebbe un access_token AAL1,
+      // declassando la sessione appena promossa ad AAL2 da mfa.verify().
+      // mfa.verify() ha già aggiornato la session in-place ad AAL2 e
+      // emesso l'evento MFA_CHALLENGE_VERIFIED che useMfaStatus ascolta.
+      // Aspettiamo solo che getAuthenticatorAssuranceLevel rifletta aal2
+      // (max ~3s) prima di navigare, così MfaGuard non rimbalza.
       const deadline = Date.now() + 3000;
       while (Date.now() < deadline) {
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
