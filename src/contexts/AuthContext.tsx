@@ -32,20 +32,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRealtimeReady, setIsRealtimeReady] = useState(false);
 
+  const realtimeAttemptRef = useRef(0);
+  const realtimeRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const syncRealtimeAuth = useCallback(async (nextSession: Session | null) => {
     const accessToken = nextSession?.access_token;
+    if (realtimeRetryTimerRef.current) {
+      clearTimeout(realtimeRetryTimerRef.current);
+      realtimeRetryTimerRef.current = null;
+    }
     if (!accessToken) {
       setIsRealtimeReady(false);
+      realtimeAttemptRef.current = 0;
       return;
     }
+
+    // F8: decode exp; if token is already expired skip the call — onAuthStateChange
+    // TOKEN_REFRESHED will fire shortly with a fresh one.
+    try {
+      const { secondsUntilExpiry } = await import('@/lib/jwt-decode');
+      const ttl = secondsUntilExpiry(accessToken);
+      if (ttl !== null && ttl <= 0) {
+        setIsRealtimeReady(false);
+        window.dispatchEvent(new CustomEvent('realtime-stale', { detail: { reason: 'expired' } }));
+        return;
+      }
+    } catch { /* no-op */ }
 
     try {
       setIsRealtimeReady(false);
       await supabase.realtime.setAuth(accessToken);
       setIsRealtimeReady(true);
+      realtimeAttemptRef.current = 0;
+      window.dispatchEvent(new CustomEvent('realtime-stale', { detail: { reason: 'ok', ok: true } }));
     } catch (error) {
       setIsRealtimeReady(false);
       console.warn('Failed to sync realtime auth:', error);
+      // F8: exponential backoff retry, capped at 30s, max 5 attempts.
+      const attempt = Math.min(realtimeAttemptRef.current + 1, 5);
+      realtimeAttemptRef.current = attempt;
+      const delay = Math.min(30_000, 1_000 * 2 ** (attempt - 1));
+      window.dispatchEvent(new CustomEvent('realtime-stale', { detail: { reason: 'retry', attempt, delay } }));
+      realtimeRetryTimerRef.current = setTimeout(() => {
+        void syncRealtimeAuth(nextSession);
+      }, delay);
     }
   }, []);
 
