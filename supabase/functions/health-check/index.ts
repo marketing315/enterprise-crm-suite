@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { checkIpRateLimit, rateLimited429 } from "../_shared/ip-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +18,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // H1: IP rate limit per evitare scraping del check pubblico
+  const rl = await checkIpRateLimit(req, { scope: "health-check", maxPerMin: 30 });
+  if (!rl.allowed) return rateLimited429(rl.retryAfter);
 
   const started = performance.now();
   const checks: ServiceCheck[] = [];

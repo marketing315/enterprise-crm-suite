@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqual as sharedTimingSafeEqual } from "../_shared/crypto.ts";
+import { checkIpRateLimit, rateLimited429 } from "../_shared/ip-rate-limit.ts";
 
 /**
  * VOIspeed v4 Events Webhook
@@ -58,6 +59,13 @@ Deno.serve(async (req: Request) => {
   const params = Object.fromEntries(url.searchParams.entries()) as unknown as VOIspeedEvent;
 
   try {
+    // H1: IP rate limit (token bucket per IP, fail-open su errore)
+    const rl = await checkIpRateLimit(req, { scope: "voispeed-events", maxPerMin: 240 });
+    if (!rl.allowed) {
+      console.warn("[VOIspeed] rate_limited ip=", rl.identifier);
+      return rateLimited429(rl.retryAfter);
+    }
+
     // --- Authentication: validate shared secret token ---
     const expectedToken = Deno.env.get("VOISPEED_WEBHOOK_TOKEN");
     if (!expectedToken) {
