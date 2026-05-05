@@ -414,6 +414,7 @@ export function MainLayout() {
     <SidebarProvider>
       <IncomingCallPopup />
       <IdleTimeoutWatcher />
+      <RealtimeStaleBanner />
       <WelcomeModal />
       <AppTour />
       <div className="flex min-h-screen w-full">
