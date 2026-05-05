@@ -167,6 +167,14 @@ export function RestorePanel() {
             )}
           </div>
 
+          {fileError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>File non accettato</AlertTitle>
+              <AlertDescription>{fileError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-center gap-2 pt-2">
             <Button
               onClick={handlePreview}
