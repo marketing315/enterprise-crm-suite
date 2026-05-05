@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHash } from "node:crypto";
 import { timingSafeEqual } from "../_shared/crypto.ts";
+import { redactForLog } from "../_shared/pii-redact.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
