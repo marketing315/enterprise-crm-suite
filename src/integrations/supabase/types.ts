@@ -11865,6 +11865,15 @@ export type Database = {
           total_attempts: number
         }[]
       }
+      grant_user_role: {
+        Args: {
+          p_brand_id: string
+          p_can_access_children?: boolean
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: string
+      }
       has_finance_access: {
         Args: { p_brand_id: string; p_user_id: string }
         Returns: boolean
@@ -12447,6 +12456,14 @@ export type Database = {
         Returns: boolean
       }
       revoke_mcp_token: { Args: { p_token_id: string }; Returns: boolean }
+      revoke_user_role: {
+        Args: {
+          p_brand_id: string
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       rotate_outbound_webhook_secret: {
         Args: { p_id: string; p_new_secret: string }
         Returns: string
