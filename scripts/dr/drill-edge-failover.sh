@@ -80,7 +80,7 @@ echo "   ✅ Modalità normale ripristinata"
 
 echo ""
 echo "6️⃣  Cleanup fixture..."
-psql "$DATABASE_URL" -c "DELETE FROM public.incoming_requests WHERE payload->>'drill_id' = '$DRILL_ID';" >/dev/null
+psql "$DATABASE_URL" -c "DELETE FROM public.incoming_requests WHERE raw_body->>'drill_id' = '$DRILL_ID';" >/dev/null
 
 echo ""
 if [[ "$RESPONSE_CODE" == "202" && "$QUEUED" -eq 1 && "$BANNER" == "true" ]]; then
