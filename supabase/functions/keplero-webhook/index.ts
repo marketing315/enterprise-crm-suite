@@ -416,13 +416,14 @@ async function handleKepleroPayload(
     } else {
       appointmentId = appointment?.id || null;
       if (appointmentId) {
-        await supabaseAdmin.from("audit_log").insert({
-          brand_id: brandId,
-          entity_type: "appointment",
-          entity_id: appointmentId,
-          action: "create",
-          actor_user_id: null,
-          metadata: { source: "keplero", fingerprint },
+        await supabaseAdmin.rpc("log_audit_event", {
+          p_entity_type: "appointment",
+          p_action: "create",
+          p_brand_id: brandId,
+          p_entity_id: appointmentId,
+          p_metadata: { source: "keplero", fingerprint },
+          p_source: "webhook",
+          p_correlation_id: fingerprint,
         });
       }
     }
@@ -469,13 +470,14 @@ async function handleKepleroPayload(
           notes: "Auto-stage da Keplero: fissato_keplero=true",
         });
 
-        await supabaseAdmin.from("audit_log").insert({
-          brand_id: brandId,
-          entity_type: "deal",
-          entity_id: dealId,
-          action: "auto_stage_fissato",
-          actor_user_id: null,
-          metadata: { source: "keplero", fingerprint, from_stage_id: fromStageId, to_stage_id: fissatoStage.id },
+        await supabaseAdmin.rpc("log_audit_event", {
+          p_entity_type: "deal",
+          p_action: "auto_stage_fissato",
+          p_brand_id: brandId,
+          p_entity_id: dealId,
+          p_metadata: { source: "keplero", fingerprint, from_stage_id: fromStageId, to_stage_id: fissatoStage.id },
+          p_source: "webhook",
+          p_correlation_id: fingerprint,
         });
 
         console.log("[Keplero] Deal auto-staged to Fissato:", dealId);

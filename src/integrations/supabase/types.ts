@@ -10159,6 +10159,22 @@ export type Database = {
       }
     }
     Views: {
+      audit_log_unified: {
+        Row: {
+          action: string | null
+          actor_user_id: string | null
+          brand_id: string | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string | null
+          metadata: Json | null
+          new_value: Json | null
+          old_value: Json | null
+          source_table: string | null
+        }
+        Relationships: []
+      }
       outbound_webhooks_safe: {
         Row: {
           brand_id: string | null

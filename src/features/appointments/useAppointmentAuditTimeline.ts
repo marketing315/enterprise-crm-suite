@@ -15,7 +15,7 @@ export interface AppointmentTimelineEvent {
 
 /**
  * Unified timeline for an appointment:
- *  - audit_log entries (create, update, assign, status_change)
+ *  - audit_log_unified view (legacy audit_log + new audit_events) — A4-bis
  *  - appointment_outcomes (executed, no-show, cancelled, ...)
  * Sorted DESC by occurred_at.
  */
@@ -28,7 +28,8 @@ export function useAppointmentAuditTimeline(appointmentId: string | undefined) {
 
       const [auditRes, outcomesRes] = await Promise.all([
         supabase
-          .from("audit_log")
+          // A4-bis: read from unified view (audit_events ∪ audit_log)
+          .from("audit_log_unified" as never)
           .select("id, action, actor_user_id, old_value, new_value, metadata, created_at")
           .eq("entity_type", "appointment")
           .eq("entity_id", appointmentId)
@@ -45,9 +46,20 @@ export function useAppointmentAuditTimeline(appointmentId: string | undefined) {
       if (auditRes.error) throw auditRes.error;
       if (outcomesRes.error) throw outcomesRes.error;
 
+      type AuditRow = {
+        id: string;
+        action: string;
+        actor_user_id: string | null;
+        old_value: Record<string, unknown> | null;
+        new_value: Record<string, unknown> | null;
+        metadata: Record<string, unknown> | null;
+        created_at: string;
+      };
+      const auditRows = (auditRes.data ?? []) as unknown as AuditRow[];
+
       // Resolve actor names in a single pass
       const actorIds = new Set<string>();
-      auditRes.data?.forEach((r) => r.actor_user_id && actorIds.add(r.actor_user_id));
+      auditRows.forEach((r) => r.actor_user_id && actorIds.add(r.actor_user_id));
       outcomesRes.data?.forEach((r) => r.recorded_by_user_id && actorIds.add(r.recorded_by_user_id));
 
       let usersMap = new Map<string, string>();
@@ -59,16 +71,16 @@ export function useAppointmentAuditTimeline(appointmentId: string | undefined) {
         users?.forEach((u) => usersMap.set(u.id, u.full_name || u.email));
       }
 
-      const auditEvents: AppointmentTimelineEvent[] = (auditRes.data || []).map((r) => ({
+      const auditEvents: AppointmentTimelineEvent[] = auditRows.map((r) => ({
         id: `audit-${r.id}`,
         kind: "audit",
         action: r.action,
         occurred_at: r.created_at,
         actor_user_id: r.actor_user_id,
         actor_name: r.actor_user_id ? usersMap.get(r.actor_user_id) ?? null : null,
-        old_value: (r.old_value as Record<string, unknown>) ?? null,
-        new_value: (r.new_value as Record<string, unknown>) ?? null,
-        metadata: (r.metadata as Record<string, unknown>) ?? {},
+        old_value: r.old_value ?? null,
+        new_value: r.new_value ?? null,
+        metadata: r.metadata ?? {},
       }));
 
       const outcomeEvents: AppointmentTimelineEvent[] = (outcomesRes.data || []).map((r) => ({
