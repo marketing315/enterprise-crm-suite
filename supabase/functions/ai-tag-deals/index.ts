@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { SuggestDealTagsSchema, safeParseJsonString, validateAIOutput } from "../_shared/ai-output-validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -173,11 +174,19 @@ async function processTagJob(
     return;
   }
 
-  const suggestion = JSON.parse(toolCall.function.arguments) as {
-    tags_to_apply: string[];
-    rationale: string;
-    confidence: number;
-  };
+  const j = safeParseJsonString(toolCall.function.arguments);
+  if (!j.ok) {
+    console.warn(`[ai-tag-deals] tool_call json parse failed: ${j.error}`);
+    await supabase.rpc("complete_ai_tag_job", { p_job_id: job.job_id });
+    return;
+  }
+  const v = validateAIOutput(SuggestDealTagsSchema, j.value);
+  if (!v.ok) {
+    console.warn(`[ai-tag-deals] ${v.error}`);
+    await supabase.rpc("complete_ai_tag_job", { p_job_id: job.job_id });
+    return;
+  }
+  const suggestion = v.data;
 
   console.log(`AI suggested tags for deal ${job.deal_id}:`, suggestion);
 

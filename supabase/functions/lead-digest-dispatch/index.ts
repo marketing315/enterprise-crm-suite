@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -673,16 +674,23 @@ Inviato automaticamente da CRM Ralph Hub`;
     let sent = false;
 
     try {
-      const n8nResponse = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(30000),
-      });
-      responseStatus = n8nResponse.status;
-      responseBody = (await n8nResponse.text()).substring(0, 2000);
-      sent = n8nResponse.ok;
-      if (!sent) errorMessage = `n8n returned ${responseStatus}: ${responseBody.substring(0, 200)}`;
+      const safe = await assertSafeUrl(webhookUrl);
+      if (!safe.ok) {
+        errorMessage = `ssrf_blocked:${safe.error}:${safe.detail ?? ""}`;
+        responseStatus = 0;
+        console.warn(`[lead-digest-dispatch] ${errorMessage}`);
+      } else {
+        const n8nResponse = await fetch(safe.url.toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(30000),
+        });
+        responseStatus = n8nResponse.status;
+        responseBody = (await n8nResponse.text()).substring(0, 2000);
+        sent = n8nResponse.ok;
+        if (!sent) errorMessage = `n8n returned ${responseStatus}: ${responseBody.substring(0, 200)}`;
+      }
     } catch (fetchErr) {
       errorMessage = fetchErr instanceof Error ? fetchErr.message : "Fetch error";
       console.error("[lead-digest-dispatch] Fetch error:", fetchErr);
