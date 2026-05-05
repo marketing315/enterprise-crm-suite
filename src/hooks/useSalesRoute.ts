@@ -31,7 +31,7 @@ export function useSalesRouteSchedule() {
         .eq("brand_id", brandId!)
         .maybeSingle();
       if (error) throw error;
-      return (data as SalesRouteSchedule | null) ?? null;
+      return ((data as unknown) as SalesRouteSchedule | null) ?? null;
     },
   });
 }
