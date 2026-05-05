@@ -189,16 +189,28 @@ Deno.serve(async (req) => {
         console.log(`[google-ads-sync] Syncing ${customerId}: ${accountSinceDate} → ${untilDate}`);
 
         // --- Proactive token refresh (10 min buffer) ---
-        let accessToken = oauthToken.access_token_encrypted;
+        // A2: Read tokens via Vault wrapper (fallback to legacy column inside RPC)
+        const { data: accessVault } = await supabase.rpc("vault_get_oauth_secret", {
+          p_token_id: oauthToken.id,
+          p_kind: "access",
+        });
+        let accessToken: string = (accessVault as string | null) ?? oauthToken.access_token_encrypted ?? "";
+
         if (new Date(oauthToken.expires_at).getTime() <= Date.now() + TOKEN_REFRESH_BUFFER_MS) {
           console.log(`[google-ads-sync] Proactive refresh for ${customerId} (expires ${oauthToken.expires_at})`);
+          const { data: refreshVault } = await supabase.rpc("vault_get_oauth_secret", {
+            p_token_id: oauthToken.id,
+            p_kind: "refresh",
+          });
+          const refreshTokenValue: string = (refreshVault as string | null) ?? oauthToken.refresh_token_encrypted ?? "";
+
           const refreshResp = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
               client_id: googleClientId,
               client_secret: googleClientSecret,
-              refresh_token: oauthToken.refresh_token_encrypted,
+              refresh_token: refreshTokenValue,
               grant_type: "refresh_token",
             }),
           });
@@ -214,9 +226,15 @@ Deno.serve(async (req) => {
 
           accessToken = refreshData.access_token;
           const newExpiry = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString();
+          // Persist new access token in Vault (wrapper clears legacy column)
+          await supabase.rpc("vault_put_oauth_secret", {
+            p_token_id: oauthToken.id,
+            p_kind: "access",
+            p_value: accessToken,
+          });
           await supabase
             .from("oauth_tokens")
-            .update({ access_token_encrypted: accessToken, expires_at: newExpiry, updated_at: new Date().toISOString() })
+            .update({ expires_at: newExpiry, updated_at: new Date().toISOString() })
             .eq("id", oauthToken.id);
         }
 
