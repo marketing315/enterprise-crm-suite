@@ -170,27 +170,42 @@ Deno.serve(async (req) => {
       console.warn("Could not list Meta ad accounts:", err);
     }
 
-    // Store in oauth_tokens
-    const { error: upsertError } = await supabaseService
+    // Store in oauth_tokens. A2: token goes into Vault via wrapper.
+    const { data: upserted, error: upsertError } = await supabaseService
       .from("oauth_tokens")
       .upsert(
         {
           brand_id: brandId,
           provider: "meta_ads",
           account_id: accountId,
-          access_token_encrypted: accessToken,
+          access_token_encrypted: "",
           refresh_token_encrypted: "", // Meta uses long-lived tokens, no refresh token
           expires_at: expiresAt,
           scopes: ["ads_read", "ads_management", "business_management"],
           updated_at: new Date().toISOString(),
         },
         { onConflict: "brand_id,provider,account_id" }
-      );
+      )
+      .select("id")
+      .single();
 
-    if (upsertError) {
+    if (upsertError || !upserted?.id) {
       console.error("Failed to save Meta OAuth token:", upsertError);
       return new Response(
-        renderHtml("Errore", `Salvataggio token fallito: ${escapeHtml(upsertError.message)}`),
+        renderHtml("Errore", `Salvataggio token fallito: ${escapeHtml(upsertError?.message ?? "unknown")}`),
+        { status: 500, headers: { "Content-Type": "text/html" } }
+      );
+    }
+
+    const { error: vaultErr } = await supabaseService.rpc("vault_put_oauth_secret", {
+      p_token_id: upserted.id,
+      p_kind: "access",
+      p_value: accessToken,
+    });
+    if (vaultErr) {
+      console.error("Failed to store Meta token in Vault:", vaultErr);
+      return new Response(
+        renderHtml("Errore", "Salvataggio sicuro del token fallito."),
         { status: 500, headers: { "Content-Type": "text/html" } }
       );
     }
