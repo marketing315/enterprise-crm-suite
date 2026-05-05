@@ -5,6 +5,7 @@ import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
 import { purgeSupabaseAuthStorage } from '@/lib/auth-storage-purge';
 import { clearAllQueryCaches } from '@/lib/queryClient';
 import { setUserScope, purgeUserScopedStorage } from '@/lib/userScopedStorage';
+import { clearIdleActivity, markIdleActivity } from '@/lib/idle-activity';
 import type { User, UserRole, AppRole } from '@/types/database';
 
 interface AuthContextType {
@@ -149,6 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void syncRealtimeAuth(newSession);
 
         if (newSession?.user) {
+          if (event === 'SIGNED_IN' || event === 'MFA_CHALLENGE_VERIFIED') {
+            markIdleActivity();
+          }
           currentAuthIdRef.current = newSession.user.id;
           // GDPR: scope UI-preference localStorage keys under this user id.
           // If a different user was previously active, their keys are
@@ -185,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Best-effort signout audit BEFORE clearing local state (RPC needs auth.uid)
           // Actually session is already gone here, so signout is logged in signOut() below.
           currentAuthIdRef.current = null;
+          clearIdleActivity();
           setUser(null);
           setUserRoles([]);
           // SECURITY: purge any SW-cached Supabase responses so the next
@@ -315,6 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch { /* best-effort */ }
     currentAuthIdRef.current = null;
     await supabase.auth.signOut();
+    clearIdleActivity();
     setUser(null);
     setUserRoles([]);
     setSession(null);

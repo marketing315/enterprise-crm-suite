@@ -7,6 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { markIdleActivity } from "@/lib/idle-activity";
+import { decodeJwtAal } from "@/lib/jwt-decode";
+
+const MFA_READY_TIMEOUT_MS = 6000;
+
+async function waitForAal2(timeoutMs = MFA_READY_TIMEOUT_MS): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const [{ data: sessionData }, { data: aal }] = await Promise.all([
+      supabase.auth.getSession(),
+      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    ]);
+    const aalFromToken = decodeJwtAal(sessionData.session?.access_token);
+    if (aal?.currentLevel === "aal2" || aalFromToken === "aal2") return true;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+}
 
 /**
  * A5 — TOTP challenge after sign-in for users who already enrolled MFA.
@@ -30,8 +48,11 @@ export default function MfaChallenge() {
         // BUGFIX: se la session è già aal2 (es. doppio mount React StrictMode
         // o navigazione tornata indietro), non creare una nuova challenge:
         // ne rigenererebbe una che revoca il token corrente.
-        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aal?.currentLevel === "aal2") {
+        const [{ data: sessionData }, { data: aal }] = await Promise.all([
+          supabase.auth.getSession(),
+          supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+        ]);
+        if (aal?.currentLevel === "aal2" || decodeJwtAal(sessionData.session?.access_token) === "aal2") {
           navigate(next, { replace: true });
           return;
         }
@@ -85,18 +106,11 @@ export default function MfaChallenge() {
         logSessionEvent("mfa_challenge_success"),
       );
 
-      // BUGFIX: NON chiamare refreshSession() qui. Il refresh_token è stato
-      // emesso al login (AAL1) e re-issuerebbe un access_token AAL1,
-      // declassando la sessione appena promossa ad AAL2 da mfa.verify().
-      // mfa.verify() ha già aggiornato la session in-place ad AAL2 e
-      // emesso l'evento MFA_CHALLENGE_VERIFIED che useMfaStatus ascolta.
-      // Aspettiamo solo che getAuthenticatorAssuranceLevel rifletta aal2
-      // (max ~3s) prima di navigare, così MfaGuard non rimbalza.
-      const deadline = Date.now() + 3000;
-      while (Date.now() < deadline) {
-        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aal?.currentLevel === "aal2") break;
-        await new Promise((r) => setTimeout(r, 100));
+      markIdleActivity();
+      const ready = await waitForAal2();
+      if (!ready) {
+        toast.error("Verifica MFA riuscita, ma la sessione non è ancora pronta. Riprova fra qualche secondo.");
+        return;
       }
 
       toast.success("Verifica MFA completata");

@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { logSessionEvent } from "@/lib/session-audit";
+import { getStoredIdleActivity, markIdleActivity } from "@/lib/idle-activity";
 
 const ACTIVITY_EVENTS = [
   "mousedown",
@@ -22,7 +23,6 @@ const ACTIVITY_EVENTS = [
 ] as const;
 
 const CHANNEL_NAME = "ralph-idle-activity";
-const STORAGE_KEY = "ralph.idle.lastActivity";
 
 export interface UseIdleTimeoutOptions {
   enabled: boolean;
@@ -57,11 +57,7 @@ export function useIdleTimeout(opts: UseIdleTimeoutOptions): IdleTimeoutState {
     } catch {
       // ignore
     }
-    try {
-      localStorage.setItem(STORAGE_KEY, String(ts));
-    } catch {
-      // ignore quota / privacy mode
-    }
+    markIdleActivity(ts);
   }, []);
 
   const recordActivity = useCallback(
@@ -84,16 +80,7 @@ export function useIdleTimeout(opts: UseIdleTimeoutOptions): IdleTimeoutState {
     if (!enabled) return;
 
     // Init last activity from storage (cross-tab continuity)
-    try {
-      const stored = Number(localStorage.getItem(STORAGE_KEY));
-      if (Number.isFinite(stored) && stored > 0) {
-        lastActivityRef.current = stored;
-      } else {
-        lastActivityRef.current = Date.now();
-      }
-    } catch {
-      lastActivityRef.current = Date.now();
-    }
+    lastActivityRef.current = getStoredIdleActivity() ?? Date.now();
 
     // BroadcastChannel for cross-tab sync (graceful fallback if unavailable)
     if (typeof BroadcastChannel !== "undefined") {
