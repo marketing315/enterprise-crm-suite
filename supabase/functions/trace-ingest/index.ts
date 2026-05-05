@@ -1,9 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { verifyInternalRequest } from "../_shared/internal-mtls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-token",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-internal-token, x-internal-caller, x-internal-timestamp, x-internal-nonce, x-internal-signature",
 };
+
+// C5 — only these callers may push spans inter-function.
+const ALLOWED_CALLERS = ["mcp-gateway", "mcp-server", "webhook-ingest", "ai-agent"] as const;
 
 interface TraceEvent {
   trace_id: string;
@@ -23,17 +28,31 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const internalToken = req.headers.get("x-internal-token");
-    const expected = Deno.env.get("INTERNAL_SERVICE_TOKEN");
-    if (!expected || internalToken !== expected) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401,
+    const rawBody = await req.text();
+    const auth = await verifyInternalRequest({
+      req,
+      rawBody,
+      allowedCallers: ALLOWED_CALLERS,
+    });
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const body = await req.json();
-    const events: TraceEvent[] = Array.isArray(body?.events) ? body.events : [body];
+    let body: { events?: unknown };
+    try {
+      body = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      return new Response(JSON.stringify({ error: "invalid_json" }), {
+        status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const events: TraceEvent[] = Array.isArray(body?.events)
+      ? (body.events as TraceEvent[])
+      : [body as TraceEvent];
 
     if (!events.length || events.length > 500) {
       return new Response(JSON.stringify({ error: "invalid_batch_size" }), {
@@ -41,6 +60,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const required = ["trace_id", "span_id", "service_name", "operation_name", "started_at", "duration_ms"];
     for (const ev of events) {

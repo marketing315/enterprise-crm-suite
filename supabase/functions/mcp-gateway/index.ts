@@ -53,11 +53,26 @@ function recordSpan(span: SpanRecord) {
   const internalToken = Deno.env.get("INTERNAL_SERVICE_TOKEN");
   if (!internalToken) return;
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/trace-ingest`;
-  fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-internal-token": internalToken },
-    body: JSON.stringify({ events: [span] }),
-  }).catch(() => {/* swallow */});
+  const body = JSON.stringify({ events: [span] });
+  // C5 — HMAC-signed mutual auth (replaces shared-token header).
+  (async () => {
+    try {
+      const { signInternalRequest } = await import("../_shared/internal-mtls.ts");
+      const headers = await signInternalRequest({
+        caller: "mcp-gateway",
+        method: "POST",
+        url,
+        body,
+      });
+      await fetch(url, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body,
+      });
+    } catch {
+      /* swallow */
+    }
+  })();
 }
 
 // ── Types ──────────────────────────────────────────

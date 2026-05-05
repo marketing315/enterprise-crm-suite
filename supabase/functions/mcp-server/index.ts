@@ -70,14 +70,26 @@ function recordSpan(span: SpanRecord) {
   // Fire-and-forget; never await on the hot path.
   if (!INTERNAL_TOKEN) return;
   const url = `${SUPABASE_URL}/functions/v1/trace-ingest`;
-  fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-token": INTERNAL_TOKEN,
-    },
-    body: JSON.stringify({ events: [span] }),
-  }).catch(() => {/* swallow — observability must never break runtime */});
+  const body = JSON.stringify({ events: [span] });
+  // C5 — sign with HMAC mutual auth, fall back to legacy header on signing failure.
+  (async () => {
+    try {
+      const { signInternalRequest } = await import("../_shared/internal-mtls.ts");
+      const headers = await signInternalRequest({
+        caller: "mcp-server",
+        method: "POST",
+        url,
+        body,
+      });
+      await fetch(url, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body,
+      });
+    } catch {
+      // swallow — observability must never break runtime
+    }
+  })();
 }
 
 const SERVER_INFO = { name: "ralph-crm-mcp", version: "1.0.0" };
