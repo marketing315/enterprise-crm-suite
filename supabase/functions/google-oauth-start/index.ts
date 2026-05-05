@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createOAuthSession } from "../_shared/oauth-session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,15 +81,13 @@ Deno.serve(async (req) => {
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
 
-    // Sign state with HMAC to prevent tampering; don't include raw token
-    const statePayload = { brand_id: brandId, user_id: crmUser.id, exp: Date.now() + 600_000 };
-    const stateJson = JSON.stringify(statePayload);
-    const hmacSecret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey("raw", encoder.encode(hmacSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(stateJson));
-    const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-    const state = btoa(JSON.stringify({ ...statePayload, sig: sigHex }));
+    // C7: Server-side single-use OAuth session (replaces HMAC-signed state).
+    const state = await createOAuthSession(serviceClient, {
+      brand_id: brandId,
+      user_id: crmUser.id,
+      provider: "google",
+      redirect_uri: redirectUri,
+    });
 
     const scopes = [
       "https://www.googleapis.com/auth/adwords",
