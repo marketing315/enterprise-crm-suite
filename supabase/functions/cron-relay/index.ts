@@ -10,6 +10,16 @@
 //
 // Request body: { "target": "webhook-dispatcher", "payload": {...}, "query": "?from=..." }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const RelayBodySchema = z.object({
+  target: z.string().min(1).max(80),
+  payload: z.unknown().optional(),
+  query: z.string().max(2048).optional()
+    .refine((q) => !q || (q.startsWith("?") && /^[A-Za-z0-9._\-=&%?]*$/.test(q)), "invalid_query"),
+  timeout_ms: z.number().int().min(1000).max(60000).optional(),
+  brand_id: z.string().uuid().optional(),
+}).strict();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
