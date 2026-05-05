@@ -135,3 +135,5 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
   [functions.sales-route-preview]
     verify_jwt = false   # client invoke -> getUser() + brand check in code
+  [functions.auth-lockout-email]
+    verify_jwt = false   # called pre-login from client; silent ack on every error (no oracle)
