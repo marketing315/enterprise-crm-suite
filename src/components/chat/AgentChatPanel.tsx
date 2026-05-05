@@ -437,7 +437,7 @@ function AgentMessageBubble({ message, onRetry }: { message: Message; onRetry?: 
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 [&_table]:text-xs">
-              <ReactMarkdown components={{
+              <SafeMarkdown components={{
                 table: ({ children }) => (
                   <div className="overflow-x-auto my-3 rounded-lg border border-border/50">
                     <table className="min-w-full text-sm">{children}</table>
