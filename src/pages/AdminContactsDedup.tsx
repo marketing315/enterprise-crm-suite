@@ -22,7 +22,8 @@ interface DupGroup {
 }
 
 export default function AdminContactsDedup() {
-  const { brandId } = useBrandFilter();
+  const { currentBrand } = useBrandFilter();
+  const brandId = currentBrand?.id;
   const [strategy, setStrategy] = useState<Strategy>("phone");
   const qc = useQueryClient();
 
