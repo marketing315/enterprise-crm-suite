@@ -114,14 +114,16 @@ export class ErrorBoundary extends Component<Props, State> {
             <Copy className="h-3 w-3" />
           </button>
         )}
-        <details className="text-xs text-muted-foreground max-w-md">
-          <summary className="cursor-pointer hover:text-foreground">
-            Dettagli tecnici
-          </summary>
-          <pre className="mt-2 p-2 rounded bg-muted/40 text-left overflow-auto max-h-32 whitespace-pre-wrap break-words">
-            {error.message || "Errore imprevisto"}
-          </pre>
-        </details>
+        {import.meta.env.DEV && (
+          <details className="text-xs text-muted-foreground max-w-md">
+            <summary className="cursor-pointer hover:text-foreground">
+              Dettagli tecnici (solo in sviluppo)
+            </summary>
+            <pre className="mt-2 p-2 rounded bg-muted/40 text-left overflow-auto max-h-32 whitespace-pre-wrap break-words">
+              {error.message || "Errore imprevisto"}
+            </pre>
+          </details>
+        )}
       </div>
     );
   }
