@@ -1,9 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { verifyInternalRequest } from "../_shared/internal-mtls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-token",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-internal-token, x-internal-caller, x-internal-timestamp, x-internal-nonce, x-internal-signature",
 };
+
+// C5 — only these callers may push spans inter-function.
+const ALLOWED_CALLERS = ["mcp-gateway", "mcp-server", "webhook-ingest", "ai-agent"] as const;
 
 interface TraceEvent {
   trace_id: string;
