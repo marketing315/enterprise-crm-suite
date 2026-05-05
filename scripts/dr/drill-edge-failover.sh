@@ -56,7 +56,7 @@ RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
 echo "   Risposta webhook: HTTP $RESPONSE_CODE (atteso 202)"
 
 QUEUED=$(psql "$DATABASE_URL" -At -c \
-  "SELECT count(*) FROM public.incoming_requests WHERE payload->>'drill_id' = '$DRILL_ID';")
+  "SELECT count(*) FROM public.incoming_requests WHERE raw_body->>'drill_id' = '$DRILL_ID';")
 if [[ "$QUEUED" -eq 1 ]]; then
   echo "   ✅ Payload accodato correttamente in incoming_requests"
 else
