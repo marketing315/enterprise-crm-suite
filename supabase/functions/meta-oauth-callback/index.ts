@@ -42,13 +42,13 @@ Deno.serve(async (req) => {
 
     if (error) {
       return new Response(renderHtml("Errore", `Autorizzazione negata: ${escapeHtml(error)}`), {
-        status: 400, headers: { "Content-Type": "text/html" },
+        status: 400, headers: { ...SECURE_HTML_HEADERS },
       });
     }
 
     if (!code || !stateParam) {
       return new Response(renderHtml("Errore", "Parametri mancanti"), {
-        status: 400, headers: { "Content-Type": "text/html" },
+        status: 400, headers: { ...SECURE_HTML_HEADERS },
       });
     }
 
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "state_invalid";
       return new Response(renderHtml("Errore", `State OAuth non valido o scaduto (${escapeHtml(msg)}).`), {
-        status: 403, headers: { "Content-Type": "text/html" },
+        status: 403, headers: { ...SECURE_HTML_HEADERS },
       });
     }
 
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
     if (!adminRole) {
       return new Response(renderHtml("Errore", "Non hai i permessi per collegare questo brand."), {
-        status: 403, headers: { "Content-Type": "text/html" },
+        status: 403, headers: { ...SECURE_HTML_HEADERS },
       });
     }
 
@@ -98,14 +98,14 @@ Deno.serve(async (req) => {
       console.error("Meta token exchange error:", tokenData);
       return new Response(
         renderHtml("Errore", `Token exchange fallito: ${escapeHtml(tokenData.error.message || tokenData.error)}`),
-        { status: 400, headers: { "Content-Type": "text/html" } }
+        { status: 400, headers: { ...SECURE_HTML_HEADERS } }
       );
     }
 
     const shortLivedToken = tokenData.access_token;
     if (!shortLivedToken) {
       return new Response(renderHtml("Errore", "Token non ricevuto."), {
-        status: 400, headers: { "Content-Type": "text/html" },
+        status: 400, headers: { ...SECURE_HTML_HEADERS },
       });
     }
 
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
       console.error("Meta long-lived token error:", longLivedData);
       return new Response(
         renderHtml("Errore", `Errore token long-lived: ${escapeHtml(longLivedData.error.message)}`),
-        { status: 400, headers: { "Content-Type": "text/html" } }
+        { status: 400, headers: { ...SECURE_HTML_HEADERS } }
       );
     }
 
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       console.error("Failed to save Meta OAuth token:", upsertError);
       return new Response(
         renderHtml("Errore", `Salvataggio token fallito: ${escapeHtml(upsertError?.message ?? "unknown")}`),
-        { status: 500, headers: { "Content-Type": "text/html" } }
+        { status: 500, headers: { ...SECURE_HTML_HEADERS } }
       );
     }
 
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
       console.error("Failed to store Meta token in Vault:", vaultErr);
       return new Response(
         renderHtml("Errore", "Salvataggio sicuro del token fallito."),
-        { status: 500, headers: { "Content-Type": "text/html" } }
+        { status: 500, headers: { ...SECURE_HTML_HEADERS } }
       );
     }
 
@@ -190,13 +190,13 @@ Deno.serve(async (req) => {
         "Collegamento Riuscito! ✅",
         `Account Meta Ads <strong>${escapeHtml(accountId)}</strong> collegato con successo.<br>Puoi chiudere questa finestra.`
       ),
-      { status: 200, headers: { "Content-Type": "text/html" } }
+      { status: 200, headers: { ...SECURE_HTML_HEADERS } }
     );
   } catch (err) {
     console.error("meta-oauth-callback error:", err);
     return new Response(
       renderHtml("Errore", "Si è verificato un errore interno. Riprova."),
-      { status: 500, headers: { "Content-Type": "text/html" } }
+      { status: 500, headers: { ...SECURE_HTML_HEADERS } }
     );
   }
 });
