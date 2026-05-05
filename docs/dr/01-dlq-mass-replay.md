@@ -84,24 +84,25 @@ Parametri:
 ## 5. Validazione post-replay
 
 ```sql
--- 5.1 Verifica che i count tornino
-SELECT status, count(*)
-FROM public.incoming_requests
-WHERE source = 'X'
-  AND received_at > '2026-04-28T08:00:00Z'
-GROUP BY status;
+-- 5.1 Verifica che i count tornino (filtro per source name + finestra)
+SELECT ir.status, count(*)
+FROM public.incoming_requests ir
+JOIN public.webhook_sources ws ON ws.id = ir.source_id
+WHERE ws.name = 'X'
+  AND ir.created_at > '2026-04-28T08:00:00Z'
+GROUP BY ir.status;
 
 -- 5.2 Errori residui
-SELECT id, error_class, error_message, attempt_count
-FROM public.incoming_requests
-WHERE status = 'failed'
-  AND source = 'X'
-  AND attempt_count >= 5
+SELECT ir.id, ir.dlq_reason, ir.error_message, ir.created_at
+FROM public.incoming_requests ir
+JOIN public.webhook_sources ws ON ws.id = ir.source_id
+WHERE ir.status = 'failed'
+  AND ws.name = 'X'
 LIMIT 100;
 
--- 5.3 Audit trail
-SELECT count(*) FROM public.audit_events
-WHERE action = 'replayed' AND occurred_at > now() - interval '1 hour';
+-- 5.3 Audit trail (replay registrato dall'RPC public.replay_ingest_dlq)
+SELECT count(*) FROM public.audit_log_unified
+WHERE action = 'dlq.replay' AND occurred_at > now() - interval '1 hour';
 ```
 
 ## 6. Rollback
