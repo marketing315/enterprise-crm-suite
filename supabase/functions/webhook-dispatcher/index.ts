@@ -480,6 +480,19 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
+    // H5: resurrect deliveries stuck in 'sending' (es. crash precedente del dispatcher).
+    // È un retry tecnico → la RPC NON incrementa attempt_count.
+    try {
+      const { data: requeued } = await supabase
+        .rpc("requeue_stuck_webhook_deliveries", { p_stuck_minutes: 5, p_limit: 500 });
+      const requeuedCount = Array.isArray(requeued) && requeued[0]?.requeued_count ? requeued[0].requeued_count : 0;
+      if (requeuedCount > 0) {
+        console.log(`[H5] Resurrected ${requeuedCount} stuck deliveries`);
+      }
+    } catch (e) {
+      console.warn("[H5] requeue_stuck_webhook_deliveries failed (non-fatal):", e instanceof Error ? e.message : e);
+    }
+
     // Claim pending deliveries
     const { data: deliveries, error: claimError } = await supabase
       .rpc("claim_webhook_deliveries", { p_batch_size: BATCH_SIZE });
