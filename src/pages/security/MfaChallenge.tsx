@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { markIdleActivity } from "@/lib/idle-activity";
+import { decodeJwtAal } from "@/lib/jwt-decode";
 
 const MFA_READY_TIMEOUT_MS = 6000;
 
@@ -18,7 +19,7 @@ async function waitForAal2(timeoutMs = MFA_READY_TIMEOUT_MS): Promise<boolean> {
       supabase.auth.getSession(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
     ]);
-    const aalFromToken = sessionData.session?.user?.aal;
+    const aalFromToken = decodeJwtAal(sessionData.session?.access_token);
     if (aal?.currentLevel === "aal2" || aalFromToken === "aal2") return true;
     await new Promise((r) => setTimeout(r, 150));
   }
