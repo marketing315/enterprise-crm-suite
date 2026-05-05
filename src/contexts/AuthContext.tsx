@@ -206,8 +206,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
 
+    // F3: cross-tab signout. When another tab signs out, this tab also
+    // drops its session so a stale UI cannot keep serving authenticated
+    // requests on shared workstations.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'crm_auth_signal' || !e.newValue) return;
+      try {
+        const msg = JSON.parse(e.newValue);
+        if (msg?.type === 'SIGNED_OUT') {
+          // Force a local supabase signOut (clears its own storage too)
+          void supabase.auth.signOut().catch(() => { /* no-op */ });
+        }
+      } catch { /* no-op */ }
+    };
+    window.addEventListener('storage', onStorage);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('storage', onStorage);
     };
   }, [fetchUserData, syncRealtimeAuth]);
 
