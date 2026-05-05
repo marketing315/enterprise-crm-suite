@@ -136,7 +136,7 @@ export default function ResetPassword() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Nuova password</CardTitle>
           <CardDescription>
-            Inserisci la tua nuova password
+            Inserisci la tua nuova password (min. 12 caratteri, almeno 3 tra: minuscole, maiuscole, numeri, simboli)
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
