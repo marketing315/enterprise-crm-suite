@@ -1,7 +1,9 @@
+import { timingSafeEqualAny } from "../_shared/crypto.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret, x-internal-token, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -10,6 +12,22 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // SECURITY: server-to-server only. Require CRON_SECRET or INTERNAL_SERVICE_TOKEN.
+    const cronSecret = req.headers.get("x-cron-secret");
+    const internalToken = req.headers.get("x-internal-token");
+    const expectedCron = Deno.env.get("CRON_SECRET");
+    const expectedCronPrev = Deno.env.get("CRON_SECRET_PREVIOUS");
+    const expectedInternal = Deno.env.get("INTERNAL_SERVICE_TOKEN");
+    const ok =
+      (!!cronSecret && timingSafeEqualAny(cronSecret, expectedCron, expectedCronPrev)) ||
+      (!!internalToken && !!expectedInternal && timingSafeEqualAny(internalToken, expectedInternal));
+    if (!ok) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const measurementId = Deno.env.get("GA4_MEASUREMENT_ID");
     const apiSecret = Deno.env.get("GA4_API_SECRET");
 
