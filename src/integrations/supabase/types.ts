@@ -12435,6 +12435,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      vault_get_oauth_secret: {
+        Args: { p_kind: string; p_token_id: string }
+        Returns: string
+      }
+      vault_put_oauth_secret: {
+        Args: { p_kind: string; p_token_id: string; p_value: string }
+        Returns: string
+      }
       webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
       webhook_timeseries_24h: {
         Args: { p_brand_id: string; p_bucket_minutes?: number }
