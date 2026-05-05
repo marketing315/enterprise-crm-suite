@@ -150,7 +150,7 @@ export default function ResetPassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                minLength={6}
+                minLength={12}
               />
             </div>
             <div className="space-y-2">
@@ -162,7 +162,7 @@ export default function ResetPassword() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                minLength={6}
+                minLength={12}
               />
             </div>
           </CardContent>
