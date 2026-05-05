@@ -98,11 +98,12 @@ Deno.serve(async (req: Request) => {
           Deno.env.get("SUPABASE_URL")!,
           Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
         );
+        const VOISPEED_DEDUP_SOURCE_ID = "00000000-0000-0000-0000-00000076ce5d"; // namespace fisso voispeed
         const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
         const { error: dedupErr } = await dedupClient
           .from("webhook_request_dedup")
           .insert({
-            source_id: "voispeed-events",
+            source_id: VOISPEED_DEDUP_SOURCE_ID,
             fingerprint: sigHeader,
             expires_at: expiresAt,
           });
