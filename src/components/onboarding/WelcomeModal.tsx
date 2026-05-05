@@ -1,61 +1,43 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBrand } from '@/contexts/BrandContext';
 import { useOnboardingStatus, useCompleteWelcome } from '@/hooks/useOnboardingStatus';
 import { toast } from 'sonner';
 import { Sparkles } from 'lucide-react';
 
-const ROLE_OPTIONS = [
-  { value: 'sales', label: 'Vendite' },
-  { value: 'callcenter', label: 'Call Center' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'admin', label: 'Amministrazione' },
-  { value: 'ceo', label: 'Direzione / CEO' },
-  { value: 'other', label: 'Altro' },
-];
-
 export function WelcomeModal() {
   const { user } = useAuth();
-  const { brands, currentBrand } = useBrand();
   const { needsWelcome, isLoading } = useOnboardingStatus();
   const completeWelcome = useCompleteWelcome();
 
   const defaultName = (user?.full_name || '').trim().split(' ')[0] || '';
   const [name, setName] = useState(defaultName);
-  const [role, setRole] = useState<string>('sales');
-  const [brandId, setBrandId] = useState<string>(currentBrand?.id ?? '');
-
-  useEffect(() => {
-    if (defaultName && !name) setName(defaultName);
-    if (currentBrand?.id && !brandId) setBrandId(currentBrand.id);
-  }, [defaultName, currentBrand?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading || !needsWelcome) return null;
 
-  const handleSubmit = async () => {
+  const submit = async (preferredName: string) => {
     try {
       await completeWelcome.mutateAsync({
-        preferred_name: name.trim() || defaultName || 'Utente',
-        primary_role_hint: role,
-        preferred_brand_id: brandId || null,
+        preferred_name: preferredName,
+        // role and brand are assigned by the admin — keep null/empty
+        primary_role_hint: '',
+        preferred_brand_id: null,
       });
-      toast.success(`Benvenuto, ${name.trim() || defaultName}!`);
+      toast.success(`Benvenuto, ${preferredName}!`);
     } catch (e) {
       toast.error('Impossibile salvare le preferenze. Riprova.');
     }
   };
 
-  // Filter out system brand from selectable brands
-  const selectableBrands = brands.filter(b => b.id !== '00000000-0000-0000-0000-000000000000');
+  const handleSubmit = () => submit(name.trim() || defaultName || 'Utente');
+  const handleDismiss = () => submit(defaultName || 'Utente');
 
   return (
-    <Dialog open={true} onOpenChange={() => { /* non dismissibile finché non completato */ }}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()}>
+    <Dialog open={true} onOpenChange={(open) => { if (!open) handleDismiss(); }}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -64,7 +46,7 @@ export function WelcomeModal() {
             <DialogTitle>Benvenuto nel CRM</DialogTitle>
           </div>
           <DialogDescription>
-            Pochi dati per personalizzare la tua esperienza.
+            Un dato veloce per personalizzare la tua esperienza.
           </DialogDescription>
         </DialogHeader>
 
@@ -78,34 +60,9 @@ export function WelcomeModal() {
               placeholder={defaultName || 'Il tuo nome'}
               maxLength={60}
               autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
             />
           </div>
-
-          <div className="space-y-2">
-            <Label>Qual è il tuo ruolo principale?</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ROLE_OPTIONS.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {selectableBrands.length > 1 && (
-            <div className="space-y-2">
-              <Label>Brand di riferimento <span className="text-xs text-muted-foreground">(opzionale)</span></Label>
-              <Select value={brandId} onValueChange={setBrandId}>
-                <SelectTrigger><SelectValue placeholder="Seleziona un brand" /></SelectTrigger>
-                <SelectContent>
-                  {selectableBrands.map(b => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         <DialogFooter>
