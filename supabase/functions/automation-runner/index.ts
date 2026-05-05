@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
