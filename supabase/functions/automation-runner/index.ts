@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -877,7 +878,13 @@ async function executeLoop(action: Action, ctx: ActionContext, depth: number): P
 async function executeHttpRequest(action: Action, ctx: ActionContext): Promise<Record<string, unknown>> {
   const url = action.url ? resolveTemplate(action.url, { payload: ctx.payload }) : "";
   if (!url) throw new Error("http_request requires url");
-  
+
+  // C12: SSRF guard — url comes from user-defined automation rules
+  const guard = await assertSafeUrl(url);
+  if (!guard.ok) {
+    throw new Error(`ssrf_blocked: ${guard.reason}`);
+  }
+
   const method = action.method || "POST";
   const headers: Record<string, string> = {};
   

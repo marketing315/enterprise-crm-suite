@@ -1,5 +1,6 @@
 // Edge function: claim pending audit alert deliveries and dispatch via webhook/email
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,6 +83,11 @@ async function deliverWebhook(
     headers["X-Signature-SHA256"] = await hmacSign(delivery.webhook_secret, body);
   }
   try {
+    // C12: SSRF guard — destination is user-configurable
+    const guard = await assertSafeUrl(delivery.destination);
+    if (!guard.ok) {
+      return { ok: false, error: `ssrf_blocked: ${guard.reason}` };
+    }
     const res = await fetch(delivery.destination, {
       method: "POST",
       headers,
