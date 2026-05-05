@@ -11997,6 +11997,32 @@ export type Database = {
         }
         Returns: string
       }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_brand_id?: string
+          p_correlation_id?: string
+          p_entity_id?: string
+          p_entity_type: string
+          p_idempotency_key?: string
+          p_metadata?: Json
+          p_new_value?: Json
+          p_old_value?: Json
+          p_source?: string
+        }
+        Returns: string
+      }
+      log_rpc_call: {
+        Args: {
+          p_args?: Json
+          p_brand_id?: string
+          p_correlation_id?: string
+          p_result?: Json
+          p_rpc_name: string
+          p_status?: string
+        }
+        Returns: string
+      }
       log_session_event:
         | {
             Args: {
@@ -12071,6 +12097,10 @@ export type Database = {
         Returns: undefined
       }
       mark_thread_read: { Args: { p_thread_id: string }; Returns: undefined }
+      mask_pii_jsonb: {
+        Args: { actor_roles?: string[]; payload: Json }
+        Returns: Json
+      }
       mcp_acknowledge_alert: { Args: { p_alert_id: string }; Returns: boolean }
       mcp_active_tokens: {
         Args: never
