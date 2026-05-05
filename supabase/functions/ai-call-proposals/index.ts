@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { CallProposalsArraySchema, safeParseJsonString, validateAIOutput } from "../_shared/ai-output-validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -247,11 +248,20 @@ Deno.serve(async (req: Request) => {
 
     let proposals: ProposalInput[] = [];
     if (toolCall?.function?.name === "generate_proposals") {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      proposals = parsed.proposals || [];
+      const j = safeParseJsonString(toolCall.function.arguments);
+      if (!j.ok) {
+        console.warn(`[ai-call-proposals] tool_call parse failed: ${j.error}`);
+      } else {
+        const v = validateAIOutput(CallProposalsArraySchema, j.value);
+        if (!v.ok) {
+          console.warn(`[ai-call-proposals] ${v.error}`);
+        } else {
+          proposals = v.data.proposals as ProposalInput[];
+        }
+      }
     }
 
-    // Filter & normalize
+    // Filter & normalize (post-Zod, defense-in-depth)
     const validTypes = [
       "update_contact", "update_kanban_stage", "create_or_update_ticket",
       "create_or_update_appointment", "create_lead_event", "update_deal",
