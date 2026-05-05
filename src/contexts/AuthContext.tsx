@@ -218,6 +218,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const rl = await consumeAuthRateLimit(email, "signin");
     if (!rl.allowed) {
       const wait = rl.retry_after_seconds ?? 900;
+      // A8: send lockout notification email (fire-and-forget, server-side dedup 1h)
+      if (rl.locked) {
+        void supabase.functions.invoke("auth-lockout-email", {
+          body: {
+            email,
+            retry_minutes: Math.ceil(wait / 60),
+            user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+          },
+        }).catch(() => { /* best-effort */ });
+      }
       return {
         error: new Error(
           `Troppi tentativi di accesso. Riprova fra ${formatRetryAfter(wait)}.`,
