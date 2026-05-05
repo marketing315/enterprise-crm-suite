@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { SECURE_HTML_HEADERS } from "../_shared/secure-html.ts";
 
 function escapeHtml(str: string): string {
   return str
