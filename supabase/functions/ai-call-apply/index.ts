@@ -337,7 +337,8 @@ Deno.serve(async (req: Request) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("[ai-call-apply] Error:", err);
+    // C4: redact PII from error context before logging
+    console.error("[ai-call-apply] Error:", JSON.stringify(redactForLog({ message: err?.message, stack: err?.stack })));
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
