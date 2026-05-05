@@ -69,6 +69,11 @@ function transformPayload(preset: string, p: Record<string, unknown>): unknown {
 
 async function deliver(job: ClaimedJob): Promise<{ ok: boolean; error?: string }> {
   try {
+    // C12: SSRF guard
+    const safe = await assertSafeUrl(job.endpoint_url);
+    if (!safe.ok) {
+      return { ok: false, error: `ssrf_blocked:${safe.error}:${safe.detail ?? ""}` };
+    }
     const body = JSON.stringify(transformPayload(job.preset, job.payload));
     const signature = await hmacSign(job.hmac_secret, body);
 
