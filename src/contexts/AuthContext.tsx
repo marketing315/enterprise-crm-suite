@@ -252,6 +252,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // A6: log signout BEFORE supabase.auth.signOut clears the session
+    try {
+      const { logSessionEvent } = await import('@/lib/session-audit');
+      await logSessionEvent('signout');
+    } catch { /* best-effort */ }
     currentAuthIdRef.current = null;
     await supabase.auth.signOut();
     setUser(null);
