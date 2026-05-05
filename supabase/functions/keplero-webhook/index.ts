@@ -182,7 +182,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  console.log("[Keplero] Payload received:", JSON.stringify(payload));
+  console.log("[Keplero] Payload received:", JSON.stringify(redactForLog(payload)));
 
   // ── Global try/catch to prevent unhandled 500s ──
   try {
