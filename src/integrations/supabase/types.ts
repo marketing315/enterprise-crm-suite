@@ -10585,6 +10585,10 @@ export type Database = {
           status: Database["public"]["Enums"]["appointment_status"]
         }[]
       }
+      check_backup_freshness: {
+        Args: { p_threshold_hours?: number }
+        Returns: Json
+      }
       check_phone_duplicate: {
         Args: { p_brand_id: string; p_phone_normalized: string }
         Returns: {
