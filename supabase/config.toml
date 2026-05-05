@@ -135,5 +135,3 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
   [functions.sales-route-preview]
     verify_jwt = false   # client invoke -> getUser() + brand check in code
-  [functions.sales-route-send-now]
-    verify_jwt = false   # client invoke -> getUser() + has_role in code
