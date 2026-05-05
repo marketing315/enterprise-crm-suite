@@ -57,7 +57,12 @@ export default function MfaEnroll() {
           return;
         }
         setFactorId(data.id);
-        setQrSvg(data.totp.qr_code);
+        const raw = data.totp.qr_code;
+        // Supabase returns either a raw SVG string or a data URI. Normalize to a usable img src.
+        const src = raw?.startsWith("data:") || raw?.startsWith("http")
+          ? raw
+          : `data:image/svg+xml;utf-8,${encodeURIComponent(raw ?? "")}`;
+        setQrSvg(src);
         setSecret(data.totp.secret);
       } finally {
         if (!cancelled) setLoading(false);
