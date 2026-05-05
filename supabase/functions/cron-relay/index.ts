@@ -47,13 +47,6 @@ const ALLOWED_TARGETS = new Set<string>([
   "sales-route-dispatcher",
 ]);
 
-interface RelayBody {
-  target?: string;
-  payload?: unknown;
-  query?: string;
-  timeout_ms?: number;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
