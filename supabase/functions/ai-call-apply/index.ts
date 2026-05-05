@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { redactForLog } from "../_shared/pii-redact.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
