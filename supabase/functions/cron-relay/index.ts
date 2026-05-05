@@ -47,13 +47,6 @@ const ALLOWED_TARGETS = new Set<string>([
   "sales-route-dispatcher",
 ]);
 
-interface RelayBody {
-  target?: string;
-  payload?: unknown;
-  query?: string;
-  timeout_ms?: number;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -82,9 +75,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    let body: RelayBody;
+    let raw: unknown;
     try {
-      body = await req.json();
+      raw = await req.json();
     } catch {
       return new Response(
         JSON.stringify({ error: "invalid_json" }),
@@ -92,15 +85,27 @@ Deno.serve(async (req) => {
       );
     }
 
-    const target = (body.target || "").trim();
-    if (!target || !ALLOWED_TARGETS.has(target)) {
+    const parsed = RelayBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({
+          error: "VALIDATION_ERROR",
+          details: parsed.error.flatten().fieldErrors,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const body = parsed.data;
+
+    const target = body.target.trim();
+    if (!ALLOWED_TARGETS.has(target)) {
       return new Response(
         JSON.stringify({ error: "invalid_target", target }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const query = typeof body.query === "string" && body.query.startsWith("?") ? body.query : "";
+    const query = body.query ?? "";
     const targetUrl = `${supabaseUrl}/functions/v1/${target}${query}`;
     const timeoutMs = Math.min(Math.max(body.timeout_ms ?? 25000, 1000), 60000);
 
