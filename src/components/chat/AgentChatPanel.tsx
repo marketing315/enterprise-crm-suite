@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
-import ReactMarkdown from "react-markdown";
+import { SafeMarkdown } from "@/components/ui/SafeMarkdown";
 import { useAIAgentChat, useExecutiveThread, useCreateNewExecutiveThread, AGENT_QUICK_ACTIONS } from "@/hooks/useAIAgent";
 import { useChatMessages, useChatRealtime } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
