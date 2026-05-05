@@ -21,6 +21,20 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
     setIsLoading(true);
 
     try {
+      // A4-A10: anti-abuse rate limit (5 reset / 15 min, then 15 min lock).
+      const { consumeAuthRateLimit, formatRetryAfter } = await import(
+        "@/lib/auth-rate-limit"
+      );
+      const rl = await consumeAuthRateLimit(email, "password_reset");
+      if (!rl.allowed) {
+        const wait = rl.retry_after_seconds ?? 900;
+        toast.error(
+          `Troppe richieste di recupero password. Riprova fra ${formatRetryAfter(wait)}.`,
+        );
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
