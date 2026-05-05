@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { withModuleGuard } from "@/components/layout/withModuleGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { MfaGuard } from "@/components/auth/MfaGuard";
 import { ErrorConsolePanel } from "@/components/admin/ErrorConsolePanel";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChunkLoadErrorBoundary } from "@/components/ui/ChunkLoadErrorBoundary";
@@ -23,6 +24,8 @@ import ResetPassword from "@/pages/ResetPassword";
 import Privacy from "@/pages/Privacy";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import NotFound from "@/pages/NotFound";
+const MfaEnroll = lazy(() => import("@/pages/security/MfaEnroll"));
+const MfaChallenge = lazy(() => import("@/pages/security/MfaChallenge"));
 
 // Lazy: all other pages
 const SelectBrand = lazy(() => import("@/pages/SelectBrand"));
@@ -38,6 +41,7 @@ const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const SettingsSalesRoute = lazy(() => import("@/pages/SettingsSalesRoute"));
+const SettingsSecurity = lazy(() => import("@/pages/SettingsSecurity"));
 const AdminSetup = lazy(() => import("@/pages/AdminSetup"));
 const AdminAIMetrics = lazy(() => import("@/pages/AdminAIMetrics"));
 const AdminAI = lazy(() => import("@/pages/AdminAI"));
@@ -127,6 +131,24 @@ const App = () => (
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/install" element={<GuardedInstall />} />
                   <Route path="/installa" element={<Navigate to="/install" replace />} />
+
+                  {/* A5: MFA flows (require auth, but MUST be reachable while at AAL1) */}
+                  <Route
+                    path="/security/mfa-enroll"
+                    element={
+                      <ProtectedRoute>
+                        <MfaEnroll />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/security/mfa-challenge"
+                    element={
+                      <ProtectedRoute>
+                        <MfaChallenge />
+                      </ProtectedRoute>
+                    }
+                  />
                   
                   {/* Brand selection (requires auth) */}
                   <Route
@@ -138,11 +160,13 @@ const App = () => (
                     }
                   />
                   
-                  {/* Protected routes with layout */}
+                  {/* Protected routes with layout (MFA guard wraps the whole tree) */}
                   <Route
                     element={
                       <ProtectedRoute>
-                        <MainLayout />
+                        <MfaGuard>
+                          <MainLayout />
+                        </MfaGuard>
                       </ProtectedRoute>
                     }
                   >
@@ -180,6 +204,7 @@ const App = () => (
                     <Route path="/marketing/leads" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><MarketingLeads /></RoleGuard>} />
                     <Route path="/settings" element={<RoleGuard allowedRoles={['admin', 'ceo']}><Settings /></RoleGuard>} />
                     <Route path="/settings/sales-route" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SettingsSalesRoute /></RoleGuard>} />
+                    <Route path="/settings/security" element={<SettingsSecurity />} />
                     <Route path="/team" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'responsabile_callcenter']}><Team /></RoleGuard>} />
                     <Route path="/team/salespersons" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalespersonKpi /></RoleGuard>} />
                     <Route path="/admin/ai" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminAI /></RoleGuard>} />
