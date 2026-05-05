@@ -12433,6 +12433,12 @@ export type Database = {
         Args: { p_outbox_id: string }
         Returns: boolean
       }
+      requeue_stuck_webhook_deliveries: {
+        Args: { p_limit?: number; p_stuck_minutes?: number }
+        Returns: {
+          requeued_count: number
+        }[]
+      }
       reset_auth_rate_limit: {
         Args: { p_identity_hash: string; p_scope: string }
         Returns: undefined
