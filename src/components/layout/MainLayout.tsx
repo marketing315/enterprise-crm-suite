@@ -12,6 +12,7 @@ import { PageHelpButton } from './PageHelpButton';
 import { AppearanceMenuItems } from './AppearanceMenuItems';
 import { usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
 import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
+import { IdleTimeoutWatcher } from '@/components/auth/IdleTimeoutWatcher';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
