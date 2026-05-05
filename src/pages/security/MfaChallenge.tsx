@@ -48,8 +48,11 @@ export default function MfaChallenge() {
         // BUGFIX: se la session è già aal2 (es. doppio mount React StrictMode
         // o navigazione tornata indietro), non creare una nuova challenge:
         // ne rigenererebbe una che revoca il token corrente.
-        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aal?.currentLevel === "aal2") {
+        const [{ data: sessionData }, { data: aal }] = await Promise.all([
+          supabase.auth.getSession(),
+          supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+        ]);
+        if (aal?.currentLevel === "aal2" || decodeJwtAal(sessionData.session?.access_token) === "aal2") {
           navigate(next, { replace: true });
           return;
         }
