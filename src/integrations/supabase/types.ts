@@ -4018,6 +4018,39 @@ export type Database = {
         }
         Relationships: []
       }
+      data_quality_metrics: {
+        Row: {
+          bad: number
+          brand_id: string
+          computed_at: string
+          entity: string
+          id: string
+          metric: string
+          total: number
+          value: number
+        }
+        Insert: {
+          bad?: number
+          brand_id: string
+          computed_at?: string
+          entity: string
+          id?: string
+          metric: string
+          total?: number
+          value?: number
+        }
+        Update: {
+          bad?: number
+          brand_id?: string
+          computed_at?: string
+          entity?: string
+          id?: string
+          metric?: string
+          total?: number
+          value?: number
+        }
+        Relationships: []
+      }
       deal_scores: {
         Row: {
           brand_id: string
@@ -10671,6 +10704,7 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: number
       }
+      compute_data_quality: { Args: never; Returns: number }
       consume_ai_quota: {
         Args: {
           p_brand_id: string
