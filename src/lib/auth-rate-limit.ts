@@ -45,7 +45,7 @@ export async function consumeAuthRateLimit(
       console.warn("auth rate-limit RPC error, failing open", error);
       return { allowed: true };
     }
-    return (data as RateLimitResult) ?? { allowed: true };
+    return (data as unknown as RateLimitResult) ?? { allowed: true };
   } catch (e) {
     console.warn("auth rate-limit failed, failing open", e);
     return { allowed: true };
