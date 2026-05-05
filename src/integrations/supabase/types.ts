@@ -7102,6 +7102,7 @@ export type Database = {
       }
       oauth_tokens: {
         Row: {
+          access_secret_id: string | null
           access_token_encrypted: string
           account_id: string
           brand_id: string
@@ -7109,11 +7110,13 @@ export type Database = {
           expires_at: string
           id: string
           provider: string
+          refresh_secret_id: string | null
           refresh_token_encrypted: string
           scopes: string[] | null
           updated_at: string | null
         }
         Insert: {
+          access_secret_id?: string | null
           access_token_encrypted: string
           account_id: string
           brand_id: string
@@ -7121,11 +7124,13 @@ export type Database = {
           expires_at: string
           id?: string
           provider: string
+          refresh_secret_id?: string | null
           refresh_token_encrypted: string
           scopes?: string[] | null
           updated_at?: string | null
         }
         Update: {
+          access_secret_id?: string | null
           access_token_encrypted?: string
           account_id?: string
           brand_id?: string
@@ -7133,6 +7138,7 @@ export type Database = {
           expires_at?: string
           id?: string
           provider?: string
+          refresh_secret_id?: string | null
           refresh_token_encrypted?: string
           scopes?: string[] | null
           updated_at?: string | null
@@ -9830,6 +9836,7 @@ export type Database = {
           expires_at: string
           fingerprint: string
           id: string
+          idempotency_key: string | null
           source_id: string
         }
         Insert: {
@@ -9837,6 +9844,7 @@ export type Database = {
           expires_at: string
           fingerprint: string
           id?: string
+          idempotency_key?: string | null
           source_id: string
         }
         Update: {
@@ -9844,6 +9852,7 @@ export type Database = {
           expires_at?: string
           fingerprint?: string
           id?: string
+          idempotency_key?: string | null
           source_id?: string
         }
         Relationships: [
@@ -9882,6 +9891,7 @@ export type Database = {
           payload_schema: Json | null
           rate_limit_per_min: number
           replay_window_seconds: number
+          require_signature: boolean
           updated_at: string
         }
         Insert: {
@@ -9902,6 +9912,7 @@ export type Database = {
           payload_schema?: Json | null
           rate_limit_per_min?: number
           replay_window_seconds?: number
+          require_signature?: boolean
           updated_at?: string
         }
         Update: {
@@ -9922,6 +9933,7 @@ export type Database = {
           payload_schema?: Json | null
           rate_limit_per_min?: number
           replay_window_seconds?: number
+          require_signature?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -10114,6 +10126,15 @@ export type Database = {
       apply_ai_fallback: {
         Args: { p_lead_event_id: string }
         Returns: undefined
+      }
+      assert_brand_access: {
+        Args: {
+          p_brand_id: string
+          p_entity_id: string
+          p_entity_table: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       assert_can_backup_brand: {
         Args: { p_brand_id: string }
@@ -11535,6 +11556,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      ingest_webhook_event_dedup: {
+        Args: {
+          p_idempotency_key: string
+          p_source_id: string
+          p_ttl_hours?: number
+        }
+        Returns: {
+          is_duplicate: boolean
+        }[]
       }
       insert_meta_lead_event: {
         Args: {
