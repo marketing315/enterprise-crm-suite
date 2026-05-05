@@ -47,19 +47,23 @@ export function GlobalSearchDialog({ open, onOpenChange }: Props) {
     if (!open) setQuery('');
   }, [open]);
 
+  // Use server-side full-text search via RPC: matches first_name, last_name,
+  // full name "Mario Rossi", email, phone (normalized) and city.
   const contactsQ = useQuery({
     enabled,
-    queryKey: ['global-search', 'contacts', brandId, safe],
+    queryKey: ['global-search', 'contacts', brandId, debounced],
     queryFn: async () => {
-      const pattern = `%${safe}%`;
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('id, first_name, last_name')
-        .eq('brand_id', brandId!)
-        .or(`first_name.ilike.${pattern},last_name.ilike.${pattern}`)
-        .limit(5);
+      const { data, error } = await supabase.rpc('search_contacts', {
+        p_brand_id: brandId!,
+        p_query: debounced,
+        p_tag_ids: null as unknown as string[],
+        p_match_all_tags: false,
+        p_limit: 8,
+        p_offset: 0,
+      });
       if (error) throw error;
-      return data ?? [];
+      const payload = (data ?? {}) as { contacts?: Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null }> };
+      return payload.contacts ?? [];
     },
     staleTime: 30_000,
   });
@@ -82,17 +86,9 @@ export function GlobalSearchDialog({ open, onOpenChange }: Props) {
 
   const dealsQ = useQuery({
     enabled,
-    queryKey: ['global-search', 'deals', brandId, safe],
+    queryKey: ['global-search', 'deals', brandId, debounced],
     queryFn: async () => {
-      // Find contact ids matching the query, then deals attached
-      const pattern = `%${safe}%`;
-      const { data: cs } = await supabase
-        .from('contacts')
-        .select('id, first_name, last_name')
-        .eq('brand_id', brandId!)
-        .or(`first_name.ilike.${pattern},last_name.ilike.${pattern}`)
-        .limit(10);
-      const ids = (cs ?? []).map((c) => c.id);
+      const ids = (contactsQ.data ?? []).map((c) => c.id);
       if (!ids.length) return [];
       const { data, error } = await supabase
         .from('deals')
@@ -101,7 +97,7 @@ export function GlobalSearchDialog({ open, onOpenChange }: Props) {
         .in('contact_id', ids)
         .limit(5);
       if (error) throw error;
-      const byId = new Map((cs ?? []).map((c) => [c.id, c]));
+      const byId = new Map((contactsQ.data ?? []).map((c) => [c.id, c]));
       return (data ?? []).map((d) => ({
         ...d,
         contact: byId.get(d.contact_id) ?? null,
