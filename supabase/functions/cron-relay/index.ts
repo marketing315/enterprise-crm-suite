@@ -104,28 +104,61 @@ Deno.serve(async (req) => {
     const targetUrl = `${supabaseUrl}/functions/v1/${target}${query}`;
     const timeoutMs = Math.min(Math.max(body.timeout_ms ?? 25000, 1000), 60000);
 
+    // C11: audit + advisory lock (best-effort, non-bloccante)
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const auditClient = serviceKey ? createClient(supabaseUrl, serviceKey) : null;
+    const requestId = crypto.randomUUID();
+    let gotLock = true;
+    if (auditClient) {
+      try {
+        const { data } = await auditClient.rpc("try_lock_cron_job", {
+          p_job_name: target,
+          p_brand_id: body.brand_id ?? null,
+        });
+        if (data === false) gotLock = false;
+      } catch { /* non bloccare */ }
+    }
+    if (!gotLock) {
+      console.log(`[cron-relay] target=${target} skipped (lock_held)`);
+      if (auditClient) {
+        await auditClient.from("cron_relay_log").insert({
+          job_name: target,
+          brand_id: body.brand_id ?? null,
+          request_id: requestId,
+          upstream_status: 0,
+          duration_ms: 0,
+          error: "lock_held",
+        }).then(() => {}, () => {});
+      }
+      return new Response(
+        JSON.stringify({ ok: false, target, skipped: "lock_held" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     const startedAt = Date.now();
     let upstreamStatus = 0;
     let upstreamBody = "";
+    let upstreamError: string | null = null;
     try {
       const upstream = await fetch(targetUrl, {
         method: "POST",
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
-          // The target functions accept either x-cron-secret OR service_role JWT.
-          // We forward x-cron-secret from our env (never reaches the DB / pg_cron).
           "x-cron-secret": cronSecret,
-          // Forward an anon Bearer so functions that still verify a JWT pass.
+          "x-request-id": requestId,
           "Authorization": `Bearer ${anonKey}`,
         },
         body: JSON.stringify(body.payload ?? {}),
       });
       upstreamStatus = upstream.status;
       upstreamBody = await upstream.text();
+    } catch (e) {
+      upstreamError = e instanceof Error ? e.message : String(e);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -134,6 +167,17 @@ Deno.serve(async (req) => {
     console.log(
       `[cron-relay] target=${target} status=${upstreamStatus} duration_ms=${durationMs}`,
     );
+
+    if (auditClient) {
+      await auditClient.from("cron_relay_log").insert({
+        job_name: target,
+        brand_id: body.brand_id ?? null,
+        request_id: requestId,
+        upstream_status: upstreamStatus,
+        duration_ms: durationMs,
+        error: upstreamError ?? (upstreamStatus >= 400 ? `http_${upstreamStatus}` : null),
+      }).then(() => {}, () => {});
+    }
 
     return new Response(
       JSON.stringify({
