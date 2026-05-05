@@ -49,10 +49,18 @@ function isPrivateIPv6(ip: string): boolean {
   if (lc === "::1" || lc === "::") return true;
   if (lc.startsWith("fc") || lc.startsWith("fd")) return true; // ULA fc00::/7
   if (lc.startsWith("fe8") || lc.startsWith("fe9") || lc.startsWith("fea") || lc.startsWith("feb")) return true; // link-local fe80::/10
+  // IPv4-mapped IPv6: ::ffff:a.b.c.d (text form)
   if (lc.startsWith("::ffff:")) {
-    // IPv4-mapped IPv6
-    const v4 = lc.slice(7);
-    return isPrivateIPv4(v4);
+    const tail = lc.slice(7);
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(tail)) return isPrivateIPv4(tail);
+    // Hex form ::ffff:HHHH:HHHH (URL parser normalizes to this)
+    const m = tail.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (m) {
+      const hi = parseInt(m[1], 16);
+      const lo = parseInt(m[2], 16);
+      const v4 = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+      return isPrivateIPv4(v4);
+    }
   }
   return false;
 }
