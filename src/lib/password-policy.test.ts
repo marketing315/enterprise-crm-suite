@@ -16,7 +16,7 @@ describe("client password policy (mirror)", () => {
     expect(validatePassword("abcdefghijkl").code).toBe("PASSWORD_LOW_COMPLEXITY");
   });
   it("rejects common", () => {
-    expect(validatePassword("Password123!").ok).toBe(false);
+    expect(validatePassword("Italia2025XY").ok).toBe(false);
   });
   it("accepts strong", () => {
     expect(validatePassword("Tr0ub4dor&3xyz").ok).toBe(true);
