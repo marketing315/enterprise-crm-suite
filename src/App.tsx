@@ -24,6 +24,8 @@ import ResetPassword from "@/pages/ResetPassword";
 import Privacy from "@/pages/Privacy";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import NotFound from "@/pages/NotFound";
+const MfaEnroll = lazy(() => import("@/pages/security/MfaEnroll"));
+const MfaChallenge = lazy(() => import("@/pages/security/MfaChallenge"));
 
 // Lazy: all other pages
 const SelectBrand = lazy(() => import("@/pages/SelectBrand"));
