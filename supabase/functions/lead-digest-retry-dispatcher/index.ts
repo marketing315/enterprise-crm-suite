@@ -22,16 +22,6 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-  function decodeJwtPayload(token: string): Record<string, unknown> | null {
-    try {
-      const parts = token.split(".");
-      if (parts.length !== 3) return null;
-      const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-      const json = atob(padded.padEnd(padded.length + (4 - padded.length % 4) % 4, "="));
-      return JSON.parse(json);
-    } catch { return null; }
-  }
-
   // Accept cron calls via: x-cron-secret header
   const isCronCall = !!(cronSecret && timingSafeEqualAny(cronSecret, expectedSecret, cronSecretPrev));
 
@@ -40,11 +30,15 @@ Deno.serve(async (req) => {
   let userId: string | null = null;
 
   if (!isCronCall && bearerToken) {
-    const payload = decodeJwtPayload(bearerToken);
-    const role = payload?.role as string | undefined;
+    // SECURITY: verify JWT signature/role server-side via getClaims
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || bearerToken;
+    const verifyClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader! } },
+    });
+    const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(bearerToken);
+    const role = claimsErr ? undefined : (claimsData?.claims?.role as string | undefined);
 
     if (role === "service_role") {
-      // SECURITY: only service_role JWT — anon key is public and must NOT be accepted
       isSystemCall = true;
     } else if (role === "authenticated") {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || bearerToken;
