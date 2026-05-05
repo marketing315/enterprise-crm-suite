@@ -1,4 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sanitizePiiPayload } from "../_shared/pii-sanitizer.ts";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
+
+const PII_PSEUDO_SECRET = Deno.env.get("PII_PSEUDONYM_SECRET") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+const ALLOWED_URL_PARAM_KEYS = new Set(["api_key", "brand_id", "token", "ref", "source"]);
+const URL_PARAM_VALUE_RE = /^[A-Za-z0-9._\-:]{1,256}$/;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +70,7 @@ interface WebhookConfig {
   payload_format: "json" | "form_urlencoded";
   payload_mapping: PayloadMapping | null;
   custom_url_params: CustomUrlParams | null;
+  pii_safe_payload?: boolean;
 }
 
 // HMAC-SHA256 signature
