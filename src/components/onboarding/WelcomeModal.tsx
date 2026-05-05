@@ -22,8 +22,8 @@ export function WelcomeModal() {
     try {
       await completeWelcome.mutateAsync({
         preferred_name: preferredName,
-        // role and brand are assigned by the admin — keep null/empty
-        primary_role_hint: '',
+        // role and brand are assigned by the admin — keep null
+        primary_role_hint: null as unknown as string,
         preferred_brand_id: null,
       });
       toast.success(`Benvenuto, ${preferredName}!`);
