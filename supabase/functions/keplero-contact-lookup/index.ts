@@ -302,12 +302,12 @@ Deno.serve(async (req: Request) => {
 
   // FR6/FR7: Standard response
   if (!phoneRecords || phoneRecords.length === 0) {
-    await supabaseAdmin.from("audit_log").insert({
-      brand_id: brandId,
-      entity_type: "keplero_lookup",
-      entity_id: normalizedPhone,
-      action: "lookup_not_found",
-      metadata: { phone_raw: phoneRaw, normalized_candidates: candidatePhones, brand_slug: resolvedBrandSlug },
+    await supabaseAdmin.rpc("log_audit_event", {
+      p_entity_type: "keplero_lookup",
+      p_action: "lookup_not_found",
+      p_brand_id: brandId,
+      p_metadata: { phone_raw: phoneRaw, normalized_candidates: candidatePhones, brand_slug: resolvedBrandSlug, normalized_phone: normalizedPhone },
+      p_source: "webhook",
     });
 
     return new Response(
@@ -418,12 +418,13 @@ Deno.serve(async (req: Request) => {
   }
 
   // Log successful lookup
-  await supabaseAdmin.from("audit_log").insert({
-    brand_id: brandId,
-    entity_type: "keplero_lookup",
-    entity_id: contact.id,
-    action: "lookup_found",
-    metadata: { phone_raw: phoneRaw, brand_slug: resolvedBrandSlug },
+  await supabaseAdmin.rpc("log_audit_event", {
+    p_entity_type: "keplero_lookup",
+    p_action: "lookup_found",
+    p_brand_id: brandId,
+    p_entity_id: contact.id,
+    p_metadata: { phone_raw: phoneRaw, brand_slug: resolvedBrandSlug },
+    p_source: "webhook",
   });
 
   const fullName = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
