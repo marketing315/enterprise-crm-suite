@@ -80,7 +80,7 @@ async function deliver(job: ClaimedJob): Promise<{ ok: boolean; error?: string }
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15_000);
 
-    const res = await fetch(job.endpoint_url, {
+    const res = await fetch(safe.url.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
