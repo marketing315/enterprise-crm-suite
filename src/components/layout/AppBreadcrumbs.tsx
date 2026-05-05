@@ -72,7 +72,7 @@ export function AppBreadcrumbs() {
             const href = '/' + segments.slice(0, idx + 1).join('/');
             const label = labelFor(seg);
             return (
-              <React.Fragment key={href}>
+              <Fragment key={href}>
                 <BreadcrumbItem>
                   {isLast ? (
                     <BreadcrumbPage>{label}</BreadcrumbPage>
@@ -83,7 +83,7 @@ export function AppBreadcrumbs() {
                   )}
                 </BreadcrumbItem>
                 {!isLast && <BreadcrumbSeparator />}
-              </React.Fragment>
+              </Fragment>
             );
           })}
         </BreadcrumbList>
