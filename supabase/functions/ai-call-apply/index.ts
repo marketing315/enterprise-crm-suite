@@ -296,7 +296,7 @@ Deno.serve(async (req: Request) => {
             };
 
             const startTs = Date.now();
-            const result = await applyProposal(supabase, mergedProposal, decisionRow.id);
+            const result = await applyProposal(supabase, mergedProposal, decisionRow.id, internalUser.id);
             const durationMs = Date.now() - startTs;
 
             await supabase.from("ai_call_action_executions").insert({
