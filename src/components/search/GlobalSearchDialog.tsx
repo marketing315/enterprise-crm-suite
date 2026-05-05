@@ -121,7 +121,7 @@ export function GlobalSearchDialog({ open, onOpenChange }: Props) {
     (dealsQ.data?.length ?? 0) === 0;
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog open={open} onOpenChange={onOpenChange} shouldFilter={false}>
       <CommandInput
         placeholder="Cerca contatti, deal, ticket…"
         value={query}
