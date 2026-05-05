@@ -586,7 +586,7 @@ async function handleKepleroPayload(
     inbound_event_id: inboundEvent?.id || null,
   };
 
-  console.log("[Keplero] Success:", JSON.stringify(result));
+  console.log("[Keplero] Success:", JSON.stringify(redactForLog(result)));
 
   // Update inbound event status to processed
   if (inboundEvent?.id) {
