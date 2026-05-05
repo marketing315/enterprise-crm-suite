@@ -58,14 +58,23 @@ export default defineConfig(({ mode }) => ({
         navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//, /^\/auth\//],
         runtimeCaching: [
           {
-            // Public storage assets only (images, etc.) — safe to cache short-term
+            // F7: SVG never cached (XSS vector via crafted SVG with inline scripts).
+            urlPattern: ({ url }) =>
+              /\.supabase\.co$/i.test(url.hostname) &&
+              url.pathname.startsWith("/storage/v1/object/public/") &&
+              /\.svg(\?.*)?$/i.test(url.pathname),
+            handler: "NetworkOnly",
+          },
+          {
+            // F7: Public storage raster assets — short TTL (5 min) to mitigate
+            // stale/poisoned content. Was 1h, dropped to 5min per audit.
             urlPattern: ({ url }) =>
               /\.supabase\.co$/i.test(url.hostname) &&
               url.pathname.startsWith("/storage/v1/object/public/"),
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "supabase-public-assets",
-              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 }, // 1h
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 5 }, // 5 min
             },
           },
           {
