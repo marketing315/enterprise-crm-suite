@@ -200,20 +200,20 @@ async function classifyLead(
       if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3);
       if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3);
       
-      const parsed = JSON.parse(jsonStr.trim());
-      return { 
-        result: validateAndNormalize(parsed), 
-        rawResponse: data 
-      };
+      const j = safeParseJsonString(jsonStr.trim());
+      if (!j.ok) throw new Error(`ai_classify_content_parse_failed:${j.error}`);
+      const v = validateAIOutput(ClassifyLeadSchema, j.value);
+      if (!v.ok) throw new Error(v.error);
+      return { result: validateAndNormalize(v.data as Record<string, unknown>), rawResponse: data };
     }
     throw new Error("No tool call or content in AI response");
   }
 
-  const parsed = JSON.parse(toolCall.function.arguments);
-  return { 
-    result: validateAndNormalize(parsed), 
-    rawResponse: data 
-  };
+  const j = safeParseJsonString(toolCall.function.arguments);
+  if (!j.ok) throw new Error(`ai_classify_toolcall_parse_failed:${j.error}`);
+  const v = validateAIOutput(ClassifyLeadSchema, j.value);
+  if (!v.ok) throw new Error(v.error);
+  return { result: validateAndNormalize(v.data as Record<string, unknown>), rawResponse: data };
 }
 
 function validateAndNormalize(raw: Record<string, unknown>): AIClassificationResult {
