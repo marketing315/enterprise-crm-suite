@@ -189,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Best-effort signout audit BEFORE clearing local state (RPC needs auth.uid)
           // Actually session is already gone here, so signout is logged in signOut() below.
           currentAuthIdRef.current = null;
+          clearIdleActivity();
           setUser(null);
           setUserRoles([]);
           // SECURITY: purge any SW-cached Supabase responses so the next
