@@ -218,6 +218,7 @@ const App = () => (
                     <Route path="/admin/webhooks" element={<RoleGuard allowedRoles={['admin']}><AdminWebhooksDashboard /></RoleGuard>} />
                     <Route path="/admin/dlq" element={<RoleGuard allowedRoles={['admin']}><AdminDlqDashboard /></RoleGuard>} />
                     <Route path="/admin/contacts-dedup" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminContactsDedup /></RoleGuard>} />
+                    <Route path="/admin/data-quality" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminDataQuality /></RoleGuard>} />
                     <Route path="/admin/analytics" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminAnalytics /></RoleGuard>} />
                     <Route path="/admin/capi" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminCapiMonitor /></RoleGuard>} />
                     <Route path="/admin/slo-board" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSloBoard /></RoleGuard>} />
