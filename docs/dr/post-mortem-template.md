@@ -61,6 +61,23 @@ Se più cause concorrenti (Swiss cheese model), elencarle tutte.
 
 **Regola**: action item devono essere **tecnici** quando possibile, non procedurali ("ricordare di fare X" è anti-pattern).
 
+## Residual risk after fix
+
+Dopo aver applicato gli action item sopra, **quale rischio resta** in produzione? Compilare anche se il rischio residuo è "nessuno" — esplicitarlo è parte della chiusura.
+
+| Area | Rischio residuo | Mitigazione attiva | Trigger di re-escalation | Owner monitor |
+|------|-----------------|--------------------|--------------------------|---------------|
+| es. Ingest webhook | Picco >10k req/min ancora non testato in prod | Rate limit a 5k/min + DLQ | DLQ depth >1000 in 5min | @platform |
+
+**Verifica residual risk** (obbligatoria, entro 30gg dalla chiusura):
+- [ ] Action item P0/P1 verificati in produzione (non solo merge): _data + evidenza_
+- [ ] Alert/SLO che avrebbero rilevato l'incident sono attivi e hanno almeno 1 datapoint verde: _link dashboard_
+- [ ] Runbook usato è stato aggiornato con quanto appreso: _link commit_
+- [ ] Drill/test che riproduce lo scenario è in CI o in cron periodico: _link_
+- [ ] Se il rischio residuo è accettato (non chiuso), è tracciato in `docs/decisions.md` con scadenza di re-review.
+
+**Regola**: se anche solo un check sopra è ✗ a 30gg, il post-mortem **non è chiuso** e va riaperto in retro.
+
 ## Lezioni apprese
 
 Insight generali utili al team, anche al di là di questo incident specifico.
