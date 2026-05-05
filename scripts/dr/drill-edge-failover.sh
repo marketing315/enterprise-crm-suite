@@ -56,7 +56,7 @@ RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
 echo "   Risposta webhook: HTTP $RESPONSE_CODE (atteso 202)"
 
 QUEUED=$(psql "$DATABASE_URL" -At -c \
-  "SELECT count(*) FROM public.incoming_requests WHERE payload->>'drill_id' = '$DRILL_ID';")
+  "SELECT count(*) FROM public.incoming_requests WHERE raw_body->>'drill_id' = '$DRILL_ID';")
 if [[ "$QUEUED" -eq 1 ]]; then
   echo "   ✅ Payload accodato correttamente in incoming_requests"
 else
@@ -80,7 +80,7 @@ echo "   ✅ Modalità normale ripristinata"
 
 echo ""
 echo "6️⃣  Cleanup fixture..."
-psql "$DATABASE_URL" -c "DELETE FROM public.incoming_requests WHERE payload->>'drill_id' = '$DRILL_ID';" >/dev/null
+psql "$DATABASE_URL" -c "DELETE FROM public.incoming_requests WHERE raw_body->>'drill_id' = '$DRILL_ID';" >/dev/null
 
 echo ""
 if [[ "$RESPONSE_CODE" == "202" && "$QUEUED" -eq 1 && "$BANNER" == "true" ]]; then

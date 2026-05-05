@@ -13,7 +13,7 @@
 Sintomi:
 - Tasso di errore edge functions > 25% per > 5 min (alert SLO)
 - Healthcheck `/admin/slo-board` lampeggia rosso su `webhook-ingest`, `automation-runner`, etc.
-- Aumento improvviso di righe `incoming_requests` con status `failed` ed `error_class = 'edge_unavailable'`
+- Aumento improvviso di righe `incoming_requests` con status `failed` ed `dlq_reason = 'edge_unavailable'`
 - Utenti segnalano "salvataggio non riuscito" massivamente
 
 Verifica rapida:
@@ -79,9 +79,9 @@ L'edge `webhook-ingest` legge questa flag a ogni richiesta: se attiva, salva `in
 SELECT count(*) FROM public.incoming_requests WHERE status = 'pending';
 
 -- Tasso ingresso
-SELECT date_trunc('minute', received_at) AS minute, count(*)
+SELECT date_trunc('minute', created_at) AS minute, count(*)
 FROM public.incoming_requests
-WHERE received_at > now() - interval '15 minutes'
+WHERE created_at > now() - interval '15 minutes'
 GROUP BY 1 ORDER BY 1 DESC;
 
 -- Edge errors trend
