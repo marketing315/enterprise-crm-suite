@@ -27,6 +27,14 @@ export default function MfaChallenge() {
     let cancelled = false;
     (async () => {
       try {
+        // BUGFIX: se la session è già aal2 (es. doppio mount React StrictMode
+        // o navigazione tornata indietro), non creare una nuova challenge:
+        // ne rigenererebbe una che revoca il token corrente.
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel === "aal2") {
+          navigate(next, { replace: true });
+          return;
+        }
         const { data: list, error } = await supabase.auth.mfa.listFactors();
         if (error || cancelled) return;
         const verified = (list?.totp ?? []).find((f) => f.status === "verified");
@@ -76,6 +84,22 @@ export default function MfaChallenge() {
       void import("@/lib/session-audit").then(({ logSessionEvent }) =>
         logSessionEvent("mfa_challenge_success"),
       );
+
+      // BUGFIX: prima di navigare, forziamo il refresh della session e
+      // aspettiamo che `getAuthenticatorAssuranceLevel` riporti aal2.
+      // Senza questo, il MfaGuard vede ancora aal1 in memoria, ti rispedisce
+      // a /security/mfa-challenge, MfaChallenge si rimonta e crea una NUOVA
+      // challenge che revoca il token → logout immediato.
+      try {
+        await supabase.auth.refreshSession();
+      } catch { /* best-effort */ }
+      const deadline = Date.now() + 3000;
+      while (Date.now() < deadline) {
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel === "aal2") break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+
       toast.success("Verifica MFA completata");
       navigate(next, { replace: true });
     } finally {
