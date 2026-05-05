@@ -43,44 +43,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Parse and verify HMAC-signed state
+    // C7: Single-use server-side state lookup (replaces HMAC verify).
+    const supabaseService = createClient(supabaseUrl, serviceKey);
     let brandId: string;
     let stateUserId: string;
     try {
-      const stateObj = JSON.parse(atob(stateParam));
-      brandId = stateObj.brand_id;
-      stateUserId = stateObj.user_id;
-      const stateSig = stateObj.sig;
-      const stateExp = stateObj.exp;
-
-      if (!brandId || !stateUserId || !stateSig || !stateExp) {
-        return new Response(renderHtml("Errore", "State incompleto"), {
-          status: 400, headers: { "Content-Type": "text/html" },
-        });
-      }
-
-      // Check expiry (10 min)
-      if (Date.now() > stateExp) {
-        return new Response(renderHtml("Errore", "Link scaduto. Riprova il collegamento."), {
-          status: 400, headers: { "Content-Type": "text/html" },
-        });
-      }
-
-      // Verify HMAC signature
-      const payloadToVerify = JSON.stringify({ brand_id: brandId, user_id: stateUserId, exp: stateExp });
-      const encoder = new TextEncoder();
-      const key = await crypto.subtle.importKey("raw", encoder.encode(serviceKey), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
-      const sigBytes = new Uint8Array(stateSig.match(/.{2}/g).map((b: string) => parseInt(b, 16)));
-      const valid = await crypto.subtle.verify("HMAC", key, sigBytes, encoder.encode(payloadToVerify));
-
-      if (!valid) {
-        return new Response(renderHtml("Errore", "Firma state non valida. Possibile manomissione."), {
-          status: 403, headers: { "Content-Type": "text/html" },
-        });
-      }
-    } catch {
-      return new Response(renderHtml("Errore", "State non valido"), {
-        status: 400, headers: { "Content-Type": "text/html" },
+      const { consumeOAuthSession } = await import("../_shared/oauth-session.ts");
+      const session = await consumeOAuthSession(supabaseService, stateParam, "google");
+      brandId = session.brand_id;
+      stateUserId = session.user_id;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "state_invalid";
+      return new Response(renderHtml("Errore", `State OAuth non valido o scaduto (${escapeHtml(msg)}).`), {
+        status: 403, headers: { "Content-Type": "text/html" },
       });
     }
 
