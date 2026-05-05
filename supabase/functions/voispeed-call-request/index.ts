@@ -154,7 +154,30 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create call log entry first (status: initiated)
+    // ── H8: Idempotency guard (optional). Clients SHOULD send Idempotency-Key on retries. ──
+    const idemKey = req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    const callerFp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || "unknown";
+    const idem = await beginIdempotency(supabase, {
+      scope: "voispeed-call-request",
+      callerId: crmUser.id as string,
+      callerFp,
+      idemKey,
+      payload: rawBody,
+      optional: true,
+    });
+    if (idem.kind === "replay") {
+      return idem.cachedResponse(corsHeaders);
+    }
+    if (idem.kind === "in_progress") {
+      return idem.inProgressResponse(corsHeaders);
+    }
+    if (idem.kind === "payload_mismatch") {
+      return idem.mismatchResponse(corsHeaders);
+    }
+    const idemHandle = idem.kind === "inserted" ? idem : null;
+
     const extId = `calllog_${crypto.randomUUID()}`;
     
     const { data: callLog, error: callLogError } = await supabase
