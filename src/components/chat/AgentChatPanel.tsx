@@ -465,7 +465,7 @@ function AgentMessageBubble({ message, onRetry }: { message: Message; onRetry?: 
                     <code className={cn("block bg-muted p-3 rounded-lg text-xs font-mono overflow-x-auto", className)}>{children}</code>
                   );
                 },
-              }}>{message.content}</ReactMarkdown>
+              }}>{message.content}</SafeMarkdown>
             </div>
           )}
         </div>
