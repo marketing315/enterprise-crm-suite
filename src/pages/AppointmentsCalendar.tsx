@@ -13,7 +13,8 @@ import {
   startOfDay,
 } from "date-fns";
 import { it } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List, Users, X, Download } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw, AlertTriangle, List, Users, X, Download, Send } from "lucide-react";
+import { dispatchRouteNow } from "@/hooks/useSalesRoute";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { useAppointmentConflict } from "@/features/appointments/useAppointmentConflict";
@@ -249,6 +250,27 @@ export default function AppointmentsCalendar() {
           >
             <Download className="mr-2 h-4 w-4" />
             CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (!currentBrand?.id) return;
+              const d = new Date(); d.setDate(d.getDate() + 1);
+              const iso = d.toISOString().slice(0, 10);
+              try {
+                const res = await dispatchRouteNow({ brandId: currentBrand.id, routeDate: iso, audience: "both" });
+                const r = res?.results?.[0];
+                toast.success("Giro inviato", {
+                  description: r ? `Individuali: ${r.individual_sent} · Aggregati: ${r.aggregate_sent}` : "OK",
+                });
+              } catch (e) {
+                toast.error("Invio fallito", { description: e instanceof Error ? e.message : undefined });
+              }
+            }}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            Invia giro di domani
           </Button>
           <Button
             variant="outline"
