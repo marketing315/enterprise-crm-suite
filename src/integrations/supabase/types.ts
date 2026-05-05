@@ -1561,6 +1561,7 @@ export type Database = {
           scheduled_at: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
+          version: number
         }
         Insert: {
           address?: string | null
@@ -1591,6 +1592,7 @@ export type Database = {
           scheduled_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
+          version?: number
         }
         Update: {
           address?: string | null
@@ -1621,6 +1623,7 @@ export type Database = {
           scheduled_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -4300,6 +4303,7 @@ export type Database = {
           status: Database["public"]["Enums"]["deal_status"]
           updated_at: string
           value: number | null
+          version: number
         }
         Insert: {
           assigned_user_id?: string | null
@@ -4318,6 +4322,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
           value?: number | null
+          version?: number
         }
         Update: {
           assigned_user_id?: string | null
@@ -4336,6 +4341,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
           value?: number | null
+          version?: number
         }
         Relationships: [
           {
@@ -9481,6 +9487,7 @@ export type Database = {
           status: Database["public"]["Enums"]["ticket_status"]
           title: string
           updated_at: string
+          version: number
         }
         Insert: {
           archived?: boolean
@@ -9510,6 +9517,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["ticket_status"]
           title: string
           updated_at?: string
+          version?: number
         }
         Update: {
           archived?: boolean
@@ -9539,6 +9547,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["ticket_status"]
           title?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -12718,6 +12727,15 @@ export type Database = {
           p_new_role?: Database["public"]["Enums"]["app_role"]
         }
         Returns: undefined
+      }
+      update_with_version: {
+        Args: {
+          p_expected_version: number
+          p_id: string
+          p_patch: Json
+          p_table: string
+        }
+        Returns: Json
       }
       upsert_audit_retention_policy: {
         Args: {
