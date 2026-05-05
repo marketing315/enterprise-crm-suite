@@ -58,6 +58,7 @@ const AdminTicketEscalationAudit = lazy(() => import("@/pages/AdminTicketEscalat
 const AdminSiemExport = lazy(() => import("@/pages/AdminSiemExport"));
 const AdminNotificationWebhooks = lazy(() => import("@/pages/AdminNotificationWebhooks"));
 const AdminAIDecisionsDrilldown = lazy(() => import("@/pages/AdminAIDecisionsDrilldown"));
+const AdminContactsDedup = lazy(() => import("@/pages/AdminContactsDedup"));
 const AdminCompliance = lazy(() => import("@/pages/AdminCompliance"));
 const AdminObservability = lazy(() => import("@/pages/AdminObservability"));
 const AdminMcpDashboard = lazy(() => import("@/pages/AdminMcpDashboard"));
@@ -215,6 +216,7 @@ const App = () => (
                     <Route path="/admin/ticket-trend" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminTicketTrend /></RoleGuard>} />
                     <Route path="/admin/webhooks" element={<RoleGuard allowedRoles={['admin']}><AdminWebhooksDashboard /></RoleGuard>} />
                     <Route path="/admin/dlq" element={<RoleGuard allowedRoles={['admin']}><AdminDlqDashboard /></RoleGuard>} />
+                    <Route path="/admin/contacts-dedup" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminContactsDedup /></RoleGuard>} />
                     <Route path="/admin/analytics" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminAnalytics /></RoleGuard>} />
                     <Route path="/admin/capi" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminCapiMonitor /></RoleGuard>} />
                     <Route path="/admin/slo-board" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSloBoard /></RoleGuard>} />
