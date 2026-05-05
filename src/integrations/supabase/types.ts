@@ -5176,6 +5176,27 @@ export type Database = {
           },
         ]
       }
+      internal_auth_nonces: {
+        Row: {
+          caller: string
+          created_at: string
+          expires_at: string
+          nonce: string
+        }
+        Insert: {
+          caller: string
+          created_at?: string
+          expires_at: string
+          nonce: string
+        }
+        Update: {
+          caller?: string
+          created_at?: string
+          expires_at?: string
+          nonce?: string
+        }
+        Relationships: []
+      }
       keplero_interactions: {
         Row: {
           appointment_id: string | null
@@ -10688,6 +10709,7 @@ export type Database = {
         }
       }
       cleanup_auth_rate_limit: { Args: never; Returns: number }
+      cleanup_internal_auth_nonces: { Args: never; Returns: number }
       cleanup_oauth_sessions: { Args: never; Returns: number }
       cleanup_old_traces: { Args: never; Returns: number }
       cleanup_outbound_webhook_deliveries: {
