@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { userStorage } from '@/lib/userScopedStorage';
 import type { Brand } from '@/types/database';
 
 // System brand ID for company-wide aggregation (matches DB record with is_system=true)
