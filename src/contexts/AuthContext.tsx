@@ -218,6 +218,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
+    // A7: enforce password policy at runtime (mirror of edge _shared/password-policy)
+    const { validatePassword } = await import("@/lib/password-policy");
+    const policy = validatePassword(password);
+    if (!policy.ok) {
+      return { error: new Error(policy.error || "Password non valida") };
+    }
     const { error } = await supabase.auth.signUp({
       email,
       password,

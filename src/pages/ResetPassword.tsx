@@ -61,8 +61,11 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('La password deve essere di almeno 6 caratteri');
+    // A7: enforce password policy at runtime (mirror of edge _shared/password-policy)
+    const { validatePassword } = await import('@/lib/password-policy');
+    const policy = validatePassword(password);
+    if (!policy.ok) {
+      toast.error(policy.error || 'Password non valida');
       return;
     }
 
@@ -133,7 +136,7 @@ export default function ResetPassword() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Nuova password</CardTitle>
           <CardDescription>
-            Inserisci la tua nuova password
+            Inserisci la tua nuova password (min. 12 caratteri, almeno 3 tra: minuscole, maiuscole, numeri, simboli)
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -147,7 +150,7 @@ export default function ResetPassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                minLength={6}
+                minLength={12}
               />
             </div>
             <div className="space-y-2">
@@ -159,7 +162,7 @@ export default function ResetPassword() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                minLength={6}
+                minLength={12}
               />
             </div>
           </CardContent>
