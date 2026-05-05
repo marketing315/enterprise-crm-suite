@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
     }
 
     // Verify the user from state has admin/ceo role on the brand
-    const supabaseService = createClient(supabaseUrl, serviceKey);
     const { data: adminRole } = await supabaseService
       .from("user_roles")
       .select("id")
