@@ -169,27 +169,49 @@ Deno.serve(async (req) => {
       console.warn("Could not list accessible customers:", err);
     }
 
-    // Store in oauth_tokens using service role
-    const { error: upsertError } = await supabaseService
+    // Store in oauth_tokens using service role.
+    // A2: tokens go into Vault via wrapper; legacy columns stay empty.
+    const { data: upserted, error: upsertError } = await supabaseService
       .from("oauth_tokens")
       .upsert(
         {
           brand_id: brandId,
           provider: "google_ads",
           account_id: accountId,
-          access_token_encrypted: access_token,
-          refresh_token_encrypted: refresh_token,
+          access_token_encrypted: "",
+          refresh_token_encrypted: "",
           expires_at: expiresAt,
           scopes: ["https://www.googleapis.com/auth/adwords"],
           updated_at: new Date().toISOString(),
         },
         { onConflict: "brand_id,provider,account_id" }
-      );
+      )
+      .select("id")
+      .single();
 
-    if (upsertError) {
+    if (upsertError || !upserted?.id) {
       console.error("Failed to save OAuth token:", upsertError);
       return new Response(
-        renderHtml("Errore", `Salvataggio token fallito: ${escapeHtml(upsertError.message)}`),
+        renderHtml("Errore", `Salvataggio token fallito: ${escapeHtml(upsertError?.message ?? "unknown")}`),
+        { status: 500, headers: { "Content-Type": "text/html" } }
+      );
+    }
+
+    // Persist secrets in Vault
+    const { error: vaultAccessErr } = await supabaseService.rpc("vault_put_oauth_secret", {
+      p_token_id: upserted.id,
+      p_kind: "access",
+      p_value: access_token,
+    });
+    const { error: vaultRefreshErr } = await supabaseService.rpc("vault_put_oauth_secret", {
+      p_token_id: upserted.id,
+      p_kind: "refresh",
+      p_value: refresh_token ?? "",
+    });
+    if (vaultAccessErr || vaultRefreshErr) {
+      console.error("Failed to store OAuth tokens in Vault:", { vaultAccessErr, vaultRefreshErr });
+      return new Response(
+        renderHtml("Errore", "Salvataggio sicuro del token fallito."),
         { status: 500, headers: { "Content-Type": "text/html" } }
       );
     }
