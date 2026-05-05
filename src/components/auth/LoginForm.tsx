@@ -15,7 +15,7 @@ interface LoginFormProps {
   onForgotPasswordChange?: (show: boolean) => void;
 }
 
-const SUPPORT_EMAIL = 'support@gruppobenessere.it';
+const SUPPORT_EMAIL = 'marketing@gruppobenessere.it';
 
 type LoginErrorKind = 'invalid_credentials' | 'email_not_confirmed' | 'rate_limited' | 'generic';
 
