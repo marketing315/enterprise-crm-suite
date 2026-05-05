@@ -1,6 +1,7 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
+import { checkIpRateLimit, rateLimited429 } from '../_shared/ip-rate-limit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
+
+  // H1: IP rate limit (basso, è un endpoint Lovable-internal)
+  const rl = await checkIpRateLimit(req, { scope: 'preview-transactional-email', maxPerMin: 20 })
+  if (!rl.allowed) return rateLimited429(rl.retryAfter)
 
   const apiKey = Deno.env.get('LOVABLE_API_KEY')
   if (!apiKey) {

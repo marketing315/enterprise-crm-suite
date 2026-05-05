@@ -5197,6 +5197,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ip_rate_limit_buckets: {
+        Row: {
+          created_at: string
+          identifier: string
+          last_refill_at: string
+          max_tokens: number
+          refill_rate_per_min: number
+          scope: string
+          tokens: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          identifier: string
+          last_refill_at?: string
+          max_tokens: number
+          refill_rate_per_min: number
+          scope: string
+          tokens: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          identifier?: string
+          last_refill_at?: string
+          max_tokens?: number
+          refill_rate_per_min?: number
+          scope?: string
+          tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       keplero_interactions: {
         Row: {
           appointment_id: string | null
@@ -10745,6 +10778,7 @@ export type Database = {
       }
       cleanup_auth_rate_limit: { Args: never; Returns: number }
       cleanup_internal_auth_nonces: { Args: never; Returns: number }
+      cleanup_ip_rate_limit_buckets: { Args: never; Returns: number }
       cleanup_oauth_sessions: { Args: never; Returns: number }
       cleanup_old_traces: { Args: never; Returns: number }
       cleanup_outbound_webhook_deliveries: {
@@ -10794,6 +10828,10 @@ export type Database = {
           p_window_minutes?: number
         }
         Returns: Json
+      }
+      consume_ip_rate_limit: {
+        Args: { p_identifier: string; p_max_per_min?: number; p_scope: string }
+        Returns: boolean
       }
       consume_oauth_session: {
         Args: { p_csrf: string }

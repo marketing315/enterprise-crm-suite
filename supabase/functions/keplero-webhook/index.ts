@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHash } from "node:crypto";
 import { timingSafeEqual } from "../_shared/crypto.ts";
 import { redactForLog } from "../_shared/pii-redact.ts";
+import { checkIpRateLimit, rateLimited429 } from "../_shared/ip-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -163,6 +164,15 @@ Deno.serve(async (req: Request) => {
 
   const isInternalCall = !!(internalServiceToken && internalForward && timingSafeEqual(internalForward, internalServiceToken));
   const isDirectCall = !!(expectedSecret && kepleroSecret && timingSafeEqual(kepleroSecret, expectedSecret));
+
+  // H1: IP rate limit per chiamate dirette (skip su forward interno)
+  if (!isInternalCall) {
+    const rl = await checkIpRateLimit(req, { scope: "keplero-webhook", maxPerMin: 120 });
+    if (!rl.allowed) {
+      console.warn("[Keplero] rate_limited ip=", rl.identifier);
+      return rateLimited429(rl.retryAfter);
+    }
+  }
 
   if (!isInternalCall && !isDirectCall) {
     console.error("[Keplero] Unauthorized: no valid internal token or keplero secret");
