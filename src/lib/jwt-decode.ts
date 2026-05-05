@@ -24,6 +24,22 @@ export function decodeJwtExp(token: string | null | undefined): number | null {
   }
 }
 
+export function decodeJwtAal(token: string | null | undefined): "aal1" | "aal2" | null {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = typeof atob === "function" ? atob(padded) : "";
+    if (!json) return null;
+    const payload = JSON.parse(json);
+    return payload?.aal === "aal1" || payload?.aal === "aal2" ? payload.aal : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Returns seconds until expiry, or `null` if unknown.
  */
