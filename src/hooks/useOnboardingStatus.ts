@@ -43,7 +43,7 @@ export function useOnboardingStatus() {
 export function useCompleteWelcome() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { preferred_name: string; primary_role_hint: string; preferred_brand_id: string | null }) => {
+    mutationFn: async (input: { preferred_name: string; primary_role_hint: string | null; preferred_brand_id: string | null }) => {
       const { error } = await supabase.rpc('complete_welcome', {
         p_preferred_name: input.preferred_name,
         p_primary_role_hint: input.primary_role_hint,
