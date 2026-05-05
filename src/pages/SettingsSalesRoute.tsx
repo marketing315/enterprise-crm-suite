@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, Mail, Power, Send, Loader2 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
-import { useTeam } from "@/hooks/useTeam";
+import { useTeamMembers } from "@/hooks/useTeam";
 import {
   useSalesRouteSchedule,
   useUpsertSalesRouteSchedule,
@@ -33,7 +33,7 @@ export default function SettingsSalesRoute() {
   const { currentBrand } = useBrand();
   const { data: schedule, isLoading } = useSalesRouteSchedule();
   const upsert = useUpsertSalesRouteSchedule();
-  const { data: team } = useTeam();
+  const { data: team } = useTeamMembers();
 
   const [isActive, setIsActive] = useState(false);
   const [days, setDays] = useState<number[]>([1,2,3,4,5]);
