@@ -1,5 +1,6 @@
 // Edge function: claim pending audit alert deliveries and dispatch via webhook/email
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
