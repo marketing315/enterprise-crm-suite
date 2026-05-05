@@ -121,9 +121,9 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   const setCurrentBrand = (brand: Brand | null) => {
     setCurrentBrandState(brand);
     if (brand) {
-      localStorage.setItem(BRAND_STORAGE_KEY, brand.id);
+      userStorage.setItem(BRAND_STORAGE_KEY, brand.id);
     } else {
-      localStorage.removeItem(BRAND_STORAGE_KEY);
+      userStorage.removeItem(BRAND_STORAGE_KEY);
     }
   };
 
