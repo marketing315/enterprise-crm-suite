@@ -8558,6 +8558,48 @@ export type Database = {
           },
         ]
       }
+      session_audit: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          revoked_at: string | null
+          revoked_by: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sheets_export_logs: {
         Row: {
           attempts: number
@@ -10580,6 +10622,7 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: number
       }
+      cleanup_session_audit: { Args: never; Returns: number }
       cleanup_webhook_dedup: { Args: never; Returns: number }
       complete_ai_tag_job: {
         Args: { p_error?: string; p_job_id: string }
@@ -11898,6 +11941,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      list_session_events: {
+        Args: { p_event_type?: string; p_limit?: number; p_user_id?: string }
+        Returns: {
+          created_at: string
+          event_type: string
+          id: string
+          ip_address: string
+          metadata: Json
+          revoked_at: string
+          session_id: string
+          user_agent: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }[]
+      }
       list_team_members: {
         Args: {
           p_active_only?: boolean
@@ -11937,6 +11996,16 @@ export type Database = {
         }
         Returns: string
       }
+      log_session_event: {
+        Args: {
+          p_event_type: string
+          p_ip_address?: string
+          p_metadata?: Json
+          p_session_id?: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
       map_stage_to_contact_status: {
         Args: { p_stage_name: string }
         Returns: Database["public"]["Enums"]["contact_status"]
@@ -11972,6 +12041,10 @@ export type Database = {
       mark_notifications_read: {
         Args: { p_notification_ids: string[] }
         Returns: number
+      }
+      mark_session_revoked: {
+        Args: { p_reason?: string; p_session_audit_id: string }
+        Returns: boolean
       }
       mark_siem_export_result: {
         Args: {

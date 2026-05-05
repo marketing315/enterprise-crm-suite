@@ -62,6 +62,7 @@ const AdminCompliance = lazy(() => import("@/pages/AdminCompliance"));
 const AdminObservability = lazy(() => import("@/pages/AdminObservability"));
 const AdminMcpDashboard = lazy(() => import("@/pages/AdminMcpDashboard"));
 const AdminQuickBackup = lazy(() => import("@/pages/AdminQuickBackup"));
+const AdminSessions = lazy(() => import("@/pages/AdminSessions"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Team = lazy(() => import("@/pages/Team"));
@@ -226,6 +227,7 @@ const App = () => (
                     <Route path="/admin/observability" element={<RoleGuard allowedRoles={['admin']}><AdminObservability /></RoleGuard>} />
                     <Route path="/admin/mcp" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminMcpDashboard /></RoleGuard>} />
                     <Route path="/admin/quick-backup" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminQuickBackup /></RoleGuard>} />
+                    <Route path="/admin/sessions" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSessions /></RoleGuard>} />
                     <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>
                   

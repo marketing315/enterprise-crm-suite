@@ -87,6 +87,10 @@ export default function MfaEnroll() {
         toast.error(vErr.message || "Codice non valido");
         return;
       }
+      // A6: audit MFA enrollment
+      void import("@/lib/session-audit").then(({ logSessionEvent }) =>
+        logSessionEvent("mfa_enroll"),
+      );
       toast.success("MFA attivato. La sessione è ora protetta.");
       navigate(next, { replace: true });
     } finally {

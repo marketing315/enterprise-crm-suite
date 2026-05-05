@@ -138,7 +138,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserScope(null);
         }
 
+        // A6: session audit (best-effort, never blocks)
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          void import('@/lib/session-audit').then(({ logSessionEvent }) =>
+            logSessionEvent('signin', { sessionId: newSession.access_token?.slice(-16) ?? null }),
+          );
+        }
+        if (event === 'PASSWORD_RECOVERY') {
+          void import('@/lib/session-audit').then(({ logSessionEvent }) =>
+            logSessionEvent('password_reset'),
+          );
+        }
+
         if (event === 'SIGNED_OUT') {
+          // Best-effort signout audit BEFORE clearing local state (RPC needs auth.uid)
+          // Actually session is already gone here, so signout is logged in signOut() below.
           currentAuthIdRef.current = null;
           setUser(null);
           setUserRoles([]);
@@ -238,6 +252,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // A6: log signout BEFORE supabase.auth.signOut clears the session
+    try {
+      const { logSessionEvent } = await import('@/lib/session-audit');
+      await logSessionEvent('signout');
+    } catch { /* best-effort */ }
     currentAuthIdRef.current = null;
     await supabase.auth.signOut();
     setUser(null);

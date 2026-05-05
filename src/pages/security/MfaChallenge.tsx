@@ -66,8 +66,16 @@ export default function MfaChallenge() {
       if (error) {
         toast.error(error.message || "Codice non valido");
         setCode("");
+        // A6: audit failed challenge
+        void import("@/lib/session-audit").then(({ logSessionEvent }) =>
+          logSessionEvent("mfa_challenge_failed"),
+        );
         return;
       }
+      // A6: audit successful challenge
+      void import("@/lib/session-audit").then(({ logSessionEvent }) =>
+        logSessionEvent("mfa_challenge_success"),
+      );
       toast.success("Verifica MFA completata");
       navigate(next, { replace: true });
     } finally {
