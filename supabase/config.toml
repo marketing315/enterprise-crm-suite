@@ -131,3 +131,7 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
   [functions.trace-ingest]
     verify_jwt = false   # internal-only; x-internal-token validated in code
+  [functions.sales-route-dispatcher]
+    verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
+  [functions.sales-route-preview]
+    verify_jwt = false   # client invoke -> getUser() + brand check in code

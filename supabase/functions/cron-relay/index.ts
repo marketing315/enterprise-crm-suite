@@ -34,6 +34,7 @@ const ALLOWED_TARGETS = new Set<string>([
   "ads-stats-meta",
   "google-ads-sync",
   "sheets-export-dispatcher",
+  "sales-route-dispatcher",
 ]);
 
 interface RelayBody {

@@ -1542,6 +1542,7 @@ export type Database = {
           brand_id: string
           cap: string | null
           city: string | null
+          confirmed_by_callcenter_at: string | null
           contact_id: string
           created_at: string
           created_by_user_id: string | null
@@ -1571,6 +1572,7 @@ export type Database = {
           brand_id: string
           cap?: string | null
           city?: string | null
+          confirmed_by_callcenter_at?: string | null
           contact_id: string
           created_at?: string
           created_by_user_id?: string | null
@@ -1600,6 +1602,7 @@ export type Database = {
           brand_id?: string
           cap?: string | null
           city?: string | null
+          confirmed_by_callcenter_at?: string | null
           contact_id?: string
           created_at?: string
           created_by_user_id?: string | null
@@ -7998,6 +8001,144 @@ export type Database = {
           },
         ]
       }
+      sales_route_dispatches: {
+        Row: {
+          appointment_ids: string[]
+          appointments_count: number
+          audience: string
+          brand_id: string
+          created_at: string
+          dispatch_type: string
+          email_message_id: string | null
+          error_message: string | null
+          id: string
+          idempotency_key: string
+          recipient_email: string
+          recipient_user_id: string | null
+          route_date: string
+          status: string
+          trigger_source: string
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          appointment_ids?: string[]
+          appointments_count?: number
+          audience: string
+          brand_id: string
+          created_at?: string
+          dispatch_type: string
+          email_message_id?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key: string
+          recipient_email: string
+          recipient_user_id?: string | null
+          route_date: string
+          status?: string
+          trigger_source?: string
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          appointment_ids?: string[]
+          appointments_count?: number
+          audience?: string
+          brand_id?: string
+          created_at?: string
+          dispatch_type?: string
+          email_message_id?: string | null
+          error_message?: string | null
+          id?: string
+          idempotency_key?: string
+          recipient_email?: string
+          recipient_user_id?: string | null
+          route_date?: string
+          status?: string
+          trigger_source?: string
+          triggered_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_route_dispatches_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_route_dispatches_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_route_dispatches_triggered_by_user_id_fkey"
+            columns: ["triggered_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_route_schedules: {
+        Row: {
+          aggregate_extra_emails: string[]
+          aggregate_recipient_user_ids: string[]
+          brand_id: string
+          created_at: string
+          days_of_week: number[]
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          last_run_status: string | null
+          recipients_mode: string
+          send_aggregate: boolean
+          send_at_local: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          aggregate_extra_emails?: string[]
+          aggregate_recipient_user_ids?: string[]
+          brand_id: string
+          created_at?: string
+          days_of_week?: number[]
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          last_run_status?: string | null
+          recipients_mode?: string
+          send_aggregate?: boolean
+          send_at_local?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          aggregate_extra_emails?: string[]
+          aggregate_recipient_user_ids?: string[]
+          brand_id?: string
+          created_at?: string
+          days_of_week?: number[]
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          last_run_status?: string | null
+          recipients_mode?: string
+          send_aggregate?: boolean
+          send_at_local?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_route_schedules_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_targets: {
         Row: {
           brand_id: string
@@ -11186,6 +11327,23 @@ export type Database = {
         }
         Returns: Json
       }
+      get_sales_route_aggregate: {
+        Args: { p_brand_id: string; p_date: string }
+        Returns: Json
+      }
+      get_sales_route_for_user: {
+        Args: { p_brand_id: string; p_date: string; p_user_id: string }
+        Returns: Json
+      }
+      get_sales_route_recipients_default: {
+        Args: { p_brand_id: string; p_date: string }
+        Returns: {
+          appointments_count: number
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       get_salesperson_kpis: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
@@ -11492,6 +11650,33 @@ export type Database = {
           updated_at: string
           url: string
         }[]
+      }
+      list_sales_route_dispatches: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: {
+          appointment_ids: string[]
+          appointments_count: number
+          audience: string
+          brand_id: string
+          created_at: string
+          dispatch_type: string
+          email_message_id: string | null
+          error_message: string | null
+          id: string
+          idempotency_key: string
+          recipient_email: string
+          recipient_user_id: string | null
+          route_date: string
+          status: string
+          trigger_source: string
+          triggered_by_user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "sales_route_dispatches"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       list_team_members: {
         Args: {
@@ -12167,6 +12352,31 @@ export type Database = {
           p_notification_type: string
         }
         Returns: Json
+      }
+      upsert_sales_route_schedule: {
+        Args: { p_payload: Json }
+        Returns: {
+          aggregate_extra_emails: string[]
+          aggregate_recipient_user_ids: string[]
+          brand_id: string
+          created_at: string
+          days_of_week: number[]
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          last_run_status: string | null
+          recipients_mode: string
+          send_aggregate: boolean
+          send_at_local: string
+          timezone: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales_route_schedules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       user_belongs_to_brand: {
         Args: { _brand_id: string; _user_id: string }
