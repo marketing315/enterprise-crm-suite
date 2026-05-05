@@ -40,6 +40,10 @@ export function MfaSettingsCard() {
         toast.error(error.message || "Errore rimozione MFA");
         return;
       }
+      // A10: audit MFA unenroll
+      void import("@/lib/session-audit").then(({ logSessionEvent }) =>
+        logSessionEvent("mfa_unenroll"),
+      );
       toast.success("Fattore MFA rimosso");
       await refresh();
     } finally {
