@@ -127,23 +127,29 @@ async function exportToDestination(
   let success = false;
 
   try {
-    const res = await fetch(dest.endpoint_url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Lovable-SIEM-Exporter/1.0",
-        "X-Signature-Timestamp": timestamp,
-        "X-Signature-SHA256": signature,
-        "X-Event-Count": String(masked.length),
-      },
-      body,
-      signal: AbortSignal.timeout(20_000),
-    });
-    httpStatus = res.status;
-    success = res.ok;
-    if (!success) {
-      const text = await res.text().catch(() => "");
-      errorMsg = `HTTP ${res.status}: ${text.slice(0, 500)}`;
+    // C12: SSRF guard — endpoint_url is admin-configurable
+    const guard = await assertSafeUrl(dest.endpoint_url);
+    if (!guard.ok) {
+      errorMsg = `ssrf_blocked: ${guard.reason}`;
+    } else {
+      const res = await fetch(dest.endpoint_url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Lovable-SIEM-Exporter/1.0",
+          "X-Signature-Timestamp": timestamp,
+          "X-Signature-SHA256": signature,
+          "X-Event-Count": String(masked.length),
+        },
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
+      httpStatus = res.status;
+      success = res.ok;
+      if (!success) {
+        const text = await res.text().catch(() => "");
+        errorMsg = `HTTP ${res.status}: ${text.slice(0, 500)}`;
+      }
     }
   } catch (e) {
     errorMsg = e instanceof Error ? e.message : String(e);
