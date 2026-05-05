@@ -5,11 +5,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// C1: Verify cross-brand ownership before any mutation.
+// Throws if entity does not belong to the caller's brand.
+async function assertEntityOwnership(
+  supabase: any,
+  callerInternalUserId: string,
+  brandId: string,
+  table: string,
+  entityId: string | null | undefined,
+): Promise<void> {
+  if (!entityId) return;
+  const { error } = await supabase.rpc("assert_brand_access", {
+    p_user_id: callerInternalUserId,
+    p_brand_id: brandId,
+    p_entity_table: table,
+    p_entity_id: entityId,
+  });
+  if (error) {
+    throw new Error(`cross_brand_access_denied:${table}:${error.message}`);
+  }
+}
+
+// C3: stage_name whitelist regex (defends against AI prompt-injection / control chars)
+const STAGE_NAME_RE = /^[\p{L}\p{N} _\-/]{1,80}$/u;
+
 // Apply a single approved proposal idempotently
 async function applyProposal(
   supabase: any,
   proposal: any,
   decisionId: string,
+  callerInternalUserId: string,
 ): Promise<{ success: boolean; error?: string; result?: any }> {
   const changes = proposal.edited_changes || proposal.proposed_changes;
   const brandId = proposal.brand_id;
@@ -17,6 +42,11 @@ async function applyProposal(
   const dealId = proposal.deal_id;
 
   try {
+    // C1: enforce ownership of every referenced entity before mutating
+    if (contactId) await assertEntityOwnership(supabase, callerInternalUserId, brandId, "contacts", contactId);
+    if (dealId) await assertEntityOwnership(supabase, callerInternalUserId, brandId, "deals", dealId);
+    if (proposal.call_log_id) await assertEntityOwnership(supabase, callerInternalUserId, brandId, "call_logs", proposal.call_log_id);
+
     switch (proposal.action_type) {
       case "update_contact": {
         if (!contactId) return { success: false, error: "No contact_id" };
