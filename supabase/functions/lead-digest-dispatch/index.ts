@@ -35,35 +35,23 @@ Deno.serve(async (req) => {
       (expectedCronSecretPrev && timingSafeEqual(providedCronSecret, expectedCronSecretPrev))
     ));
 
-    // Decode JWT payload without verification to inspect role/iss
-    // (signature is verified by Supabase infra; we trust the token is valid if it reaches us)
-    function decodeJwtPayload(token: string): Record<string, unknown> | null {
-      try {
-        const parts = token.split(".");
-        if (parts.length !== 3) return null;
-        const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-        const json = atob(padded.padEnd(padded.length + (4 - padded.length % 4) % 4, "="));
-        return JSON.parse(json);
-      } catch { return null; }
-    }
-
     let isSystemCall = hasValidCronSecret; // cron-relay or service role
     let isAdminCall = false;
     let userId: string | null = null;
     let triggerType: string = "scheduled";
 
     if (!isSystemCall && bearerToken) {
-      const payload = decodeJwtPayload(bearerToken);
-      const role = payload?.role as string | undefined;
+      // SECURITY: verify JWT signature/role server-side via getClaims
+      const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || bearerToken, {
+        global: { headers: { Authorization: authHeader! } },
+      });
+      const { data: claimsData, error: claimsErr } = await verifyClient.auth.getClaims(bearerToken);
+      const role = claimsErr ? undefined : (claimsData?.claims?.role as string | undefined);
 
       if (role === "service_role") {
-        // SECURITY: only service_role JWT — anon key is public and must NOT be accepted
         isSystemCall = true;
       } else if (role === "authenticated") {
         // Human user: check if admin/ceo
-        const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || bearerToken, {
-          global: { headers: { Authorization: authHeader! } },
-        });
         const { data: userData } = await verifyClient.auth.getUser(bearerToken);
         if (!userData?.user) {
           return new Response(JSON.stringify({ error: "Invalid token" }), {
