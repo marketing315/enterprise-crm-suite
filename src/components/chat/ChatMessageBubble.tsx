@@ -2,7 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { Bot, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import ReactMarkdown from "react-markdown";
+import { SafeMarkdown } from "@/components/ui/SafeMarkdown";
 import { cn } from "@/lib/utils";
 import type { ChatMessageWithSender } from "@/hooks/useChat";
 
