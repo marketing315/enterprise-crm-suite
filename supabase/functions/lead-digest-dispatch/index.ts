@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { assertSafeUrl } from "../_shared/safe-outbound.ts";
+import { safeErrorResponse } from "../_shared/safe-error-response.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -714,11 +715,10 @@ Inviato automaticamente da CRM Ralph Hub`;
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    const errMsg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
-    console.error("[lead-digest-dispatch] Unhandled error:", errMsg);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return safeErrorResponse(err, {
+      status: 500,
+      extraHeaders: corsHeaders,
+      logContext: { fn: "lead-digest-dispatch" },
+    });
   }
 });
