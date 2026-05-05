@@ -52,9 +52,6 @@ Deno.serve(async (req) => {
         isSystemCall = true;
       } else if (role === "authenticated") {
         // Human user: check if admin/ceo
-        const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || bearerToken, {
-          global: { headers: { Authorization: authHeader! } },
-        });
         const { data: userData } = await verifyClient.auth.getUser(bearerToken);
         if (!userData?.user) {
           return new Response(JSON.stringify({ error: "Invalid token" }), {
