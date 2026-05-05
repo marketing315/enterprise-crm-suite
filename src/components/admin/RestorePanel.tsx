@@ -28,8 +28,21 @@ function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
+// F5: Hard caps on restore upload to prevent OOM / DoS via crafted archives.
+const MAX_RESTORE_FILE_BYTES = 100 * 1024 * 1024; // 100 MB
+const ALLOWED_RESTORE_MIME = new Set([
+  "application/gzip",
+  "application/x-gzip",
+  "application/x-tar",
+  "application/x-compressed-tar",
+  "application/octet-stream", // some browsers don't sniff .tar.gz
+  "", // Safari often returns empty type
+]);
+const ALLOWED_RESTORE_EXT_RE = /\.(tar\.gz|tgz|gz)$/i;
+
 export function RestorePanel() {
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [preview, setPreview] = useState<RestoreResult | null>(null);
   const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
   const [conflictStrategy, setConflictStrategy] = useState<"skip" | "overwrite">("skip");
@@ -42,9 +55,32 @@ export function RestorePanel() {
   const isApplying = restore.isPending && restore.variables?.mode === "apply";
 
   const handleFile = (f: File | null) => {
-    setFile(f);
     setPreview(null);
     setSelectedTables(new Set());
+    setFileError(null);
+    if (!f) {
+      setFile(null);
+      return;
+    }
+    if (f.size > MAX_RESTORE_FILE_BYTES) {
+      setFile(null);
+      setFileError(
+        `File troppo grande (${(f.size / 1024 / 1024).toFixed(1)} MB). Massimo ${MAX_RESTORE_FILE_BYTES / 1024 / 1024} MB.`,
+      );
+      if (fileInput.current) fileInput.current.value = "";
+      return;
+    }
+    const mimeOk = ALLOWED_RESTORE_MIME.has(f.type);
+    const extOk = ALLOWED_RESTORE_EXT_RE.test(f.name);
+    if (!mimeOk || !extOk) {
+      setFile(null);
+      setFileError(
+        `Formato non valido. Atteso .tar.gz / .tgz / .gz (ricevuto: ${f.type || "tipo sconosciuto"}).`,
+      );
+      if (fileInput.current) fileInput.current.value = "";
+      return;
+    }
+    setFile(f);
   };
 
   const handlePreview = async () => {
