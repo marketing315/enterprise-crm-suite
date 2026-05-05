@@ -94,7 +94,11 @@ export async function assertSafeUrl(
     return { ok: false, error: "non_https", detail: u.protocol };
   }
 
-  const host = u.hostname.toLowerCase();
+  let host = u.hostname.toLowerCase();
+  // Strip IPv6 brackets if URL parser kept them in hostname
+  if (host.startsWith("[") && host.endsWith("]")) {
+    host = host.slice(1, -1);
+  }
   if (BLOCKED_HOSTS.has(host)) {
     return { ok: false, error: "host_blocked", detail: host };
   }
