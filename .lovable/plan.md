@@ -55,3 +55,14 @@ Stato: **completata** (additive, no breaking changes).
 - Cutover OAuth da HMAC state a session-based: tabelle/RPC pronte, ma il taglio richiede coordinamento con popup Google/Meta in produzione → rinviato.
 - Drop colonne `*_token_encrypted`: vietato da Data Safety HARD.
 - Rimanenti finding A1, A4–A10, F2–F5, F7–F8, H1–H14: pianificati per le iterazioni successive.
+
+---
+
+## Settimana 4 P0 — Auth rate limiting (A4–A10)
+
+- Migration `auth_rate_limit` (additive): tabella + 2 RPC `consume_auth_rate_limit` / `reset_auth_rate_limit` + `cleanup_auth_rate_limit`.
+- Soglie: signin 10/15min con lock 15min, password_reset 5/15min con lock 15min.
+- Identity hash = `SHA-256(email_lower|scope)` (browser side, no email in chiaro al log).
+- Wiring: `AuthContext.signIn` (consume + reset on success), `ForgotPasswordForm` (consume).
+- Fail-open su RPC error (non bloccare il login se backend è giù).
+- RLS: tabella accessibile solo a service_role; gli RPC sono SECURITY DEFINER esposti ad anon+authenticated.
