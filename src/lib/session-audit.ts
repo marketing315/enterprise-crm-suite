@@ -8,11 +8,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type SessionEventType =
+  | "signup"
   | "signin"
   | "signout"
   | "token_refresh"
   | "password_reset"
   | "mfa_enroll"
+  | "mfa_unenroll"
   | "mfa_challenge_success"
   | "mfa_challenge_failed";
 
