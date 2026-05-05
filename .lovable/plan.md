@@ -1,4 +1,4 @@
-# Settimana 2 P0 — Audit remediation (C4–C7, C9–C12)
+# Settimana 2-3 P0 — Audit remediation (C4–C7, C9–C12, A3, F1, F6)
 
 Stato: **completata** (additive, no breaking changes).
 
@@ -35,10 +35,23 @@ Stato: **completata** (additive, no breaking changes).
 - C5 CORS restricted: gestito da `_shared/cors.ts` (memoria progetto).
 - C6 AI quota & context cap: già live in `ai-chat` (DAILY_QUOTA_AI_CHAT=300, MAX_TOTAL_INPUT_CHARS=12k, vedi memoria `ai-quota-and-context-cap`).
 
+### A3 — audit_events immutable (già applicato)
+- Migration `20260505084648_*`: trigger `audit_events_immutable` su BEFORE UPDATE/DELETE + REVOKE UPDATE/DELETE/TRUNCATE da PUBLIC/anon/authenticated.
+
+### F1 — Sanitize markdown AI/utenti (rehype-sanitize)
+- Nuovo wrapper `src/components/ui/SafeMarkdown.tsx` con `rehype-sanitize` (schema GitHub di default).
+- Sostituito `ReactMarkdown` → `SafeMarkdown` in: `ChatMessageBubble`, `AgentChatPanel`, `ExecutiveSummaryCard`.
+- Blocca `<script>`, `<iframe>`, attributi `on*`, `javascript:`/`data:` URI, style arbitrari → mitiga prompt-injection AI che tenti di iniettare HTML.
+
+### F6 — Stack trace nascosti in produzione
+- `ErrorBoundary` mostra il pannello "Dettagli tecnici" solo se `import.meta.env.DEV`. In prod l'utente vede ID errore + CTA, non il messaggio interno.
+
 ## Deploy
 - Migration applicata: `20260505090613_settimana2_p0_hardening.sql`.
 - Edge function deployate: `cron-relay`, `notification-webhook-dispatcher`, `send-n8n-webhook`, `backup-archive-signed-url`, `webhook-dispatcher`.
+- Frontend: SafeMarkdown + ErrorBoundary prod-safe (no migration richiesta).
 
 ## Cosa NON è stato fatto (su richiesta)
 - Cutover OAuth da HMAC state a session-based: tabelle/RPC pronte, ma il taglio richiede coordinamento con popup Google/Meta in produzione → rinviato.
 - Drop colonne `*_token_encrypted`: vietato da Data Safety HARD.
+- Rimanenti finding A1, A4–A10, F2–F5, F7–F8, H1–H14: pianificati per le iterazioni successive.

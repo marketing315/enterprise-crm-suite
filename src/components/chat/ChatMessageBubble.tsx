@@ -2,7 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { Bot, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import ReactMarkdown from "react-markdown";
+import { SafeMarkdown } from "@/components/ui/SafeMarkdown";
 import { cn } from "@/lib/utils";
 import type { ChatMessageWithSender } from "@/hooks/useChat";
 
@@ -66,13 +66,13 @@ export function ChatMessageBubble({ message, isOwn, showSenderName = false }: Ch
         )}>
           {isAI ? (
             <div className="text-sm prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1.5 [&_p:last-child]:mb-0">
-              <ReactMarkdown components={{
+              <SafeMarkdown components={{
                 p: ({ children }) => <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>,
                 strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                 code: ({ children }) => (
                   <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>
                 ),
-              }}>{message.message_text}</ReactMarkdown>
+              }}>{message.message_text}</SafeMarkdown>
             </div>
           ) : (
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.message_text}</p>
