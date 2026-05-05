@@ -4931,6 +4931,95 @@ export type Database = {
           },
         ]
       }
+      idempotency_events: {
+        Row: {
+          caller_fp: string
+          caller_id: string | null
+          created_at: string
+          detail: Json | null
+          event: string
+          id: string
+          idem_key: string
+          key_id: string | null
+          scope: string
+        }
+        Insert: {
+          caller_fp: string
+          caller_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          event: string
+          id?: string
+          idem_key: string
+          key_id?: string | null
+          scope: string
+        }
+        Update: {
+          caller_fp?: string
+          caller_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          event?: string
+          id?: string
+          idem_key?: string
+          key_id?: string | null
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idempotency_events_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "idempotency_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idempotency_keys: {
+        Row: {
+          caller_fp: string
+          caller_id: string | null
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          idem_key: string
+          payload_fp: string
+          response_body: Json | null
+          response_status: number | null
+          scope: string
+          status: string
+        }
+        Insert: {
+          caller_fp: string
+          caller_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          idem_key: string
+          payload_fp: string
+          response_body?: Json | null
+          response_status?: number | null
+          scope: string
+          status: string
+        }
+        Update: {
+          caller_fp?: string
+          caller_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          idem_key?: string
+          payload_fp?: string
+          response_body?: Json | null
+          response_status?: number | null
+          scope?: string
+          status?: string
+        }
+        Relationships: []
+      }
       incident_drills: {
         Row: {
           action_items: Json | null
@@ -10692,6 +10781,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_idempotency_key: {
+        Args: {
+          p_caller_fp: string
+          p_caller_id: string
+          p_idem_key: string
+          p_payload_fp: string
+          p_scope: string
+          p_ttl_seconds?: number
+        }
+        Returns: {
+          cached_body: Json
+          cached_status: number
+          key_id: string
+          outcome: string
+        }[]
+      }
       claim_inbound_events: {
         Args: { p_limit?: number }
         Returns: {
@@ -10777,6 +10882,7 @@ export type Database = {
         }
       }
       cleanup_auth_rate_limit: { Args: never; Returns: number }
+      cleanup_idempotency_keys: { Args: never; Returns: number }
       cleanup_internal_auth_nonces: { Args: never; Returns: number }
       cleanup_ip_rate_limit_buckets: { Args: never; Returns: number }
       cleanup_oauth_sessions: { Args: never; Returns: number }
@@ -10789,6 +10895,15 @@ export type Database = {
       cleanup_webhook_dedup: { Args: never; Returns: number }
       complete_ai_tag_job: {
         Args: { p_error?: string; p_job_id: string }
+        Returns: undefined
+      }
+      complete_idempotency_key: {
+        Args: {
+          p_failed?: boolean
+          p_key_id: string
+          p_response_body: Json
+          p_response_status: number
+        }
         Returns: undefined
       }
       complete_tour: { Args: never; Returns: undefined }
