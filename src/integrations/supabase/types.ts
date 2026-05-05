@@ -2543,6 +2543,42 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_signed_url_audit: {
+        Row: {
+          brand_id: string
+          expires_at: string
+          id: string
+          issued_at: string
+          revoked_at: string | null
+          revoked_by: string | null
+          run_id: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          expires_at: string
+          id?: string
+          issued_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          run_id: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          run_id?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       brand_assignment_state: {
         Row: {
           brand_id: string
@@ -3905,6 +3941,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cron_relay_log: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          job_name: string
+          request_id: string | null
+          upstream_status: number | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          job_name: string
+          request_id?: string | null
+          upstream_status?: number | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          job_name?: string
+          request_id?: string | null
+          upstream_status?: number | null
+        }
+        Relationships: []
       }
       deal_scores: {
         Row: {
@@ -7100,6 +7169,66 @@ export type Database = {
           },
         ]
       }
+      oauth_redirect_whitelist: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          provider: string
+          redirect_uri: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider: string
+          redirect_uri: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider?: string
+          redirect_uri?: string
+        }
+        Relationships: []
+      }
+      oauth_sessions: {
+        Row: {
+          brand_id: string
+          consumed_at: string | null
+          created_at: string
+          csrf_token: string
+          expires_at: string
+          id: string
+          provider: string
+          redirect_uri: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          consumed_at?: string | null
+          created_at?: string
+          csrf_token: string
+          expires_at?: string
+          id?: string
+          provider: string
+          redirect_uri: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          csrf_token?: string
+          expires_at?: string
+          id?: string
+          provider?: string
+          redirect_uri?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       oauth_tokens: {
         Row: {
           access_secret_id: string | null
@@ -7246,6 +7375,7 @@ export type Database = {
           name: string
           payload_format: string
           payload_mapping: Json | null
+          pii_safe_payload: boolean
           secret: string
           updated_at: string
           url: string
@@ -7260,6 +7390,7 @@ export type Database = {
           name: string
           payload_format?: string
           payload_mapping?: Json | null
+          pii_safe_payload?: boolean
           secret: string
           updated_at?: string
           url: string
@@ -7274,6 +7405,7 @@ export type Database = {
           name?: string
           payload_format?: string
           payload_mapping?: Json | null
+          pii_safe_payload?: boolean
           secret?: string
           updated_at?: string
           url?: string
@@ -10445,6 +10577,15 @@ export type Database = {
         }
         Returns: Json
       }
+      consume_oauth_session: {
+        Args: { p_csrf: string }
+        Returns: {
+          brand_id: string
+          provider: string
+          redirect_uri: string
+          user_id: string
+        }[]
+      }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
         Returns: boolean
@@ -10519,6 +10660,15 @@ export type Database = {
           p_marketing_campaign_id?: string
           p_notes?: string
           p_source_name?: string
+        }
+        Returns: string
+      }
+      create_oauth_session: {
+        Args: {
+          p_brand_id: string
+          p_provider: string
+          p_redirect_uri: string
+          p_user_id: string
         }
         Returns: string
       }
@@ -11593,6 +11743,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_oauth_redirect_allowed: {
+        Args: { p_provider: string; p_redirect_uri: string }
+        Returns: boolean
+      }
       is_thread_member: {
         Args: { p_thread_id: string; p_user_id: string }
         Returns: boolean
@@ -12024,6 +12178,10 @@ export type Database = {
           match_type: string
         }[]
       }
+      revoke_backup_signed_url: {
+        Args: { p_audit_id: string }
+        Returns: boolean
+      }
       revoke_mcp_token: { Args: { p_token_id: string }; Returns: boolean }
       rotate_outbound_webhook_secret: {
         Args: { p_id: string; p_new_secret: string }
@@ -12220,6 +12378,10 @@ export type Database = {
         Returns: Json
       }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
+      try_lock_cron_job: {
+        Args: { p_brand_id?: string; p_job_name: string }
+        Returns: boolean
+      }
       update_appointment: {
         Args: {
           p_address?: string
