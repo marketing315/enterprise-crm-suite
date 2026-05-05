@@ -15,6 +15,14 @@ Cartella che raccoglie i runbook operativi per il Disaster Recovery della piatta
 - **Post-mortem**: obbligatorio entro 5 giorni lavorativi per qualsiasi esecuzione di un runbook DR (template in `docs/dr/post-mortem-template.md`).
 - **Drill**: test semestrali in sandbox (`.env.e2e`) — script automatizzati in `scripts/dr/`.
 
+## Game-day log
+
+| Data | Tipo | Report |
+|------|------|--------|
+| 2026-05-05 | Tabletop + read-only verification (tutti i 3 runbook) | [game-day-2026-05-05.md](./game-day-2026-05-05.md) |
+
+> Prossimo game-day pianificato: **2026-11-05**.
+
 ## Roles & contacts
 
 | Ruolo | Responsabilità in DR |
