@@ -68,14 +68,21 @@ async function applyProposal(
         if (!dealId) return { success: false, error: "No deal_id" };
         const stageName = changes.stage_name as string;
         if (!stageName) return { success: false, error: "No stage_name in changes" };
+        // C3: validate stage_name against strict whitelist (defends against AI output injection)
+        if (!STAGE_NAME_RE.test(stageName)) {
+          return { success: false, error: `invalid_stage_name:"${stageName}"` };
+        }
         const { data: stage } = await supabase
           .from("pipeline_stages")
-          .select("id")
+          .select("id, brand_id")
           .eq("brand_id", brandId)
           .eq("name", stageName)
           .eq("is_active", true)
           .maybeSingle();
-        if (!stage) return { success: false, error: `Stage "${stageName}" not found or inactive` };
+        if (!stage || stage.brand_id !== brandId) {
+          return { success: false, error: `stage_not_in_brand:"${stageName}"` };
+        }
+
         const { error } = await supabase
           .from("deals")
           .update({ current_stage_id: stage.id })
