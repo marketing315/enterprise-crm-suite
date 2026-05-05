@@ -13,7 +13,7 @@
 Sintomi:
 - Tasso di errore edge functions > 25% per > 5 min (alert SLO)
 - Healthcheck `/admin/slo-board` lampeggia rosso su `webhook-ingest`, `automation-runner`, etc.
-- Aumento improvviso di righe `incoming_requests` con status `failed` ed `error_class = 'edge_unavailable'`
+- Aumento improvviso di righe `incoming_requests` con status `failed` ed `dlq_reason = 'edge_unavailable'`
 - Utenti segnalano "salvataggio non riuscito" massivamente
 
 Verifica rapida:
