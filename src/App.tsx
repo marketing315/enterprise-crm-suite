@@ -41,6 +41,7 @@ const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const SettingsSalesRoute = lazy(() => import("@/pages/SettingsSalesRoute"));
+const SettingsSecurity = lazy(() => import("@/pages/SettingsSecurity"));
 const AdminSetup = lazy(() => import("@/pages/AdminSetup"));
 const AdminAIMetrics = lazy(() => import("@/pages/AdminAIMetrics"));
 const AdminAI = lazy(() => import("@/pages/AdminAI"));
