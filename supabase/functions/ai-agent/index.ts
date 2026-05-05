@@ -10,6 +10,7 @@ import {
   resolveConversationHistory,
   fetchWithTimeout,
 } from "./helpers.ts";
+import { redactForLog } from "../_shared/pii-redact.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
