@@ -82,9 +82,12 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Audit
+    // Audit (legacy audit_events + C10 backup_signed_url_audit)
+    const expiresAtIso = new Date(Date.now() + 300 * 1000).toISOString();
+    let internalUserId: string | null = null;
     try {
-      const { data: internalUserId } = await admin.rpc("get_user_id", { auth_user_id: userData.user.id });
+      const { data: uid } = await admin.rpc("get_user_id", { auth_user_id: userData.user.id });
+      internalUserId = (uid as string | null) ?? null;
       await admin.from("audit_events").insert({
         brand_id: run.brand_id,
         actor_user_id: internalUserId,
@@ -93,6 +96,17 @@ Deno.serve(async (req) => {
         action: "backup.download_signed",
         metadata: { storage_path: run.storage_path, expires_in: 300 },
       });
+    } catch { /* non bloccare */ }
+    try {
+      if (internalUserId) {
+        await admin.from("backup_signed_url_audit").insert({
+          user_id: internalUserId,
+          brand_id: run.brand_id,
+          run_id: runId,
+          storage_path: run.storage_path,
+          expires_at: expiresAtIso,
+        });
+      }
     } catch { /* non bloccare */ }
 
     return new Response(JSON.stringify({

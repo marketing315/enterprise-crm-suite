@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqualAny } from "../_shared/crypto.ts";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -172,9 +173,24 @@ Deno.serve(async (req) => {
 
     const reportPayload = await reportResponse.json();
 
-    // Send to n8n webhook
+    // Send to n8n webhook (C12: SSRF guard)
+    const safeN8n = await assertSafeUrl(n8nWebhookUrl);
+    if (!safeN8n.ok) {
+      console.error("[send-n8n-webhook] n8n url blocked:", safeN8n.error);
+      if (syncRun?.id) {
+        await supabase.from("sync_runs").update({
+          status: "failed",
+          error_message: `n8n url blocked: ${safeN8n.error}`,
+          completed_at: new Date().toISOString(),
+        }).eq("id", syncRun.id);
+      }
+      return new Response(
+        JSON.stringify({ error: "n8n_url_blocked", reason: safeN8n.error }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     console.log(`[send-n8n-webhook] Sending ${mode} report to n8n...`);
-    const n8nResponse = await fetch(n8nWebhookUrl, {
+    const n8nResponse = await fetch(safeN8n.url.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reportPayload),

@@ -2,6 +2,7 @@
 // Cron-driven (1min). Consegna notifiche di escalation/override/SLO/anomalie verso webhook esterni.
 // Supporta preset: generic (HMAC SHA-256), google_sheets (Apps Script), n8n, slack_compatible.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,13 +69,18 @@ function transformPayload(preset: string, p: Record<string, unknown>): unknown {
 
 async function deliver(job: ClaimedJob): Promise<{ ok: boolean; error?: string }> {
   try {
+    // C12: SSRF guard
+    const safe = await assertSafeUrl(job.endpoint_url);
+    if (!safe.ok) {
+      return { ok: false, error: `ssrf_blocked:${safe.error}:${safe.detail ?? ""}` };
+    }
     const body = JSON.stringify(transformPayload(job.preset, job.payload));
     const signature = await hmacSign(job.hmac_secret, body);
 
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15_000);
 
-    const res = await fetch(job.endpoint_url, {
+    const res = await fetch(safe.url.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
