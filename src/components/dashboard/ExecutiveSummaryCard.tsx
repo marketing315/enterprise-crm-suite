@@ -12,7 +12,7 @@ import {
 import { FileText, ExternalLink, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
-import ReactMarkdown from "react-markdown";
+import { SafeMarkdown } from "@/components/ui/SafeMarkdown";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -94,7 +94,7 @@ export function ExecutiveSummaryCard() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="text-sm prose prose-sm dark:prose-invert max-w-none line-clamp-4">
-            <ReactMarkdown>{previewLines}</ReactMarkdown>
+            <SafeMarkdown>{previewLines}</SafeMarkdown>
           </div>
           <Button
             variant="outline"
@@ -117,7 +117,7 @@ export function ExecutiveSummaryCard() {
             </DialogTitle>
           </DialogHeader>
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{report.content_markdown}</ReactMarkdown>
+            <SafeMarkdown>{report.content_markdown}</SafeMarkdown>
           </div>
         </DialogContent>
       </Dialog>
