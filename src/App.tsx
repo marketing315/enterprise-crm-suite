@@ -159,11 +159,13 @@ const App = () => (
                     }
                   />
                   
-                  {/* Protected routes with layout */}
+                  {/* Protected routes with layout (MFA guard wraps the whole tree) */}
                   <Route
                     element={
                       <ProtectedRoute>
-                        <MainLayout />
+                        <MfaGuard>
+                          <MainLayout />
+                        </MfaGuard>
                       </ProtectedRoute>
                     }
                   >
