@@ -68,8 +68,22 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         setSystemBrand(system || null);
         setBrands(regularBrands);
         
-        // Try to restore previously selected brand
-        const storedBrandId = localStorage.getItem(BRAND_STORAGE_KEY);
+        // F4: read selected brand from user-scoped storage so different
+        // operators on the same browser cannot inherit each other's brand.
+        // Falls back to legacy global key (one-time migration), then purges it.
+        let storedBrandId = userStorage.getItem(BRAND_STORAGE_KEY);
+        if (!storedBrandId) {
+          try {
+            const legacy = localStorage.getItem(BRAND_STORAGE_KEY);
+            if (legacy) {
+              storedBrandId = legacy;
+              userStorage.setItem(BRAND_STORAGE_KEY, legacy);
+            }
+          } catch { /* no-op */ }
+        }
+        // F4: always purge the global key — leaves no cross-user residue.
+        try { localStorage.removeItem(BRAND_STORAGE_KEY); } catch { /* no-op */ }
+
         let restored = false;
         if (storedBrandId && data) {
           if (storedBrandId === SYSTEM_BRAND_ID && system && (isAdmin || isCeo)) {
@@ -86,7 +100,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         // If stored brand is no longer valid/accessible, reset selection
         if (!restored) {
           setCurrentBrandState(null);
-          localStorage.removeItem(BRAND_STORAGE_KEY);
+          userStorage.removeItem(BRAND_STORAGE_KEY);
         }
       }
     } catch (error) {
