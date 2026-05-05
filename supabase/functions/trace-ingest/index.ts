@@ -60,11 +60,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-      return new Response(JSON.stringify({ error: "invalid_batch_size" }), {
-        status: 422,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+
 
     const required = ["trace_id", "span_id", "service_name", "operation_name", "started_at", "duration_ms"];
     for (const ev of events) {
