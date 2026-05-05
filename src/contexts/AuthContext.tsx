@@ -197,7 +197,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUserData, syncRealtimeAuth]);
 
   const signIn = async (email: string, password: string) => {
+    // A4-A10: anti-brute-force rate limit (15 min window, 10 attempts, 15 min lock).
+    const { consumeAuthRateLimit, resetAuthRateLimit, formatRetryAfter } = await import(
+      "@/lib/auth-rate-limit"
+    );
+    const rl = await consumeAuthRateLimit(email, "signin");
+    if (!rl.allowed) {
+      const wait = rl.retry_after_seconds ?? 900;
+      return {
+        error: new Error(
+          `Troppi tentativi di accesso. Riprova fra ${formatRetryAfter(wait)}.`,
+        ),
+      };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      void resetAuthRateLimit(email, "signin");
+    }
     return { error: error as Error | null };
   };
 

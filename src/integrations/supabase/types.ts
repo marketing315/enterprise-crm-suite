@@ -2165,6 +2165,36 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_rate_limit: {
+        Row: {
+          attempts: number
+          id: string
+          identity_hash: string
+          last_attempt_at: string
+          locked_until: string | null
+          scope: string
+          window_started_at: string
+        }
+        Insert: {
+          attempts?: number
+          id?: string
+          identity_hash: string
+          last_attempt_at?: string
+          locked_until?: string | null
+          scope: string
+          window_started_at?: string
+        }
+        Update: {
+          attempts?: number
+          id?: string
+          identity_hash?: string
+          last_attempt_at?: string
+          locked_until?: string | null
+          scope?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       automation_jobs: {
         Row: {
           attempts: number
@@ -10544,6 +10574,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cleanup_auth_rate_limit: { Args: never; Returns: number }
       cleanup_old_traces: { Args: never; Returns: number }
       cleanup_outbound_webhook_deliveries: {
         Args: { p_limit?: number }
@@ -10575,6 +10606,10 @@ export type Database = {
           p_input_chars: number
           p_user_id: string
         }
+        Returns: Json
+      }
+      consume_auth_rate_limit: {
+        Args: { p_identity_hash: string; p_scope: string }
         Returns: Json
       }
       consume_oauth_session: {
@@ -12163,6 +12198,10 @@ export type Database = {
       replay_webhook_dead_letter: {
         Args: { p_outbox_id: string }
         Returns: boolean
+      }
+      reset_auth_rate_limit: {
+        Args: { p_identity_hash: string; p_scope: string }
+        Returns: undefined
       }
       resolve_lead_campaign_attribution: {
         Args: {
