@@ -1,9 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { safeErrorResponse } from "../_shared/safe-error-response.ts";
+import { beginIdempotency } from "../_shared/idempotency.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key",
 };
 
 /**
@@ -60,9 +61,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    let rawBody = "";
     let body: CallRequestBody;
     try {
-      body = await req.json();
+      rawBody = await req.text();
+      body = JSON.parse(rawBody);
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body" }),
