@@ -61,8 +61,11 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('La password deve essere di almeno 6 caratteri');
+    // A7: enforce password policy at runtime (mirror of edge _shared/password-policy)
+    const { validatePassword } = await import('@/lib/password-policy');
+    const policy = validatePassword(password);
+    if (!policy.ok) {
+      toast.error(policy.error || 'Password non valida');
       return;
     }
 
