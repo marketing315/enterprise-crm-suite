@@ -62,6 +62,7 @@ const AdminCompliance = lazy(() => import("@/pages/AdminCompliance"));
 const AdminObservability = lazy(() => import("@/pages/AdminObservability"));
 const AdminMcpDashboard = lazy(() => import("@/pages/AdminMcpDashboard"));
 const AdminQuickBackup = lazy(() => import("@/pages/AdminQuickBackup"));
+const AdminSessions = lazy(() => import("@/pages/AdminSessions"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Team = lazy(() => import("@/pages/Team"));
