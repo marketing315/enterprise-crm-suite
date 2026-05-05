@@ -151,7 +151,7 @@ async function processDelivery(
     if (webhook === undefined) {
       const { data, error } = await supabase
         .from("outbound_webhooks")
-        .select("id, url, secret, is_active, event_types, payload_format, payload_mapping, custom_url_params")
+        .select("id, url, secret, is_active, event_types, payload_format, payload_mapping, custom_url_params, pii_safe_payload")
         .eq("id", delivery.webhook_id)
         .single();
 
@@ -171,46 +171,74 @@ async function processDelivery(
       return { success: false, error: "webhook_inactive", durationMs: Date.now() - startTime };
     }
 
+    // C12: SSRF guard on the configured URL (https-only, no private IPs).
+    const safeCheck = await assertSafeUrl(webhook.url);
+    if (!safeCheck.ok) {
+      const durationMs = Date.now() - startTime;
+      await supabase.rpc("record_delivery_result", {
+        p_delivery_id: delivery.id,
+        p_success: false,
+        p_error: `ssrf_blocked:${safeCheck.error}`,
+        p_duration_ms: durationMs,
+      });
+      return { success: false, error: `ssrf_blocked:${safeCheck.error}`, durationMs };
+    }
+
     // Prepare request body based on payload_format
     const timestamp = Math.floor(Date.now() / 1000);
     let requestBody: string;
     let contentType: string;
     let targetUrl = webhook.url;
 
-    // Append custom URL params if present
+    // C4: append custom URL params with strict whitelist on keys + values
     if (webhook.custom_url_params && Object.keys(webhook.custom_url_params).length > 0) {
       const urlObj = new URL(targetUrl);
       for (const [key, value] of Object.entries(webhook.custom_url_params)) {
-        urlObj.searchParams.set(key, value);
+        if (!ALLOWED_URL_PARAM_KEYS.has(key) || !URL_PARAM_VALUE_RE.test(String(value))) {
+          console.warn(`[C4] dropped invalid custom_url_param key=${key} on webhook=${webhook.id}`);
+          continue;
+        }
+        urlObj.searchParams.set(key, String(value));
       }
       targetUrl = urlObj.toString();
     }
 
+    // C4: if pii_safe_payload, pseudonymize PII fields before serialization
+    let outboundPayload: Record<string, unknown> = delivery.payload;
+    let redactedFields: string[] = [];
+    if (webhook.pii_safe_payload) {
+      const sanitized = await sanitizePiiPayload(delivery.payload, {
+        strategy: "pseudonymize",
+        secret: PII_PSEUDO_SECRET,
+      });
+      outboundPayload = sanitized.payload;
+      redactedFields = sanitized.redactedFields;
+    }
+
     if (webhook.payload_format === "form_urlencoded") {
-      // Transform payload using explicit mapping (required for legacy endpoints like SiLeads)
       const formData = new URLSearchParams();
       const mapping = webhook.payload_mapping;
-      
       if (mapping && Object.keys(mapping).length > 0) {
-        // Use explicit mapping: { targetField: "source.path" }
         for (const [targetField, sourcePath] of Object.entries(mapping)) {
-          const value = getNestedValue(delivery.payload, sourcePath);
+          const value = getNestedValue(outboundPayload, sourcePath);
           if (value !== undefined && value !== null) {
             formData.set(targetField, String(value));
           }
         }
       } else {
-        // Fallback: flatten payload for form encoding (not recommended for legacy endpoints)
-        flattenObject(delivery.payload, formData, "");
+        flattenObject(outboundPayload, formData, "");
       }
-      
       requestBody = formData.toString();
       contentType = "application/x-www-form-urlencoded; charset=UTF-8";
     } else {
-      // Standard JSON format
-      requestBody = JSON.stringify(delivery.payload);
+      requestBody = JSON.stringify(outboundPayload);
       contentType = "application/json";
     }
+
+    if (redactedFields.length > 0) {
+      console.log(`[C4] webhook=${webhook.id} delivery=${delivery.id} pii_redacted=${redactedFields.join(",")}`);
+    }
+
 
     // Compute signature on the final requestBody (signature and body must match exactly)
     const signature = await computeSignature(webhook.secret, timestamp, requestBody);
