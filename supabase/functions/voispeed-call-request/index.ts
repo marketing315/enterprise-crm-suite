@@ -1,9 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { safeErrorResponse } from "../_shared/safe-error-response.ts";
+import { beginIdempotency } from "../_shared/idempotency.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key",
 };
 
 /**
@@ -60,9 +61,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    let rawBody = "";
     let body: CallRequestBody;
     try {
-      body = await req.json();
+      rawBody = await req.text();
+      body = JSON.parse(rawBody);
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body" }),
@@ -151,7 +154,30 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create call log entry first (status: initiated)
+    // ── H8: Idempotency guard (optional). Clients SHOULD send Idempotency-Key on retries. ──
+    const idemKey = req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    const callerFp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || "unknown";
+    const idem = await beginIdempotency(supabase, {
+      scope: "voispeed-call-request",
+      callerId: crmUser.id as string,
+      callerFp,
+      idemKey,
+      payload: rawBody,
+      optional: true,
+    });
+    if (idem.kind === "replay") {
+      return idem.cachedResponse(corsHeaders);
+    }
+    if (idem.kind === "in_progress") {
+      return idem.inProgressResponse(corsHeaders);
+    }
+    if (idem.kind === "payload_mismatch") {
+      return idem.mismatchResponse(corsHeaders);
+    }
+    const idemHandle = idem.kind === "inserted" ? idem : null;
+
     const extId = `calllog_${crypto.randomUUID()}`;
     
     const { data: callLog, error: callLogError } = await supabase
@@ -244,15 +270,22 @@ Deno.serve(async (req: Request) => {
       .update({ status: "ringing" })
       .eq("id", callLog.id);
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        call_log_id: callLog.id,
-        ext_id: extId,
-        message: "Call initiated successfully",
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const okBody = {
+      success: true,
+      call_log_id: callLog.id,
+      ext_id: extId,
+      message: "Call initiated successfully",
+    };
+    if (idemHandle) {
+      await idemHandle.complete(200, okBody);
+    }
+    return new Response(JSON.stringify(okBody), {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        ...(idemKey ? { "Idempotency-Key": idemKey, "Idempotency-Replay": "false" } : {}),
+      },
+    });
 
   } catch (error) {
     return safeErrorResponse(error, {
