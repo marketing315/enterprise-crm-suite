@@ -20,14 +20,17 @@
 
 ```sql
 -- Quanti payload sono in DLQ e di che tipo?
+-- Schema reale: incoming_requests(source_id, status, dlq_reason, created_at, ...)
 SELECT
-  source,
-  count(*) AS total,
-  min(received_at) AS oldest,
-  max(received_at) AS newest
-FROM public.incoming_requests
-WHERE status = 'failed'
-GROUP BY source
+  ws.name        AS source,
+  ir.dlq_reason  AS reason,
+  count(*)       AS total,
+  min(ir.created_at) AS oldest,
+  max(ir.created_at) AS newest
+FROM public.incoming_requests ir
+LEFT JOIN public.webhook_sources ws ON ws.id = ir.source_id
+WHERE ir.status = 'failed' OR ir.dlq_reason IS NOT NULL
+GROUP BY ws.name, ir.dlq_reason
 ORDER BY total DESC;
 ```
 
@@ -37,7 +40,7 @@ Confermare con il team che la causa root del fallimento è risolta. **Non proced
 
 L'interfaccia `/admin/dlq` espone:
 
-1. **Filtri**: source, finestra temporale, correlation_id, error_class
+1. **Filtri**: source, finestra temporale, correlation_id, dlq_reason
 2. **Batch replay**: selezionare fino a 200 record per volta
 3. **Telemetria live**: progress bar, success/fail count, ETA stimata
 4. **Auto-stop**: il replay si interrompe se il tasso di errore supera il 25% (circuit breaker)
