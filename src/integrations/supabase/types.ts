@@ -3798,6 +3798,8 @@ export type Database = {
           lead_validation_ts: string | null
           marketing_consent: boolean | null
           marketing_consent_at: string | null
+          merged_at: string | null
+          merged_into_contact_id: string | null
           note1: string | null
           note10: string | null
           note2: string | null
@@ -3853,6 +3855,8 @@ export type Database = {
           lead_validation_ts?: string | null
           marketing_consent?: boolean | null
           marketing_consent_at?: string | null
+          merged_at?: string | null
+          merged_into_contact_id?: string | null
           note1?: string | null
           note10?: string | null
           note2?: string | null
@@ -3908,6 +3912,8 @@ export type Database = {
           lead_validation_ts?: string | null
           marketing_consent?: boolean | null
           marketing_consent_at?: string | null
+          merged_at?: string | null
+          merged_into_contact_id?: string | null
           note1?: string | null
           note10?: string | null
           note2?: string | null
@@ -3933,6 +3939,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_merged_into_contact_id_fkey"
+            columns: ["merged_into_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -10901,6 +10914,18 @@ export type Database = {
       }
       escalate_all_brands_breached_tickets: { Args: never; Returns: Json }
       escalate_breached_tickets: { Args: { p_brand_id: string }; Returns: Json }
+      find_duplicate_contacts: {
+        Args: { p_brand_id: string; p_limit?: number; p_strategy?: string }
+        Returns: {
+          contact_count: number
+          contact_ids: string[]
+          group_key: string
+          sample_email: string
+          sample_first_name: string
+          sample_last_name: string
+          sample_phone: string
+        }[]
+      }
       find_meta_app_by_slug: {
         Args: { p_brand_slug: string }
         Returns: {
@@ -12219,6 +12244,10 @@ export type Database = {
       mcp_unsubscribe_resource: {
         Args: { p_token_id: string; p_uri: string }
         Returns: boolean
+      }
+      merge_contacts: {
+        Args: { p_source_id: string; p_target_id: string }
+        Returns: Json
       }
       move_to_dlq: {
         Args: {
