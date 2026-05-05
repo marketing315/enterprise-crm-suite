@@ -11,6 +11,7 @@ import {
   fetchWithTimeout,
 } from "./helpers.ts";
 import { redactForLog } from "../_shared/pii-redact.ts";
+import { safeErrorResponse } from "../_shared/safe-error-response.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -304,10 +305,11 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("AI Agent error:", error);
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : "Unknown error",
-      message: "Mi dispiace, si è verificato un errore. Riprova tra qualche istante.",
-    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return safeErrorResponse(error, {
+      status: 500,
+      extraHeaders: corsHeaders,
+      logContext: { fn: "ai-agent" },
+      details: { message: "Mi dispiace, si è verificato un errore. Riprova tra qualche istante." },
+    });
   }
 });

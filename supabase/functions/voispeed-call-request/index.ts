@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { safeErrorResponse } from "../_shared/safe-error-response.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -254,10 +255,10 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error("VOIspeed call-request error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return safeErrorResponse(error, {
+      status: 500,
+      extraHeaders: corsHeaders,
+      logContext: { fn: "voispeed-call-request" },
+    });
   }
 });

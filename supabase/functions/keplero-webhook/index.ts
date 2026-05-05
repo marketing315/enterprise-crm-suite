@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { timingSafeEqual } from "../_shared/crypto.ts";
 import { redactForLog } from "../_shared/pii-redact.ts";
 import { checkIpRateLimit, rateLimited429 } from "../_shared/ip-rate-limit.ts";
+import { safeErrorResponse } from "../_shared/safe-error-response.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -198,14 +199,11 @@ Deno.serve(async (req: Request) => {
   try {
     return await handleKepleroPayload(supabaseAdmin, req, payload);
   } catch (err) {
-    console.error("[Keplero] UNHANDLED ERROR:", err);
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    const errorStack = err instanceof Error ? err.stack : undefined;
-    console.error("[Keplero] Stack:", errorStack);
-    return new Response(
-      JSON.stringify({ error: "Internal processing error", detail: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return safeErrorResponse(err, {
+      status: 500,
+      extraHeaders: corsHeaders,
+      logContext: { fn: "keplero-webhook" },
+    });
   }
 });
 
