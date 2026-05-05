@@ -13,6 +13,7 @@ import { AppearanceMenuItems } from './AppearanceMenuItems';
 import { usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
 import { IncomingCallPopup } from '@/components/contacts/IncomingCallPopup';
 import { IdleTimeoutWatcher } from '@/components/auth/IdleTimeoutWatcher';
+import { RealtimeStaleBanner } from '@/components/realtime/RealtimeStaleBanner';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -413,6 +414,7 @@ export function MainLayout() {
     <SidebarProvider>
       <IncomingCallPopup />
       <IdleTimeoutWatcher />
+      <RealtimeStaleBanner />
       <WelcomeModal />
       <AppTour />
       <div className="flex min-h-screen w-full">

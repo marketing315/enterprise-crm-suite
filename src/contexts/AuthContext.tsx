@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
+import { purgeSupabaseAuthStorage } from '@/lib/auth-storage-purge';
 import { clearAllQueryCaches } from '@/lib/queryClient';
 import { setUserScope, purgeUserScopedStorage } from '@/lib/userScopedStorage';
 import type { User, UserRole, AppRole } from '@/types/database';
@@ -31,20 +32,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRealtimeReady, setIsRealtimeReady] = useState(false);
 
+  const realtimeAttemptRef = useRef(0);
+  const realtimeRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const syncRealtimeAuth = useCallback(async (nextSession: Session | null) => {
     const accessToken = nextSession?.access_token;
+    if (realtimeRetryTimerRef.current) {
+      clearTimeout(realtimeRetryTimerRef.current);
+      realtimeRetryTimerRef.current = null;
+    }
     if (!accessToken) {
       setIsRealtimeReady(false);
+      realtimeAttemptRef.current = 0;
       return;
     }
+
+    // F8: decode exp; if token is already expired skip the call — onAuthStateChange
+    // TOKEN_REFRESHED will fire shortly with a fresh one.
+    try {
+      const { secondsUntilExpiry } = await import('@/lib/jwt-decode');
+      const ttl = secondsUntilExpiry(accessToken);
+      if (ttl !== null && ttl <= 0) {
+        setIsRealtimeReady(false);
+        window.dispatchEvent(new CustomEvent('realtime-stale', { detail: { reason: 'expired' } }));
+        return;
+      }
+    } catch { /* no-op */ }
 
     try {
       setIsRealtimeReady(false);
       await supabase.realtime.setAuth(accessToken);
       setIsRealtimeReady(true);
+      realtimeAttemptRef.current = 0;
+      window.dispatchEvent(new CustomEvent('realtime-stale', { detail: { reason: 'ok', ok: true } }));
     } catch (error) {
       setIsRealtimeReady(false);
       console.warn('Failed to sync realtime auth:', error);
+      // F8: exponential backoff retry, capped at 30s, max 5 attempts.
+      const attempt = Math.min(realtimeAttemptRef.current + 1, 5);
+      realtimeAttemptRef.current = attempt;
+      const delay = Math.min(30_000, 1_000 * 2 ** (attempt - 1));
+      window.dispatchEvent(new CustomEvent('realtime-stale', { detail: { reason: 'retry', attempt, delay } }));
+      realtimeRetryTimerRef.current = setTimeout(() => {
+        void syncRealtimeAuth(nextSession);
+      }, delay);
     }
   }, []);
 
@@ -205,8 +236,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
 
+    // F3: cross-tab signout. When another tab signs out, this tab also
+    // drops its session so a stale UI cannot keep serving authenticated
+    // requests on shared workstations.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'crm_auth_signal' || !e.newValue) return;
+      try {
+        const msg = JSON.parse(e.newValue);
+        if (msg?.type === 'SIGNED_OUT') {
+          // Force a local supabase signOut (clears its own storage too)
+          void supabase.auth.signOut().catch(() => { /* no-op */ });
+        }
+      } catch { /* no-op */ }
+    };
+    window.addEventListener('storage', onStorage);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('storage', onStorage);
     };
   }, [fetchUserData, syncRealtimeAuth]);
 
@@ -262,7 +309,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    // A6: log signout BEFORE supabase.auth.signOut clears the session
     try {
       const { logSessionEvent } = await import('@/lib/session-audit');
       await logSessionEvent('signout');
@@ -274,16 +320,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setSupabaseUser(null);
     setIsRealtimeReady(false);
-    // SECURITY: best-effort SW cache wipe (also fires from onAuthStateChange,
-    // duplicated here in case the listener races with a navigation away).
+    // F3: explicit purge of any residual sb-*-auth-token entries.
+    purgeSupabaseAuthStorage();
     await purgeSupabaseBrowserCaches();
-    // GDPR: wipe React Query in-memory + localStorage persister now, before
-    // the page navigates to /login (the SIGNED_OUT listener may not run if
-    // the navigation happens first).
     await clearAllQueryCaches();
-    // GDPR: wipe per-user UI preferences immediately.
     purgeUserScopedStorage();
     setUserScope(null);
+    // F3: broadcast signout to other tabs on the same origin.
+    try {
+      localStorage.setItem('crm_auth_signal', JSON.stringify({ type: 'SIGNED_OUT', t: Date.now() }));
+      localStorage.removeItem('crm_auth_signal');
+    } catch { /* no-op */ }
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
