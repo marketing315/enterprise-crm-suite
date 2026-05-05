@@ -130,6 +130,24 @@ const App = () => (
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/install" element={<GuardedInstall />} />
                   <Route path="/installa" element={<Navigate to="/install" replace />} />
+
+                  {/* A5: MFA flows (require auth, but MUST be reachable while at AAL1) */}
+                  <Route
+                    path="/security/mfa-enroll"
+                    element={
+                      <ProtectedRoute>
+                        <MfaEnroll />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/security/mfa-challenge"
+                    element={
+                      <ProtectedRoute>
+                        <MfaChallenge />
+                      </ProtectedRoute>
+                    }
+                  />
                   
                   {/* Brand selection (requires auth) */}
                   <Route
