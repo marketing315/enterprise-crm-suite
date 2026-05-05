@@ -1,5 +1,6 @@
 // SIEM Exporter — invia audit_events verso destinazioni SIEM esterne via webhook HMAC firmato
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
