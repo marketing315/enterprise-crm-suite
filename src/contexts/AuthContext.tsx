@@ -262,7 +262,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    // A6: log signout BEFORE supabase.auth.signOut clears the session
     try {
       const { logSessionEvent } = await import('@/lib/session-audit');
       await logSessionEvent('signout');
@@ -274,16 +273,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setSupabaseUser(null);
     setIsRealtimeReady(false);
-    // SECURITY: best-effort SW cache wipe (also fires from onAuthStateChange,
-    // duplicated here in case the listener races with a navigation away).
+    // F3: explicit purge of any residual sb-*-auth-token entries.
+    purgeSupabaseAuthStorage();
     await purgeSupabaseBrowserCaches();
-    // GDPR: wipe React Query in-memory + localStorage persister now, before
-    // the page navigates to /login (the SIGNED_OUT listener may not run if
-    // the navigation happens first).
     await clearAllQueryCaches();
-    // GDPR: wipe per-user UI preferences immediately.
     purgeUserScopedStorage();
     setUserScope(null);
+    // F3: broadcast signout to other tabs on the same origin.
+    try {
+      localStorage.setItem('crm_auth_signal', JSON.stringify({ type: 'SIGNED_OUT', t: Date.now() }));
+      localStorage.removeItem('crm_auth_signal');
+    } catch { /* no-op */ }
   };
 
   const hasRole = (role: AppRole, brandId?: string): boolean => {
