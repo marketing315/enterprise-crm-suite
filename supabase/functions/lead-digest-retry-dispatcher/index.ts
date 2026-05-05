@@ -41,10 +41,6 @@ Deno.serve(async (req) => {
     if (role === "service_role") {
       isSystemCall = true;
     } else if (role === "authenticated") {
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || bearerToken;
-      const verifyClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader! } },
-      });
       const { data: userData } = await verifyClient.auth.getUser(bearerToken);
       if (userData?.user) {
         const { data: internalUser } = await supabase
