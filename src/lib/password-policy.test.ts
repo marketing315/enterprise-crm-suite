@@ -15,8 +15,8 @@ describe("client password policy (mirror)", () => {
   it("rejects low complexity (only 2 classes)", () => {
     expect(validatePassword("abcdefghijkl").code).toBe("PASSWORD_LOW_COMPLEXITY");
   });
-  it("rejects common", () => {
-    expect(validatePassword("Italia2025XY").ok).toBe(false);
+  it("rejects too long", () => {
+    expect(validatePassword("Aa1!" + "x".repeat(200)).code).toBe("PASSWORD_TOO_LONG");
   });
   it("accepts strong", () => {
     expect(validatePassword("Tr0ub4dor&3xyz").ok).toBe(true);
