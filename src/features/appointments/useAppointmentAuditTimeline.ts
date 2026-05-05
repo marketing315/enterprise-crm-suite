@@ -46,9 +46,20 @@ export function useAppointmentAuditTimeline(appointmentId: string | undefined) {
       if (auditRes.error) throw auditRes.error;
       if (outcomesRes.error) throw outcomesRes.error;
 
+      type AuditRow = {
+        id: string;
+        action: string;
+        actor_user_id: string | null;
+        old_value: Record<string, unknown> | null;
+        new_value: Record<string, unknown> | null;
+        metadata: Record<string, unknown> | null;
+        created_at: string;
+      };
+      const auditRows = (auditRes.data ?? []) as unknown as AuditRow[];
+
       // Resolve actor names in a single pass
       const actorIds = new Set<string>();
-      auditRes.data?.forEach((r) => r.actor_user_id && actorIds.add(r.actor_user_id));
+      auditRows.forEach((r) => r.actor_user_id && actorIds.add(r.actor_user_id));
       outcomesRes.data?.forEach((r) => r.recorded_by_user_id && actorIds.add(r.recorded_by_user_id));
 
       let usersMap = new Map<string, string>();
@@ -60,16 +71,16 @@ export function useAppointmentAuditTimeline(appointmentId: string | undefined) {
         users?.forEach((u) => usersMap.set(u.id, u.full_name || u.email));
       }
 
-      const auditEvents: AppointmentTimelineEvent[] = (auditRes.data || []).map((r) => ({
+      const auditEvents: AppointmentTimelineEvent[] = auditRows.map((r) => ({
         id: `audit-${r.id}`,
         kind: "audit",
         action: r.action,
         occurred_at: r.created_at,
         actor_user_id: r.actor_user_id,
         actor_name: r.actor_user_id ? usersMap.get(r.actor_user_id) ?? null : null,
-        old_value: (r.old_value as Record<string, unknown>) ?? null,
-        new_value: (r.new_value as Record<string, unknown>) ?? null,
-        metadata: (r.metadata as Record<string, unknown>) ?? {},
+        old_value: r.old_value ?? null,
+        new_value: r.new_value ?? null,
+        metadata: r.metadata ?? {},
       }));
 
       const outcomeEvents: AppointmentTimelineEvent[] = (outcomesRes.data || []).map((r) => ({
