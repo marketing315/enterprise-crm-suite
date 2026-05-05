@@ -71,7 +71,11 @@ Deno.serve(async (req: Request) => {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    // --- C8: optional HMAC + timestamp anti-replay (opt-in via VOISPEED_HMAC_SECRET) ---
+    // --- C8: HMAC + timestamp anti-replay (opt-in via VOISPEED_HMAC_SECRET) ---
+    // Quando il secret è configurato, applichiamo:
+    //  - timestamp skew ≤300s
+    //  - signature constant-time compare
+    //  - nonce dedup (anti-replay nella finestra di skew) via webhook_request_dedup
     const hmacSecret = Deno.env.get("VOISPEED_HMAC_SECRET");
     if (hmacSecret) {
       const sigHeader = req.headers.get("x-voispeed-signature") ?? "";
@@ -85,6 +89,35 @@ Deno.serve(async (req: Request) => {
       if (!sigHeader || !timingSafeEqual(sigHeader, expectedSig)) {
         console.warn("[VOIspeed] HMAC signature mismatch");
         return new Response("Unauthorized", { status: 401 });
+      }
+
+      // C8 nonce-dedup: la signature è univoca per (ts, payload). La memorizziamo
+      // per ~10 min (oltre i 300s di skew) per bloccare replay esatti.
+      try {
+        const dedupClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        );
+        const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+        const { error: dedupErr } = await dedupClient
+          .from("webhook_request_dedup")
+          .insert({
+            source_id: "voispeed-events",
+            fingerprint: sigHeader,
+            expires_at: expiresAt,
+          });
+        if (dedupErr) {
+          // 23505 = unique_violation → replay
+          const code = (dedupErr as { code?: string }).code;
+          if (code === "23505") {
+            console.warn("[VOIspeed] HMAC replay detected, rejecting");
+            return new Response("Replay detected", { status: 409 });
+          }
+          // altri errori dedup: non blocchiamo (fail-open su infra error)
+          console.warn("[VOIspeed] dedup insert error (non-blocking):", dedupErr.message);
+        }
+      } catch (dedupCatch) {
+        console.warn("[VOIspeed] dedup exception (non-blocking):", String(dedupCatch));
       }
     }
 
