@@ -10251,6 +10251,16 @@ export type Database = {
         }
         Relationships: []
       }
+      critical_rate_limit_summary: {
+        Row: {
+          active_buckets: number | null
+          approaching_limit: number | null
+          currently_locked: number | null
+          last_activity_at: string | null
+          scope: string | null
+        }
+        Relationships: []
+      }
       outbound_webhooks_safe: {
         Row: {
           brand_id: string | null
@@ -10748,6 +10758,16 @@ export type Database = {
       }
       consume_auth_rate_limit: {
         Args: { p_identity_hash: string; p_scope: string }
+        Returns: Json
+      }
+      consume_critical_rate_limit: {
+        Args: {
+          p_identity_hash: string
+          p_lock_minutes?: number
+          p_max_attempts?: number
+          p_scope: string
+          p_window_minutes?: number
+        }
         Returns: Json
       }
       consume_oauth_session: {
