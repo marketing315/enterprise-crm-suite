@@ -37,6 +37,7 @@ const SalesAvailability = lazy(() => import("@/pages/SalesAvailability"));
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const SettingsSalesRoute = lazy(() => import("@/pages/SettingsSalesRoute"));
 const AdminSetup = lazy(() => import("@/pages/AdminSetup"));
 const AdminAIMetrics = lazy(() => import("@/pages/AdminAIMetrics"));
 const AdminAI = lazy(() => import("@/pages/AdminAI"));
@@ -178,6 +179,7 @@ const App = () => (
                     <Route path="/marketing/report" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingReports /></RoleGuard>} />
                     <Route path="/marketing/leads" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><MarketingLeads /></RoleGuard>} />
                     <Route path="/settings" element={<RoleGuard allowedRoles={['admin', 'ceo']}><Settings /></RoleGuard>} />
+                    <Route path="/settings/sales-route" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SettingsSalesRoute /></RoleGuard>} />
                     <Route path="/team" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'responsabile_callcenter']}><Team /></RoleGuard>} />
                     <Route path="/team/salespersons" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalespersonKpi /></RoleGuard>} />
                     <Route path="/admin/ai" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminAI /></RoleGuard>} />
