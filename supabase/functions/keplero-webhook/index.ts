@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHash } from "node:crypto";
 import { timingSafeEqual } from "../_shared/crypto.ts";
+import { redactForLog } from "../_shared/pii-redact.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -181,7 +182,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  console.log("[Keplero] Payload received:", JSON.stringify(payload));
+  console.log("[Keplero] Payload received:", JSON.stringify(redactForLog(payload)));
 
   // ── Global try/catch to prevent unhandled 500s ──
   try {
@@ -585,7 +586,7 @@ async function handleKepleroPayload(
     inbound_event_id: inboundEvent?.id || null,
   };
 
-  console.log("[Keplero] Success:", JSON.stringify(result));
+  console.log("[Keplero] Success:", JSON.stringify(redactForLog(result)));
 
   // Update inbound event status to processed
   if (inboundEvent?.id) {

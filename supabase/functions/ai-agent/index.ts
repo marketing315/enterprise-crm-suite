@@ -10,6 +10,7 @@ import {
   resolveConversationHistory,
   fetchWithTimeout,
 } from "./helpers.ts";
+import { redactForLog } from "../_shared/pii-redact.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,11 +74,11 @@ async function runAgentLoop(
       try {
         toolArgs = JSON.parse(toolCall.function.arguments || "{}");
       } catch {
-        console.error(`[ai-agent] Failed to parse tool arguments for ${toolName}:`, toolCall.function.arguments);
+        console.error(`[ai-agent] Failed to parse tool arguments for ${toolName}`);
         currentMessages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify({ error: "Invalid tool arguments" }) });
         continue;
       }
-      console.log(`[ai-agent] Round ${round + 1}: Executing tool ${toolName}`, JSON.stringify(toolArgs));
+      console.log(`[ai-agent] Round ${round + 1}: Executing tool ${toolName}`, JSON.stringify(redactForLog(toolArgs)));
       allToolsUsed.push(toolName);
       const toolResult = await handleToolCall(supabase, brandId, toolName, toolArgs);
       currentMessages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(toolResult) });

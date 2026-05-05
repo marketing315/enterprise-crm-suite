@@ -254,7 +254,8 @@ async function processLeadChange(
 
   if (phone) {
     const normalizedPhone = normalizePhone(phone);
-    console.log(`[META-EVENT] Normalized phone: ${normalizedPhone.normalized} (${normalizedPhone.countryCode})`);
+    const phoneSuffix = normalizedPhone.normalized.slice(-4);
+    console.log(`[META-EVENT] Normalized phone: ***${phoneSuffix} (${normalizedPhone.countryCode})`);
 
     const { data: contactResult, error: contactError } = await supabase.rpc(
       "find_or_create_contact",

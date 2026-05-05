@@ -125,11 +125,11 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (phoneError) {
-      console.error("[VOIspeed] Failed to find contact phone:", { phone: normalizedNumber, error: phoneError.message });
+      console.error("[VOIspeed] Failed to find contact phone:", { phone: `***${(normalizedNumber||"").slice(-4)}`, error: phoneError.message });
     }
 
     if (!contactPhone) {
-      console.warn("[VOIspeed] No contact found for phone:", { phone: normalizedNumber, event: event_name });
+      console.warn("[VOIspeed] No contact found for phone:", { phone: `***${(normalizedNumber||"").slice(-4)}`, event: event_name });
     }
 
     // Get brand_id from contact or user
@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
             .single();
 
           if (callLogError) {
-            console.error("[VOIspeed] Failed to insert call_log (incoming):", { error: callLogError.message, ext, phone: normalizedNumber });
+            console.error("[VOIspeed] Failed to insert call_log (incoming):", { error: callLogError.message, ext, phone: `***${(normalizedNumber||"").slice(-4)}` });
             break;
           }
 
@@ -241,7 +241,7 @@ Deno.serve(async (req: Request) => {
             });
 
           if (insertError) {
-            console.error("[VOIspeed] Failed to insert call_log (outgoing manual):", { error: insertError.message, ext, phone: normalizedNumber });
+            console.error("[VOIspeed] Failed to insert call_log (outgoing manual):", { error: insertError.message, ext, phone: `***${(normalizedNumber||"").slice(-4)}` });
           }
         }
         break;
@@ -347,7 +347,7 @@ Deno.serve(async (req: Request) => {
             });
 
           if (insertError) {
-            console.error("[VOIspeed] Failed to insert call_log (lost, no usercallid):", { error: insertError.message, ext, phone: normalizedNumber });
+            console.error("[VOIspeed] Failed to insert call_log (lost, no usercallid):", { error: insertError.message, ext, phone: `***${(normalizedNumber||"").slice(-4)}` });
           }
         }
         break;
