@@ -142,6 +142,18 @@ async function processTagJob(
   // 2. Build prompt
   const userPrompt = buildPrompt(context, job.trigger_reason);
 
+  // C6: enforce AI quota (system job)
+  const quota = await enforceAiQuota({
+    supabase,
+    userId: null,
+    brandId: job.brand_id,
+    endpoint: "ai-tag-deals",
+    inputChars: userPrompt.length,
+  });
+  if (!quota.ok) {
+    throw new Error(`quota_${quota.status}`);
+  }
+
   // 3. Call AI
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -157,6 +169,7 @@ async function processTagJob(
       ],
       tools: [TAG_SUGGESTION_TOOL],
       tool_choice: { type: "function", function: { name: "suggest_deal_tags" } },
+      max_tokens: capMaxTokens(undefined, "ai-tag-deals"),
     }),
   });
 
