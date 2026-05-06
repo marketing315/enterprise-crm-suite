@@ -583,7 +583,7 @@ export function MainLayout() {
         </Sidebar>
 
         <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
-          <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0">
+          <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0" role="banner" aria-label="Intestazione applicazione">
             <SidebarTrigger />
             {currentBrand && (() => {
               const canSwitch = brands.length > 1 || (systemBrand && brands.length >= 1);
