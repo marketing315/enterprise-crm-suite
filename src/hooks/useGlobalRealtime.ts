@@ -318,6 +318,34 @@ export function useGlobalRealtime() {
     // Re-evaluate periodically too — handles "stuck" states that don't emit
     const watchdog = setInterval(evaluateFallback, 10_000);
 
+    // F8: when the tab returns to foreground OR the network comes back,
+    // realtime events that occurred while we were away are NOT replayed.
+    // Force-invalidate every mapped query to catch up immediately.
+    let lastCatchUpAt = 0;
+    const CATCHUP_THROTTLE_MS = 5_000;
+    const triggerCatchUp = (reason: string) => {
+      if (isDisposed) return;
+      const now = Date.now();
+      if (now - lastCatchUpAt < CATCHUP_THROTTLE_MS) return;
+      lastCatchUpAt = now;
+      console.info(`[Realtime] catch-up invalidation (${reason})`);
+      allMappedTables.forEach((table) => {
+        const entries = TABLE_QUERY_MAP[table];
+        entries?.forEach((entry) => {
+          queryClient.invalidateQueries({
+            queryKey: entry.key,
+            exact: entry.exact ?? false,
+          });
+        });
+      });
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') triggerCatchUp('visibility');
+    };
+    const onOnline = () => triggerCatchUp('online');
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('online', onOnline);
+
     return () => {
       isDisposed = true;
       retryTimers.forEach(clearTimeout);
@@ -325,6 +353,8 @@ export function useGlobalRealtime() {
       unsubscribeStatusListener();
       clearInterval(watchdog);
       if (fallbackInterval) clearInterval(fallbackInterval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('online', onOnline);
       realtimeStatusStore.reset();
     };
   }, [brandId, isAllBrandsSelected, queryClient, supabaseUser?.id, authLoading, isRealtimeReady]);
