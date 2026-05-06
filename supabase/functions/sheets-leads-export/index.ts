@@ -258,7 +258,7 @@ export function buildRow(event: any, contact: any, brandName: string, phone: str
 // ============ Fetch single lead ============
 
 async function fetchSingleLeadRow(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   leadEventId: string,
 ): Promise<string[] | null> {
   const { data: event, error } = await supabaseAdmin
@@ -308,7 +308,7 @@ async function fetchSingleLeadRow(
 // ============ Fetch all leads (full export) ============
 
 async function fetchAllLeadsRows(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   dateFrom: string | null,
   dateTo: string | null,
 ): Promise<string[][]> {
@@ -530,7 +530,7 @@ Deno.serve(async (req: Request) => {
 // ============ Logging ============
 
 async function logExport(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   brandId: string,
   status: "processing" | "success" | "failed",
   rowsExported: number,
@@ -545,7 +545,7 @@ async function logExport(
 }
 
 async function updateLog(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   logId: string,
   status: "success" | "failed",
   rowsExported: number,
