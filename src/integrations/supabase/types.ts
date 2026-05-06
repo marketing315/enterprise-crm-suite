@@ -5913,6 +5913,8 @@ export type Database = {
           cc_recipients: string[] | null
           created_at: string
           created_by: string | null
+          dead_at: string | null
+          dead_letter: boolean
           dedupe_stats: Json | null
           error_message: string | null
           filtered_link: string | null
@@ -5937,6 +5939,8 @@ export type Database = {
           cc_recipients?: string[] | null
           created_at?: string
           created_by?: string | null
+          dead_at?: string | null
+          dead_letter?: boolean
           dedupe_stats?: Json | null
           error_message?: string | null
           filtered_link?: string | null
@@ -5961,6 +5965,8 @@ export type Database = {
           cc_recipients?: string[] | null
           created_at?: string
           created_by?: string | null
+          dead_at?: string | null
+          dead_letter?: boolean
           dedupe_stats?: Json | null
           error_message?: string | null
           filtered_link?: string | null
@@ -5986,6 +5992,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_digest_runs_retry_of_run_id_fkey"
+            columns: ["retry_of_run_id"]
+            isOneToOne: false
+            referencedRelation: "lead_digest_dlq"
             referencedColumns: ["id"]
           },
           {
@@ -10787,6 +10800,156 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_digest_dlq: {
+        Row: {
+          attempt_no: number | null
+          created_at: string | null
+          dead_at: string | null
+          error_message: string | null
+          id: string | null
+          status: string | null
+          trigger_type: string | null
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          attempt_no?: number | null
+          created_at?: string | null
+          dead_at?: string | null
+          error_message?: string | null
+          id?: string | null
+          status?: string | null
+          trigger_type?: string | null
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          attempt_no?: number | null
+          created_at?: string | null
+          dead_at?: string | null
+          error_message?: string | null
+          id?: string | null
+          status?: string | null
+          trigger_type?: string | null
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
+      notification_webhook_dlq: {
+        Row: {
+          attempts: number | null
+          brand_id: string | null
+          created_at: string | null
+          destination_id: string | null
+          id: string | null
+          last_attempt_at: string | null
+          last_error: string | null
+          notification_type:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+        }
+        Insert: {
+          attempts?: number | null
+          brand_id?: string | null
+          created_at?: string | null
+          destination_id?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+        }
+        Update: {
+          attempts?: number | null
+          brand_id?: string | null
+          created_at?: string | null
+          destination_id?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          notification_type?:
+            | Database["public"]["Enums"]["notification_type"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_webhook_outbox_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "notification_webhook_destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outbound_webhook_dlq: {
+        Row: {
+          attempt_count: number | null
+          brand_id: string | null
+          created_at: string | null
+          dead_at: string | null
+          event_id: string | null
+          event_type: Database["public"]["Enums"]["webhook_event_type"] | null
+          id: string | null
+          last_error: string | null
+          max_attempts: number | null
+          response_status: number | null
+          updated_at: string | null
+          webhook_id: string | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          brand_id?: string | null
+          created_at?: string | null
+          dead_at?: string | null
+          event_id?: string | null
+          event_type?: Database["public"]["Enums"]["webhook_event_type"] | null
+          id?: string | null
+          last_error?: string | null
+          max_attempts?: number | null
+          response_status?: number | null
+          updated_at?: string | null
+          webhook_id?: string | null
+        }
+        Update: {
+          attempt_count?: number | null
+          brand_id?: string | null
+          created_at?: string | null
+          dead_at?: string | null
+          event_id?: string | null
+          event_type?: Database["public"]["Enums"]["webhook_event_type"] | null
+          id?: string | null
+          last_error?: string | null
+          max_attempts?: number | null
+          response_status?: number | null
+          updated_at?: string | null
+          webhook_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_webhook_deliveries_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_webhooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_webhooks_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbound_webhooks_safe: {
         Row: {
           brand_id: string | null
@@ -10830,6 +10993,57 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheets_export_dlq: {
+        Row: {
+          attempts: number | null
+          brand_id: string | null
+          created_at: string | null
+          id: string | null
+          last_attempt_at: string | null
+          last_error: string | null
+          lead_event_id: string | null
+          max_attempts: number | null
+          tab_name: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          brand_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lead_event_id?: string | null
+          max_attempts?: number | null
+          tab_name?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          brand_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lead_event_id?: string | null
+          max_attempts?: number | null
+          tab_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheets_export_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheets_export_logs_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: true
+            referencedRelation: "lead_events"
             referencedColumns: ["id"]
           },
         ]
@@ -12624,6 +12838,7 @@ export type Database = {
           is_duplicate: boolean
         }[]
       }
+      is_admin_or_ceo_user: { Args: { p_user_id: string }; Returns: boolean }
       is_audit_admin: { Args: { _supabase_auth_id: string }; Returns: boolean }
       is_column_hidden_for_user: {
         Args: {
@@ -13150,6 +13365,8 @@ export type Database = {
         Returns: undefined
       }
       replay_ingest_dlq: { Args: { p_request_id: string }; Returns: Json }
+      replay_lead_digest_dlq: { Args: { p_id: string }; Returns: Json }
+      replay_notification_webhook_dlq: { Args: { p_id: string }; Returns: Json }
       replay_outbound_dlq: {
         Args: { p_delivery_id: string; p_override_url?: string }
         Returns: Json
@@ -13162,6 +13379,8 @@ export type Database = {
           reused: boolean
         }[]
       }
+      replay_outbound_webhook_dlq: { Args: { p_id: string }; Returns: Json }
+      replay_sheets_export_dlq: { Args: { p_id: string }; Returns: Json }
       replay_webhook_dead_letter: {
         Args: { p_outbox_id: string }
         Returns: boolean
