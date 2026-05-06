@@ -74,6 +74,39 @@ export function useCronErrorTimeseries(
   });
 }
 
+export interface CronRelayStatus {
+  job_name: string;
+  brand_id: string | null;
+  total: number;
+  successes: number;
+  errors: number;
+  error_rate: number;
+  avg_duration_ms: number | null;
+  p95_duration_ms: number | null;
+  max_duration_ms: number | null;
+  last_run_at: string | null;
+  last_status: number | null;
+  last_error: string | null;
+  last_duration_ms: number | null;
+}
+
+export function useCronRelayStatus(from: Date, to: Date, brandId: string | null) {
+  return useQuery({
+    queryKey: ["admin", "cron-relay-status", from.toISOString(), to.toISOString(), brandId],
+    queryFn: async (): Promise<CronRelayStatus[]> => {
+      const { data, error } = await supabase.rpc("cron_relay_status" as never, {
+        p_from: from.toISOString(),
+        p_to: to.toISOString(),
+        p_brand_id: brandId,
+      } as never);
+      if (error) throw error;
+      return (data ?? []) as CronRelayStatus[];
+    },
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}
+
 export function useCronDuplicateJobs() {
   return useQuery({
     queryKey: ["admin", "cron-duplicate-jobs"],
