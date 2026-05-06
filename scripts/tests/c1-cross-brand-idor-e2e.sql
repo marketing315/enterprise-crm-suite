@@ -26,10 +26,10 @@ BEGIN
     (v_brand_a, 'Test Brand A', 'test-brand-a-' || substr(v_brand_a::text,1,8)),
     (v_brand_b, 'Test Brand B', 'test-brand-b-' || substr(v_brand_b::text,1,8));
 
-  INSERT INTO users (id, email, full_name) VALUES
-    (v_user_a, 'a-' || v_user_a || '@test.local', 'User A'),
-    (v_user_b, 'b-' || v_user_b || '@test.local', 'User B'),
-    (v_admin,  'adm-' || v_admin || '@test.local', 'Admin');
+  INSERT INTO users (id, supabase_auth_id, email, full_name) VALUES
+    (v_user_a, gen_random_uuid(), 'a-' || v_user_a || '@test.local', 'User A'),
+    (v_user_b, gen_random_uuid(), 'b-' || v_user_b || '@test.local', 'User B'),
+    (v_admin,  gen_random_uuid(), 'adm-' || v_admin || '@test.local', 'Admin');
 
   INSERT INTO user_roles (user_id, role, brand_id, is_active) VALUES
     (v_user_a, 'sales', v_brand_a, true),
