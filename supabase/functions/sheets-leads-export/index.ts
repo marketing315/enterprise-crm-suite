@@ -292,21 +292,31 @@ async function fetchAllLeadsRows(
   dateFrom: string | null,
   dateTo: string | null,
 ): Promise<string[][]> {
-  let query = supabaseAdmin
-    .from("lead_events")
-    .select(`
-      id, received_at, source_name, raw_payload, contact_id, brand_id,
-      contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, quiz_answers, cap, city, province, notes),
-      brands(name)
-    `)
-    .order("received_at", { ascending: true })
-    .limit(5000);
+  const events: any[] = [];
+  const pageSize = 1000;
 
-  if (dateFrom) query = query.gte("received_at", dateFrom);
-  if (dateTo) query = query.lte("received_at", dateTo + "T23:59:59");
+  for (let offset = 0; ; offset += pageSize) {
+    let query = supabaseAdmin
+      .from("lead_events")
+      .select(`
+        id, received_at, source_name, raw_payload, contact_id, brand_id,
+        contacts(first_name, last_name, email, phone_normalized, lead_reason, lead_message, quiz_answers, cap, city, province, notes),
+        brands(name)
+      `)
+      .order("received_at", { ascending: true })
+      .range(offset, offset + pageSize - 1);
 
-  const { data: events, error } = await query;
-  if (error || !events?.length) return [];
+    if (dateFrom) query = query.gte("received_at", dateFrom);
+    if (dateTo) query = query.lte("received_at", dateTo + "T23:59:59");
+
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data?.length) break;
+    events.push(...data);
+    if (data.length < pageSize) break;
+  }
+
+  if (!events.length) return [];
 
   const contactIds = [...new Set(events.map(e => e.contact_id).filter(Boolean))] as string[];
 

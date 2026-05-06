@@ -27,6 +27,13 @@ interface ContactInfo {
   last_name: string | null;
   email: string | null;
   city: string | null;
+  province?: string | null;
+  cap?: string | null;
+  lead_reason?: string | null;
+  lead_message?: string | null;
+  quiz_answers?: Record<string, unknown> | null;
+  notes?: string | null;
+  phone_normalized?: string | null;
 }
 
 interface PhoneInfo {
@@ -48,6 +55,9 @@ interface StageInfo {
 interface AppointmentInfo {
   status: string;
   scheduled_at: string;
+  address?: string | null;
+  city?: string | null;
+  cap?: string | null;
 }
 
 interface SheetProperties {
@@ -85,6 +95,17 @@ const HEADERS_ITA = [
 
 const COLUMN_COUNT = HEADERS_ITA.length;
 const ALL_RAW_TAB = "ALL_RAW";
+const LEADS_TAB = "LEADS";
+const LEADS_HEADERS = [
+  "Data e Ora", "Brand", "Nome", "Cognome", "Numero", "Email",
+  "Campagna", "Fonte", "AdSet",
+  "Motivo", "Messaggio",
+  "CAP", "Città", "Provincia",
+  "Tag", "Note",
+  "Appuntamento Status", "Appuntamento Data", "Appuntamento Orario",
+  "Appuntamento Via", "Appuntamento Civico", "Appuntamento Città", "Appuntamento CAP",
+  "Fase Pipeline",
+];
 
 // Google Sheets API helpers
 async function getAccessToken(serviceAccountKey: string): Promise<string> {
@@ -265,6 +286,63 @@ async function applyTabLayout(accessToken: string, spreadsheetId: string, sheetI
   );
 }
 
+function formatQuizAnswers(qa: Record<string, unknown> | null | undefined): string {
+  if (!qa) return "";
+  return Object.entries(qa)
+    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([q, a]) => `${q}: ${Array.isArray(a) ? a.join(", ") : String(a)}`)
+    .join(" | ");
+}
+
+function extractStreetNumber(address: string | null | undefined): { street: string; number: string } {
+  if (!address) return { street: "", number: "" };
+  const match = address.match(/^(.+?)[,\s]+(?:n\.?\s*)?(\d+\s*\/?[a-zA-Z]?)$/);
+  if (match) return { street: match[1].trim(), number: match[2].trim() };
+  return { street: address, number: "" };
+}
+
+function buildLeadsRow(
+  leadEvent: LeadEventRow,
+  contact: ContactInfo | null,
+  brandName: string,
+  phone: string,
+  tags: string,
+  appointment: AppointmentInfo | null,
+  stageName: string,
+): string[] {
+  const payload = leadEvent.raw_payload || {};
+  const apptDate = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[0] : "";
+  const apptTime = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[1]?.substring(0, 5) || "" : "";
+  const { street, number: civico } = extractStreetNumber(appointment?.address);
+
+  return [
+    leadEvent.received_at ? new Date(leadEvent.received_at).toISOString().replace("T", " ").substring(0, 16) : "",
+    brandName,
+    contact?.first_name || "",
+    contact?.last_name || "",
+    phone || contact?.phone_normalized || "",
+    contact?.email || "",
+    String(payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || ""),
+    leadEvent.source_name || leadEvent.source,
+    String(payload.adset || payload.adset_name || payload.meta_adset_name || ""),
+    contact?.lead_reason || "",
+    [contact?.lead_message, formatQuizAnswers(contact?.quiz_answers)].filter(Boolean).join(" | "),
+    contact?.cap || "",
+    contact?.city || "",
+    contact?.province || "",
+    tags,
+    contact?.notes || "",
+    appointment?.status || "",
+    apptDate,
+    apptTime,
+    street,
+    civico,
+    appointment?.city || "",
+    appointment?.cap || "",
+    stageName,
+  ];
+}
+
 async function ensureRawTab(
   accessToken: string,
   spreadsheetId: string,
@@ -317,6 +395,24 @@ async function ensureAllRawTab(
   cache: SheetInfoCache
 ): Promise<{ sheetId: number; created: boolean }> {
   return ensureRawTab(accessToken, spreadsheetId, ALL_RAW_TAB, cache);
+}
+
+async function ensureLeadsTab(
+  accessToken: string,
+  spreadsheetId: string,
+  cache: SheetInfoCache,
+): Promise<{ sheetId: number; created: boolean }> {
+  await cache.get(accessToken, spreadsheetId);
+  if (cache.tabExists(LEADS_TAB)) {
+    const sheetId = cache.getSheetId(LEADS_TAB);
+    return { sheetId: sheetId ?? 0, created: false };
+  }
+
+  const sheetId = await createTab(accessToken, spreadsheetId, LEADS_TAB);
+  await writeRange(accessToken, spreadsheetId, `${LEADS_TAB}!A1:X1`, [LEADS_HEADERS]);
+  await applyTabLayout(accessToken, spreadsheetId, sheetId);
+  cache.invalidate();
+  return { sheetId, created: true };
 }
 
 async function ensureRiepilogoTab(
@@ -653,7 +749,7 @@ Deno.serve(async (req: Request) => {
     if (leadEvent.contact_id) {
       const { data: contactData } = await supabaseAdmin
         .from("contacts")
-        .select("first_name, last_name, email, city")
+        .select("first_name, last_name, email, city, province, cap, lead_reason, lead_message, quiz_answers, notes, phone_normalized")
         .eq("id", leadEvent.contact_id)
         .single();
       contact = contactData as ContactInfo | null;
@@ -712,7 +808,7 @@ Deno.serve(async (req: Request) => {
     if (leadEvent.contact_id) {
       const { data: apptData } = await supabaseAdmin
         .from("appointments")
-        .select("status, scheduled_at")
+        .select("status, scheduled_at, address, city, cap")
         .eq("contact_id", leadEvent.contact_id)
         .eq("brand_id", leadEvent.brand_id)
         .order("scheduled_at", { ascending: false })
@@ -827,6 +923,11 @@ Deno.serve(async (req: Request) => {
     ];
 
     // Ensure tabs exist and append data
+    const leadsRow = buildLeadsRow(leadEvent, contact, brand?.name || "", phone?.phone_normalized || "", tagsFlat, appointment, stage?.name || "");
+
+    await ensureLeadsTab(accessToken, spreadsheetId, cache);
+    await appendRow(accessToken, spreadsheetId, LEADS_TAB, leadsRow);
+
     await ensureAllRawTab(accessToken, spreadsheetId, cache);
     await appendRow(accessToken, spreadsheetId, ALL_RAW_TAB, row);
 
@@ -837,14 +938,14 @@ Deno.serve(async (req: Request) => {
     await ensureRiepilogoTab(accessToken, spreadsheetId, cache);
 
     // Update log to success
-    // We always append the same row to 2 tabs (all_RAW + source_raw_tab)
+    // We always append to 3 tabs (LEADS + ALL_RAW + source_raw_tab)
     await supabaseAdmin
       .from("sheets_export_logs")
       .update({
         status: "success",
         brand_id: leadEvent.brand_id,
         tab_name: sourceRawTab,
-        rows_exported: 2,
+        rows_exported: 3,
         last_attempt_at: new Date().toISOString(),
         next_attempt_at: null,
         last_error: null,
