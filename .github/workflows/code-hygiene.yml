@@ -76,3 +76,12 @@ jobs:
         if: always()
         run: node scripts/ci/check-sourcemaps.mjs
 
+      # ---------------------------------------------------------------
+      # 8. H4 — Soft-delete filter must be enforced in RLS SELECT policies
+      # ---------------------------------------------------------------
+      - name: Check soft-delete RLS
+        if: always()
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: bash scripts/ci/check-soft-delete-rls.sh
+
