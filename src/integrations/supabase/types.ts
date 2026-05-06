@@ -2216,6 +2216,7 @@ export type Database = {
           endpoint: string
           headers: Json
           id: string
+          idempotency_key: string | null
           job_type: string
           last_error: string | null
           max_attempts: number
@@ -2235,6 +2236,7 @@ export type Database = {
           endpoint: string
           headers?: Json
           id?: string
+          idempotency_key?: string | null
           job_type?: string
           last_error?: string | null
           max_attempts?: number
@@ -2254,6 +2256,7 @@ export type Database = {
           endpoint?: string
           headers?: Json
           id?: string
+          idempotency_key?: string | null
           job_type?: string
           last_error?: string | null
           max_attempts?: number
@@ -11205,6 +11208,7 @@ export type Database = {
           endpoint: string
           headers: Json
           id: string
+          idempotency_key: string | null
           job_type: string
           last_error: string | null
           max_attempts: number
