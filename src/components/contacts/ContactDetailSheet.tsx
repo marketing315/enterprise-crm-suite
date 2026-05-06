@@ -637,7 +637,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
             contact.contact_phones?.find((p) => p.is_primary && p.is_active)?.phone_normalized ||
             contact.contact_phones?.[0]?.phone_normalized;
           return (
-            <div className="shrink-0 -mx-4 sm:-mx-6 mt-3 px-4 sm:px-6 pt-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-wrap gap-2">
+            <div className="shrink-0 px-5 sm:px-6 py-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-wrap gap-2">
               {primaryPhone ? (
                 <ClickToCallButton
                   contactId={contact.id}
@@ -645,30 +645,57 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   variant="default"
                   size="sm"
                   showLabel
-                  className="flex-1 min-w-[120px]"
+                  className="flex-1 min-w-[110px]"
                 />
               ) : (
-                <Button variant="default" size="sm" className="flex-1 min-w-[120px]" disabled>
+                <Button variant="default" size="sm" className="flex-1 min-w-[110px]" disabled>
                   <Phone className="h-4 w-4 mr-1.5" /> Chiama
+                </Button>
+              )}
+              {openDeal ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 min-w-[110px]"
+                  onClick={() => { onOpenChange(false); navigate(`/pipeline?deal=${openDeal.id}`); }}
+                >
+                  <Briefcase className="h-4 w-4 mr-1.5" /> Apri Deal
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 min-w-[110px]"
+                  disabled={createDeal.isPending}
+                  onClick={async () => {
+                    try {
+                      const dealId = await createDeal.mutateAsync({ brandId: contact.brand_id, contactId: contact.id });
+                      toast.success('Deal creato');
+                      onOpenChange(false);
+                      navigate(`/pipeline?deal=${dealId}`);
+                    } catch (error: any) {
+                      toast.error(error.message || 'Errore durante la creazione del deal');
+                    }
+                  }}
+                >
+                  <Briefcase className="h-4 w-4 mr-1.5" /> Crea Deal
                 </Button>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 min-w-[120px]"
+                className="flex-1 min-w-[110px]"
                 onClick={() => setTicketDialogOpen(true)}
               >
-                <Ticket className="h-4 w-4 mr-1.5" />
-                Crea ticket
+                <Ticket className="h-4 w-4 mr-1.5" /> Ticket
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 min-w-[120px]"
+                className="flex-1 min-w-[110px]"
                 onClick={() => navigate(`/appointments?contactId=${contact.id}`)}
               >
-                <Calendar className="h-4 w-4 mr-1.5" />
-                Appuntamento
+                <Calendar className="h-4 w-4 mr-1.5" /> Appuntamento
               </Button>
             </div>
           );
