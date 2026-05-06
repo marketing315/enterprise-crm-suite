@@ -71,6 +71,8 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
   const { currentBrand } = useBrand();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // H8 — guardia double-submit (ref vince sui re-render rapidi tra click)
+  const submitInFlightRef = useRef(false);
 
   const [step, setStep] = useState<Step>("upload");
   const [isProcessing, setIsProcessing] = useState(false);
