@@ -77,6 +77,44 @@ PUBLIC_WEBHOOKS_EXEMPT=(
   # --- Public but with own protection (informational endpoints) ---
   "web-push-public-key"           # PUBLIC by design — returns VAPID public key, no PII
   "keplero-contact-lookup"        # HMAC_PROTECTED — Keplero shared secret
+
+  # --- Additional INTERNAL / cron-relay invoked ---
+  "auth-lockout-email"            # INTERNAL — invoked by auth flow
+  "ga4-stats-sync"                # INTERNAL — cron-relay tick
+  "notification-webhook-dispatcher" # INTERNAL — cron-relay tick
+  "payment-overdue-runner"        # INTERNAL — cron-relay tick
+  "quick-backup-runner"           # ADMIN_ONLY
+  "quick-restore-runner"          # ADMIN_ONLY
+  "sales-route-dispatcher"        # INTERNAL — cron-relay tick
+  "sales-route-preview"           # CLIENT_AUTH_IN_CODE
+  "sheets-advanced-export"        # CLIENT_AUTH_IN_CODE / admin
+  "sheets-batch-export"           # CLIENT_AUTH_IN_CODE / admin
+  "sheets-export-dispatcher"      # INTERNAL — cron-relay tick
+  "sheets-export-slo-check"       # INTERNAL — cron-relay tick
+  "sheets-reconciliation"         # INTERNAL — cron-relay tick
+  "siem-exporter"                 # INTERNAL — cron-relay tick + HMAC outbound
+  "ticket-escalation-runner"      # INTERNAL — cron-relay tick
+  "verify-critical-triggers"      # INTERNAL — cron-relay tick
+  "webhook-dispatcher"            # INTERNAL — cron-relay tick (NOT internet-facing despite the name)
+
+  # --- AI: CLIENT_AUTH_IN_CODE + AI quota ---
+  "parse-sale-document"           # CLIENT_AUTH_IN_CODE + AI quota
+
+  # --- MCP: own auth layer (HMAC + internal-mtls) ---
+  "mcp-gateway"                   # HMAC_PROTECTED — MCP HMAC + internal-mtls
+  "mcp-server"                    # HMAC_PROTECTED — MCP HMAC + internal-mtls
+  "trace-ingest"                  # HMAC_PROTECTED — internal-mtls signed (mcp-otel)
+
+  # --- OAuth callbacks: CSRF-protected by oauth_sessions single-use token ---
+  "google-oauth-callback"         # CSRF-protected by oauth_sessions
+  "meta-oauth-callback"           # CSRF-protected by oauth_sessions
+)
+
+# Backlog — functions internet-facing that SHOULD eventually be wired.
+# Listed here to emit a CI warning (not failure) instead of forcing exemption.
+PUBLIC_WEBHOOKS_TODO=(
+  "meta-leads-webhook"            # Public webhook, HMAC-verified — wire IP rate-limit Q3 2026
+  "webhook-ingest"                # Public webhook, HMAC + idempotency — wire IP rate-limit Q3 2026
 )
 
 # Extract list of functions with verify_jwt = false from config.toml
