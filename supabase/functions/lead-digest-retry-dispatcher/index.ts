@@ -79,7 +79,9 @@ Deno.serve(async (req) => {
       .from("lead_digest_runs")
       .select("id, window_start, window_end, attempt_no")
       .eq("status", "failed")
+      .eq("dead_letter", false)
       .lte("scheduled_for_retry_at", now)
+      .lt("attempt_no", RETRY_POLICY.MAX_ATTEMPTS)
       .order("scheduled_for_retry_at", { ascending: true })
       .limit(10);
 
