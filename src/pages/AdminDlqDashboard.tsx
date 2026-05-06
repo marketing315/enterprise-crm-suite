@@ -905,32 +905,32 @@ export default function AdminDlqDashboard() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="ingest">
-            <TabsList>
+            <TabsList className="flex-wrap">
               <TabsTrigger value="ingest" className="gap-2">
                 <Inbox className="h-4 w-4" />
                 Ingest
                 {stats && stats.ingest > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 px-1.5">
-                    {stats.ingest}
-                  </Badge>
+                  <Badge variant="destructive" className="ml-1 h-5 px-1.5">{stats.ingest}</Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="outbound" className="gap-2">
                 <Send className="h-4 w-4" />
                 Outbound
                 {stats && stats.outbound > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 px-1.5">
-                    {stats.outbound}
-                  </Badge>
+                  <Badge variant="destructive" className="ml-1 h-5 px-1.5">{stats.outbound}</Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="h7_outbound_webhook">Webhook (H7)</TabsTrigger>
+              <TabsTrigger value="h7_sheets_export">Sheets export</TabsTrigger>
+              <TabsTrigger value="h7_lead_digest">Lead digest</TabsTrigger>
+              <TabsTrigger value="h7_notification_webhook">Notification webhook</TabsTrigger>
             </TabsList>
-            <TabsContent value="ingest" className="mt-4">
-              <IngestDlqTable />
-            </TabsContent>
-            <TabsContent value="outbound" className="mt-4">
-              <OutboundDlqTable />
-            </TabsContent>
+            <TabsContent value="ingest" className="mt-4"><IngestDlqTable /></TabsContent>
+            <TabsContent value="outbound" className="mt-4"><OutboundDlqTable /></TabsContent>
+            <TabsContent value="h7_outbound_webhook" className="mt-4"><H7DlqTable kind="outbound_webhook" /></TabsContent>
+            <TabsContent value="h7_sheets_export" className="mt-4"><H7DlqTable kind="sheets_export" /></TabsContent>
+            <TabsContent value="h7_lead_digest" className="mt-4"><H7DlqTable kind="lead_digest" /></TabsContent>
+            <TabsContent value="h7_notification_webhook" className="mt-4"><H7DlqTable kind="notification_webhook" /></TabsContent>
           </Tabs>
         </CardContent>
       </Card>
