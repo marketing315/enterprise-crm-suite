@@ -217,6 +217,17 @@ Deno.serve(async (req: Request) => {
     if (crmContext.deal) currentSnapshots.deal = crmContext.deal;
     if (crmContext.current_stage) currentSnapshots.current_stage = crmContext.current_stage;
 
+    // C6: enforce AI quota (system job per brand)
+    const userPromptText = `TRASCRIZIONE CHIAMATA:\n${transcriptText}\n\nCONTESTO CRM ATTUALE:\n${JSON.stringify(crmContext, null, 2)}\n\nGenera le proposte di azione CRM basate sulla trascrizione.`;
+    const quota = await enforceAiQuota({
+      supabase,
+      userId: null,
+      brandId: brand_id,
+      endpoint: "ai-call-proposals",
+      inputChars: userPromptText.length,
+    });
+    if (!quota.ok) return quota.response;
+
     // Call AI
     const aiResponse = await fetch(AI_GATEWAY_URL, {
       method: "POST",
@@ -228,14 +239,12 @@ Deno.serve(async (req: Request) => {
         model: MODEL,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `TRASCRIZIONE CHIAMATA:\n${transcriptText}\n\nCONTESTO CRM ATTUALE:\n${JSON.stringify(crmContext, null, 2)}\n\nGenera le proposte di azione CRM basate sulla trascrizione.`,
-          },
+          { role: "user", content: userPromptText },
         ],
         tools: [PROPOSALS_TOOL],
         tool_choice: { type: "function", function: { name: "generate_proposals" } },
         temperature: 0.2,
+        max_tokens: capMaxTokens(undefined, "ai-call-proposals"),
       }),
     });
 
