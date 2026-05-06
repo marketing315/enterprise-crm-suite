@@ -1040,12 +1040,15 @@ Deno.serve(async (req: Request) => {
     const leadsRow = buildLeadsRow(leadEvent, contact, brand?.name || "", finalPhone, tagsFlat, appointment, stage?.name || "");
 
     await ensureLeadsTab(accessToken, spreadsheetId, cache);
+    await assertTabReady(accessToken, spreadsheetId, cache, LEADS_TAB, LEADS_HEADERS);
     await appendRow(accessToken, spreadsheetId, LEADS_TAB, leadsRow);
 
     await ensureAllRawTab(accessToken, spreadsheetId, cache);
+    await assertTabReady(accessToken, spreadsheetId, cache, ALL_RAW_TAB, HEADERS_ITA);
     await appendRow(accessToken, spreadsheetId, ALL_RAW_TAB, row);
 
     await ensureRawTab(accessToken, spreadsheetId, sourceRawTab, cache);
+    await assertTabReady(accessToken, spreadsheetId, cache, sourceRawTab, HEADERS_ITA);
     await appendRow(accessToken, spreadsheetId, sourceRawTab, row);
 
     await ensureViewTab(accessToken, spreadsheetId, sourceViewTab, sourceRawTab, cache);
