@@ -196,7 +196,7 @@ function extractStreetNumber(address: string | null): { street: string; number: 
   return { street: address, number: "" };
 }
 
-function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any, pipelineStageName?: string): string[] {
+export function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any, pipelineStageName?: string): string[] {
   const payload = (event.raw_payload || {}) as Record<string, any>;
   const { street, number: civico } = extractStreetNumber(appt?.address || null);
 
