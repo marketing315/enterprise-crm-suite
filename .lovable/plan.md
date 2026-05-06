@@ -1,68 +1,90 @@
-# Settimana 2-3 P0 — Audit remediation (C4–C7, C9–C12, A3, F1, F6)
+## Obiettivo
 
-Stato: **completata** (additive, no breaking changes).
+Garantire che un'interruzione del flusso lead → Google Sheet (come quella dal 17 aprile) venga **rilevata in meno di 1 ora** invece che dopo settimane, e che sia **auto-rimediata** quando possibile.
 
-## Riepilogo finding
+## Cause del blackout (ricapitolo)
 
-### C4 — PII safe payload outbound
-- Migration: colonna `outbound_webhooks.pii_safe_payload boolean default false`.
-- Helper `_shared/pii-sanitizer.ts` (HMAC pseudonimizzazione email/phone/first_name/last_name/address/tax_id/iban).
-- `webhook-dispatcher` integra sanitize quando `pii_safe_payload=true` + whitelisting `ALLOWED_URL_PARAM_KEYS`.
+1. Trigger `trg_enqueue_sheets_export_for_lead` mancante → coda vuota silenziosa
+2. Nessun alert su "0 export in N ore con lead in arrivo"
+3. Limite 1000 record nel re-sync → backfill troncati
+4. Nessun confronto periodico DB ↔ Sheet
 
-### C7 — OAuth CSRF + redirect whitelist
-- Tabelle `oauth_sessions` + `oauth_redirect_whitelist` con seed dei 2 callback Supabase.
-- RPC `create_oauth_session`, `consume_oauth_session`, `is_oauth_redirect_allowed` (SECURITY DEFINER, solo service_role).
-- Le edge function `*-oauth-callback` continuano con HMAC state attuale; le nuove RPC sono pronte per cutover futuro senza rompere flussi attivi.
+## Piano in 4 livelli di difesa
 
-### C9 — `user_roles_guard` defense-in-depth
-- Trigger `BEFORE INSERT` su `user_roles` blocca cross-brand admin grant da utenti non-global-admin.
-- Bypassa correttamente service_role / postgres / migration (auth.uid() NULL).
+### 1. SLO Monitor "Sheet Export Drift" (rilevazione < 1h)
 
-### C10 — Backup signed URL audit + revoke
-- Tabella `backup_signed_url_audit` (user_id, brand_id, run_id, storage_path, expires_at, revoked_at, revoked_by).
-- RPC `revoke_backup_signed_url(p_audit_id)` admin/CEO-only.
-- `backup-archive-signed-url` ora popola la tabella ad ogni signed URL emesso.
+Edge function `sheets-export-slo-check` schedulata ogni 15 min:
 
-### C11 — cron-relay locking + audit
-- Tabella `cron_relay_log` + RPC `try_lock_cron_job(job_name, brand_id)` (advisory lock).
-- `cron-relay` integra: skip con `lock_held` se job già in volo, persiste log con request_id, status, durata, errore.
+- Conta `lead_events` creati nell'ultima ora
+- Conta `sheets_export_logs` con `status='success'` nell'ultima ora
+- Calcola ratio. Se `lead_events > 5 AND success_ratio < 50%` → incident
+- Se `lead_events > 0 AND sheets_export_logs = 0` da > 1h → incident **critical**
+- Scrive in `slo_incidents` (già esistente per altri SLO) e notifica admin via web push + email
 
-### C12 — SSRF guard outbound
-- `_shared/safe-outbound.ts` (assertSafeUrl, safeFetch) con block IPv4/IPv6 privati, link-local, ULA, metadata internal hosts.
-- Integrato in: `webhook-dispatcher`, `notification-webhook-dispatcher`, `send-n8n-webhook`.
+### 2. Schema Guard "Trigger essenziali" (prevenzione)
 
-### C5/C6 — già coperti
-- C5 CORS restricted: gestito da `_shared/cors.ts` (memoria progetto).
-- C6 AI quota & context cap: già live in `ai-chat` (DAILY_QUOTA_AI_CHAT=300, MAX_TOTAL_INPUT_CHARS=12k, vedi memoria `ai-quota-and-context-cap`).
+Migrazione che crea funzione `verify_critical_triggers()`:
 
-### A3 — audit_events immutable (già applicato)
-- Migration `20260505084648_*`: trigger `audit_events_immutable` su BEFORE UPDATE/DELETE + REVOKE UPDATE/DELETE/TRUNCATE da PUBLIC/anon/authenticated.
+- Lista hardcoded di trigger business-critical (incluso `trg_enqueue_sheets_export_for_lead`, `trg_lead_event_audit`, ecc.)
+- Verifica che esistano in `pg_trigger`
+- Esposta come RPC + chiamata da cron giornaliero
+- Se trigger mancante → incident `critical` + auto-recreate dove sicuro
 
-### F1 — Sanitize markdown AI/utenti (rehype-sanitize)
-- Nuovo wrapper `src/components/ui/SafeMarkdown.tsx` con `rehype-sanitize` (schema GitHub di default).
-- Sostituito `ReactMarkdown` → `SafeMarkdown` in: `ChatMessageBubble`, `AgentChatPanel`, `ExecutiveSummaryCard`.
-- Blocca `<script>`, `<iframe>`, attributi `on*`, `javascript:`/`data:` URI, style arbitrari → mitiga prompt-injection AI che tenti di iniettare HTML.
+### 3. Reconciliation giornaliera DB ↔ Sheet
 
-### F6 — Stack trace nascosti in produzione
-- `ErrorBoundary` mostra il pannello "Dettagli tecnici" solo se `import.meta.env.DEV`. In prod l'utente vede ID errore + CTA, non il messaggio interno.
+Edge function `sheets-reconciliation` schedulata 1×/giorno (notte):
 
-## Deploy
-- Migration applicata: `20260505090613_settimana2_p0_hardening.sql`.
-- Edge function deployate: `cron-relay`, `notification-webhook-dispatcher`, `send-n8n-webhook`, `backup-archive-signed-url`, `webhook-dispatcher`.
-- Frontend: SafeMarkdown + ErrorBoundary prod-safe (no migration richiesta).
+- Conta righe nel tab `LEADS` del Sheet (via API)
+- Conta lead nel DB nello stesso periodo (ultimi 7 giorni)
+- Se delta > 2% → genera report + auto-trigger backfill mirato sui mancanti
+- Log in `sheets_reconciliation_log` (nuova tabella append-only)
 
-## Cosa NON è stato fatto (su richiesta)
-- Cutover OAuth da HMAC state a session-based: tabelle/RPC pronte, ma il taglio richiede coordinamento con popup Google/Meta in produzione → rinviato.
-- Drop colonne `*_token_encrypted`: vietato da Data Safety HARD.
-- Rimanenti finding A1, A4–A10, F2–F5, F7–F8, H1–H14: pianificati per le iterazioni successive.
+### 4. Dashboard `/admin/sheets-health`
 
----
+Pagina admin con:
 
-## Settimana 4 P0 — Auth rate limiting (A4–A10)
+- Stato real-time della coda export (pending/success/failed ultime 24h)
+- Grafico drift `lead_events` vs `sheets_export_logs` ultimi 30 giorni (avrebbe mostrato il buco di aprile a colpo d'occhio)
+- Lista trigger critici e loro stato (verde/rosso)
+- Ultimo reconciliation report con delta DB↔Sheet
+- Pulsante manuale "Re-sync ora" e "Verifica trigger"
 
-- Migration `auth_rate_limit` (additive): tabella + 2 RPC `consume_auth_rate_limit` / `reset_auth_rate_limit` + `cleanup_auth_rate_limit`.
-- Soglie: signin 10/15min con lock 15min, password_reset 5/15min con lock 15min.
-- Identity hash = `SHA-256(email_lower|scope)` (browser side, no email in chiaro al log).
-- Wiring: `AuthContext.signIn` (consume + reset on success), `ForgotPasswordForm` (consume).
-- Fail-open su RPC error (non bloccare il login se backend è giù).
-- RLS: tabella accessibile solo a service_role; gli RPC sono SECURITY DEFINER esposti ad anon+authenticated.
+## Dettagli tecnici
+
+**Nuove tabelle:**
+
+```text
+sheets_reconciliation_log
+├── id, run_at, period_start, period_end
+├── db_count, sheet_count, delta, delta_pct
+├── status (ok | drift | critical), incident_id?
+└── details jsonb (lead_id mancanti)
+
+critical_triggers_check_log
+├── id, checked_at, trigger_name, table_name
+├── present (bool), auto_recreated (bool)
+└── incident_id?
+```
+
+**Nuove edge functions** (tutte con `INTERNAL_SERVICE_TOKEN`, structured logger, safe-error-response):
+- `sheets-export-slo-check` (cron 15 min via cron-relay)
+- `sheets-reconciliation` (cron 1×/giorno 03:00)
+- `verify-critical-triggers` (cron 1×/giorno 02:00)
+
+**Memorie da aggiornare:**
+- `mem://features/sheets-export-slo` — pattern monitor + reconciliation
+- Aggiornare core con regola: "Ogni pipeline business-critical (lead→Sheet, lead→Meta CAPI, ecc.) DEVE avere SLO monitor < 1h e reconciliation giornaliera"
+
+## Out of scope (per ora)
+
+- Re-architettura del sistema export (resta lead_events → trigger → queue → dispatcher)
+- PagerDuty/SMS (usiamo web push + email admin esistenti)
+- Reconciliation per altre integrazioni (Meta CAPI, n8n) — pattern riutilizzabile in futuro
+
+## Risultato atteso
+
+Se domani il trigger sparisce di nuovo:
+- **t+15min**: SLO monitor rileva 0 export → incident critical
+- **t+15min**: admin riceve push notification
+- **t+24h**: verify-critical-triggers tenta auto-recreate
+- **t+24h**: reconciliation rileva delta e fa backfill

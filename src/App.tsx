@@ -66,6 +66,7 @@ const AdminMcpDashboard = lazy(() => import("@/pages/AdminMcpDashboard"));
 const AdminQuickBackup = lazy(() => import("@/pages/AdminQuickBackup"));
 const AdminCronJobs = lazy(() => import("@/pages/AdminCronJobs"));
 const AdminIncidents = lazy(() => import("@/pages/AdminIncidents"));
+const AdminSheetsHealth = lazy(() => import("@/pages/AdminSheetsHealth"));
 const AdminSessions = lazy(() => import("@/pages/AdminSessions"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
@@ -235,6 +236,7 @@ const App = () => (
                     <Route path="/admin/quick-backup" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminQuickBackup /></RoleGuard>} />
                     <Route path="/admin/cron-jobs" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminCronJobs /></RoleGuard>} />
                     <Route path="/admin/incidents" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminIncidents /></RoleGuard>} />
+                    <Route path="/admin/sheets-health" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSheetsHealth /></RoleGuard>} />
                     <Route path="/admin/sessions" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSessions /></RoleGuard>} />
                     <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>

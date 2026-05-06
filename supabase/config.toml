@@ -125,6 +125,12 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false   # service-role Bearer validated in code
   [functions.sheets-export-dispatcher]
     verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
+  [functions.sheets-export-slo-check]
+    verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
+  [functions.sheets-reconciliation]
+    verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
+  [functions.verify-critical-triggers]
+    verify_jwt = false   # cron-relay target (x-cron-secret) OR service-role
   [functions.siem-exporter]
     verify_jwt = false   # admin client invoke; HMAC outbound to SIEM
   [functions.ticket-escalation-runner]
