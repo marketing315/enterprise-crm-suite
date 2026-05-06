@@ -270,30 +270,33 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
             </div>
           )}
         </SheetHeader>
+        </div>
 
         {contactLoading ? (
-          <div className="mt-6 space-y-4">
+          <div className="px-5 sm:px-6 mt-6 space-y-4">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-24 w-full" />
           </div>
         ) : contact ? (
-          <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden mt-4">
-            <TabsList className="grid w-full grid-cols-3 shrink-0">
-              <TabsTrigger value="details">Dettagli</TabsTrigger>
-              <TabsTrigger value="unified" className="flex items-center gap-1.5">
-                <History className="h-3.5 w-3.5" />
-                Storico cliente
-              </TabsTrigger>
-              <TabsTrigger value="audit" className="flex items-center gap-1.5">
-                <History className="h-3.5 w-3.5" />
-                Audit
-              </TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-5 sm:px-6 pt-3">
+              <TabsList className="grid w-full grid-cols-3 shrink-0 h-9 bg-muted/40 rounded-lg">
+                <TabsTrigger value="details" className="text-xs">Dettagli</TabsTrigger>
+                <TabsTrigger value="unified" className="text-xs flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5" />
+                  Storico
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="text-xs flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5" />
+                  Audit
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="details" className="flex-1 overflow-hidden mt-2">
-          <ScrollArea className="h-[calc(100vh-200px)] pr-4">
-            <div className="space-y-6">
+            <TabsContent value="details" className="flex-1 overflow-hidden mt-2 px-0">
+          <ScrollArea className="h-[calc(100vh-220px)] px-5 sm:px-6">
+            <div className="space-y-4 pb-6">
               {/* Header / Edit Form */}
               {isEditing ? (
                 <div className="space-y-4">
