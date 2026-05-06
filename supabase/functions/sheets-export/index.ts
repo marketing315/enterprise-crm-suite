@@ -938,7 +938,8 @@ Deno.serve(async (req: Request) => {
     ];
 
     // Ensure tabs exist and append data
-    const leadsRow = buildLeadsRow(leadEvent, contact, brand?.name || "", phone?.phone_normalized || "", tagsFlat, appointment, stage?.name || "");
+    const finalPhone = phone?.phone_normalized || contact?.phone_normalized || "";
+    const leadsRow = buildLeadsRow(leadEvent, contact, brand?.name || "", finalPhone, tagsFlat, appointment, stage?.name || "");
 
     await ensureLeadsTab(accessToken, spreadsheetId, cache);
     await appendRow(accessToken, spreadsheetId, LEADS_TAB, leadsRow);
