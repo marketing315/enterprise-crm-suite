@@ -5158,6 +5158,30 @@ export type Database = {
           },
         ]
       }
+      health_alert_state: {
+        Row: {
+          alert_key: string
+          last_payload: Json
+          last_sent_at: string
+          send_count: number
+          updated_at: string
+        }
+        Insert: {
+          alert_key: string
+          last_payload?: Json
+          last_sent_at?: string
+          send_count?: number
+          updated_at?: string
+        }
+        Update: {
+          alert_key?: string
+          last_payload?: Json
+          last_sent_at?: string
+          send_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       household_people: {
         Row: {
           brand_id: string
