@@ -93,6 +93,8 @@ export function CreateTicketDialog({
       }
     } catch (error) {
       toast.error("Errore nella creazione del ticket");
+    } finally {
+      submitInFlightRef.current = false;
     }
   };
 
