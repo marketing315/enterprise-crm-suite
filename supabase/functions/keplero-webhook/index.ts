@@ -184,10 +184,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ── Parse payload ──
+  // ── Parse payload (raw kept for idempotency fingerprint) ──
+  let rawBody = "";
   let payload: Record<string, unknown>;
   try {
-    payload = await req.json();
+    rawBody = await req.text();
+    payload = rawBody ? JSON.parse(rawBody) : {};
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400,
@@ -198,7 +200,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Global try/catch to prevent unhandled 500s ──
   try {
-    return await handleKepleroPayload(supabaseAdmin, req, payload);
+    return await handleKepleroPayload(supabaseAdmin, req, payload, rawBody);
   } catch (err) {
     return safeErrorResponse(err, {
       status: 500,
@@ -213,6 +215,7 @@ async function handleKepleroPayload(
   supabaseAdmin: ReturnType<typeof createClient>,
   req: Request,
   payload: Record<string, unknown>,
+  rawBody: string,
 ): Promise<Response> {
   const args = (payload.args || payload) as KepleroArgs;
   const config = (payload.config || {}) as Record<string, unknown>;
