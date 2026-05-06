@@ -49,6 +49,7 @@ const ALLOWED_TARGETS = new Set<string>([
   "verify-critical-triggers",
   "sales-route-dispatcher",
   "ticket-assign-recovery",
+  "cron-health-monitor",
 ]);
 
 Deno.serve(async (req) => {
