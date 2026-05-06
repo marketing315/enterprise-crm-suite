@@ -167,7 +167,7 @@ async function applyFormatting(accessToken: string, spreadsheetId: string, sheet
 
 // ============ Constants ============
 
-const LEADS_HEADERS = [
+export const LEADS_HEADERS = [
   "Data e Ora", "Brand", "Nome", "Cognome", "Numero", "Email",
   "Campagna", "Fonte", "AdSet",
   "Motivo", "Messaggio",
