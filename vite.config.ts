@@ -94,6 +94,12 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     target: "es2020",
+    // H10 — Source maps DISABLED in produzione.
+    // Le source map espongono il codice originale, nomi simbolici, path interni
+    // e talvolta secret/commenti dev. In produzione devono essere `false` (o
+    // caricate solo su Sentry-style endpoint privato, non servite pubblicamente).
+    // Guard CI: scripts/ci/check-sourcemaps.mjs verifica `dist/**/*.map` assenti.
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
