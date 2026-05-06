@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { createOAuthSession } from "../_shared/oauth-session.ts";
+import { assertRedirectAllowed, createOAuthSession } from "../_shared/oauth-session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +80,16 @@ Deno.serve(async (req) => {
     }
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
+
+    // C7: Enforce redirect URI whitelist (defense-in-depth vs open-redirect / CSRF chaining).
+    try {
+      await assertRedirectAllowed(serviceClient, "google", redirectUri);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "redirect_not_allowed";
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // C7: Server-side single-use OAuth session (replaces HMAC-signed state).
     const state = await createOAuthSession(serviceClient, {
