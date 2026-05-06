@@ -412,6 +412,8 @@ export function MainLayout() {
 
   return (
     <SidebarProvider>
+      {/* H11 a11y: skip-link, primo elemento focusable, salta nav e va al contenuto */}
+      <a href="#main-content" className="skip-to-content">Vai al contenuto principale</a>
       <IncomingCallPopup />
       <IdleTimeoutWatcher />
       <RealtimeStaleBanner />
