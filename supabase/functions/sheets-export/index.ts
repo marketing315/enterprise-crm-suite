@@ -286,6 +286,63 @@ async function applyTabLayout(accessToken: string, spreadsheetId: string, sheetI
   );
 }
 
+function formatQuizAnswers(qa: Record<string, unknown> | null | undefined): string {
+  if (!qa) return "";
+  return Object.entries(qa)
+    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([q, a]) => `${q}: ${Array.isArray(a) ? a.join(", ") : String(a)}`)
+    .join(" | ");
+}
+
+function extractStreetNumber(address: string | null | undefined): { street: string; number: string } {
+  if (!address) return { street: "", number: "" };
+  const match = address.match(/^(.+?)[,\s]+(?:n\.?\s*)?(\d+\s*\/?[a-zA-Z]?)$/);
+  if (match) return { street: match[1].trim(), number: match[2].trim() };
+  return { street: address, number: "" };
+}
+
+function buildLeadsRow(
+  leadEvent: LeadEventRow,
+  contact: ContactInfo | null,
+  brandName: string,
+  phone: string,
+  tags: string,
+  appointment: AppointmentInfo | null,
+  stageName: string,
+): string[] {
+  const payload = leadEvent.raw_payload || {};
+  const apptDate = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[0] : "";
+  const apptTime = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[1]?.substring(0, 5) || "" : "";
+  const { street, number: civico } = extractStreetNumber(appointment?.address);
+
+  return [
+    leadEvent.received_at ? new Date(leadEvent.received_at).toISOString().replace("T", " ").substring(0, 16) : "",
+    brandName,
+    contact?.first_name || "",
+    contact?.last_name || "",
+    phone || contact?.phone_normalized || "",
+    contact?.email || "",
+    String(payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || ""),
+    leadEvent.source_name || leadEvent.source,
+    String(payload.adset || payload.adset_name || payload.meta_adset_name || ""),
+    contact?.lead_reason || "",
+    [contact?.lead_message, formatQuizAnswers(contact?.quiz_answers)].filter(Boolean).join(" | "),
+    contact?.cap || "",
+    contact?.city || "",
+    contact?.province || "",
+    tags,
+    contact?.notes || "",
+    appointment?.status || "",
+    apptDate,
+    apptTime,
+    street,
+    civico,
+    appointment?.city || "",
+    appointment?.cap || "",
+    stageName,
+  ];
+}
+
 async function ensureRawTab(
   accessToken: string,
   spreadsheetId: string,
