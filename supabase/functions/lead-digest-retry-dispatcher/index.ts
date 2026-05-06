@@ -139,12 +139,30 @@ Deno.serve(async (req) => {
         dispatched++;
       } catch (err) {
         console.error(`[lead-digest-retry-dispatcher] Error retrying run ${run.id}:`, err);
-        // Re-schedule for another retry in 10 min
-        const nextRetry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-        await supabase
-          .from("lead_digest_runs")
-          .update({ scheduled_for_retry_at: nextRetry })
-          .eq("id", run.id);
+        const attemptsSoFar = (run.attempt_no ?? 0) + 1;
+        const nextAt = computeNextAttemptAt(attemptsSoFar);
+        if (!nextAt || attemptsSoFar >= RETRY_POLICY.MAX_ATTEMPTS) {
+          // H7: cap reached → move to DLQ
+          await supabase
+            .from("lead_digest_runs")
+            .update({
+              dead_letter: true,
+              dead_at: new Date().toISOString(),
+              attempt_no: attemptsSoFar,
+              scheduled_for_retry_at: null,
+              error_message: err instanceof Error ? err.message.slice(0, 500) : "unknown",
+            })
+            .eq("id", run.id);
+          console.warn(`[lead-digest-retry-dispatcher] run=${run.id} → DLQ (attempts=${attemptsSoFar})`);
+        } else {
+          await supabase
+            .from("lead_digest_runs")
+            .update({
+              attempt_no: attemptsSoFar,
+              scheduled_for_retry_at: nextAt.toISOString(),
+            })
+            .eq("id", run.id);
+        }
       }
     }
 
