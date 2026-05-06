@@ -448,7 +448,7 @@ Deno.serve(async (req: Request) => {
               p_queue_name: "auth_emails",
               p_to_email: userData.email,
               p_subject: "Conferma il tuo indirizzo email",
-              p_html: `<p>Clicca il link per confermare il tuo account:</p><p><a href="${confirmationUrl}">Conferma Email</a></p>`,
+              p_html: `<p>Clicca il link per confermare il tuo account:</p><p><a href="${safeHrefHtml(confirmationUrl)}">Conferma Email</a></p>`,
               p_from_name: "Sistema",
               p_metadata: { type: "admin_resend_confirmation", user_id },
             });
