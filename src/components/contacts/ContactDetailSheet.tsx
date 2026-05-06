@@ -188,6 +188,14 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     return parts.length > 0 ? parts.join(' ') : 'Senza nome';
   };
 
+  const getInitials = () => {
+    if (!contact) return '?';
+    const f = (contact.first_name || '').trim();
+    const l = (contact.last_name || '').trim();
+    if (f || l) return ((f[0] || '') + (l[0] || '')).toUpperCase() || '?';
+    return (contact.email?.[0] || '?').toUpperCase();
+  };
+
   const STATUS_OPTIONS: { value: ContactStatus; label: string }[] = [
     { value: 'new', label: 'Nuovo' },
     { value: 'active', label: 'Attivo' },
@@ -195,6 +203,20 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     { value: 'unqualified', label: 'Non qualificato' },
     { value: 'archived', label: 'Archiviato' },
   ];
+
+  // Reusable section card wrapper for C-level scannable layout
+  const SectionCard = ({ icon: Icon, title, action, children, muted = false }: { icon?: any; title: string; action?: React.ReactNode; children: React.ReactNode; muted?: boolean }) => (
+    <section className={`rounded-xl border ${muted ? 'bg-muted/30' : 'bg-card'} p-4 space-y-3`}>
+      <header className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          {Icon && <Icon className="h-3.5 w-3.5" />}
+          {title}
+        </h3>
+        {action}
+      </header>
+      <div className="space-y-2.5 text-sm">{children}</div>
+    </section>
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
