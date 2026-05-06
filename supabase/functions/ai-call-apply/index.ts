@@ -251,6 +251,35 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // C1: validate that proposal_id actually belongs to the brand_id from body
+      // and that the caller is a member of that brand. Defends against IDOR where
+      // a malicious client passes a proposal_id from brand X with brand_id=Y.
+      const { data: proposalGuard, error: propGuardErr } = await supabase
+        .from("ai_call_action_proposals")
+        .select("brand_id")
+        .eq("id", proposal_id)
+        .maybeSingle();
+      if (propGuardErr || !proposalGuard) {
+        return new Response(JSON.stringify({ error: "proposal_not_found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (proposalGuard.brand_id !== brand_id) {
+        return new Response(JSON.stringify({ error: "brand_id_mismatch" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Verify caller membership of that brand (admin/ceo allowed)
+      const { error: membershipErr } = await supabase.rpc("assert_brand_membership", {
+        p_user_id: internalUser.id,
+        p_brand_id: brand_id,
+      });
+      if (membershipErr) {
+        return new Response(JSON.stringify({ error: "cross_brand_access_denied" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Insert decision record
       const { data: decisionRow, error: decErr } = await supabase
         .from("ai_call_action_decisions")
