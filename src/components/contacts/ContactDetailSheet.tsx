@@ -220,9 +220,10 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-hidden flex flex-col p-4 sm:p-6">
-        <SheetHeader className="flex flex-row items-center justify-between">
-          <SheetTitle>Dettaglio Contatto</SheetTitle>
+      <SheetContent className="w-full sm:max-w-xl lg:max-w-2xl overflow-hidden flex flex-col p-0">
+        <div className="px-5 sm:px-6 pt-5 pb-3 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
+        <SheetHeader className="flex flex-row items-center justify-between space-y-0">
+          <SheetTitle className="text-base font-semibold">Dettaglio Contatto</SheetTitle>
           {contact && !isEditing && (
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
