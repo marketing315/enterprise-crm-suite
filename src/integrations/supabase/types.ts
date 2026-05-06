@@ -11803,6 +11803,43 @@ export type Database = {
         Args: { p_deal_id: string }
         Returns: string
       }
+      cron_duplicate_jobs: {
+        Args: never
+        Returns: {
+          active_count: number
+          jobids: number[]
+          jobname: string
+          occurrences: number
+          schedules: string[]
+        }[]
+      }
+      cron_error_metrics: {
+        Args: { p_brand_id?: string; p_from?: string; p_to?: string }
+        Returns: {
+          error_rate: number
+          errors: number
+          job_name: string
+          last_error_at: string
+          last_error_message: string
+          last_error_status: number
+          successes: number
+          total: number
+        }[]
+      }
+      cron_error_timeseries: {
+        Args: {
+          p_brand_id?: string
+          p_from?: string
+          p_job_name?: string
+          p_to?: string
+        }
+        Returns: {
+          bucket: string
+          errors: number
+          successes: number
+          total: number
+        }[]
+      }
       cron_log_finish: {
         Args: { p_error_summary?: string; p_run_id: number; p_status: string }
         Returns: undefined
