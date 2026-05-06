@@ -677,7 +677,7 @@ export function MainLayout() {
           <AppBreadcrumbs />
           <RealtimeStatusBanner />
           {isAdmin && <SetupReminderBanner />}
-          <main className="flex-1 overflow-hidden p-3 md:p-6">
+          <main id="main-content" tabIndex={-1} className="flex-1 overflow-hidden p-3 md:p-6" aria-label="Contenuto principale">
             <ErrorBoundary label="Pagina">
               <Outlet />
             </ErrorBoundary>
