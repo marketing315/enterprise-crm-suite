@@ -12,6 +12,7 @@ import {
 } from "./helpers.ts";
 import { redactForLog } from "../_shared/pii-redact.ts";
 import { safeErrorResponse } from "../_shared/safe-error-response.ts";
+import { enforceAiQuota } from "../_shared/ai-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
