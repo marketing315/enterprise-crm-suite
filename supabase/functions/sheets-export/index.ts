@@ -754,13 +754,28 @@ Deno.serve(async (req: Request) => {
         .single();
       contact = contactData as ContactInfo | null;
 
-      const { data: phoneData } = await supabaseAdmin
+      // Try primary first, fall back to any phone — using maybeSingle to avoid
+      // silent nulls when the row count is unexpected.
+      const { data: primaryPhone } = await supabaseAdmin
         .from("contact_phones")
         .select("phone_normalized")
         .eq("contact_id", leadEvent.contact_id)
         .eq("is_primary", true)
-        .single();
-      phone = phoneData as PhoneInfo | null;
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      phone = primaryPhone as PhoneInfo | null;
+
+      if (!phone?.phone_normalized) {
+        const { data: anyPhone } = await supabaseAdmin
+          .from("contact_phones")
+          .select("phone_normalized")
+          .eq("contact_id", leadEvent.contact_id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        phone = (anyPhone as PhoneInfo | null) ?? phone;
+      }
     }
 
     // Get deal + stage info
