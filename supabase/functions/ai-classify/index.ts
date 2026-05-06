@@ -625,6 +625,25 @@ Deno.serve(async (req: Request) => {
         .eq("id", job.id);
 
       try {
+        // C6: enforce AI quota (system job → SYSTEM_AI_USER_ID bucket per brand)
+        const quota = await enforceAiQuota({
+          supabase,
+          userId: null,
+          brandId: job.brand_id,
+          endpoint: "ai-classify",
+          inputChars: JSON.stringify(leadEvent.raw_payload || {}).length,
+        });
+        if (!quota.ok) {
+          // Re-queue: lasciamo job in pending per retry tomorrow (no consumo attempt extra).
+          await supabase.from("ai_jobs").update({
+            status: "pending",
+            attempts: Math.max(0, job.attempts), // restore
+            last_error: `quota_${quota.status}`,
+          }).eq("id", job.id);
+          failed++;
+          continue;
+        }
+
         // Classify with AI using tool calling
         const { result: classification, rawResponse } = await classifyLead(
           leadEvent.raw_payload,
