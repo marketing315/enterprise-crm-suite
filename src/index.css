@@ -117,7 +117,45 @@ All colors MUST be HSL.
   to { opacity: 1; }
 }
 
-/* ============ Accessibility (a11y) ============ */
+/* ============ Accessibility (a11y) — H11 WCAG 2.1 AA ============ */
+
+/* H11: focus-visible globale, anello ad alto contrasto, mai outline:none senza ring.
+   Evita di colpire elementi che gestiscono già il focus internamente (radix usa data-state). */
+@layer base {
+  :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* H11: skip-link nascosta finché non riceve focus da Tab.
+   Posizionata top-left, sopra a tutto. */
+.skip-to-content {
+  position: fixed;
+  top: -9999px;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.5rem 0.875rem;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 12px hsl(var(--ring) / 0.25);
+}
+.skip-to-content:focus,
+.skip-to-content:focus-visible {
+  top: 0.75rem;
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* H11: scroll-margin per evitare che il target sia coperto da header sticky. */
+#main-content {
+  scroll-margin-top: 80px;
+}
 
 /* Reduced motion: disable non-essential animations & transitions */
 @media (prefers-reduced-motion: reduce) {

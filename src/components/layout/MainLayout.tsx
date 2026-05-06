@@ -412,13 +412,15 @@ export function MainLayout() {
 
   return (
     <SidebarProvider>
+      {/* H11 a11y: skip-link, primo elemento focusable, salta nav e va al contenuto */}
+      <a href="#main-content" className="skip-to-content">Vai al contenuto principale</a>
       <IncomingCallPopup />
       <IdleTimeoutWatcher />
       <RealtimeStaleBanner />
       <WelcomeModal />
       <AppTour />
       <div className="flex min-h-screen w-full">
-        <Sidebar>
+        <Sidebar aria-label="Navigazione principale">
           <SidebarHeader className="border-b border-sidebar-border">
             <div className="flex items-center gap-2 px-4 py-3">
               <img src="/favicon.svg" alt="Logo" className="h-7 w-7" />
@@ -581,7 +583,7 @@ export function MainLayout() {
         </Sidebar>
 
         <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
-          <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0">
+          <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0" role="banner" aria-label="Intestazione applicazione">
             <SidebarTrigger />
             {currentBrand && (() => {
               const canSwitch = brands.length > 1 || (systemBrand && brands.length >= 1);
@@ -675,7 +677,7 @@ export function MainLayout() {
           <AppBreadcrumbs />
           <RealtimeStatusBanner />
           {isAdmin && <SetupReminderBanner />}
-          <main className="flex-1 overflow-hidden p-3 md:p-6">
+          <main id="main-content" tabIndex={-1} className="flex-1 overflow-hidden p-3 md:p-6" aria-label="Contenuto principale">
             <ErrorBoundary label="Pagina">
               <Outlet />
             </ErrorBoundary>
