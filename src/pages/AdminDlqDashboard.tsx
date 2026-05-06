@@ -64,6 +64,7 @@ import {
   OutboundDlqEntry,
   type IngestDlqReason,
 } from "@/hooks/useDlqData";
+import { H7DlqTable } from "@/components/admin/H7DlqTable";
 
 // ========================================
 // DLQ Reason Badge
