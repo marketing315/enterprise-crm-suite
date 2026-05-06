@@ -241,6 +241,44 @@ Deno.serve(async (req) => {
         }
       }
 
+      // H13: Re-check suppression at dispatch time. Between enqueue and send
+      // the recipient may have unsubscribed/bounced — sending now would violate
+      // CAN-SPAM/GDPR. Fail-closed: drop on lookup error too.
+      if (payload.to && typeof payload.to === 'string') {
+        const recipient = payload.to.toLowerCase()
+        const { data: suppressed, error: suppressionError } = await supabase
+          .from('suppressed_emails')
+          .select('id')
+          .eq('email', recipient)
+          .maybeSingle()
+
+        if (suppressionError || suppressed) {
+          console.warn('Skipping suppressed recipient at dispatch time', {
+            queue,
+            msg_id: msg.msg_id,
+            had_error: !!suppressionError,
+            was_suppressed: !!suppressed,
+          })
+          await supabase.from('email_send_log').insert({
+            message_id: payload.message_id,
+            template_name: payload.label || queue,
+            recipient_email: payload.to,
+            status: 'suppressed',
+            error_message: suppressionError
+              ? 'Suppression lookup failed — fail-closed'
+              : 'Recipient suppressed between enqueue and send',
+          })
+          const { error: supDelError } = await supabase.rpc('delete_email', {
+            queue_name: queue,
+            message_id: msg.msg_id,
+          })
+          if (supDelError) {
+            console.error('Failed to delete suppressed message from queue', { queue, msg_id: msg.msg_id, error: supDelError })
+          }
+          continue
+        }
+      }
+
       try {
         await sendLovableEmail(
           {
@@ -255,6 +293,7 @@ Deno.serve(async (req) => {
             label: payload.label,
             idempotency_key: payload.idempotency_key,
             unsubscribe_token: payload.unsubscribe_token,
+            list_unsubscribe_url: payload.list_unsubscribe_url,
             message_id: payload.message_id,
           },
           // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library

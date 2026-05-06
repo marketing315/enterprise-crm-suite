@@ -308,6 +308,11 @@ Deno.serve(async (req) => {
     status: 'pending',
   })
 
+  // RFC 2369 + RFC 8058: provide both URL forms for the email lib so the
+  // outbound message includes List-Unsubscribe and List-Unsubscribe-Post
+  // headers (one-click). The dispatcher passes these through to sendLovableEmail.
+  const unsubscribeUrl = `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${unsubscribeToken}`
+
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'transactional_emails',
     payload: {
@@ -322,6 +327,7 @@ Deno.serve(async (req) => {
       label: templateName,
       idempotency_key: idempotencyKey,
       unsubscribe_token: unsubscribeToken,
+      list_unsubscribe_url: unsubscribeUrl,
       queued_at: new Date().toISOString(),
     },
   })
