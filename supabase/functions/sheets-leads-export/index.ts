@@ -356,19 +356,19 @@ async function fetchAllLeadsRows(
   }
 
   const tagMap = new Map<string, string[]>();
-  (tagsRes.data || []).forEach((ta: any) => {
+  tagsData.forEach((ta: any) => {
     const list = tagMap.get(ta.entity_id) || [];
     if (ta.tags?.name) list.push(ta.tags.name);
     tagMap.set(ta.entity_id, list);
   });
 
   const apptMap = new Map<string, any>();
-  (apptsRes.data || []).forEach((a: any) => {
+  apptsData.forEach((a: any) => {
     if (!apptMap.has(a.contact_id)) apptMap.set(a.contact_id, a);
   });
 
   const stageMap = new Map<string, string>();
-  (dealsRes.data || []).forEach((d: any) => {
+  dealsData.forEach((d: any) => {
     if (!stageMap.has(d.contact_id) && d.pipeline_stages?.name) {
       stageMap.set(d.contact_id, d.pipeline_stages.name);
     }
