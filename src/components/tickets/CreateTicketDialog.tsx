@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ticket } from "lucide-react";
 import {
@@ -49,6 +49,8 @@ export function CreateTicketDialog({
   const [priority, setPriority] = useState("3");
   
   const createTicket = useCreateTicket();
+  // H8 — guardia double-submit
+  const submitInFlightRef = useRef(false);
 
   // Pre-populate title when opening from a deal
   useEffect(() => {
@@ -64,6 +66,8 @@ export function CreateTicketDialog({
       toast.error("Inserisci un titolo per il ticket");
       return;
     }
+    if (createTicket.isPending || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
 
     try {
       const ticketId = await createTicket.mutateAsync({
@@ -89,6 +93,8 @@ export function CreateTicketDialog({
       }
     } catch (error) {
       toast.error("Errore nella creazione del ticket");
+    } finally {
+      submitInFlightRef.current = false;
     }
   };
 

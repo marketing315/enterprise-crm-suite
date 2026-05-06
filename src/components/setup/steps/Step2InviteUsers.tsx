@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { UserPlus, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,8 @@ export function Step2InviteUsers({ completed, stepNumber }: { completed: boolean
   const markStep = useMarkSetupStep();
   const [rows, setRows] = useState<Row[]>([{ email: "", full_name: "", role: "venditore" }]);
   const [submitting, setSubmitting] = useState(false);
+  // H8 — guardia double-submit (admin-create-user è side-effect costoso)
+  const submitInFlightRef = useRef(false);
 
   const update = (i: number, patch: Partial<Row>) => {
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
@@ -52,6 +54,8 @@ export function Step2InviteUsers({ completed, stepNumber }: { completed: boolean
     const valid = rows.filter((r) => r.email.includes("@") && r.full_name.trim());
     if (valid.length === 0) return toast.error("Inserisci almeno un utente con email e nome");
     if (!currentBrand) return toast.error("Seleziona prima un brand");
+    if (submitting || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
 
     setSubmitting(true);
     let ok = 0;
@@ -76,6 +80,7 @@ export function Step2InviteUsers({ completed, stepNumber }: { completed: boolean
       }
     }
     setSubmitting(false);
+    submitInFlightRef.current = false;
     if (ok > 0) {
       toast.success(`${ok} utente/i invitato/i. Password temporanea generata.`);
       markStep.mutate("users_invited");

@@ -71,6 +71,8 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
   const { currentBrand } = useBrand();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // H8 — guardia double-submit (ref vince sui re-render rapidi tra click)
+  const submitInFlightRef = useRef(false);
 
   const [step, setStep] = useState<Step>("upload");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -249,6 +251,8 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
 
   const handleSave = async () => {
     if (!currentBrand || !user) return;
+    // H8 — double-submit guard
+    if (isSaving || submitInFlightRef.current) return;
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
@@ -260,6 +264,7 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
     const planDetails = validatePlanDetails();
     if (planDetails === null) return; // validation failed
 
+    submitInFlightRef.current = true;
     setIsSaving(true);
     try {
       if (!user?.id) throw new Error("User not found");
@@ -315,6 +320,7 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
       toast.error("Errore nel salvataggio della vendita");
     } finally {
       setIsSaving(false);
+      submitInFlightRef.current = false;
     }
   };
 
