@@ -428,10 +428,11 @@ Deno.serve(async (req: Request) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const { date_from, date_to, lead_event_id } = body as {
+    const { date_from, date_to, lead_event_id, verify_phones } = body as {
       date_from?: string;
       date_to?: string;
       lead_event_id?: string;
+      verify_phones?: boolean;
     };
 
     const spreadsheetId = Deno.env.get("GOOGLE_SHEETS_FILE_ID");
@@ -445,6 +446,24 @@ Deno.serve(async (req: Request) => {
     }
 
     const accessToken = await getAccessToken(serviceAccountKey);
+
+    // ---- VERIFY MODE: read column E (Numero) and report fill ratio ----
+    if (verify_phones) {
+      const resp = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${TAB_NAME}!E2:E10000`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const data = await resp.json();
+      const values: string[][] = data.values || [];
+      const total = values.length;
+      const filled = values.filter(r => (r[0] || "").trim() !== "").length;
+      const samples = values.slice(0, 5).map(r => r[0] || "");
+      const lastSamples = values.slice(-5).map(r => r[0] || "");
+      return new Response(
+        JSON.stringify({ success: true, total_rows: total, with_phone: filled, empty: total - filled, first5: samples, last5: lastSamples }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // ---- APPEND MODE: single lead ----
     if (lead_event_id) {
