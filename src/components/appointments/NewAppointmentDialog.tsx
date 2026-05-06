@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { CalendarIcon, Search, Plus, ChevronDown, ChevronLeft, ChevronRight, User, Phone, Mail } from "lucide-react";
