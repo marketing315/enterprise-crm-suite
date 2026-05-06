@@ -17,21 +17,21 @@ DECLARE
 BEGIN
   -- 1) First claim → "inserted"
   SELECT * INTO r FROM public.claim_idempotency_key(
-    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(digest(payload, 'sha256'), 'hex'), 3600
+    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(extensions.digest(payload, 'sha256'), 'hex'), 3600
   );
   ASSERT r.outcome = 'inserted', format('expected inserted, got %s', r.outcome);
   RAISE NOTICE 'OK 1/5 first claim → inserted (key_id=%)', r.key_id;
 
   -- 2) Second claim same key, same payload → "in_progress"
   SELECT * INTO r FROM public.claim_idempotency_key(
-    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(digest(payload, 'sha256'), 'hex'), 3600
+    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(extensions.digest(payload, 'sha256'), 'hex'), 3600
   );
   ASSERT r.outcome = 'in_progress', format('expected in_progress, got %s', r.outcome);
   RAISE NOTICE 'OK 2/5 concurrent claim → in_progress';
 
   -- 3) Different payload, same key → "payload_mismatch"
   SELECT * INTO r FROM public.claim_idempotency_key(
-    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(digest(payload_alt, 'sha256'), 'hex'), 3600
+    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(extensions.digest(payload_alt, 'sha256'), 'hex'), 3600
   );
   ASSERT r.outcome = 'payload_mismatch', format('expected payload_mismatch, got %s', r.outcome);
   RAISE NOTICE 'OK 3/5 mismatched payload → payload_mismatch';
@@ -44,7 +44,7 @@ BEGIN
 
   -- 5) After completion, replay returns cached body
   SELECT * INTO r FROM public.claim_idempotency_key(
-    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(digest(payload, 'sha256'), 'hex'), 3600
+    scope_name, NULL, '127.0.0.1', 'kep_' || fp, encode(extensions.digest(payload, 'sha256'), 'hex'), 3600
   );
   ASSERT r.outcome = 'replay', format('expected replay, got %s', r.outcome);
   ASSERT r.cached_status = 200, 'cached status mismatch';
