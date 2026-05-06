@@ -146,6 +146,7 @@ export default function AdminCronJobs() {
       <Tabs defaultValue="errors">
         <TabsList>
           <TabsTrigger value="errors">Errori &amp; metriche</TabsTrigger>
+          <TabsTrigger value="relay">Relay status ({relayStatus.length})</TabsTrigger>
           <TabsTrigger value="duplicates">Duplicati ({duplicates.length})</TabsTrigger>
           <TabsTrigger value="jobs">Job schedulati ({jobs.length})</TabsTrigger>
           <TabsTrigger value="runs">Run recenti ({runs.length})</TabsTrigger>
