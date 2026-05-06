@@ -622,7 +622,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
             </TabsContent>
 
             <TabsContent value="unified" className="flex-1 overflow-hidden mt-2">
-              <ScrollArea className="h-[calc(100vh-200px)] pr-4">
+              <ScrollArea className="h-[calc(100vh-220px)] px-5 sm:px-6">
                 <UnifiedCustomerTimeline contactId={contact.id} />
               </ScrollArea>
             </TabsContent>
