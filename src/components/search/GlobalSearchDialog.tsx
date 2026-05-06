@@ -35,11 +35,17 @@ function useDebounced<T>(value: T, delay = 200): T {
 
 export function GlobalSearchDialog({ open, onOpenChange }: Props) {
   const navigate = useNavigate();
-  const { currentBrand } = useBrand();
+  const { currentBrand, isAllBrandsSelected } = useBrand();
   const [query, setQuery] = useState('');
   const debounced = useDebounced(query.trim(), 200);
-  const brandId = currentBrand?.id;
-  const enabled = !!brandId && debounced.length >= 2;
+  // When the user is on the System Brand ("Tutti i brand") we MUST pass
+  // p_brand_id = NULL to search_contacts (the RPC has a multi-brand path
+  // gated on user_roles). Passing the literal SYSTEM_BRAND_ID makes
+  // user_belongs_to_brand() return false → "Forbidden: no access to brand".
+  // The same applies to the deals/tickets queries: scoping `.eq('brand_id', SYSTEM)`
+  // returns zero rows, while RLS already restricts visibility correctly.
+  const effectiveBrandId = isAllBrandsSelected ? null : (currentBrand?.id ?? null);
+  const enabled = !!currentBrand && debounced.length >= 2;
   const safe = useMemo(() => escapeIlike(debounced), [debounced]);
 
   // Reset when closing
@@ -51,10 +57,10 @@ export function GlobalSearchDialog({ open, onOpenChange }: Props) {
   // full name "Mario Rossi", email, phone (normalized) and city.
   const contactsQ = useQuery({
     enabled,
-    queryKey: ['global-search', 'contacts', brandId, debounced],
+    queryKey: ['global-search', 'contacts', effectiveBrandId, debounced],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('search_contacts', {
-        p_brand_id: brandId!,
+        p_brand_id: effectiveBrandId,
         p_query: debounced,
         p_tag_ids: null as unknown as string[],
         p_match_all_tags: false,
@@ -70,14 +76,15 @@ export function GlobalSearchDialog({ open, onOpenChange }: Props) {
 
   const ticketsQ = useQuery({
     enabled,
-    queryKey: ['global-search', 'tickets', brandId, safe],
+    queryKey: ['global-search', 'tickets', effectiveBrandId, safe],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('tickets')
         .select('id, title, status')
-        .eq('brand_id', brandId!)
         .ilike('title', `%${safe}%`)
         .limit(5);
+      if (effectiveBrandId) q = q.eq('brand_id', effectiveBrandId);
+      const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
@@ -86,16 +93,17 @@ export function GlobalSearchDialog({ open, onOpenChange }: Props) {
 
   const dealsQ = useQuery({
     enabled,
-    queryKey: ['global-search', 'deals', brandId, debounced],
+    queryKey: ['global-search', 'deals', effectiveBrandId, debounced],
     queryFn: async () => {
       const ids = (contactsQ.data ?? []).map((c) => c.id);
       if (!ids.length) return [];
-      const { data, error } = await supabase
+      let q = supabase
         .from('deals')
         .select('id, value, status, contact_id')
-        .eq('brand_id', brandId!)
         .in('contact_id', ids)
         .limit(5);
+      if (effectiveBrandId) q = q.eq('brand_id', effectiveBrandId);
+      const { data, error } = await q;
       if (error) throw error;
       const byId = new Map((contactsQ.data ?? []).map((c) => [c.id, c]));
       return (data ?? []).map((d) => ({
