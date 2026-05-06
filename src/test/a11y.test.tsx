@@ -16,6 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+// jsdom non implementa Canvas → axe color-contrast non valutabile.
+// Disabilitiamo la regola, il contrasto è verificato in CI E2E (Playwright).
+const axeOptions = { rules: { "color-contrast": { enabled: false } } } as const;
+
 describe("H11 a11y regression — base UI", () => {
   it("Button con label testuale non ha violazioni axe", async () => {
     const { container } = render(<Button>Conferma</Button>);
