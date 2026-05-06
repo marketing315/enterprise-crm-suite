@@ -80,6 +80,7 @@ export function Step2InviteUsers({ completed, stepNumber }: { completed: boolean
       }
     }
     setSubmitting(false);
+    submitInFlightRef.current = false;
     if (ok > 0) {
       toast.success(`${ok} utente/i invitato/i. Password temporanea generata.`);
       markStep.mutate("users_invited");
