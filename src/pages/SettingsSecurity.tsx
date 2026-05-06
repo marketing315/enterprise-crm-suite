@@ -1,4 +1,5 @@
 import { MfaSettingsCard } from "@/components/settings/MfaSettingsCard";
+import { IdleTimeoutSettingsCard } from "@/components/settings/IdleTimeoutSettingsCard";
 
 /**
  * A5 — dedicated security settings page (auth-related only).
@@ -14,6 +15,7 @@ export default function SettingsSecurity() {
         </p>
       </div>
       <MfaSettingsCard />
+      <IdleTimeoutSettingsCard />
     </div>
   );
 }
