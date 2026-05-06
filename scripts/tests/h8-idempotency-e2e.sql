@@ -132,8 +132,7 @@ BEGIN
   BEGIN
     UPDATE public.idempotency_events
        SET event = 'tampered'
-     WHERE scope = v_scope AND idem_key = v_key
-     LIMIT 1;
+     WHERE scope = v_scope AND idem_key = v_key;
     RAISE EXCEPTION 'H8/step6a: UPDATE on idempotency_events should have been blocked';
   EXCEPTION WHEN others THEN
     -- expected (raised by the block trigger)
