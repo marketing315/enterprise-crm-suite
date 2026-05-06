@@ -203,6 +203,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
       toast.error("Errore nella creazione del contatto");
     } finally {
       setIsSubmitting(false);
+      submitInFlightRef.current = false;
     }
   };
 
