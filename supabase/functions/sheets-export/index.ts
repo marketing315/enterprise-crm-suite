@@ -749,7 +749,7 @@ Deno.serve(async (req: Request) => {
     if (leadEvent.contact_id) {
       const { data: contactData } = await supabaseAdmin
         .from("contacts")
-        .select("first_name, last_name, email, city")
+        .select("first_name, last_name, email, city, province, cap, lead_reason, lead_message, quiz_answers, notes, phone_normalized")
         .eq("id", leadEvent.contact_id)
         .single();
       contact = contactData as ContactInfo | null;
@@ -808,7 +808,7 @@ Deno.serve(async (req: Request) => {
     if (leadEvent.contact_id) {
       const { data: apptData } = await supabaseAdmin
         .from("appointments")
-        .select("status, scheduled_at")
+        .select("status, scheduled_at, address, city, cap")
         .eq("contact_id", leadEvent.contact_id)
         .eq("brand_id", leadEvent.brand_id)
         .order("scheduled_at", { ascending: false })
@@ -923,6 +923,11 @@ Deno.serve(async (req: Request) => {
     ];
 
     // Ensure tabs exist and append data
+    const leadsRow = buildLeadsRow(leadEvent, contact, brand?.name || "", phone?.phone_normalized || "", tagsFlat, appointment, stage?.name || "");
+
+    await ensureLeadsTab(accessToken, spreadsheetId, cache);
+    await appendRow(accessToken, spreadsheetId, LEADS_TAB, leadsRow);
+
     await ensureAllRawTab(accessToken, spreadsheetId, cache);
     await appendRow(accessToken, spreadsheetId, ALL_RAW_TAB, row);
 
@@ -933,14 +938,14 @@ Deno.serve(async (req: Request) => {
     await ensureRiepilogoTab(accessToken, spreadsheetId, cache);
 
     // Update log to success
-    // We always append the same row to 2 tabs (all_RAW + source_raw_tab)
+    // We always append to 3 tabs (LEADS + ALL_RAW + source_raw_tab)
     await supabaseAdmin
       .from("sheets_export_logs")
       .update({
         status: "success",
         brand_id: leadEvent.brand_id,
         tab_name: sourceRawTab,
-        rows_exported: 2,
+        rows_exported: 3,
         last_attempt_at: new Date().toISOString(),
         next_attempt_at: null,
         last_error: null,
