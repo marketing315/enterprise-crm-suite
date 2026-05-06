@@ -147,10 +147,12 @@ Deno.serve(async (req) => {
         if (data && (data as { acquired?: boolean }).acquired) {
           leaseToken = (data as { token?: string }).token ?? null;
         } else {
+          // SKIP atteso: il lease è ancora valido. Tracciamo con sentinel
+          // upstream_status=-1 + error=null per non inquinare il tasso errori.
           console.log(`[cron-relay] target=${target} skipped (lease_held)`);
           await auditClient.from("cron_relay_log").insert({
             job_name: target, brand_id: body.brand_id ?? null, request_id: requestId,
-            upstream_status: 0, duration_ms: 0, error: "lease_held",
+            upstream_status: -1, duration_ms: 0, error: null,
           }).then(() => {}, () => {});
           return new Response(
             JSON.stringify({ ok: false, target, skipped: "lease_held" }),
