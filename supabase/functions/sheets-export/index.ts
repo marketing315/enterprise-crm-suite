@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqual } from "../_shared/crypto.ts";
+import { createCircuitBreaker } from "../_shared/circuit-breaker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -760,6 +761,33 @@ Deno.serve(async (req: Request) => {
       // Already decoded
     }
 
+    // ── H7: circuit breaker for Google Sheets upstream ──
+    const sheetsBreaker = createCircuitBreaker(supabaseAdmin, "sheets-export:google", {
+      threshold: 5,
+      cooldownSeconds: 180,
+    });
+    const gate = await sheetsBreaker.allow();
+    if (!gate.ok) {
+      // Fallback: don't hit Google now. Mark as failed with a near-future retry
+      // (dispatcher will pick it up after cooldown elapses).
+      const retryAt = gate.nextAttemptAt ?? new Date(Date.now() + 3 * 60_000).toISOString();
+      await supabaseAdmin
+        .from("sheets_export_logs")
+        .update({
+          status: "failed",
+          error: "circuit_open",
+          last_error: "circuit_open",
+          last_attempt_at: new Date().toISOString(),
+          next_attempt_at: retryAt,
+        })
+        .eq("lead_event_id", lead_event_id);
+
+      return new Response(
+        JSON.stringify({ success: false, skipped: true, reason: "circuit_open", next_attempt_at: retryAt }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "180" } }
+      );
+    }
+
     const accessToken = await getAccessToken(decodedKey);
     const cache = new SheetInfoCache();
     
@@ -823,6 +851,9 @@ Deno.serve(async (req: Request) => {
         dead_letter: false,
       })
       .eq("lead_event_id", lead_event_id);
+
+    // H7: record success on the breaker (closes it / clears consecutive_fail)
+    await sheetsBreaker.recordSuccess();
 
     return new Response(
       JSON.stringify({ 
