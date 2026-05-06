@@ -397,6 +397,24 @@ async function ensureAllRawTab(
   return ensureRawTab(accessToken, spreadsheetId, ALL_RAW_TAB, cache);
 }
 
+async function ensureLeadsTab(
+  accessToken: string,
+  spreadsheetId: string,
+  cache: SheetInfoCache,
+): Promise<{ sheetId: number; created: boolean }> {
+  await cache.get(accessToken, spreadsheetId);
+  if (cache.tabExists(LEADS_TAB)) {
+    const sheetId = cache.getSheetId(LEADS_TAB);
+    return { sheetId: sheetId ?? 0, created: false };
+  }
+
+  const sheetId = await createTab(accessToken, spreadsheetId, LEADS_TAB);
+  await writeRange(accessToken, spreadsheetId, `${LEADS_TAB}!A1:X1`, [LEADS_HEADERS]);
+  await applyTabLayout(accessToken, spreadsheetId, sheetId);
+  cache.invalidate();
+  return { sheetId, created: true };
+}
+
 async function ensureRiepilogoTab(
   accessToken: string,
   spreadsheetId: string,
