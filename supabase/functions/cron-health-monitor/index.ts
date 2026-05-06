@@ -28,6 +28,8 @@ const ERROR_RATE_WINDOW_MIN = 15;             // last 15 minutes
 const MIN_SAMPLES_FOR_RATE = 20;              // ignore tiny windows
 const ERROR_RATE_THRESHOLD = 30;              // %
 const COOLDOWN_MINUTES = 60;                  // do not re-send same alert within 1h
+const JWT_AUTH_MIN_COUNT = 3;                 // min 401/403 in window to fire JWT alert
+const JWT_AUTH_WINDOW_MIN = 15;               // window for JWT auth failures
 
 // Names of jobs that were intentionally removed and MUST stay removed
 // (legacy jobs that bypass cron-relay → cause 401 flood).
@@ -258,6 +260,70 @@ Deno.serve(async (req) => {
       result.sent ? sentAlerts.push(`error_rate:${overallRate.toFixed(0)}`) : skipped.push({ key: "error_rate", reason: result.reason ?? "?" });
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // CHECK 3: JWT / auth failures on cron-relay (status 401/403)
+    // Breakdown per job × brand. Fires as soon as JWT_AUTH_MIN_COUNT occur.
+    // ────────────────────────────────────────────────────────────────────────
+    const sinceJwt = new Date(Date.now() - JWT_AUTH_WINDOW_MIN * 60_000).toISOString();
+    const { data: authRows } = await supabase
+      .from("cron_relay_log")
+      .select("job_name, brand_id, upstream_status, error, created_at")
+      .gte("created_at", sinceJwt)
+      .in("upstream_status", [401, 403])
+      .limit(2000);
+
+    const authFailures = authRows ?? [];
+    if (authFailures.length >= JWT_AUTH_MIN_COUNT) {
+      const breakdown = new Map<string, { count: number; statuses: Set<number>; lastError: string | null; lastAt: string }>();
+      for (const r of authFailures) {
+        const job = (r as any).job_name as string;
+        const brand = ((r as any).brand_id as string | null) ?? "system";
+        const key = `${job}|${brand}`;
+        const cur = breakdown.get(key) ?? { count: 0, statuses: new Set<number>(), lastError: null, lastAt: "" };
+        cur.count += 1;
+        cur.statuses.add((r as any).upstream_status as number);
+        const ts = (r as any).created_at as string;
+        if (!cur.lastAt || ts > cur.lastAt) {
+          cur.lastAt = ts;
+          cur.lastError = ((r as any).error as string | null) ?? null;
+        }
+        breakdown.set(key, cur);
+      }
+      const top = Array.from(breakdown.entries())
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 10)
+        .map(([k, v]) => {
+          const [job, brand] = k.split("|");
+          const sts = Array.from(v.statuses).sort().join("/");
+          const errSnippet = v.lastError ? ` — ${v.lastError.slice(0, 80)}` : "";
+          return `${job} (brand=${brand}): ${v.count} fail [${sts}]${errSnippet}`;
+        });
+
+      const result = await maybeSendAlert(supabase, {
+        alertKey: `jwt_auth_failures:${Array.from(breakdown.keys()).sort().join(",")}`,
+        identitySnapshot: { failures: authFailures.length, jobs: Array.from(breakdown.keys()) },
+        templateData: {
+          alertType: "jwt_auth_failures",
+          severity: authFailures.length >= 20 ? "critical" : "warning",
+          title: `Cron auth failures (${authFailures.length} × 401/403)`,
+          summary: `Negli ultimi ${JWT_AUTH_WINDOW_MIN} min cron-relay ha registrato ${authFailures.length} chiamate respinte con 401/403 su ${breakdown.size} combinazioni job × brand. Probabile JWT errato o CRON_SECRET non sincronizzato.`,
+          affectedJobs: top,
+          metricsWindow: `ultimi ${JWT_AUTH_WINDOW_MIN} minuti`,
+          occurredAt: new Date().toISOString(),
+          dashboardUrl: DASHBOARD_URL,
+          runbook: [
+            `Aprire ${DASHBOARD_URL} → tab "Relay status" e filtrare per i job in lista`,
+            "401: CRON_SECRET non corrispondente o middleware edge function non aggiornato",
+            "403: identità autenticata ma senza ruolo richiesto (admin/CEO o brand_id mismatch)",
+            "Verificare in vault che CRON_SECRET (e CRON_SECRET_PREVIOUS durante rotation) siano allineati",
+            "Se rotation in corso: completare il deploy di tutte le edge function target",
+            "Per fail concentrati su un brand: controllare brand_membership e RLS",
+          ],
+        },
+      }, log);
+      result.sent ? sentAlerts.push(`jwt:${authFailures.length}`) : skipped.push({ key: "jwt_auth", reason: result.reason ?? "?" });
+    }
+
     log("log", "health check completed", {
       sent: sentAlerts, skipped, totalAll, errorsAll, overallRate: overallRate.toFixed(2),
     });
@@ -266,7 +332,7 @@ Deno.serve(async (req) => {
       ok: true,
       sent: sentAlerts,
       skipped,
-      stats: { totalAll, errorsAll, overallRate, offendingJobsCount: offendingJobs.length, legacyReappeared: reappeared.length },
+      stats: { totalAll, errorsAll, overallRate, offendingJobsCount: offendingJobs.length, legacyReappeared: reappeared.length, jwtAuthFailures: authFailures.length },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     log("error", "monitor crashed", { err: err instanceof Error ? err.message : String(err) });
