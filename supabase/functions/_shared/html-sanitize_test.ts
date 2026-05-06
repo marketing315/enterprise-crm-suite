@@ -31,9 +31,10 @@ Deno.test("safeHrefHtml blocca javascript: e varianti", () => {
 });
 
 Deno.test("safeHrefHtml permette http/https/mailto/tel ed escapa", () => {
-  assertStringIncludes(safeHrefHtml("https://example.com/x?a=1&b=2"), "https://example.com/x");
-  // & viene escapato
-  assertStringIncludes(safeHrefHtml("https://example.com/x?a=1&b=2"), "&amp;");
+  const safe = safeHrefHtml("https://example.com/x?a=1&b=2");
+  // L'URL è HTML-escaped (compresi / e &)
+  assertStringIncludes(safe, "https:&#x2F;&#x2F;example.com");
+  assertStringIncludes(safe, "&amp;");
   assertEquals(safeHrefHtml("mailto:a@b.c"), "mailto:a@b.c");
   assertStringIncludes(safeHrefHtml("tel:+39000"), "tel:+39000");
 });
