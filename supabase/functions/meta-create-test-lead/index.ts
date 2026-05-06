@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getMetaAppAccessToken } from "../_shared/meta-secrets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +61,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { page_id, access_token } = metaApp;
+    const { page_id } = metaApp;
+    // A2: resolve from Vault, fallback to legacy plaintext column.
+    const access_token = (await getMetaAppAccessToken(supabase, metaApp.id)) ?? metaApp.access_token;
 
     if (!page_id || !access_token) {
       return new Response(JSON.stringify({ error: "Page ID or Access Token missing" }), {
