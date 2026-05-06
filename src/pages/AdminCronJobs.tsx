@@ -38,6 +38,41 @@ export default function AdminCronJobs() {
   const { data: unregistered = [], isLoading: driftLoading } = useUnregisteredCronJobs();
   const { data: runs = [], isLoading: runsLoading } = useCronRunLog(150);
 
+  const { brands, currentBrand } = useBrand();
+  const [range, setRange] = useState<RangeKey>("24h");
+  const [brandFilter, setBrandFilter] = useState<string>("all");
+  const [jobFilter, setJobFilter] = useState<string>("all");
+
+  const { from, to } = useMemo(() => {
+    const t = new Date();
+    const f = new Date(t.getTime() - RANGE_HOURS[range] * 3_600_000);
+    return { from: f, to: t };
+  }, [range]);
+
+  // Default brand filter to current brand if not system
+  const effectiveBrandId = brandFilter === "all"
+    ? null
+    : brandFilter === "current"
+      ? (currentBrand && currentBrand.id !== SYSTEM_BRAND_ID ? currentBrand.id : null)
+      : brandFilter;
+
+  const { data: errMetrics = [], isLoading: emLoading } = useCronErrorMetrics(from, to, effectiveBrandId);
+  const { data: timeseries = [], isLoading: tsLoading } = useCronErrorTimeseries(
+    from,
+    to,
+    effectiveBrandId,
+    jobFilter === "all" ? null : jobFilter,
+  );
+  const { data: duplicates = [], isLoading: dupLoading } = useCronDuplicateJobs();
+
+  const errStats = useMemo(() => {
+    const totalErrors = errMetrics.reduce((s, m) => s + Number(m.errors || 0), 0);
+    const totalRuns = errMetrics.reduce((s, m) => s + Number(m.total || 0), 0);
+    const jobsWithErrors = errMetrics.filter(m => Number(m.errors || 0) > 0).length;
+    const errorRate = totalRuns > 0 ? Math.round((totalErrors / totalRuns) * 1000) / 10 : 0;
+    return { totalErrors, totalRuns, jobsWithErrors, errorRate };
+  }, [errMetrics]);
+
   const stats = useMemo(() => {
     const last24h = runs.filter(r => new Date(r.started_at).getTime() > Date.now() - 86_400_000);
     const errors24h = last24h.filter(r => r.status === "error").length;
