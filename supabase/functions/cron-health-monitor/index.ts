@@ -28,6 +28,8 @@ const ERROR_RATE_WINDOW_MIN = 15;             // last 15 minutes
 const MIN_SAMPLES_FOR_RATE = 20;              // ignore tiny windows
 const ERROR_RATE_THRESHOLD = 30;              // %
 const COOLDOWN_MINUTES = 60;                  // do not re-send same alert within 1h
+const JWT_AUTH_MIN_COUNT = 3;                 // min 401/403 in window to fire JWT alert
+const JWT_AUTH_WINDOW_MIN = 15;               // window for JWT auth failures
 
 // Names of jobs that were intentionally removed and MUST stay removed
 // (legacy jobs that bypass cron-relay → cause 401 flood).
