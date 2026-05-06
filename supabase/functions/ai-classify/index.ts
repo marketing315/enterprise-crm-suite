@@ -166,14 +166,15 @@ async function classifyLead(
       model: MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { 
-          role: "user", 
-          content: `Classifica questo lead:\n${JSON.stringify(payload, null, 2)}` 
+        {
+          role: "user",
+          content: `Classifica questo lead:\n${JSON.stringify(payload, null, 2)}`
         },
       ],
       tools: [CLASSIFICATION_TOOL],
       tool_choice: { type: "function", function: { name: "classify_lead" } },
-      temperature: 0.1, // Lower for more deterministic output
+      temperature: 0.1,
+      max_tokens: capMaxTokens(undefined, "ai-classify"),
     }),
   });
 
