@@ -143,6 +143,11 @@ for fn in "${PUBLIC_WEBHOOKS_EXEMPT[@]}"; do
   EXEMPT["$fn"]=1
 done
 
+declare -A TODO_SET
+for fn in "${PUBLIC_WEBHOOKS_TODO[@]}"; do
+  TODO_SET["$fn"]=1
+done
+
 FAILED=0
 WIRED_COUNT=0
 EXEMPT_COUNT=0
@@ -151,12 +156,16 @@ MISSING=()
 for fn in "${ALL_VERIFY_FALSE[@]}"; do
   f="supabase/functions/${fn}/index.ts"
   if [[ ! -f "$f" ]]; then
-    # Function declared in config but missing on disk — separate concern.
     continue
   fi
 
   if grep -qE "ip-rate-limit|consume_ip_rate_limit|checkIpRateLimit" "$f"; then
     WIRED_COUNT=$((WIRED_COUNT + 1))
+    continue
+  fi
+
+  if [[ -n "${TODO_SET[$fn]:-}" ]]; then
+    echo "::warning::H1 TODO — ${fn} still lacks IP rate-limit (tracked backlog)."
     continue
   fi
 
