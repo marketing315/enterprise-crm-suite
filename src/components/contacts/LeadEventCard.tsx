@@ -50,19 +50,23 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
         </p>
       )}
 
-      {event.raw_payload && typeof event.raw_payload === 'object' && (event.raw_payload as any).source_url && (
-        <p className="text-sm truncate">
-          <span className="text-muted-foreground">URL:</span>{' '}
-          <a
-            href={(event.raw_payload as any).source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            {(event.raw_payload as any).source_url}
-          </a>
-        </p>
-      )}
+      {event.raw_payload && typeof event.raw_payload === 'object' && (event.raw_payload as any).source_url && (() => {
+        const safe = sanitizeUrl((event.raw_payload as any).source_url);
+        if (!safe) return null;
+        return (
+          <p className="text-sm truncate">
+            <span className="text-muted-foreground">URL:</span>{' '}
+            <a
+              href={safe}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="text-primary hover:underline"
+            >
+              {safe}
+            </a>
+          </p>
+        );
+      })()}
 
       {/* AI Data */}
       {(ev.ai_priority != null || ev.ai_confidence != null) && (
