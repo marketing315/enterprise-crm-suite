@@ -11197,6 +11197,7 @@ export type Database = {
         Returns: number
       }
       cleanup_session_audit: { Args: never; Returns: number }
+      cleanup_session_data_all: { Args: never; Returns: Json }
       cleanup_webhook_dedup: { Args: never; Returns: number }
       complete_ai_tag_job: {
         Args: { p_error?: string; p_job_id: string }
@@ -12891,6 +12892,10 @@ export type Database = {
             Returns: Json
           }
       provincia_to_regione: { Args: { p_sigla: string }; Returns: string }
+      purge_user_session_data: {
+        Args: { p_auth_user_id: string; p_brand_id?: string }
+        Returns: Json
+      }
       reactivate_pipeline_stage: { Args: { p_stage_id: string }; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
