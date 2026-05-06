@@ -1,9 +1,13 @@
 // ai-generate-automation edge function
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceAiQuota, capMaxTokens } from "../_shared/ai-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
 
 const SYSTEM_PROMPT = `Sei un assistente che genera configurazioni per regole di automazione CRM.
 
