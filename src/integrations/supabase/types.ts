@@ -11229,6 +11229,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_purge_cron_job_run_details: {
+        Args: { p_batch?: number; p_days?: number }
+        Returns: number
+      }
       apply_ai_deal_tags: {
         Args: { p_confidence?: number; p_deal_id: string; p_tag_ids: string[] }
         Returns: number
