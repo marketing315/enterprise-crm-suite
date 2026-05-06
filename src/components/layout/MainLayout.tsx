@@ -420,7 +420,7 @@ export function MainLayout() {
       <WelcomeModal />
       <AppTour />
       <div className="flex min-h-screen w-full">
-        <Sidebar>
+        <Sidebar aria-label="Navigazione principale">
           <SidebarHeader className="border-b border-sidebar-border">
             <div className="flex items-center gap-2 px-4 py-3">
               <img src="/favicon.svg" alt="Logo" className="h-7 w-7" />
