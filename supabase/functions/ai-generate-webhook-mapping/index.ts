@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceAiQuota, capMaxTokens } from "../_shared/ai-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,6 +135,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // C6: enforce AI quota (user-triggered)
+    const quota = await enforceAiQuota({
+      supabase: adminClient,
+      userId: crmUser.id,
+      brandId,
+      endpoint: "ai-generate-webhook-mapping",
+      inputChars: prompt.length,
+    });
+    if (!quota.ok) return quota.response;
+
     // Call Lovable AI to generate the mapping
     const lovableAiUrl = Deno.env.get("LOVABLE_AI_URL") || "https://ai-backend.lovable.dev";
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
@@ -176,7 +187,7 @@ REGOLE IMPORTANTI:
           { role: "user", content: prompt },
         ],
         temperature: 0.1,
-        max_tokens: 2000,
+        max_tokens: capMaxTokens(2000, "ai-generate-webhook-mapping"),
       }),
     });
 

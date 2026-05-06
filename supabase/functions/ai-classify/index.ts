@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqualAny } from "../_shared/crypto.ts";
 import { ClassifyLeadSchema, safeParseJsonString, validateAIOutput } from "../_shared/ai-output-validate.ts";
+import { enforceAiQuota, capMaxTokens } from "../_shared/ai-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -165,14 +166,15 @@ async function classifyLead(
       model: MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { 
-          role: "user", 
-          content: `Classifica questo lead:\n${JSON.stringify(payload, null, 2)}` 
+        {
+          role: "user",
+          content: `Classifica questo lead:\n${JSON.stringify(payload, null, 2)}`
         },
       ],
       tools: [CLASSIFICATION_TOOL],
       tool_choice: { type: "function", function: { name: "classify_lead" } },
-      temperature: 0.1, // Lower for more deterministic output
+      temperature: 0.1,
+      max_tokens: capMaxTokens(undefined, "ai-classify"),
     }),
   });
 
@@ -623,6 +625,25 @@ Deno.serve(async (req: Request) => {
         .eq("id", job.id);
 
       try {
+        // C6: enforce AI quota (system job → SYSTEM_AI_USER_ID bucket per brand)
+        const quota = await enforceAiQuota({
+          supabase,
+          userId: null,
+          brandId: job.brand_id,
+          endpoint: "ai-classify",
+          inputChars: JSON.stringify(leadEvent.raw_payload || {}).length,
+        });
+        if (!quota.ok) {
+          // Re-queue: lasciamo job in pending per retry tomorrow (no consumo attempt extra).
+          await supabase.from("ai_jobs").update({
+            status: "pending",
+            attempts: Math.max(0, job.attempts), // restore
+            last_error: `quota_${quota.status}`,
+          }).eq("id", job.id);
+          failed++;
+          continue;
+        }
+
         // Classify with AI using tool calling
         const { result: classification, rawResponse } = await classifyLead(
           leadEvent.raw_payload,

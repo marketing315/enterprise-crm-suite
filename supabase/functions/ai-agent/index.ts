@@ -12,6 +12,7 @@ import {
 } from "./helpers.ts";
 import { redactForLog } from "../_shared/pii-redact.ts";
 import { safeErrorResponse } from "../_shared/safe-error-response.ts";
+import { enforceAiQuota } from "../_shared/ai-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,6 +197,20 @@ Deno.serve(async (req: Request) => {
       ...conversationHistoryForAI,
       { role: "user", content: message },
     ];
+
+    // C6: enforce AI quota PRIMA del loop agent (cap costo per session)
+    const totalInputChars = aiMessages.reduce(
+      (n, m) => n + (typeof m.content === "string" ? m.content.length : 0),
+      0,
+    );
+    const quota = await enforceAiQuota({
+      supabase,
+      userId: crmUser.id,
+      brandId,
+      endpoint: "ai-agent",
+      inputChars: totalInputChars,
+    });
+    if (!quota.ok) return quota.response;
 
     // ── Run multi-step agent loop ──
     let finalContent: string | null = null;

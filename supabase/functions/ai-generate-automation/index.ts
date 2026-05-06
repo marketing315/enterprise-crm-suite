@@ -1,9 +1,13 @@
 // ai-generate-automation edge function
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceAiQuota, capMaxTokens } from "../_shared/ai-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const SYSTEM_BRAND_ID = "00000000-0000-0000-0000-000000000000";
 
 const SYSTEM_PROMPT = `Sei un assistente che genera configurazioni per regole di automazione CRM.
 
@@ -120,6 +124,38 @@ Deno.serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // C6: auth + quota
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { autoRefreshToken: false, persistSession: false } },
+    );
+    const { data: userData } = await supabase.auth.getUser(token);
+    if (!userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: crmUser } = await supabase
+      .from("users").select("id").eq("supabase_auth_id", userData.user.id).single();
+    if (!crmUser?.id) {
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const quota = await enforceAiQuota({
+      supabase,
+      userId: crmUser.id,
+      brandId: SYSTEM_BRAND_ID,
+      endpoint: "ai-generate-automation",
+      inputChars: prompt.length,
+    });
+    if (!quota.ok) return quota.response;
+
     // Add context about available event types
     const eventTypesContext = eventTypes?.length 
       ? `\n\nEVENT TYPES DISPONIBILI NEL SISTEMA:\n${eventTypes.map((e) => `- "${e.value}": ${e.label}`).join("\n")}`
@@ -144,6 +180,7 @@ Deno.serve(async (req) => {
             { role: "user", content: prompt },
           ],
           temperature: 0.2,
+          max_tokens: capMaxTokens(undefined, "ai-generate-automation"),
         }),
         signal: controller.signal,
       });
