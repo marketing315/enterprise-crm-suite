@@ -3243,6 +3243,48 @@ export type Database = {
           },
         ]
       }
+      circuit_breaker_state: {
+        Row: {
+          consecutive_fail: number
+          failure_count: number
+          last_error: string | null
+          last_failure_at: string | null
+          last_success_at: string | null
+          name: string
+          next_attempt_at: string | null
+          opened_at: string | null
+          state: string
+          success_count: number
+          updated_at: string
+        }
+        Insert: {
+          consecutive_fail?: number
+          failure_count?: number
+          last_error?: string | null
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          name: string
+          next_attempt_at?: string | null
+          opened_at?: string | null
+          state?: string
+          success_count?: number
+          updated_at?: string
+        }
+        Update: {
+          consecutive_fail?: number
+          failure_count?: number
+          last_error?: string | null
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          name?: string
+          next_attempt_at?: string | null
+          opened_at?: string | null
+          state?: string
+          success_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clinical_topic_aliases: {
         Row: {
           alias_text: string
@@ -10686,6 +10728,56 @@ export type Database = {
         }[]
       }
       capture_capacity_snapshot: { Args: never; Returns: Json }
+      cb_check_state: {
+        Args: { p_name: string }
+        Returns: {
+          consecutive_fail: number
+          failure_count: number
+          last_error: string | null
+          last_failure_at: string | null
+          last_success_at: string | null
+          name: string
+          next_attempt_at: string | null
+          opened_at: string | null
+          state: string
+          success_count: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "circuit_breaker_state"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cb_record_outcome: {
+        Args: {
+          p_cooldown_seconds?: number
+          p_error?: string
+          p_name: string
+          p_success: boolean
+          p_threshold?: number
+        }
+        Returns: {
+          consecutive_fail: number
+          failure_count: number
+          last_error: string | null
+          last_failure_at: string | null
+          last_success_at: string | null
+          name: string
+          next_attempt_at: string | null
+          opened_at: string | null
+          state: string
+          success_count: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "circuit_breaker_state"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       check_all_brands_sla_breaches: { Args: never; Returns: Json }
       check_and_mark_sla_breaches: {
         Args: { p_brand_id: string }
