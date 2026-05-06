@@ -179,27 +179,27 @@ export default function AdminSheetsHealth() {
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard
           icon={Activity}
-          label="Stato attuale"
+          title="Stato attuale"
           value={last ? last.status.toUpperCase() : "—"}
-          description={last ? `${last.success_ratio}% success ratio` : "Nessun dato"}
+          subtitle={last ? `${last.success_ratio}% success ratio` : "Nessun dato"}
         />
         <MetricCard
           icon={AlertTriangle}
-          label="Incidenti 24h"
+          title="Incidenti 24h"
           value={String(incidents24h)}
-          description="Drift critical rilevati"
+          subtitle="Drift critical rilevati"
         />
         <MetricCard
           icon={ShieldCheck}
-          label="Trigger critici"
+          title="Trigger critici"
           value={`${(triggers.data ?? []).length - missingTriggers.length}/${(triggers.data ?? []).length}`}
-          description={lastTriggerCheck ? `Ultimo check ${formatDistanceToNow(new Date(lastTriggerCheck.checked_at), { addSuffix: true, locale: it })}` : "Mai eseguito"}
+          subtitle={lastTriggerCheck ? `Ultimo check ${formatDistanceToNow(new Date(lastTriggerCheck.checked_at), { addSuffix: true, locale: it })}` : "Mai eseguito"}
         />
         <MetricCard
           icon={CheckCircle2}
-          label="Ultimo recon"
+          title="Ultimo recon"
           value={recon.data?.[0] ? `Δ ${recon.data[0].delta_pct}%` : "—"}
-          description={recon.data?.[0] ? `${recon.data[0].db_count} DB / ${recon.data[0].sheet_count} sheet` : "In attesa"}
+          subtitle={recon.data?.[0] ? `${recon.data[0].db_count} DB / ${recon.data[0].sheet_count} sheet` : "In attesa"}
         />
       </div>
 
