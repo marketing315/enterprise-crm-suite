@@ -36,6 +36,8 @@ export function Step2InviteUsers({ completed, stepNumber }: { completed: boolean
   const markStep = useMarkSetupStep();
   const [rows, setRows] = useState<Row[]>([{ email: "", full_name: "", role: "venditore" }]);
   const [submitting, setSubmitting] = useState(false);
+  // H8 — guardia double-submit (admin-create-user è side-effect costoso)
+  const submitInFlightRef = useRef(false);
 
   const update = (i: number, patch: Partial<Row>) => {
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
