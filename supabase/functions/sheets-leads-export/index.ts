@@ -276,9 +276,10 @@ async function fetchSingleLeadRow(
     return null;
   }
 
-  const contactId = event.contact_id as string;
-  const contact = event.contacts as any;
-  const brandName = (event.brands as any)?.name || "";
+  const ev = event as any;
+  const contactId = ev.contact_id as string;
+  const contact = ev.contacts as any;
+  const brandName = (ev.brands as any)?.name || "";
 
   // Fetch phone, tags, appointment in parallel
   const [phonesRes, tagsRes, apptsRes, stageRes] = await Promise.all([
