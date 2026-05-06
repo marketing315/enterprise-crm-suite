@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { FileJson, Brain } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { sanitizeUrl } from '@/lib/safe-url';
 
 interface LeadEvent {
   id: string;
