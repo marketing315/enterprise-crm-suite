@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
             { role: "user", content: prompt },
           ],
           temperature: 0.2,
+          max_tokens: capMaxTokens(undefined, "ai-generate-automation"),
         }),
         signal: controller.signal,
       });
