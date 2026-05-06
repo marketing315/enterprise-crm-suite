@@ -172,7 +172,17 @@ async function processDelivery(
     }
 
     // C12: SSRF guard on the configured URL (https-only, no private IPs).
-    const safeCheck = await assertSafeUrl(webhook.url);
+    // HTTP allowlist: legacy partner endpoints senza TLS (es. Sileads/Siseco).
+    // Manteniamo SSRF guard (no IP privati / metadata) ma permettiamo http://.
+    const HTTP_ALLOWED_HOSTS = new Set<string>([
+      "sileads.siseco.it",
+    ]);
+    let allowHttpForThis = false;
+    try {
+      const parsed = new URL(webhook.url);
+      allowHttpForThis = HTTP_ALLOWED_HOSTS.has(parsed.hostname.toLowerCase());
+    } catch { /* assertSafeUrl returns invalid_url below */ }
+    const safeCheck = await assertSafeUrl(webhook.url, { allowHttp: allowHttpForThis });
     if (!safeCheck.ok) {
       const durationMs = Date.now() - startTime;
       await supabase.rpc("record_delivery_result", {
