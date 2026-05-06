@@ -4039,6 +4039,68 @@ export type Database = {
           },
         ]
       }
+      cron_job_registry: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          expected_runtime_seconds: number | null
+          id: string
+          invokes_security_definer: boolean
+          is_critical: boolean
+          job_name: string
+          notes: string | null
+          owner_role: string
+          schedule_doc: string | null
+          tenant_scope: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          expected_runtime_seconds?: number | null
+          id?: string
+          invokes_security_definer?: boolean
+          is_critical?: boolean
+          job_name: string
+          notes?: string | null
+          owner_role?: string
+          schedule_doc?: string | null
+          tenant_scope?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          expected_runtime_seconds?: number | null
+          id?: string
+          invokes_security_definer?: boolean
+          is_critical?: boolean
+          job_name?: string
+          notes?: string | null
+          owner_role?: string
+          schedule_doc?: string | null
+          tenant_scope?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cron_job_registry_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cron_relay_log: {
         Row: {
           brand_id: string | null
@@ -4069,6 +4131,42 @@ export type Database = {
           job_name?: string
           request_id?: string | null
           upstream_status?: number | null
+        }
+        Relationships: []
+      }
+      cron_run_log: {
+        Row: {
+          brand_id: string | null
+          duration_ms: number | null
+          error_summary: string | null
+          finished_at: string | null
+          id: number
+          job_name: string
+          metadata: Json
+          started_at: string
+          status: string
+        }
+        Insert: {
+          brand_id?: string | null
+          duration_ms?: number | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: never
+          job_name: string
+          metadata?: Json
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          brand_id?: string | null
+          duration_ms?: number | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: never
+          job_name?: string
+          metadata?: Json
+          started_at?: string
+          status?: string
         }
         Relationships: []
       }
@@ -11236,6 +11334,14 @@ export type Database = {
         Args: { p_deal_id: string }
         Returns: string
       }
+      cron_log_finish: {
+        Args: { p_error_summary?: string; p_run_id: number; p_status: string }
+        Returns: undefined
+      }
+      cron_log_start: {
+        Args: { p_brand_id?: string; p_job_name: string; p_metadata?: Json }
+        Returns: number
+      }
       current_app_user_id: { Args: never; Returns: string }
       current_brand_role: {
         Args: { p_brand_id: string }
@@ -11266,6 +11372,14 @@ export type Database = {
       detect_audit_anomalies: {
         Args: { p_brand_id: string; p_lookback_hours?: number }
         Returns: Json
+      }
+      detect_unregistered_cron_jobs: {
+        Args: never
+        Returns: {
+          jobid: number
+          jobname: string
+          schedule: string
+        }[]
       }
       dynamic_analytics_query: {
         Args: {
@@ -12338,6 +12452,21 @@ export type Database = {
       list_contact_lead_events: {
         Args: { p_contact_id: string; p_include_archived?: boolean }
         Returns: Json
+      }
+      list_cron_jobs: {
+        Args: never
+        Returns: {
+          active: boolean
+          brand_id: string
+          command_redacted: string
+          is_critical: boolean
+          jobid: number
+          jobname: string
+          owner_role: string
+          registered: boolean
+          schedule: string
+          tenant_scope: string
+        }[]
       }
       list_outbound_webhooks: {
         Args: { p_brand_id: string }
