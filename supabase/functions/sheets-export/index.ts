@@ -27,6 +27,13 @@ interface ContactInfo {
   last_name: string | null;
   email: string | null;
   city: string | null;
+  province?: string | null;
+  cap?: string | null;
+  lead_reason?: string | null;
+  lead_message?: string | null;
+  quiz_answers?: Record<string, unknown> | null;
+  notes?: string | null;
+  phone_normalized?: string | null;
 }
 
 interface PhoneInfo {
@@ -48,6 +55,9 @@ interface StageInfo {
 interface AppointmentInfo {
   status: string;
   scheduled_at: string;
+  address?: string | null;
+  city?: string | null;
+  cap?: string | null;
 }
 
 interface SheetProperties {
@@ -85,6 +95,17 @@ const HEADERS_ITA = [
 
 const COLUMN_COUNT = HEADERS_ITA.length;
 const ALL_RAW_TAB = "ALL_RAW";
+const LEADS_TAB = "LEADS";
+const LEADS_HEADERS = [
+  "Data e Ora", "Brand", "Nome", "Cognome", "Numero", "Email",
+  "Campagna", "Fonte", "AdSet",
+  "Motivo", "Messaggio",
+  "CAP", "Città", "Provincia",
+  "Tag", "Note",
+  "Appuntamento Status", "Appuntamento Data", "Appuntamento Orario",
+  "Appuntamento Via", "Appuntamento Civico", "Appuntamento Città", "Appuntamento CAP",
+  "Fase Pipeline",
+];
 
 // Google Sheets API helpers
 async function getAccessToken(serviceAccountKey: string): Promise<string> {
