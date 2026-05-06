@@ -332,7 +332,9 @@ async function handleKepleroPayload(
 
   if (contactError || !contactId) {
     console.error("[Keplero] Contact creation failed:", contactError);
-    return new Response(JSON.stringify({ error: "Contact creation failed" }), {
+    const body = { error: "Contact creation failed" };
+    if (idemInserted) await idemInserted.fail(500, body);
+    return new Response(JSON.stringify(body), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
