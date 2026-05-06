@@ -4165,7 +4165,7 @@ export type Database = {
         Insert: {
           acquired_at?: string
           acquired_by?: string | null
-          brand_id: string
+          brand_id?: string
           job_name: string
           lease_token: string
           lease_until: string
