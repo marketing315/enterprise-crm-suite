@@ -103,6 +103,8 @@ export async function signInternalRequest(opts: {
     "x-internal-nonce": nonce,
     "x-internal-signature": sig,
     // Keep legacy header so callees still on the old check accept us.
+    // TODO(H5, target Q3 2026): remove `x-internal-token` once all callees
+    // verify HMAC. Tracked in mem://features/h5-webhook-retry-hardening.
     "x-internal-token": secret,
   };
 }

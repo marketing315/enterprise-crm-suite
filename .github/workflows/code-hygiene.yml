@@ -85,3 +85,17 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: bash scripts/ci/check-soft-delete-rls.sh
 
+      # ---------------------------------------------------------------
+      # 9. H1 — Public webhooks MUST keep IP rate-limit import
+      # ---------------------------------------------------------------
+      - name: Check public webhooks rate-limit
+        if: always()
+        run: bash scripts/ci/check-public-webhooks-ratelimit.sh
+
+      # ---------------------------------------------------------------
+      # 10. H6 — Raw error.message leaks in edge responses (baseline guard)
+      # ---------------------------------------------------------------
+      - name: Check edge error leaks
+        if: always()
+        run: bash scripts/ci/check-edge-error-leak.sh
+

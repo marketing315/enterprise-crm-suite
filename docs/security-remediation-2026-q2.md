@@ -13,3 +13,23 @@
 - `supabase/functions/_shared/ai-output-validate.ts`
 - `mem://features/h14-parse-sale-structured-output`
 - `mem://technical/ai-output-zod-strict`
+
+---
+
+## H1–H13 — Code-review checklist (consolidata)
+
+Le 11 H già chiuse hanno regole di non-regressione documentate in `docs/security-review-playbook.md` § 3 "Code-Review Checklist — Hardening Audit Q2 2026". CI guard attivi:
+
+- `scripts/ci/check-public-webhooks-ratelimit.sh` (H1) — wired allowlist + backlog TODO.
+- `scripts/ci/check-edge-error-leak.sh` (H6) — baseline 25 violazioni esistenti, nuove violazioni bloccano il merge.
+- `scripts/ci/check-soft-delete-rls.sh` (H4).
+- `scripts/ci/check-sri-and-i18n.mjs` (H9).
+- `scripts/ci/check-sourcemaps.mjs` (H10).
+
+Tutti integrati in `.github/workflows/code-hygiene.yml`.
+
+### Backlog tecnico
+
+- **H1 backlog**: `meta-leads-webhook`, `webhook-ingest`, `webhook-dispatcher` ancora senza IP rate-limit (warning, non error). Da chiudere in PR successivi.
+- **H5 deprecation**: header legacy `x-internal-token` in `_shared/internal-mtls.ts` ha TODO con target **Q3 2026** per rimozione totale.
+- **H6 baseline**: 25 violazioni esistenti `error: err.message` da bonificare progressivamente. Ogni cleanup PR può abbassare la baseline con `bash scripts/ci/check-edge-error-leak.sh --update-baseline`.
