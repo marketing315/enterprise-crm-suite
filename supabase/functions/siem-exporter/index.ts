@@ -1,6 +1,10 @@
 // SIEM Exporter — invia audit_events verso destinazioni SIEM esterne via webhook HMAC firmato
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { assertSafeUrl } from "../_shared/safe-outbound.ts";
+// A7: shared PII redactor — ensures consistent baseline redaction across
+// SIEM exports, AI logs, and edge debug payloads. Embeds REDACT_POLICY_VERSION
+// so SIEM consumers can detect format drift.
+import { redactPII, REDACT_POLICY_VERSION } from "../_shared/pii-redact.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,11 +76,20 @@ function maskPayload(obj: unknown): unknown {
 }
 
 function applyMaskToEvent(ev: AuditEventRow): AuditEventRow {
-  return {
-    ...ev,
-    old_value: ev.old_value ? (maskPayload(ev.old_value) as Record<string, unknown>) : null,
-    new_value: ev.new_value ? (maskPayload(ev.new_value) as Record<string, unknown>) : null,
-  };
+  // A7: layer the shared PII redactor on top of the field-name-based
+  // mask. The shared redactor catches structural PII (email/phone/IBAN/CF/CC)
+  // anywhere inside the JSON, regardless of the parent key name, and also
+  // scrubs `metadata` (which the legacy mask ignored).
+  const old_value = ev.old_value
+    ? (redactPII(maskPayload(ev.old_value)) as Record<string, unknown>)
+    : null;
+  const new_value = ev.new_value
+    ? (redactPII(maskPayload(ev.new_value)) as Record<string, unknown>)
+    : null;
+  const metadata = ev.metadata
+    ? (redactPII(ev.metadata) as Record<string, unknown>)
+    : null;
+  return { ...ev, old_value, new_value, metadata };
 }
 
 async function hmacSign(secret: string, body: string): Promise<string> {
@@ -113,6 +126,9 @@ async function exportToDestination(
     brand_id: dest.brand_id,
     destination: dest.name,
     exported_at: new Date().toISOString(),
+    // A7: declare the redaction contract version so SIEM consumers can
+    // detect schema drift if we change the mask/redactor implementation.
+    redaction_policy: dest.mask_pii ? REDACT_POLICY_VERSION : "none",
     event_count: masked.length,
     events: masked,
   };
