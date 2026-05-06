@@ -11219,6 +11219,7 @@ export type Database = {
         Args: { p_new_user_id: string; p_role?: string; p_thread_id: string }
         Returns: undefined
       }
+      admin_count_cron_old: { Args: { p_days?: number }; Returns: number }
       admin_create_user: {
         Args: {
           p_brand_ids: string[]
