@@ -11872,6 +11872,24 @@ export type Database = {
         Args: { p_brand_id?: string; p_job_name: string; p_metadata?: Json }
         Returns: number
       }
+      cron_relay_status: {
+        Args: { p_brand_id?: string; p_from?: string; p_to?: string }
+        Returns: {
+          avg_duration_ms: number
+          brand_id: string
+          error_rate: number
+          errors: number
+          job_name: string
+          last_duration_ms: number
+          last_error: string
+          last_run_at: string
+          last_status: number
+          max_duration_ms: number
+          p95_duration_ms: number
+          successes: number
+          total: number
+        }[]
+      }
       current_app_user_id: { Args: never; Returns: string }
       current_brand_role: {
         Args: { p_brand_id: string }
