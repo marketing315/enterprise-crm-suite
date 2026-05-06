@@ -345,6 +345,74 @@ export default function AdminCronJobs() {
         </TabsContent>
 
 
+        <TabsContent value="relay" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Stato cron-relay per job &amp; brand</CardTitle>
+              <CardDescription>
+                Aggregati da <code>cron_relay_log</code> nel range/brand selezionati nel tab "Errori &amp; metriche".
+                Successo = HTTP 2xx/3xx upstream. Durata: media, p95, max.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {relayLoading ? (
+                <div className="text-sm text-muted-foreground">Caricamento…</div>
+              ) : relayStatus.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Nessun invio cron-relay nel range selezionato.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job</TableHead>
+                      <TableHead>Brand</TableHead>
+                      <TableHead className="text-right">Totali</TableHead>
+                      <TableHead className="text-right">Successi</TableHead>
+                      <TableHead className="text-right">Errori</TableHead>
+                      <TableHead className="text-right">Error rate</TableHead>
+                      <TableHead className="text-right">Avg ms</TableHead>
+                      <TableHead className="text-right">p95 ms</TableHead>
+                      <TableHead className="text-right">Max ms</TableHead>
+                      <TableHead>Ultimo run</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {relayStatus.map(r => (
+                      <TableRow key={`${r.job_name}:${r.brand_id ?? "system"}`}>
+                        <TableCell className="font-mono text-xs">{r.job_name}</TableCell>
+                        <TableCell className="text-xs">{brandName(r.brand_id)}</TableCell>
+                        <TableCell className="text-right text-xs">{r.total}</TableCell>
+                        <TableCell className="text-right text-xs text-green-600">{r.successes}</TableCell>
+                        <TableCell className="text-right text-xs text-destructive">{r.errors}</TableCell>
+                        <TableCell className="text-right text-xs">
+                          {Number(r.error_rate) > 5
+                            ? <Badge variant="destructive">{r.error_rate}%</Badge>
+                            : <span>{r.error_rate}%</span>}
+                        </TableCell>
+                        <TableCell className="text-right text-xs">{r.avg_duration_ms ?? "—"}</TableCell>
+                        <TableCell className="text-right text-xs">{r.p95_duration_ms ?? "—"}</TableCell>
+                        <TableCell className="text-right text-xs">{r.max_duration_ms ?? "—"}</TableCell>
+                        <TableCell className="text-xs" title={r.last_run_at ?? ""}>
+                          {r.last_run_at ? formatDistanceToNow(new Date(r.last_run_at), { addSuffix: true, locale: it }) : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.last_status == null ? (
+                            <Badge variant="destructive" title={r.last_error ?? ""}>fail</Badge>
+                          ) : r.last_status >= 400 || r.last_status === 0 ? (
+                            <Badge variant="destructive" title={r.last_error ?? ""}>{r.last_status}</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-green-600 border-green-600/40">{r.last_status}</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="jobs" className="mt-4">
           <Card>
             <CardHeader>
