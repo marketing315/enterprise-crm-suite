@@ -4084,6 +4084,72 @@ export type Database = {
           },
         ]
       }
+      critical_triggers_check_log: {
+        Row: {
+          auto_recreated: boolean
+          checked_at: string
+          details: Json | null
+          id: string
+          present: boolean
+          recreate_error: string | null
+          table_name: string
+          trigger_name: string
+        }
+        Insert: {
+          auto_recreated?: boolean
+          checked_at?: string
+          details?: Json | null
+          id?: string
+          present: boolean
+          recreate_error?: string | null
+          table_name: string
+          trigger_name: string
+        }
+        Update: {
+          auto_recreated?: boolean
+          checked_at?: string
+          details?: Json | null
+          id?: string
+          present?: boolean
+          recreate_error?: string | null
+          table_name?: string
+          trigger_name?: string
+        }
+        Relationships: []
+      }
+      critical_triggers_registry: {
+        Row: {
+          auto_recreate_sql: string | null
+          created_at: string
+          description: string | null
+          function_name: string
+          id: string
+          is_active: boolean
+          table_name: string
+          trigger_name: string
+        }
+        Insert: {
+          auto_recreate_sql?: string | null
+          created_at?: string
+          description?: string | null
+          function_name: string
+          id?: string
+          is_active?: boolean
+          table_name: string
+          trigger_name: string
+        }
+        Update: {
+          auto_recreate_sql?: string | null
+          created_at?: string
+          description?: string | null
+          function_name?: string
+          id?: string
+          is_active?: boolean
+          table_name?: string
+          trigger_name?: string
+        }
+        Relationships: []
+      }
       cron_job_lease: {
         Row: {
           acquired_at: string
@@ -9016,6 +9082,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sheets_export_drift_log: {
+        Row: {
+          checked_at: string
+          exports_failed_count: number
+          exports_pending_count: number
+          exports_success_count: number
+          id: string
+          incident_fired: boolean
+          lead_events_count: number
+          status: string
+          success_ratio: number
+          window_minutes: number
+        }
+        Insert: {
+          checked_at?: string
+          exports_failed_count: number
+          exports_pending_count: number
+          exports_success_count: number
+          id?: string
+          incident_fired?: boolean
+          lead_events_count: number
+          status: string
+          success_ratio: number
+          window_minutes: number
+        }
+        Update: {
+          checked_at?: string
+          exports_failed_count?: number
+          exports_pending_count?: number
+          exports_success_count?: number
+          id?: string
+          incident_fired?: boolean
+          lead_events_count?: number
+          status?: string
+          success_ratio?: number
+          window_minutes?: number
+        }
+        Relationships: []
+      }
       sheets_export_logs: {
         Row: {
           attempts: number
@@ -9084,6 +9189,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sheets_reconciliation_log: {
+        Row: {
+          backfill_enqueued: number
+          brand_id: string | null
+          db_count: number
+          delta: number
+          delta_pct: number
+          details: Json | null
+          id: string
+          missing_lead_event_ids: string[] | null
+          period_end: string
+          period_start: string
+          run_at: string
+          sheet_count: number
+          status: string
+        }
+        Insert: {
+          backfill_enqueued?: number
+          brand_id?: string | null
+          db_count?: number
+          delta?: number
+          delta_pct?: number
+          details?: Json | null
+          id?: string
+          missing_lead_event_ids?: string[] | null
+          period_end: string
+          period_start: string
+          run_at?: string
+          sheet_count?: number
+          status: string
+        }
+        Update: {
+          backfill_enqueued?: number
+          brand_id?: string | null
+          db_count?: number
+          delta?: number
+          delta_pct?: number
+          details?: Json | null
+          id?: string
+          missing_lead_event_ids?: string[] | null
+          period_end?: string
+          period_start?: string
+          run_at?: string
+          sheet_count?: number
+          status?: string
+        }
+        Relationships: []
       }
       siem_destinations: {
         Row: {
@@ -11481,6 +11634,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      enqueue_missing_sheets_exports: {
+        Args: { p_limit?: number; p_since: string; p_until?: string }
+        Returns: number
+      }
       enqueue_payment_overdue_notifications: {
         Args: { p_brand_id?: string }
         Returns: {
@@ -13210,6 +13367,16 @@ export type Database = {
         Args: { _severity: string; _threshold: string }
         Returns: boolean
       }
+      sheets_export_drift_snapshot: {
+        Args: { p_window_minutes?: number }
+        Returns: {
+          exports_failed_count: number
+          exports_pending_count: number
+          exports_success_count: number
+          lead_events_count: number
+          success_ratio: number
+        }[]
+      }
       simulate_ticket_escalation_policy: {
         Args: {
           p_brand_id: string
@@ -13467,6 +13634,16 @@ export type Database = {
           issue: string
           stored_prev_hash: string
           stored_row_hash: string
+        }[]
+      }
+      verify_critical_triggers: {
+        Args: never
+        Returns: {
+          auto_recreated: boolean
+          error: string
+          present: boolean
+          table_name: string
+          trigger_name: string
         }[]
       }
       webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
