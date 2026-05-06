@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       const { data: adminRoles } = await supabase
         .from("user_roles")
         .select("user_id")
-        .in("role", ["admin", "super_admin"])
+        .in("role", ["admin", "ceo"])
         .eq("is_active", true);
       const adminUserIds = Array.from(new Set((adminRoles ?? []).map((r) => r.user_id).filter(Boolean)));
 
