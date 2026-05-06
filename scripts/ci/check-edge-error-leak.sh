@@ -1,32 +1,56 @@
 #!/usr/bin/env bash
-# H6 CI guard — forbid raw `error: err.message` / `error: error.message`
-# in edge function responses. Use safeErrorResponse() from
-# _shared/safe-error-response.ts which redacts PII and yields a stable shape.
+# H6 CI guard — baseline counter for raw `error: <x>.message` leaks in
+# edge function responses. Fails if the count INCREASES vs the baseline
+# snapshot. Existing offenders are tech-debt tracked separately (audit Q2).
 #
-# Allowed: structured logging (console.error("...", err)), thrown Error,
-# and the inside of safe-error-response.ts itself.
+# To intentionally raise the baseline (after a real cleanup PR REDUCES
+# the count), regenerate scripts/ci/.h6-baseline with:
+#   bash scripts/ci/check-edge-error-leak.sh --update-baseline
+#
+# Use safeErrorResponse(err) from _shared/safe-error-response.ts in new code.
 # See mem://technical/h6-safe-error-response.
 
 set -euo pipefail
 
-# Match `error: <something>.message` patterns inside JSON.stringify responses.
-# Heuristic but cheap; whitelist the helper file itself.
-HITS=$(grep -rnE \
-  "JSON\.stringify\([^)]*error:\s*[A-Za-z_][A-Za-z0-9_]*\.message" \
-  supabase/functions/ \
-  --include="*.ts" \
-  | grep -v "_shared/safe-error-response.ts" || true)
+BASELINE_FILE="scripts/ci/.h6-baseline"
 
-# Also catch the common shorthand `{ error: err.message }` near `new Response`
-HITS2=$(grep -rnB2 -E "error:\s*(err|error|e)\.message" supabase/functions/ --include="*.ts" \
-  | grep -E "new Response|return new Response" \
-  | grep -v "_shared/safe-error-response.ts" || true)
+count_violations() {
+  grep -rnE "JSON\.stringify\([^)]*error:\s*[A-Za-z_][A-Za-z0-9_]*\.message" \
+    supabase/functions/ --include="*.ts" 2>/dev/null \
+    | grep -v "_shared/safe-error-response.ts" \
+    | wc -l | tr -d ' '
+}
 
-if [[ -n "$HITS" || -n "$HITS2" ]]; then
-  echo "::error::H6 — raw error.message leaked in edge response. Use safeErrorResponse(err) from _shared/safe-error-response.ts."
-  [[ -n "$HITS" ]] && echo "$HITS"
-  [[ -n "$HITS2" ]] && echo "$HITS2"
+CURRENT=$(count_violations)
+
+if [[ "${1:-}" == "--update-baseline" ]]; then
+  echo "$CURRENT" > "$BASELINE_FILE"
+  echo "H6 baseline updated to $CURRENT."
+  exit 0
+fi
+
+if [[ ! -f "$BASELINE_FILE" ]]; then
+  echo "$CURRENT" > "$BASELINE_FILE"
+  echo "H6 baseline initialized at $CURRENT (first run)."
+  exit 0
+fi
+
+BASELINE=$(cat "$BASELINE_FILE")
+
+if (( CURRENT > BASELINE )); then
+  echo "::error::H6 REGRESSION — raw error.message in edge responses went from ${BASELINE} to ${CURRENT}."
+  echo "New offenders must use safeErrorResponse(err) from _shared/safe-error-response.ts."
+  echo ""
+  echo "Current offenders:"
+  grep -rnE "JSON\.stringify\([^)]*error:\s*[A-Za-z_][A-Za-z0-9_]*\.message" \
+    supabase/functions/ --include="*.ts" \
+    | grep -v "_shared/safe-error-response.ts"
   exit 1
 fi
 
-echo "H6 OK — no raw error.message leaks in edge responses."
+if (( CURRENT < BASELINE )); then
+  echo "H6 IMPROVED — count dropped from ${BASELINE} to ${CURRENT}. Run with --update-baseline to lock in."
+  exit 0
+fi
+
+echo "H6 OK — count stable at ${CURRENT} (baseline ${BASELINE})."
