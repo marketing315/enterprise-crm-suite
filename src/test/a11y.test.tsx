@@ -23,7 +23,7 @@ const axeOptions = { rules: { "color-contrast": { enabled: false } } } as const;
 describe("H11 a11y regression — base UI", () => {
   it("Button con label testuale non ha violazioni axe", async () => {
     const { container } = render(<Button>Conferma</Button>);
-    const results = await axe(container);
+    const results = await axe(container, axeOptions);
     // @ts-expect-error matcher esteso via vitest-axe/matchers
     expect(results).toHaveNoViolations();
   });
@@ -35,7 +35,7 @@ describe("H11 a11y regression — base UI", () => {
         <Input id="email" type="email" placeholder="nome@example.com" />
       </div>,
     );
-    const results = await axe(container);
+    const results = await axe(container, axeOptions);
     // @ts-expect-error matcher esteso via vitest-axe/matchers
     expect(results).toHaveNoViolations();
   });
@@ -46,7 +46,7 @@ describe("H11 a11y regression — base UI", () => {
         Vai al contenuto principale
       </a>,
     );
-    const results = await axe(container);
+    const results = await axe(container, axeOptions);
     // @ts-expect-error matcher esteso via vitest-axe/matchers
     expect(results).toHaveNoViolations();
   });
