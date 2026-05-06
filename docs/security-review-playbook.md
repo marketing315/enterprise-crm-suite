@@ -128,3 +128,37 @@ Simulare scenari di incidente reale per verificare readiness operativa, tempi di
 - [ ] Engineering Lead
 - [ ] CTO/CEO
 ```
+
+---
+
+## 3. Code-Review Checklist — Hardening Audit Q2 2026 (H1–H14)
+
+Da applicare in ogni PR che tocca edge function, OAuth, RLS o UI sensibile. **Bocciare** il PR se una di queste regole è violata.
+
+### Edge functions
+
+- **H1 — IP rate-limit su webhook pubblici.** Ogni nuova edge function con `verify_jwt = false` esposta a internet (webhook ingest, callback OAuth, health-check) DEVE importare `_shared/ip-rate-limit.ts` come **prima riga** del handler e va aggiunta a `PUBLIC_WEBHOOKS_WIRED` in `scripts/ci/check-public-webhooks-ratelimit.sh`. CI fallisce se il wired allowlist perde l'import.
+- **H3 — CSP su edge che serve HTML.** Se la response ha `Content-Type: text/html` (es. OAuth callback, landing email-confirm), DEVE usare `SECURE_HTML_HEADERS` da `_shared/secure-html.ts`. Nessuna eccezione: anche pagine "innocue" devono avere CSP strict + `X-Frame-Options: DENY` + `Referrer-Policy: no-referrer`.
+- **H5 — mTLS interno.** Ogni nuova chiamata edge → edge DEVE usare `signInternalRequest()` di `_shared/internal-mtls.ts`. La legacy `x-internal-token` è in deprecation con TODO target **Q3 2026**: non aggiungerla in codice nuovo.
+- **H6 — Niente PII negli error response.** Vietato `return new Response(JSON.stringify({ error: err.message }), …)`. Sempre `safeErrorResponse(err)` da `_shared/safe-error-response.ts`. CI guard baseline-aware in `scripts/ci/check-edge-error-leak.sh`: nuove violazioni bloccano il merge.
+- **H13 — List-Unsubscribe + suppression.** Nuovi template in `_shared/transactional-email-templates/` DEVONO passare per `send-transactional-email/index.ts` che inietta `List-Unsubscribe` (RFC 2369) + `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058). Anche le email puramente transazionali dovrebbero averlo per evitare warning Gmail/Outlook. Il check `email_suppression` DEVE restare **fail-closed** (errore RPC ⇒ NON inviare).
+
+### OAuth / Vault
+
+- **H2 — Token OAuth in Vault.** Nuove integrazioni OAuth (LinkedIn, TikTok, ecc.) DEVONO seguire il pattern `meta_apps_*` / `oauth_tokens`: tabella con colonna `*_secret_id uuid REFERENCES vault.secrets`, **mai** `*_token text` o `*_encrypted text`. Se vedi una colonna del genere in un PR, **bocciare**.
+
+### Frontend
+
+- **H8 — Double-submit guard.** Ogni form che chiama una RPC mutativa DEVE avere `submitInFlightRef` (useRef) **+ UNIQUE constraint DB-side**. Pattern fragile da cercare in PR: `useState.*[Ss]ubmitting` o `disabled.*isSubmitting` **senza** ref accompagnato. Form attualmente a rischio: `QuickSaleDialog`, `NewDealDialog`, tutti i form di import.
+- **H9 — i18n statico + SRI.** Il bundle i18n è statico, niente `loadPath` remoto. Se un PR propone di tornare a `i18next-http-backend` per "snellire il bundle", richiedere SRI hash + audit log su ogni fetch. La complessità non vale il vantaggio. CI guard: `scripts/ci/check-sri-and-i18n.mjs`.
+- **H10 — Sourcemap off in prod.** `build.sourcemap = false` in `vite.config.ts`. Se serve debugging in prod, alternativa: hidden source maps caricate **solo a Sentry**, mai servite al client. **Mai accettare** PR che imposta `sourcemap: true` per "prod debugging veloce". CI guard: `scripts/ci/check-sourcemaps.mjs`.
+- **H11 — Accessibility regression.** Per ogni nuovo componente in `src/components/ui/` o `src/components/forms/` aggiungere un test `expect(container).toHaveNoViolations()` con fixtures plausibili. Pre-audit WCAG esterno, CI deve coprire almeno: button, input, label, form, modal, tabs, table.
+- **H12 — Driver.js auth guard.** Ogni nuovo `AppTour` o tour parziale DEVE applicare `isAuthenticated + hasBrandSelected` + re-check post-defer. Se il tour parte da pagine pubbliche (login, password reset) aggiungere un terzo guard che escluda quelle route.
+
+### Database / AI
+
+- **H4 — Soft-delete in RLS SELECT.** Le SELECT policy su tabelle PII (`contacts`, `lead_events`, `tickets`, `chat_threads`, `chat_messages`) DEVONO includere il filtro `archived = false` / `deleted_at IS NULL` / `merged_into_contact_id IS NULL` con override admin/CEO. CI guard: `scripts/ci/check-soft-delete-rls.sh`. Aggiungere nuove tabelle PII a `docs/soft-delete-tables.md`.
+- **H14 — No raw_text AI persistito.** `parse-sale-document` (e ogni futura edge AI) DEVE forzare `response_format: json_schema strict` + validazione Zod (`_shared/ai-output-validate.ts`) e restituire **422** su non conformità. **Mai** aggiungere un campo `raw_text` in risposta o in tabella di destinazione. La colonna `incoming_requests.raw_body_text` è un'eccezione legittima (fallback webhook non-JSON, retention 90gg).
+
+> Riferimenti completi: `docs/security-remediation-2026-q2.md` + memorie `mem://features/h{1..14}-*`.
+
