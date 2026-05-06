@@ -131,11 +131,16 @@ export function NewAppointmentDialog({
   const canProceedStep1 = !!selectedDate;
   const canSubmit = canProceedStep0 && canProceedStep1;
 
+  // H8 — guardia double-submit (ref vince sui re-render rapidi tra click)
+  const submitInFlightRef = useRef(false);
+
   const handleSubmit = async () => {
     if (!selectedContactId || !selectedDate) {
       toast.error("Seleziona un contatto e una data");
       return;
     }
+    if (createAppointment.isPending || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
 
     const [hours, minutes] = time.split(":").map(Number);
     const scheduledAt = new Date(selectedDate);
