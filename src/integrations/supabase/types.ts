@@ -1914,6 +1914,7 @@ export type Database = {
           actor_type: string
           actor_user_id: string | null
           brand_id: string
+          chain_seq: number
           changed_fields: string[] | null
           correlation_id: string | null
           created_at: string
@@ -1925,6 +1926,8 @@ export type Database = {
           new_value: Json | null
           occurred_at: string
           old_value: Json | null
+          prev_hash: string
+          row_hash: string
           search_text: string | null
           source: string
         }
@@ -1934,6 +1937,7 @@ export type Database = {
           actor_type?: string
           actor_user_id?: string | null
           brand_id: string
+          chain_seq: number
           changed_fields?: string[] | null
           correlation_id?: string | null
           created_at?: string
@@ -1945,6 +1949,8 @@ export type Database = {
           new_value?: Json | null
           occurred_at?: string
           old_value?: Json | null
+          prev_hash: string
+          row_hash: string
           search_text?: string | null
           source?: string
         }
@@ -1954,6 +1960,7 @@ export type Database = {
           actor_type?: string
           actor_user_id?: string | null
           brand_id?: string
+          chain_seq?: number
           changed_fields?: string[] | null
           correlation_id?: string | null
           created_at?: string
@@ -1965,6 +1972,8 @@ export type Database = {
           new_value?: Json | null
           occurred_at?: string
           old_value?: Json | null
+          prev_hash?: string
+          row_hash?: string
           search_text?: string | null
           source?: string
         }
@@ -10597,6 +10606,27 @@ export type Database = {
       }
     }
     Functions: {
+      _audit_event_canonical_bytes: {
+        Args: {
+          p_action: string
+          p_actor_type: string
+          p_actor_user_id: string
+          p_brand_id: string
+          p_chain_seq: number
+          p_changed_fields: string[]
+          p_correlation_id: string
+          p_entity_id: string
+          p_entity_type: string
+          p_id: string
+          p_idempotency_key: string
+          p_metadata: Json
+          p_new_value: Json
+          p_occurred_at: string
+          p_old_value: Json
+          p_source: string
+        }
+        Returns: string
+      }
       activate_ai_prompt: { Args: { p_prompt_id: string }; Returns: boolean }
       add_contact_phone: {
         Args: {
@@ -13194,6 +13224,18 @@ export type Database = {
       vault_put_oauth_secret: {
         Args: { p_kind: string; p_token_id: string; p_value: string }
         Returns: string
+      }
+      verify_audit_chain: {
+        Args: { p_from_seq?: number; p_to_seq?: number }
+        Returns: {
+          audit_id: string
+          chain_seq: number
+          expected_prev_hash: string
+          expected_row_hash: string
+          issue: string
+          stored_prev_hash: string
+          stored_row_hash: string
+        }[]
       }
       webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
       webhook_timeseries_24h: {
