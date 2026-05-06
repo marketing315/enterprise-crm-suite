@@ -3294,6 +3294,51 @@ export type Database = {
         }
         Relationships: []
       }
+      client_incidents: {
+        Row: {
+          boundary_label: string | null
+          brand_id: string | null
+          build_version: string | null
+          created_at: string
+          error_id: string
+          id: string
+          message: string | null
+          metadata: Json
+          route: string | null
+          stack_digest: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          boundary_label?: string | null
+          brand_id?: string | null
+          build_version?: string | null
+          created_at?: string
+          error_id: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          route?: string | null
+          stack_digest?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          boundary_label?: string | null
+          brand_id?: string | null
+          build_version?: string | null
+          created_at?: string
+          error_id?: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          route?: string | null
+          stack_digest?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       clinical_topic_aliases: {
         Row: {
           alias_text: string
@@ -12925,6 +12970,19 @@ export type Database = {
       replay_webhook_dead_letter: {
         Args: { p_outbox_id: string }
         Returns: boolean
+      }
+      report_client_incident: {
+        Args: {
+          p_boundary_label?: string
+          p_build_version?: string
+          p_error_id: string
+          p_message?: string
+          p_metadata?: Json
+          p_route?: string
+          p_stack_digest?: string
+          p_user_agent?: string
+        }
+        Returns: string
       }
       requeue_stuck_webhook_deliveries: {
         Args: { p_limit?: number; p_stuck_minutes?: number }
