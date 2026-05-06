@@ -868,6 +868,15 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Sheets export error:", error);
 
+    // H7: best-effort breaker failure recording (no-op if breaker not initialized).
+    try {
+      const cb = createCircuitBreaker(supabaseAdmin, "sheets-export:google", {
+        threshold: 5,
+        cooldownSeconds: 180,
+      });
+      await cb.recordFailure(message.slice(0, 200));
+    } catch { /* ignore */ }
+
     if (lead_event_id) {
       try {
         // Read current attempts to compute next backoff / DLQ
