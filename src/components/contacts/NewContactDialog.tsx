@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -60,6 +60,8 @@ interface NewContactDialogProps {
 export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewContactDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // H8: synchronous re-entrancy guard against double-click submit races.
+  const submitInFlightRef = useRef(false);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateInfo | null>(null);
   const { getWriteBrandId, isGlobalView, currentBrand } = useWriteBrandId();
   const queryClient = useQueryClient();
@@ -112,16 +114,25 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
   };
 
   const onSubmit = async (values: FormValues) => {
+    // H8: client-side idempotency guard — react-hook-form's handleSubmit
+    // can fire twice on a fast double-click before isSubmitting flips,
+    // creating duplicate contacts/lead_events/deals. Use a synchronous ref
+    // check (state updates are async) plus the existing isSubmitting flag.
+    if (isSubmitting || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+
     let brandId: string;
     try {
       brandId = getWriteBrandId();
     } catch (e: any) {
+      submitInFlightRef.current = false;
       toast.error(e.message);
       return;
     }
 
     // Double-check for duplicate
     if (duplicateCheck) {
+      submitInFlightRef.current = false;
       toast.error("Questo numero esiste già. Apri il contatto esistente.");
       return;
     }
@@ -192,6 +203,7 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
       toast.error("Errore nella creazione del contatto");
     } finally {
       setIsSubmitting(false);
+      submitInFlightRef.current = false;
     }
   };
 
