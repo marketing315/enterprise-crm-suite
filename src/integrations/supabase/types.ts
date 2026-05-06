@@ -10627,6 +10627,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      assert_brand_membership: {
+        Args: { p_brand_id: string; p_user_id: string }
+        Returns: boolean
+      }
       assert_can_backup_brand: {
         Args: { p_brand_id: string }
         Returns: boolean
