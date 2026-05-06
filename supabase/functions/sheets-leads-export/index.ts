@@ -180,6 +180,25 @@ export const LEADS_HEADERS = [
 
 const TAB_NAME = "LEADS";
 
+/** Index of the "Numero" (phone) column in LEADS_HEADERS. Tests pin this to column E (index 4). */
+export const PHONE_COLUMN_INDEX = LEADS_HEADERS.indexOf("Numero");
+
+/**
+ * Build the contact_id → phone_normalized map.
+ * Prefers `is_primary === true`, falls back to any non-empty phone for the contact.
+ * Exported for unit tests (chunking / no-primary / missing-phone scenarios).
+ */
+export function buildPhoneMap(rows: Array<{ contact_id: string; phone_normalized: string | null; is_primary: boolean | null }>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const p of rows) {
+    if (p.is_primary && p.phone_normalized) map.set(p.contact_id, p.phone_normalized);
+  }
+  for (const p of rows) {
+    if (!map.has(p.contact_id) && p.phone_normalized) map.set(p.contact_id, p.phone_normalized);
+  }
+  return map;
+}
+
 // ============ Data Helpers ============
 
 function formatQuizAnswers(qa: Record<string, any>): string {
