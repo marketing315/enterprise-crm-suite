@@ -11598,6 +11598,7 @@ export type Database = {
         }
       }
       cleanup_auth_rate_limit: { Args: never; Returns: number }
+      cleanup_cron_relay_log: { Args: never; Returns: number }
       cleanup_idempotency_keys: { Args: never; Returns: number }
       cleanup_internal_auth_nonces: { Args: never; Returns: number }
       cleanup_ip_rate_limit_buckets: { Args: never; Returns: number }
