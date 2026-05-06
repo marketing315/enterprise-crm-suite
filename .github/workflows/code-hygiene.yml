@@ -61,3 +61,18 @@ jobs:
       - name: Check env files
         if: always()
         run: bash scripts/security/check-env-files.sh
+
+      # ---------------------------------------------------------------
+      # 6. H9 — i18next & SRI guard (no cross-origin assets without integrity)
+      # ---------------------------------------------------------------
+      - name: Check SRI and i18n
+        if: always()
+        run: node scripts/ci/check-sri-and-i18n.mjs
+
+      # ---------------------------------------------------------------
+      # 7. H10 — Source maps in produzione (vietate in dist/)
+      # ---------------------------------------------------------------
+      - name: Check sourcemaps
+        if: always()
+        run: node scripts/ci/check-sourcemaps.mjs
+
