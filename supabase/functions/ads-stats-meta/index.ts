@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqualAny } from "../_shared/crypto.ts";
+import { getMetaAppAccessToken } from "../_shared/meta-secrets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -219,7 +220,6 @@ Deno.serve(async (req) => {
         : `act_${metaApp.ad_account_id}`;
 
       // A2: read token from Vault wrapper (falls back to legacy column)
-      const { getMetaAppAccessToken } = await import("../_shared/meta-secrets.ts");
       const resolvedToken = await getMetaAppAccessToken(supabase, metaApp.id);
       if (!resolvedToken) {
         results.push({ brand_id: metaApp.brand_id, account_id: accountId, success: false, campaigns: 0, error: "missing_access_token" });
