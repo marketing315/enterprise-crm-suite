@@ -124,6 +124,27 @@ export function useGlobalRealtime() {
       });
     }
 
+    // F8: dedup ring-buffer per channel. Postgres logical replication can
+    // re-emit the same row on reconnect; we drop any payload whose
+    // (table, commit_timestamp, pk) tuple was seen in the last 256 events.
+    const dedupSeen = new Map<string, Set<string>>();
+    const DEDUP_MAX = 256;
+    function isDuplicate(channelName: string, key: string): boolean {
+      let set = dedupSeen.get(channelName);
+      if (!set) {
+        set = new Set();
+        dedupSeen.set(channelName, set);
+      }
+      if (set.has(key)) return true;
+      set.add(key);
+      if (set.size > DEDUP_MAX) {
+        // drop oldest (Set preserves insertion order)
+        const first = set.values().next().value;
+        if (first !== undefined) set.delete(first);
+      }
+      return false;
+    }
+
     function createChannel(channelName: string, tables: string[]) {
       removeExistingChannel(channelName);
       const channel = supabase.channel(channelName);
@@ -134,7 +155,15 @@ export function useGlobalRealtime() {
           ? { event: '*' as const, schema: 'public' as const, table }
           : { event: '*' as const, schema: 'public' as const, table, filter: `brand_id=eq.${brandId}` };
 
-        channel.on('postgres_changes', opts, () => {
+        channel.on('postgres_changes', opts, (payload: any) => {
+          // F8: dedup — same row+commit emitted twice (eg. resubscribe race)
+          const row = (payload?.new ?? payload?.old ?? {}) as Record<string, unknown>;
+          const pk = row?.id ?? row?.uuid ?? JSON.stringify(row).slice(0, 64);
+          const ts = payload?.commit_timestamp ?? '';
+          const evt = payload?.eventType ?? payload?.event ?? '';
+          const dedupKey = `${table}|${evt}|${ts}|${pk}`;
+          if (isDuplicate(channelName, dedupKey)) return;
+
           const entries = TABLE_QUERY_MAP[table];
           if (entries) {
             entries.forEach((entry) => {
