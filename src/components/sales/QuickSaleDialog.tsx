@@ -320,6 +320,7 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
       toast.error("Errore nel salvataggio della vendita");
     } finally {
       setIsSaving(false);
+      submitInFlightRef.current = false;
     }
   };
 
