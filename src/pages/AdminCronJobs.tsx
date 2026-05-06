@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { MetricCard } from "@/components/admin/MetricCard";
 import { Clock, AlertTriangle, ShieldCheck, Activity, XCircle, CheckCircle2, Loader2, Copy } from "lucide-react";
 import { useCronJobs, useUnregisteredCronJobs, useCronRunLog } from "@/hooks/useCronJobs";
-import { useCronErrorMetrics, useCronErrorTimeseries, useCronDuplicateJobs } from "@/hooks/useCronErrorMetrics";
+import { useCronErrorMetrics, useCronErrorTimeseries, useCronDuplicateJobs, useCronRelayStatus } from "@/hooks/useCronErrorMetrics";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
