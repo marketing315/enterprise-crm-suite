@@ -168,35 +168,44 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
 
 class SheetInfoCache {
   cachedInfo: SheetInfo | null = null;
-  
+
   async get(accessToken: string, spreadsheetId: string): Promise<SheetInfo> {
     if (this.cachedInfo) {
       return this.cachedInfo;
     }
-    
+
     const response = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Sheets metadata fetch failed [${response.status}]: ${body.slice(0, 300)}`);
+    }
     this.cachedInfo = await response.json();
     return this.cachedInfo!;
   }
-  
+
   invalidate(): void {
     this.cachedInfo = null;
   }
-  
+
   getExistingTabNames(): string[] {
     return this.cachedInfo?.sheets?.map(s => s.properties.title) || [];
   }
-  
+
   tabExists(title: string): boolean {
     return this.cachedInfo?.sheets?.some((s) => s.properties.title === title) ?? false;
   }
-  
+
   getSheetId(title: string): number | null {
     const sheet = this.cachedInfo?.sheets?.find((s) => s.properties.title === title);
     return sheet?.properties.sheetId ?? null;
+  }
+
+  getSheetProperties(title: string): SheetProperties | null {
+    const sheet = this.cachedInfo?.sheets?.find((s) => s.properties.title === title);
+    return sheet?.properties ?? null;
   }
 }
 
@@ -209,8 +218,30 @@ async function createTab(accessToken: string, spreadsheetId: string, title: stri
       body: JSON.stringify({ requests: [{ addSheet: { properties: { title } } }] }),
     }
   );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`createTab failed for "${title}" [${response.status}]: ${body.slice(0, 300)}`);
+  }
   const result = await response.json();
   return result.replies?.[0]?.addSheet?.properties?.sheetId ?? 0;
+}
+
+async function unhideTab(accessToken: string, spreadsheetId: string, sheetId: number): Promise<void> {
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: [{
+          updateSheetProperties: {
+            properties: { sheetId, hidden: false },
+            fields: "hidden",
+          },
+        }],
+      }),
+    }
+  );
 }
 
 async function writeRange(
@@ -220,7 +251,7 @@ async function writeRange(
   values: string[][],
   inputOption: "RAW" | "USER_ENTERED" = "RAW"
 ): Promise<void> {
-  await fetch(
+  const response = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=${inputOption}`,
     {
       method: "PUT",
@@ -228,18 +259,83 @@ async function writeRange(
       body: JSON.stringify({ values }),
     }
   );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`writeRange failed for "${range}" [${response.status}]: ${body.slice(0, 300)}`);
+  }
+}
+
+/**
+ * Verifies that the destination tab exists, is visible, and has the expected header row.
+ * Self-heals: unhides the tab if hidden, recreates the header if missing/mismatched.
+ * Throws if the tab cannot be located or repaired.
+ */
+async function assertTabReady(
+  accessToken: string,
+  spreadsheetId: string,
+  cache: SheetInfoCache,
+  tabName: string,
+  expectedHeaders: string[],
+): Promise<void> {
+  await cache.get(accessToken, spreadsheetId);
+  const props = cache.getSheetProperties(tabName);
+  if (!props) {
+    throw new Error(`assertTabReady: tab "${tabName}" not found after ensure step`);
+  }
+  if (props.hidden) {
+    console.warn(`[sheets-export] Tab "${tabName}" was hidden — unhiding`);
+    await unhideTab(accessToken, spreadsheetId, props.sheetId);
+    cache.invalidate();
+  }
+
+  // Verify header row
+  const colLetter = String.fromCharCode(64 + expectedHeaders.length);
+  const headerRange = `${tabName}!A1:${colLetter}1`;
+  const headerResp = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(headerRange)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!headerResp.ok) {
+    const body = await headerResp.text();
+    throw new Error(`assertTabReady: header read failed for "${tabName}" [${headerResp.status}]: ${body.slice(0, 200)}`);
+  }
+  const headerData = await headerResp.json();
+  const actualHeader: string[] = headerData?.values?.[0] ?? [];
+  const headerOk = expectedHeaders.every((h, i) => (actualHeader[i] ?? "") === h);
+  if (!headerOk) {
+    console.warn(`[sheets-export] Tab "${tabName}" header mismatch — restoring. expected=${JSON.stringify(expectedHeaders.slice(0,3))} actual=${JSON.stringify(actualHeader.slice(0,3))}`);
+    await writeRange(accessToken, spreadsheetId, headerRange, [expectedHeaders]);
+  }
 }
 
 async function appendRow(accessToken: string, spreadsheetId: string, tabName: string, row: string[]): Promise<void> {
-  const colLetter = String.fromCharCode(64 + COLUMN_COUNT); // T for 20 columns
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tabName)}!A:${colLetter}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+  const colCount = row.length;
+  const colLetter = colCount <= 26
+    ? String.fromCharCode(64 + colCount)
+    : `A${String.fromCharCode(64 + (colCount - 26))}`;
+  const range = `${tabName}!A:${colLetter}`;
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&includeValuesInResponse=false`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ values: [row] }),
     }
   );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`appendRow failed for "${tabName}" [${response.status}]: ${body.slice(0, 300)}`);
+  }
+  const result = await response.json();
+  const updatedRange: string | undefined = result?.updates?.updatedRange;
+  // Sanity check: confirm the row landed in the expected tab
+  if (updatedRange && !updatedRange.startsWith(`${tabName}!`) && !updatedRange.startsWith(`'${tabName}'!`)) {
+    throw new Error(`appendRow target mismatch: requested "${tabName}" but server wrote to "${updatedRange}"`);
+  }
+  const updatedRows: number = result?.updates?.updatedRows ?? 0;
+  if (updatedRows < 1) {
+    throw new Error(`appendRow wrote 0 rows to "${tabName}" (response: ${JSON.stringify(result).slice(0, 200)})`);
+  }
 }
 
 async function applyTabLayout(accessToken: string, spreadsheetId: string, sheetId: number): Promise<void> {
