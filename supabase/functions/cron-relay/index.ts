@@ -112,7 +112,9 @@ Deno.serve(async (req) => {
 
     const query = body.query ?? "";
     const targetUrl = `${supabaseUrl}/functions/v1/${target}${query}`;
-    const timeoutMs = Math.min(Math.max(body.timeout_ms ?? 25000, 1000), 60000);
+    // Default 40s: alcuni job (sheets-export-dispatcher, slo-burn-rate-monitor,
+    // ads-stats-meta) saturavano il vecchio limite 25s.
+    const timeoutMs = Math.min(Math.max(body.timeout_ms ?? 40000, 1000), 60000);
 
     // C11: lease-based lock (fail-closed). pg_try_advisory_lock leaks on poolers,
     // so we use a TTL'd row in cron_job_lease + explicit release in finally.
