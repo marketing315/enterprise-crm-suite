@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { validatePassword } from "../_shared/password-policy.ts";
+import { safeHrefHtml, escapeHtml } from "../_shared/html-sanitize.ts";
 
 type AppRole = 
   | "admin" 
@@ -447,7 +448,7 @@ Deno.serve(async (req: Request) => {
               p_queue_name: "auth_emails",
               p_to_email: userData.email,
               p_subject: "Conferma il tuo indirizzo email",
-              p_html: `<p>Clicca il link per confermare il tuo account:</p><p><a href="${confirmationUrl}">Conferma Email</a></p>`,
+              p_html: `<p>Clicca il link per confermare il tuo account:</p><p><a href="${safeHrefHtml(confirmationUrl)}">Conferma Email</a></p>`,
               p_from_name: "Sistema",
               p_metadata: { type: "admin_resend_confirmation", user_id },
             });
