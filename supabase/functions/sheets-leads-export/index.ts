@@ -167,7 +167,7 @@ async function applyFormatting(accessToken: string, spreadsheetId: string, sheet
 
 // ============ Constants ============
 
-const LEADS_HEADERS = [
+export const LEADS_HEADERS = [
   "Data e Ora", "Brand", "Nome", "Cognome", "Numero", "Email",
   "Campagna", "Fonte", "AdSet",
   "Motivo", "Messaggio",
@@ -179,6 +179,25 @@ const LEADS_HEADERS = [
 ];
 
 const TAB_NAME = "LEADS";
+
+/** Index of the "Numero" (phone) column in LEADS_HEADERS. Tests pin this to column E (index 4). */
+export const PHONE_COLUMN_INDEX = LEADS_HEADERS.indexOf("Numero");
+
+/**
+ * Build the contact_id → phone_normalized map.
+ * Prefers `is_primary === true`, falls back to any non-empty phone for the contact.
+ * Exported for unit tests (chunking / no-primary / missing-phone scenarios).
+ */
+export function buildPhoneMap(rows: Array<{ contact_id: string; phone_normalized: string | null; is_primary: boolean | null }>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const p of rows) {
+    if (p.is_primary && p.phone_normalized) map.set(p.contact_id, p.phone_normalized);
+  }
+  for (const p of rows) {
+    if (!map.has(p.contact_id) && p.phone_normalized) map.set(p.contact_id, p.phone_normalized);
+  }
+  return map;
+}
 
 // ============ Data Helpers ============
 
@@ -196,7 +215,7 @@ function extractStreetNumber(address: string | null): { street: string; number: 
   return { street: address, number: "" };
 }
 
-function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any, pipelineStageName?: string): string[] {
+export function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any, pipelineStageName?: string): string[] {
   const payload = (event.raw_payload || {}) as Record<string, any>;
   const { street, number: civico } = extractStreetNumber(appt?.address || null);
 
@@ -239,7 +258,7 @@ function buildRow(event: any, contact: any, brandName: string, phone: string, ta
 // ============ Fetch single lead ============
 
 async function fetchSingleLeadRow(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   leadEventId: string,
 ): Promise<string[] | null> {
   const { data: event, error } = await supabaseAdmin
@@ -257,9 +276,10 @@ async function fetchSingleLeadRow(
     return null;
   }
 
-  const contactId = event.contact_id as string;
-  const contact = event.contacts as any;
-  const brandName = (event.brands as any)?.name || "";
+  const ev = event as any;
+  const contactId = ev.contact_id as string;
+  const contact = ev.contacts as any;
+  const brandName = (ev.brands as any)?.name || "";
 
   // Fetch phone, tags, appointment in parallel
   const [phonesRes, tagsRes, apptsRes, stageRes] = await Promise.all([
@@ -288,7 +308,7 @@ async function fetchSingleLeadRow(
 // ============ Fetch all leads (full export) ============
 
 async function fetchAllLeadsRows(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   dateFrom: string | null,
   dateTo: string | null,
 ): Promise<string[][]> {
@@ -346,14 +366,7 @@ async function fetchAllLeadsRows(
     dealsData.push(...(dRes.data || []));
   }
 
-  // Prefer is_primary, fall back to any phone for the contact
-  const phoneMap = new Map<string, string>();
-  for (const p of phonesData) {
-    if (p.is_primary && p.phone_normalized) phoneMap.set(p.contact_id, p.phone_normalized);
-  }
-  for (const p of phonesData) {
-    if (!phoneMap.has(p.contact_id) && p.phone_normalized) phoneMap.set(p.contact_id, p.phone_normalized);
-  }
+  const phoneMap = buildPhoneMap(phonesData);
 
   const tagMap = new Map<string, string[]>();
   tagsData.forEach((ta: any) => {
@@ -508,7 +521,7 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     console.error("sheets-leads-export error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: (err as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -517,7 +530,7 @@ Deno.serve(async (req: Request) => {
 // ============ Logging ============
 
 async function logExport(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   brandId: string,
   status: "processing" | "success" | "failed",
   rowsExported: number,
@@ -532,7 +545,7 @@ async function logExport(
 }
 
 async function updateLog(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   logId: string,
   status: "success" | "failed",
   rowsExported: number,
