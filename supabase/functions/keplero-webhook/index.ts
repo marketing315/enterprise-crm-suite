@@ -2,8 +2,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHash } from "node:crypto";
 import { timingSafeEqual } from "../_shared/crypto.ts";
 import { redactForLog } from "../_shared/pii-redact.ts";
-import { checkIpRateLimit, rateLimited429 } from "../_shared/ip-rate-limit.ts";
+import { checkIpRateLimit, rateLimited429, extractClientIp } from "../_shared/ip-rate-limit.ts";
 import { safeErrorResponse } from "../_shared/safe-error-response.ts";
+import { beginIdempotency } from "../_shared/idempotency.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
