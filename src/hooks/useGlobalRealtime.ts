@@ -124,6 +124,27 @@ export function useGlobalRealtime() {
       });
     }
 
+    // F8: dedup ring-buffer per channel. Postgres logical replication can
+    // re-emit the same row on reconnect; we drop any payload whose
+    // (table, commit_timestamp, pk) tuple was seen in the last 256 events.
+    const dedupSeen = new Map<string, Set<string>>();
+    const DEDUP_MAX = 256;
+    function isDuplicate(channelName: string, key: string): boolean {
+      let set = dedupSeen.get(channelName);
+      if (!set) {
+        set = new Set();
+        dedupSeen.set(channelName, set);
+      }
+      if (set.has(key)) return true;
+      set.add(key);
+      if (set.size > DEDUP_MAX) {
+        // drop oldest (Set preserves insertion order)
+        const first = set.values().next().value;
+        if (first !== undefined) set.delete(first);
+      }
+      return false;
+    }
+
     function createChannel(channelName: string, tables: string[]) {
       removeExistingChannel(channelName);
       const channel = supabase.channel(channelName);
@@ -134,7 +155,15 @@ export function useGlobalRealtime() {
           ? { event: '*' as const, schema: 'public' as const, table }
           : { event: '*' as const, schema: 'public' as const, table, filter: `brand_id=eq.${brandId}` };
 
-        channel.on('postgres_changes', opts, () => {
+        channel.on('postgres_changes', opts, (payload: any) => {
+          // F8: dedup — same row+commit emitted twice (eg. resubscribe race)
+          const row = (payload?.new ?? payload?.old ?? {}) as Record<string, unknown>;
+          const pk = row?.id ?? row?.uuid ?? JSON.stringify(row).slice(0, 64);
+          const ts = payload?.commit_timestamp ?? '';
+          const evt = payload?.eventType ?? payload?.event ?? '';
+          const dedupKey = `${table}|${evt}|${ts}|${pk}`;
+          if (isDuplicate(channelName, dedupKey)) return;
+
           const entries = TABLE_QUERY_MAP[table];
           if (entries) {
             entries.forEach((entry) => {
@@ -289,6 +318,34 @@ export function useGlobalRealtime() {
     // Re-evaluate periodically too — handles "stuck" states that don't emit
     const watchdog = setInterval(evaluateFallback, 10_000);
 
+    // F8: when the tab returns to foreground OR the network comes back,
+    // realtime events that occurred while we were away are NOT replayed.
+    // Force-invalidate every mapped query to catch up immediately.
+    let lastCatchUpAt = 0;
+    const CATCHUP_THROTTLE_MS = 5_000;
+    const triggerCatchUp = (reason: string) => {
+      if (isDisposed) return;
+      const now = Date.now();
+      if (now - lastCatchUpAt < CATCHUP_THROTTLE_MS) return;
+      lastCatchUpAt = now;
+      console.info(`[Realtime] catch-up invalidation (${reason})`);
+      allMappedTables.forEach((table) => {
+        const entries = TABLE_QUERY_MAP[table];
+        entries?.forEach((entry) => {
+          queryClient.invalidateQueries({
+            queryKey: entry.key,
+            exact: entry.exact ?? false,
+          });
+        });
+      });
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') triggerCatchUp('visibility');
+    };
+    const onOnline = () => triggerCatchUp('online');
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('online', onOnline);
+
     return () => {
       isDisposed = true;
       retryTimers.forEach(clearTimeout);
@@ -296,6 +353,8 @@ export function useGlobalRealtime() {
       unsubscribeStatusListener();
       clearInterval(watchdog);
       if (fallbackInterval) clearInterval(fallbackInterval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('online', onOnline);
       realtimeStatusStore.reset();
     };
   }, [brandId, isAllBrandsSelected, queryClient, supabaseUser?.id, authLoading, isRealtimeReady]);
