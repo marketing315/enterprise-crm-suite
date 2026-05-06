@@ -112,7 +112,9 @@ Deno.serve(async (req) => {
 
     const query = body.query ?? "";
     const targetUrl = `${supabaseUrl}/functions/v1/${target}${query}`;
-    const timeoutMs = Math.min(Math.max(body.timeout_ms ?? 25000, 1000), 60000);
+    // Default 40s: alcuni job (sheets-export-dispatcher, slo-burn-rate-monitor,
+    // ads-stats-meta) saturavano il vecchio limite 25s.
+    const timeoutMs = Math.min(Math.max(body.timeout_ms ?? 40000, 1000), 60000);
 
     // C11: lease-based lock (fail-closed). pg_try_advisory_lock leaks on poolers,
     // so we use a TTL'd row in cron_job_lease + explicit release in finally.
@@ -145,10 +147,12 @@ Deno.serve(async (req) => {
         if (data && (data as { acquired?: boolean }).acquired) {
           leaseToken = (data as { token?: string }).token ?? null;
         } else {
+          // SKIP atteso: il lease è ancora valido. Tracciamo con sentinel
+          // upstream_status=-1 + error=null per non inquinare il tasso errori.
           console.log(`[cron-relay] target=${target} skipped (lease_held)`);
           await auditClient.from("cron_relay_log").insert({
             job_name: target, brand_id: body.brand_id ?? null, request_id: requestId,
-            upstream_status: 0, duration_ms: 0, error: "lease_held",
+            upstream_status: -1, duration_ms: 0, error: null,
           }).then(() => {}, () => {});
           return new Response(
             JSON.stringify({ ok: false, target, skipped: "lease_held" }),

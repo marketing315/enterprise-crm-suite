@@ -211,6 +211,8 @@ Deno.serve(async (req) => {
     for (const r of relayRows ?? []) {
       const job = (r as any).job_name as string;
       const st = (r as any).upstream_status as number | null;
+      // Skip "lease_held" sentinel (-1): non è un errore ma una soppressione attesa.
+      if (st === -1) continue;
       const isErr = st == null || st === 0 || st >= 400;
       const cur = stats.get(job) ?? { total: 0, errors: 0, statuses: new Map() };
       cur.total += 1;
