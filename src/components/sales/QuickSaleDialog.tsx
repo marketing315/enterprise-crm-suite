@@ -62,7 +62,7 @@ interface ParsedSaleData {
   payment_method: string | null;
   notes: string | null;
   confidence: number;
-  raw_text: string;
+  // H14: raw_text rimosso. Solo campi tipizzati.
 }
 
 type Step = "upload" | "review" | "saving";
