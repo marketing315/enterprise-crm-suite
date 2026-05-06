@@ -185,6 +185,14 @@ Deno.serve(async (req) => {
       upstreamError = e instanceof Error ? e.message : String(e);
     } finally {
       clearTimeout(timeoutId);
+      // C11: release lease so next tick can run immediately (before TTL expiry).
+      if (auditClient && leaseToken) {
+        await auditClient.rpc("release_cron_lease", {
+          p_job_name: target,
+          p_brand_id: body.brand_id ?? null,
+          p_token: leaseToken,
+        }).then(() => {}, () => {});
+      }
     }
 
     const durationMs = Date.now() - startedAt;
