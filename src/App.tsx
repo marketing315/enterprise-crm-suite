@@ -66,6 +66,7 @@ const AdminMcpDashboard = lazy(() => import("@/pages/AdminMcpDashboard"));
 const AdminQuickBackup = lazy(() => import("@/pages/AdminQuickBackup"));
 const AdminCronJobs = lazy(() => import("@/pages/AdminCronJobs"));
 const AdminIncidents = lazy(() => import("@/pages/AdminIncidents"));
+const AdminSheetsHealth = lazy(() => import("@/pages/AdminSheetsHealth"));
 const AdminSessions = lazy(() => import("@/pages/AdminSessions"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
