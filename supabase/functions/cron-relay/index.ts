@@ -109,36 +109,55 @@ Deno.serve(async (req) => {
     const targetUrl = `${supabaseUrl}/functions/v1/${target}${query}`;
     const timeoutMs = Math.min(Math.max(body.timeout_ms ?? 25000, 1000), 60000);
 
-    // C11: audit + advisory lock (best-effort, non-bloccante)
+    // C11: lease-based lock (fail-closed). pg_try_advisory_lock leaks on poolers,
+    // so we use a TTL'd row in cron_job_lease + explicit release in finally.
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const auditClient = serviceKey ? createClient(supabaseUrl, serviceKey) : null;
     const requestId = crypto.randomUUID();
-    let gotLock = true;
+    const leaseTtl = Math.ceil(timeoutMs / 1000) + 30; // upstream timeout + slack
+    let leaseToken: string | null = null;
+
     if (auditClient) {
       try {
-        const { data } = await auditClient.rpc("try_lock_cron_job", {
+        const { data, error } = await auditClient.rpc("acquire_cron_lease", {
           p_job_name: target,
           p_brand_id: body.brand_id ?? null,
+          p_ttl_seconds: leaseTtl,
+          p_acquired_by: requestId,
         });
-        if (data === false) gotLock = false;
-      } catch { /* non bloccare */ }
-    }
-    if (!gotLock) {
-      console.log(`[cron-relay] target=${target} skipped (lock_held)`);
-      if (auditClient) {
-        await auditClient.from("cron_relay_log").insert({
-          job_name: target,
-          brand_id: body.brand_id ?? null,
-          request_id: requestId,
-          upstream_status: 0,
-          duration_ms: 0,
-          error: "lock_held",
-        }).then(() => {}, () => {});
+        if (error) {
+          // Fail-closed: if we can't talk to lease store, skip rather than risk dup execution.
+          console.error(`[cron-relay] lease_rpc_error target=${target}`, error.message);
+          await auditClient.from("cron_relay_log").insert({
+            job_name: target, brand_id: body.brand_id ?? null, request_id: requestId,
+            upstream_status: 0, duration_ms: 0, error: `lease_rpc_error:${error.message}`,
+          }).then(() => {}, () => {});
+          return new Response(
+            JSON.stringify({ ok: false, target, skipped: "lease_unavailable" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        if (data && (data as { acquired?: boolean }).acquired) {
+          leaseToken = (data as { token?: string }).token ?? null;
+        } else {
+          console.log(`[cron-relay] target=${target} skipped (lease_held)`);
+          await auditClient.from("cron_relay_log").insert({
+            job_name: target, brand_id: body.brand_id ?? null, request_id: requestId,
+            upstream_status: 0, duration_ms: 0, error: "lease_held",
+          }).then(() => {}, () => {});
+          return new Response(
+            JSON.stringify({ ok: false, target, skipped: "lease_held" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[cron-relay] lease_exception target=${target}`, msg);
+        return new Response(
+          JSON.stringify({ ok: false, target, skipped: "lease_unavailable" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
-      return new Response(
-        JSON.stringify({ ok: false, target, skipped: "lock_held" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
     }
 
     const controller = new AbortController();
@@ -166,6 +185,14 @@ Deno.serve(async (req) => {
       upstreamError = e instanceof Error ? e.message : String(e);
     } finally {
       clearTimeout(timeoutId);
+      // C11: release lease so next tick can run immediately (before TTL expiry).
+      if (auditClient && leaseToken) {
+        await auditClient.rpc("release_cron_lease", {
+          p_job_name: target,
+          p_brand_id: body.brand_id ?? null,
+          p_token: leaseToken,
+        }).then(() => {}, () => {});
+      }
     }
 
     const durationMs = Date.now() - startedAt;
