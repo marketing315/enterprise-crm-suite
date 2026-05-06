@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 import { safeErrorResponse } from "../_shared/safe-error-response.ts";
+import { createCircuitBreaker } from "../_shared/circuit-breaker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -662,6 +663,11 @@ Inviato automaticamente da CRM Ralph Hub`;
     let errorMessage: string | null = null;
     let sent = false;
 
+    const breaker = createCircuitBreaker(supabase, "lead-digest:n8n", {
+      threshold: 5,
+      cooldownSeconds: 300, // 5 min cooldown before half-open probe
+    });
+
     try {
       const safe = await assertSafeUrl(webhookUrl);
       if (!safe.ok) {
@@ -669,16 +675,35 @@ Inviato automaticamente da CRM Ralph Hub`;
         responseStatus = 0;
         console.warn(`[lead-digest-dispatch] ${errorMessage}`);
       } else {
-        const n8nResponse = await fetch(safe.url.toString(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(30000),
-        });
-        responseStatus = n8nResponse.status;
-        responseBody = (await n8nResponse.text()).substring(0, 2000);
-        sent = n8nResponse.ok;
-        if (!sent) errorMessage = `n8n returned ${responseStatus}: ${responseBody.substring(0, 200)}`;
+        const gate = await breaker.allow();
+        if (!gate.ok) {
+          // Fallback: skip the upstream call, schedule for retry after cooldown.
+          errorMessage = `circuit_open:next_attempt_at=${gate.nextAttemptAt ?? "unknown"}`;
+          responseStatus = 0;
+          console.warn(`[lead-digest-dispatch] circuit breaker open, skipping n8n call. ${errorMessage}`);
+        } else {
+          try {
+            const n8nResponse = await fetch(safe.url.toString(), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(30000),
+            });
+            responseStatus = n8nResponse.status;
+            responseBody = (await n8nResponse.text()).substring(0, 2000);
+            sent = n8nResponse.ok;
+            if (sent) {
+              await breaker.recordSuccess();
+            } else {
+              errorMessage = `n8n returned ${responseStatus}: ${responseBody.substring(0, 200)}`;
+              await breaker.recordFailure(`http_${responseStatus}`);
+            }
+          } catch (fetchErr) {
+            errorMessage = fetchErr instanceof Error ? fetchErr.message : "Fetch error";
+            console.error("[lead-digest-dispatch] Fetch error:", fetchErr);
+            await breaker.recordFailure(errorMessage ?? "fetch_error");
+          }
+        }
       }
     } catch (fetchErr) {
       errorMessage = fetchErr instanceof Error ? fetchErr.message : "Fetch error";
@@ -687,7 +712,12 @@ Inviato automaticamente da CRM Ralph Hub`;
 
     // ── Update run record ──
     const nowIso = new Date().toISOString();
-    const retryAt = sent ? null : new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    // If the breaker is open, push the retry beyond the cooldown window.
+    const retryAt = sent
+      ? null
+      : (errorMessage?.startsWith("circuit_open:")
+          ? new Date(Date.now() + 5 * 60 * 1000).toISOString()
+          : new Date(Date.now() + 10 * 60 * 1000).toISOString());
 
     if (runId) {
       await supabase.from("lead_digest_runs").update({
