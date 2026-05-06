@@ -64,6 +64,12 @@ export default function AdminCronJobs() {
     jobFilter === "all" ? null : jobFilter,
   );
   const { data: duplicates = [], isLoading: dupLoading } = useCronDuplicateJobs();
+  const { data: relayStatus = [], isLoading: relayLoading } = useCronRelayStatus(from, to, effectiveBrandId);
+  const brandName = (id: string | null) => {
+    if (!id) return "system";
+    const b = brands.find(x => x.id === id);
+    return b?.name ?? id.slice(0, 8);
+  };
 
   const errStats = useMemo(() => {
     const totalErrors = errMetrics.reduce((s, m) => s + Number(m.errors || 0), 0);
