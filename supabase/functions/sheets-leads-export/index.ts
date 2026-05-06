@@ -346,14 +346,7 @@ async function fetchAllLeadsRows(
     dealsData.push(...(dRes.data || []));
   }
 
-  // Prefer is_primary, fall back to any phone for the contact
-  const phoneMap = new Map<string, string>();
-  for (const p of phonesData) {
-    if (p.is_primary && p.phone_normalized) phoneMap.set(p.contact_id, p.phone_normalized);
-  }
-  for (const p of phonesData) {
-    if (!phoneMap.has(p.contact_id) && p.phone_normalized) phoneMap.set(p.contact_id, p.phone_normalized);
-  }
+  const phoneMap = buildPhoneMap(phonesData);
 
   const tagMap = new Map<string, string[]>();
   tagsData.forEach((ta: any) => {
