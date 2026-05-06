@@ -21,14 +21,17 @@ DECLARE
   v_lead_event_id uuid;
   v_count int;
 BEGIN
-  SELECT u.user_id, ub.brand_id, u.id
-    INTO v_user_id, v_brand_id, v_auth_id
+  SELECT u.supabase_auth_id, ur.brand_id, u.id
+    INTO v_auth_id, v_brand_id, v_user_id
   FROM public.users u
-  JOIN public.user_brands ub ON ub.user_id = u.id
-  WHERE NOT EXISTS (
-    SELECT 1 FROM public.user_roles ur
-    WHERE ur.user_id = u.id AND ur.role IN ('admin'::app_role, 'ceo'::app_role)
-  )
+  JOIN public.user_roles ur ON ur.user_id = u.id AND ur.is_active
+  WHERE ur.role NOT IN ('admin'::app_role, 'ceo'::app_role)
+    AND NOT EXISTS (
+      SELECT 1 FROM public.user_roles ur2
+      WHERE ur2.user_id = u.id AND ur2.role IN ('admin'::app_role, 'ceo'::app_role)
+    )
+    AND u.supabase_auth_id IS NOT NULL
+    AND ur.brand_id IS NOT NULL
   LIMIT 1;
 
   IF v_auth_id IS NULL THEN
