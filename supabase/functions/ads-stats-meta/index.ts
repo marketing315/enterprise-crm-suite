@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
 
     const { data: metaApps, error: metaAppsError } = await supabase
       .from("meta_apps")
-      .select("id, brand_id, access_token, ad_account_id, stats_enabled")
+      .select("id, brand_id, ad_account_id, stats_enabled")
       .eq("stats_enabled", true)
       .eq("is_active", true)
       .not("ad_account_id", "is", null);
@@ -214,9 +214,18 @@ Deno.serve(async (req) => {
     for (const metaApp of metaApps as MetaApp[]) {
       if (!metaApp.ad_account_id) continue;
 
-      const accountId = metaApp.ad_account_id.startsWith("act_") 
-        ? metaApp.ad_account_id 
+      const accountId = metaApp.ad_account_id.startsWith("act_")
+        ? metaApp.ad_account_id
         : `act_${metaApp.ad_account_id}`;
+
+      // A2: read token from Vault wrapper (falls back to legacy column)
+      const { getMetaAppAccessToken } = await import("../_shared/meta-secrets.ts");
+      const resolvedToken = await getMetaAppAccessToken(supabase, metaApp.id);
+      if (!resolvedToken) {
+        results.push({ brand_id: metaApp.brand_id, account_id: accountId, success: false, campaigns: 0, error: "missing_access_token" });
+        continue;
+      }
+      metaApp.access_token = resolvedToken;
 
       try {
         // ---- CAMPAIGN-LEVEL INSIGHTS ----
