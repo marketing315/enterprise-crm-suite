@@ -16,6 +16,31 @@ export interface OAuthSessionRecord {
   redirect_uri: string;
 }
 
+/**
+ * C7: Validate redirect_uri against `oauth_redirect_whitelist` via SECURITY DEFINER RPC.
+ * Throws `oauth_redirect_uri_not_allowed` if missing from whitelist (fail-closed).
+ */
+export async function assertRedirectAllowed(
+  // deno-lint-ignore no-explicit-any
+  serviceClient: any,
+  provider: "google" | "meta" | "google_ads",
+  redirectUri: string,
+): Promise<void> {
+  if (!redirectUri || typeof redirectUri !== "string") {
+    throw new Error("oauth_redirect_uri_invalid");
+  }
+  const { data, error } = await serviceClient.rpc("is_oauth_redirect_allowed", {
+    p_provider: provider,
+    p_redirect_uri: redirectUri,
+  });
+  if (error) {
+    throw new Error(`oauth_redirect_check_failed:${error.message}`);
+  }
+  if (data !== true) {
+    throw new Error("oauth_redirect_uri_not_allowed");
+  }
+}
+
 function randomToken(bytes = 32): string {
   const arr = new Uint8Array(bytes);
   crypto.getRandomValues(arr);
