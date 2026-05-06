@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqualAny } from "../_shared/crypto.ts";
+import { RETRY_POLICY, computeNextAttemptAt } from "../_shared/retry-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
