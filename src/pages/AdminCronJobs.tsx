@@ -1,14 +1,22 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { MetricCard } from "@/components/admin/MetricCard";
-import { Clock, AlertTriangle, ShieldCheck, Activity, XCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Clock, AlertTriangle, ShieldCheck, Activity, XCircle, CheckCircle2, Loader2, Copy } from "lucide-react";
 import { useCronJobs, useUnregisteredCronJobs, useCronRunLog } from "@/hooks/useCronJobs";
-import { formatDistanceToNow } from "date-fns";
+import { useCronErrorMetrics, useCronErrorTimeseries, useCronDuplicateJobs } from "@/hooks/useCronErrorMetrics";
+import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
+import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
+
+type RangeKey = "1h" | "6h" | "24h" | "7d" | "30d";
+const RANGE_HOURS: Record<RangeKey, number> = { "1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720 };
 
 function statusBadge(s: string) {
   switch (s) {
