@@ -201,6 +201,8 @@ export function NewAppointmentDialog({
     } catch (error) {
       console.error("Error creating appointment:", error);
       toast.error("Errore nella creazione dell'appuntamento");
+    } finally {
+      submitInFlightRef.current = false;
     }
   };
 
