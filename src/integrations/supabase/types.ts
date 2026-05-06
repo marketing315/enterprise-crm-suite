@@ -4039,6 +4039,33 @@ export type Database = {
           },
         ]
       }
+      cron_job_lease: {
+        Row: {
+          acquired_at: string
+          acquired_by: string | null
+          brand_id: string
+          job_name: string
+          lease_token: string
+          lease_until: string
+        }
+        Insert: {
+          acquired_at?: string
+          acquired_by?: string | null
+          brand_id: string
+          job_name: string
+          lease_token: string
+          lease_until: string
+        }
+        Update: {
+          acquired_at?: string
+          acquired_by?: string | null
+          brand_id?: string
+          job_name?: string
+          lease_token?: string
+          lease_until?: string
+        }
+        Relationships: []
+      }
       cron_job_registry: {
         Row: {
           brand_id: string | null
@@ -10725,6 +10752,15 @@ export type Database = {
         }
         Returns: string
       }
+      acquire_cron_lease: {
+        Args: {
+          p_acquired_by?: string
+          p_brand_id?: string
+          p_job_name: string
+          p_ttl_seconds?: number
+        }
+        Returns: Json
+      }
       activate_ai_prompt: { Args: { p_prompt_id: string }; Returns: boolean }
       add_contact_phone: {
         Args: {
@@ -12857,6 +12893,10 @@ export type Database = {
       }
       record_slo_snapshot: { Args: never; Returns: number }
       refresh_anomaly_baselines: { Args: never; Returns: Json }
+      release_cron_lease: {
+        Args: { p_brand_id: string; p_job_name: string; p_token: string }
+        Returns: boolean
+      }
       remove_group_member: {
         Args: { p_target_user_id: string; p_thread_id: string }
         Returns: undefined
