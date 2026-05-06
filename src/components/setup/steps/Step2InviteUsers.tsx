@@ -54,6 +54,8 @@ export function Step2InviteUsers({ completed, stepNumber }: { completed: boolean
     const valid = rows.filter((r) => r.email.includes("@") && r.full_name.trim());
     if (valid.length === 0) return toast.error("Inserisci almeno un utente con email e nome");
     if (!currentBrand) return toast.error("Seleziona prima un brand");
+    if (submitting || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
 
     setSubmitting(true);
     let ok = 0;
