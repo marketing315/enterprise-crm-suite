@@ -186,17 +186,16 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Assign role to user for each selected brand
-    const roleInserts = brandIds.map((brand_id: string) => ({
-      user_id: publicUser.id,
-      brand_id,
-      role,
-    }));
-
-    // Use upsert to handle cases where roles already exist
-    const { error: roleInsertError } = await adminClient
-      .from("user_roles")
-      .upsert(roleInserts, { onConflict: "user_id,brand_id,role", ignoreDuplicates: true });
+    // C9: assign roles via SECURITY DEFINER RPC with pg_advisory_xact_lock,
+    // so two concurrent admin calls on overlapping brands are serialized.
+    // The user_roles_guard trigger remains as a second layer of scope enforcement.
+    const { error: roleInsertError } = await adminClient.rpc("admin_create_user", {
+      p_caller_auth_id: callerAuthUserId,
+      p_target_user_id: publicUser.id,
+      p_email: email,
+      p_brand_ids: brandIds,
+      p_role: role,
+    });
 
     if (roleInsertError) {
       console.error("Error assigning roles:", roleInsertError);
