@@ -44,6 +44,9 @@ const ALLOWED_TARGETS = new Set<string>([
   "ads-stats-meta",
   "google-ads-sync",
   "sheets-export-dispatcher",
+  "sheets-export-slo-check",
+  "sheets-reconciliation",
+  "verify-critical-triggers",
   "sales-route-dispatcher",
 ]);
 
