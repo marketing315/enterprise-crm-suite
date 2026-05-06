@@ -36,7 +36,7 @@ export function useH7Dlq(kind: H7DlqKind) {
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data ?? []) as Array<Record<string, unknown>>;
+      return ((data ?? []) as unknown) as Array<Record<string, unknown>>;
     },
   });
 }
