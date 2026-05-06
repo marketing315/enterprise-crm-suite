@@ -332,7 +332,7 @@ Deno.serve(async (req) => {
       ok: true,
       sent: sentAlerts,
       skipped,
-      stats: { totalAll, errorsAll, overallRate, offendingJobsCount: offendingJobs.length, legacyReappeared: reappeared.length },
+      stats: { totalAll, errorsAll, overallRate, offendingJobsCount: offendingJobs.length, legacyReappeared: reappeared.length, jwtAuthFailures: authFailures.length },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     log("error", "monitor crashed", { err: err instanceof Error ? err.message : String(err) });
