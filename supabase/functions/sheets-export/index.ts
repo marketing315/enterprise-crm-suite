@@ -923,7 +923,7 @@ Deno.serve(async (req: Request) => {
       adName,                                             // F - Ad
       contact?.first_name || "",                          // G - Nome
       contact?.last_name || "",                           // H - Cognome
-      phone?.phone_normalized || "",                      // I - Telefono
+      phone?.phone_normalized || contact?.phone_normalized || "",  // I - Telefono
       contact?.email || "",                               // J - Email
       contact?.city || "",                                // K - Città
       message,                                            // L - Messaggio/Pain Area
