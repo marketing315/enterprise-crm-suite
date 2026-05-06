@@ -2,8 +2,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createHash } from "node:crypto";
 import { timingSafeEqual } from "../_shared/crypto.ts";
 import { redactForLog } from "../_shared/pii-redact.ts";
-import { checkIpRateLimit, rateLimited429 } from "../_shared/ip-rate-limit.ts";
+import { checkIpRateLimit, rateLimited429, extractClientIp } from "../_shared/ip-rate-limit.ts";
 import { safeErrorResponse } from "../_shared/safe-error-response.ts";
+import { beginIdempotency } from "../_shared/idempotency.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -183,10 +184,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ── Parse payload ──
+  // ── Parse payload (raw kept for idempotency fingerprint) ──
+  let rawBody = "";
   let payload: Record<string, unknown>;
   try {
-    payload = await req.json();
+    rawBody = await req.text();
+    payload = rawBody ? JSON.parse(rawBody) : {};
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400,
@@ -197,7 +200,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Global try/catch to prevent unhandled 500s ──
   try {
-    return await handleKepleroPayload(supabaseAdmin, req, payload);
+    return await handleKepleroPayload(supabaseAdmin, req, payload, rawBody);
   } catch (err) {
     return safeErrorResponse(err, {
       status: 500,
@@ -212,6 +215,7 @@ async function handleKepleroPayload(
   supabaseAdmin: ReturnType<typeof createClient>,
   req: Request,
   payload: Record<string, unknown>,
+  rawBody: string,
 ): Promise<Response> {
   const args = (payload.args || payload) as KepleroArgs;
   const config = (payload.config || {}) as Record<string, unknown>;
@@ -257,21 +261,34 @@ async function handleKepleroPayload(
   const beneficiaryPhone = beneficiaryPhoneRaw ? normalizePhone(beneficiaryPhoneRaw) : null;
   const isSamePerson = !beneficiaryPhone || requesterPhone.normalized === beneficiaryPhone.normalized;
 
-  // ── Idempotency check ──
+  // ── Idempotency claim (C2: TOCTOU-safe via beginIdempotency) ──
+  // Use payload fingerprint as Idempotency-Key (Keplero non invia header dedicato).
+  // Atomic INSERT su idempotency_keys; in caso di race, il secondo arrivo
+  // riceve "in_progress" (409+Retry-After) o "replay" (cached full response 200).
   const fingerprint = computeFingerprint(brandId, args);
-  const { data: existingInteraction } = await supabaseAdmin
-    .from("keplero_interactions")
-    .select("id")
-    .eq("fingerprint", fingerprint)
-    .maybeSingle();
+  const idem = await beginIdempotency(supabaseAdmin, {
+    scope: "keplero-webhook",
+    callerId: null,
+    callerFp: extractClientIp(req) ?? "keplero",
+    idemKey: `kep_${fingerprint}`,
+    payload: rawBody || JSON.stringify(payload),
+    ttlSeconds: 86400,
+  });
 
-  if (existingInteraction) {
-    console.log("[Keplero] Duplicate detected, fingerprint:", fingerprint);
-    return new Response(JSON.stringify({ success: true, duplicate: true, interaction_id: existingInteraction.id }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (idem.kind === "replay") {
+    console.log("[Keplero] Replay served from cache, fingerprint:", fingerprint);
+    return idem.cachedResponse(corsHeaders);
   }
+  if (idem.kind === "in_progress") {
+    console.log("[Keplero] In-progress duplicate, fingerprint:", fingerprint);
+    return idem.inProgressResponse(corsHeaders);
+  }
+  if (idem.kind === "payload_mismatch") {
+    console.warn("[Keplero] Payload mismatch on idem key:", fingerprint);
+    return idem.mismatchResponse(corsHeaders);
+  }
+  // kind === "inserted" | "no_key" → procedi con la work; solo "inserted" può cachare.
+  const idemInserted = idem.kind === "inserted" ? idem : null;
 
   // ── Emit inbound event ──
   const esito = args.esito_chiamata?.toLowerCase() || "";
@@ -315,7 +332,9 @@ async function handleKepleroPayload(
 
   if (contactError || !contactId) {
     console.error("[Keplero] Contact creation failed:", contactError);
-    return new Response(JSON.stringify({ error: "Contact creation failed" }), {
+    const body = { error: "Contact creation failed" };
+    if (idemInserted) await idemInserted.fail(500, body);
+    return new Response(JSON.stringify(body), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -604,8 +623,13 @@ async function handleKepleroPayload(
       .eq("id", inboundEvent.id);
   }
 
+  // C2: cache full successful response per replay idempotente
+  if (idemInserted) {
+    await idemInserted.complete(200, result);
+  }
+
   return new Response(JSON.stringify(result), {
     status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Idempotency-Key": `kep_${fingerprint}` },
   });
 }
