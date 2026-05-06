@@ -1,3 +1,8 @@
+// SECURITY: Output forzato a schema Zod (ParsedSaleSchema) — non aggiungere mai
+// un campo `raw_text` in risposta o nella tabella di destinazione. Persistere
+// testo libero generato dall'AI riapre il finding H14 (PII/prompt-leak risk).
+// Vedi finding H14/C6 nell'audit Q2 2026 (docs/security-remediation-2026-q2.md)
+// e mem://features/h14-parse-sale-structured-output.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
