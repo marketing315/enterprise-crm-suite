@@ -63,6 +63,8 @@ interface AppointmentInfo {
 interface SheetProperties {
   sheetId: number;
   title: string;
+  hidden?: boolean;
+  gridProperties?: { rowCount?: number; columnCount?: number; frozenRowCount?: number };
 }
 
 interface SheetInfo {
