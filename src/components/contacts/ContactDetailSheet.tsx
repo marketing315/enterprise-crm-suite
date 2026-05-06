@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText, GitBranchPlus, History } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, Tags, Pencil, Save, X, Trash2, Ticket, Briefcase, Shield, FileText, GitBranchPlus, History, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CallTranscriptsSection } from './CallTranscriptsSection';
 import { LeadScoreBadge } from './LeadScoreBadge';
 import { ContactQuizAnswersSection } from './ContactQuizAnswersSection';
