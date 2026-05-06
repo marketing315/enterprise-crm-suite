@@ -30,8 +30,9 @@ DECLARE
   v_events_after_mismatch int;
   v_keep_id   uuid;
 BEGIN
-  v_fp_a := encode(digest(v_payload_a, 'sha256'), 'hex');
-  v_fp_b := encode(digest(v_payload_b, 'sha256'), 'hex');
+  -- Test-only fingerprints; in production these are SHA-256 hex from JS.
+  v_fp_a := md5(v_payload_a);
+  v_fp_b := md5(v_payload_b);
 
   ------------------------------------------------------------------
   -- 1. First claim
