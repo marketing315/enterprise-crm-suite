@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { CallProposalsArraySchema, safeParseJsonString, validateAIOutput } from "../_shared/ai-output-validate.ts";
+import { enforceAiQuota, capMaxTokens } from "../_shared/ai-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
