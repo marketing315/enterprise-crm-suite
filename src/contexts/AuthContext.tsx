@@ -314,10 +314,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Capture identifiers BEFORE local teardown — once supabase.auth.signOut()
+    // runs, auth.uid() in the RPC would be NULL and the purge would be skipped.
+    const outgoingAuthId = supabaseUser?.id ?? session?.user?.id ?? null;
+    let outgoingBrandId: string | null = null;
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('crm_current_brand_id') : null;
+      outgoingBrandId = raw && raw !== 'all' ? raw : null;
+    } catch { /* no-op */ }
+
     try {
       const { logSessionEvent } = await import('@/lib/session-audit');
       await logSessionEvent('signout');
     } catch { /* best-effort */ }
+
+    // F3: server-side session-data purge (RPC). Must run BEFORE supabase.auth.signOut()
+    // so the JWT is still valid; failure is non-fatal (cron is the safety net).
+    try {
+      const { purgeServerSessionData } = await import('@/lib/session-purge');
+      await purgeServerSessionData(outgoingAuthId, outgoingBrandId);
+    } catch { /* best-effort */ }
+
     currentAuthIdRef.current = null;
     await supabase.auth.signOut();
     clearIdleActivity();
