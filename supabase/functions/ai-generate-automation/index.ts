@@ -124,6 +124,38 @@ Deno.serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // C6: auth + quota
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { autoRefreshToken: false, persistSession: false } },
+    );
+    const { data: userData } = await supabase.auth.getUser(token);
+    if (!userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: crmUser } = await supabase
+      .from("users").select("id").eq("supabase_auth_id", userData.user.id).single();
+    if (!crmUser?.id) {
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const quota = await enforceAiQuota({
+      supabase,
+      userId: crmUser.id,
+      brandId: SYSTEM_BRAND_ID,
+      endpoint: "ai-generate-automation",
+      inputChars: prompt.length,
+    });
+    if (!quota.ok) return quota.response;
+
     // Add context about available event types
     const eventTypesContext = eventTypes?.length 
       ? `\n\nEVENT TYPES DISPONIBILI NEL SISTEMA:\n${eventTypes.map((e) => `- "${e.value}": ${e.label}`).join("\n")}`
