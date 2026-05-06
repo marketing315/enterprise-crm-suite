@@ -621,8 +621,13 @@ async function handleKepleroPayload(
       .eq("id", inboundEvent.id);
   }
 
+  // C2: cache full successful response per replay idempotente
+  if (idemInserted) {
+    await idemInserted.complete(200, result);
+  }
+
   return new Response(JSON.stringify(result), {
     status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Idempotency-Key": `kep_${fingerprint}` },
   });
 }
