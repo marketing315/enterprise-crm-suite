@@ -60,6 +60,8 @@ interface NewContactDialogProps {
 export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewContactDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // H8: synchronous re-entrancy guard against double-click submit races.
+  const submitInFlightRef = useRef(false);
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateInfo | null>(null);
   const { getWriteBrandId, isGlobalView, currentBrand } = useWriteBrandId();
   const queryClient = useQueryClient();
