@@ -320,30 +320,55 @@ async function fetchAllLeadsRows(
 
   const contactIds = [...new Set(events.map(e => e.contact_id).filter(Boolean))] as string[];
 
-  const [phonesRes, tagsRes, apptsRes, dealsRes] = await Promise.all([
-    supabaseAdmin.from("contact_phones").select("contact_id, phone_normalized").in("contact_id", contactIds).eq("is_primary", true),
-    supabaseAdmin.from("tag_assignments").select("entity_id, tags(name)").eq("entity_type", "contact").in("entity_id", contactIds),
-    supabaseAdmin.from("appointments").select("contact_id, status, scheduled_at, address, city, cap").in("contact_id", contactIds).order("scheduled_at", { ascending: false }),
-    supabaseAdmin.from("deals").select("contact_id, current_stage_id, pipeline_stages(name)").in("contact_id", contactIds).eq("status", "open").order("created_at", { ascending: false }),
-  ]);
+  // Chunk IN() queries to avoid URL length limits (with 1000+ IDs the URL exceeds 30KB and the request fails silently)
+  const CHUNK = 200;
+  const chunks: string[][] = [];
+  for (let i = 0; i < contactIds.length; i += CHUNK) chunks.push(contactIds.slice(i, i + CHUNK));
 
+  const phonesData: any[] = [];
+  const tagsData: any[] = [];
+  const apptsData: any[] = [];
+  const dealsData: any[] = [];
+  for (const ids of chunks) {
+    const [pRes, tRes, aRes, dRes] = await Promise.all([
+      supabaseAdmin.from("contact_phones").select("contact_id, phone_normalized, is_primary").in("contact_id", ids),
+      supabaseAdmin.from("tag_assignments").select("entity_id, tags(name)").eq("entity_type", "contact").in("entity_id", ids),
+      supabaseAdmin.from("appointments").select("contact_id, status, scheduled_at, address, city, cap").in("contact_id", ids).order("scheduled_at", { ascending: false }),
+      supabaseAdmin.from("deals").select("contact_id, current_stage_id, pipeline_stages(name)").in("contact_id", ids).eq("status", "open").order("created_at", { ascending: false }),
+    ]);
+    if (pRes.error) console.error("phones chunk error:", pRes.error);
+    if (tRes.error) console.error("tags chunk error:", tRes.error);
+    if (aRes.error) console.error("appts chunk error:", aRes.error);
+    if (dRes.error) console.error("deals chunk error:", dRes.error);
+    phonesData.push(...(pRes.data || []));
+    tagsData.push(...(tRes.data || []));
+    apptsData.push(...(aRes.data || []));
+    dealsData.push(...(dRes.data || []));
+  }
+
+  // Prefer is_primary, fall back to any phone for the contact
   const phoneMap = new Map<string, string>();
-  (phonesRes.data || []).forEach((p: any) => phoneMap.set(p.contact_id, p.phone_normalized));
+  for (const p of phonesData) {
+    if (p.is_primary && p.phone_normalized) phoneMap.set(p.contact_id, p.phone_normalized);
+  }
+  for (const p of phonesData) {
+    if (!phoneMap.has(p.contact_id) && p.phone_normalized) phoneMap.set(p.contact_id, p.phone_normalized);
+  }
 
   const tagMap = new Map<string, string[]>();
-  (tagsRes.data || []).forEach((ta: any) => {
+  tagsData.forEach((ta: any) => {
     const list = tagMap.get(ta.entity_id) || [];
     if (ta.tags?.name) list.push(ta.tags.name);
     tagMap.set(ta.entity_id, list);
   });
 
   const apptMap = new Map<string, any>();
-  (apptsRes.data || []).forEach((a: any) => {
+  apptsData.forEach((a: any) => {
     if (!apptMap.has(a.contact_id)) apptMap.set(a.contact_id, a);
   });
 
   const stageMap = new Map<string, string>();
-  (dealsRes.data || []).forEach((d: any) => {
+  dealsData.forEach((d: any) => {
     if (!stageMap.has(d.contact_id) && d.pipeline_stages?.name) {
       stageMap.set(d.contact_id, d.pipeline_stages.name);
     }
