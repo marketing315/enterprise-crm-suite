@@ -407,267 +407,216 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                   </div>
                 </div>
               ) : (
-                <div>
-                  <h2 className="text-2xl font-semibold">{getFullName()}</h2>
-                  <div className="mt-1.5">
-                    <BrandBadge brandId={contact.brand_id} />
-                  </div>
-                  <div className="mt-2">
-                    <ContactStatusBadge status={contact.status} />
-                  </div>
-                </div>
-              )}
-
-              {/* Lead Score */}
-              {contactId && (
-                <LeadScoreBadge contactId={contactId} />
-              )}
-
-              <Separator />
-
-              {/* Contact Info */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Informazioni</h3>
-                
-                {contact.contact_phones?.map((phone) => (
-                  <div key={phone.id} className="flex items-center gap-2 group">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{phone.phone_normalized}</span>
-                    {phone.is_primary && (
-                      <Badge variant="secondary" className="text-xs">Principale</Badge>
-                    )}
-                    {phone.assumed_country && (
-                      <Badge variant="outline" className="text-xs">{phone.country_code} (assunto)</Badge>
-                    )}
-                    <ClickToCallButton
-                      contactId={contact.id}
-                      phoneNumber={phone.phone_normalized}
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                    <CorrectPhoneDialog
-                      contactId={contact.id}
-                      currentPhone={phone.phone_normalized}
-                      isPrimary={phone.is_primary}
-                      onConflict={handlePhoneConflict}
-                    />
-                  </div>
-                ))}
-
-                {contact.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{contact.email}</span>
-                  </div>
-                )}
-
-                {(contact.city || contact.cap) && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {[contact.city, contact.cap].filter(Boolean).join(' - ')}
-                    </span>
-                  </div>
-                )}
-
-                {(contact as any).address && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <span className="text-muted-foreground ml-6">
-                      {[(contact as any).address, (contact as any).province, (contact as any).country].filter(Boolean).join(', ')}
-                    </span>
-                  </div>
-                )}
-
-                {(contact as any).marketing_consent && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Shield className="h-4 w-4 text-primary" />
-                    <span className="text-primary font-medium">Consenso Marketing</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>
-                    Creato il {(() => {
-                      // Use earliest occurred_at from lead_events if available and valid
-                      const leadEvents = (contact as any).lead_events as any[] | undefined;
-                      const validDates = leadEvents
-                        ?.map((e: any) => e.occurred_at)
-                        .filter((d: any) => d && new Date(d).getFullYear() > 2000)
-                        .sort() || [];
-                      const displayDate = validDates.length > 0 ? validDates[0] : contact.created_at;
-                      return format(new Date(displayDate), 'dd MMMM yyyy HH:mm', { locale: it });
-                    })()}
-                  </span>
-                </div>
-              </div>
-
-              {/* CRM Tags */}
-              <Separator />
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Tags className="h-4 w-4" />
-                  Tag CRM
-                </h3>
-                <EntityTagList 
-                  entityType="contact" 
-                  entityId={contact.id} 
-                  scope="contact"
-                />
-              </div>
-
-              {/* Company Data */}
-              <ContactCompanySection contact={contact as any} />
-
-              {/* Lead Data */}
-              <ContactLeadDataSection contact={contact as any} />
-
-              {/* Quiz Answers */}
-              <ContactQuizAnswersSection quizAnswers={(contact as any)?.quiz_answers} />
-
-              {/* Pipeline Stage */}
-              {openDeal && openDeal.current_stage_id && (() => {
-                const currentStage = stages?.find(s => s.id === openDeal.current_stage_id);
-                return currentStage ? (
-                  <>
-                    <Separator />
-                    <div className="space-y-1.5">
-                      <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                        <GitBranchPlus className="h-3.5 w-3.5" />
-                        Fase Pipeline
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: currentStage.color || 'hsl(var(--primary))' }}
-                        />
-                        <span className="text-sm font-medium">{currentStage.name}</span>
+                <div className="rounded-2xl border bg-gradient-to-br from-muted/40 to-background p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-base font-semibold text-primary shrink-0">
+                      {getInitials()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-xl font-semibold leading-tight truncate">{getFullName()}</h2>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <ContactStatusBadge status={contact.status} />
+                        <BrandBadge brandId={contact.brand_id} />
+                        {(contact as any).marketing_consent && (
+                          <Badge variant="outline" className="text-[10px] gap-1 border-primary/40 text-primary">
+                            <Shield className="h-3 w-3" /> Marketing
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                  </>
-                ) : null;
-              })()}
+                  </div>
 
-              {/* Quick Actions */}
-              <Separator />
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Azioni Rapide</h3>
-                {openDeal ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      onOpenChange(false);
-                      navigate(`/pipeline?deal=${openDeal.id}`);
-                    }}
-                    className="w-full justify-start"
-                  >
-                    <Briefcase className="h-4 w-4 mr-2" />
-                    Apri Deal
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        const dealId = await createDeal.mutateAsync({
-                          brandId: contact.brand_id,
-                          contactId: contact.id,
-                        });
-                        toast.success('Deal creato');
-                        onOpenChange(false);
-                        navigate(`/pipeline?deal=${dealId}`);
-                      } catch (error: any) {
-                        toast.error(error.message || 'Errore durante la creazione del deal');
-                      }
-                    }}
-                    disabled={createDeal.isPending}
-                    className="w-full justify-start"
-                  >
-                    <Briefcase className="h-4 w-4 mr-2" />
-                    {createDeal.isPending ? 'Creazione...' : 'Crea Deal'}
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setTicketDialogOpen(true)}
-                  className="w-full justify-start"
-                >
-                  <Ticket className="h-4 w-4 mr-2" />
-                  Apri Ticket Supporto
-                </Button>
-              </div>
-
-              {/* Call Transcripts */}
-              <CallTranscriptsSection contactId={contact.id} />
-
-              {/* Custom Fields */}
-              <Separator />
-              <CustomFieldsSection contactId={contact.id} />
-
-              {/* Website Tags (from webhooks) */}
-              {events && events.length > 0 && (
-                <>
-                  <Separator />
-                  <WebsiteTagsSection events={events} />
-                </>
+                  {contactId && (
+                    <div className="mt-4 pt-4 border-t border-border/60">
+                      <LeadScoreBadge contactId={contactId} />
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Lead Message (from webhook AI extraction) */}
-              {(contact as any).lead_message && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Messaggio Lead</h3>
-                    <p className="text-sm whitespace-pre-wrap break-words overflow-hidden bg-muted/50 rounded-md p-3">
-                      {(contact as any).lead_message}
-                    </p>
+              {/* Informazioni di contatto */}
+              {!isEditing && (
+                <SectionCard title="Informazioni" muted>
+                  {contact.contact_phones?.map((phone) => (
+                    <div key={phone.id} className="flex items-center gap-2 group">
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="font-medium">{phone.phone_normalized}</span>
+                      {phone.is_primary && (
+                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Principale</Badge>
+                      )}
+                      {phone.assumed_country && (
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5">{phone.country_code}</Badge>
+                      )}
+                      <div className="ml-auto flex items-center gap-0.5">
+                        <ClickToCallButton
+                          contactId={contact.id}
+                          phoneNumber={phone.phone_normalized}
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 opacity-60 group-hover:opacity-100 transition-opacity"
+                        />
+                        <CorrectPhoneDialog
+                          contactId={contact.id}
+                          currentPhone={phone.phone_normalized}
+                          isPrimary={phone.is_primary}
+                          onConflict={handlePhoneConflict}
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  {contact.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">{contact.email}</span>
+                    </div>
+                  )}
+
+                  {(contact.city || contact.cap || (contact as any).address) && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        {(contact.city || contact.cap) && (
+                          <div>{[contact.city, contact.cap].filter(Boolean).join(' · ')}</div>
+                        )}
+                        {(contact as any).address && (
+                          <div className="text-muted-foreground text-xs">
+                            {[(contact as any).address, (contact as any).province, (contact as any).country].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>
+                      Creato il {(() => {
+                        const leadEvents = (contact as any).lead_events as any[] | undefined;
+                        const validDates = leadEvents
+                          ?.map((e: any) => e.occurred_at)
+                          .filter((d: any) => d && new Date(d).getFullYear() > 2000)
+                          .sort() || [];
+                        const displayDate = validDates.length > 0 ? validDates[0] : contact.created_at;
+                        return format(new Date(displayDate), 'dd MMM yyyy · HH:mm', { locale: it });
+                      })()}
+                    </span>
                   </div>
-                </>
+                </SectionCard>
               )}
 
-              {contact.notes && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Note</h3>
-                    <p className="text-sm whitespace-pre-wrap">{contact.notes}</p>
-                  </div>
-                </>
+              {/* Tag CRM + Pipeline (riga compatta) */}
+              {!isEditing && (
+                <SectionCard icon={Tags} title="Tag e Pipeline">
+                  <EntityTagList entityType="contact" entityId={contact.id} scope="contact" />
+                  {openDeal?.current_stage_id && (() => {
+                    const currentStage = stages?.find(s => s.id === openDeal.current_stage_id);
+                    return currentStage ? (
+                      <div className="flex items-center gap-2 pt-2 mt-2 border-t border-border/60">
+                        <GitBranchPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Fase:</span>
+                        <div
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: currentStage.color || 'hsl(var(--primary))' }}
+                        />
+                        <span className="text-xs font-medium">{currentStage.name}</span>
+                      </div>
+                    ) : null;
+                  })()}
+                </SectionCard>
               )}
 
-              <Separator />
+              {/* Sezioni dati (Company / Lead / Quiz) */}
+              {!isEditing && (
+                <div className="space-y-3">
+                  <ContactCompanySection contact={contact as any} />
+                  <ContactLeadDataSection contact={contact as any} />
+                  <ContactQuizAnswersSection quizAnswers={(contact as any)?.quiz_answers} />
+                </div>
+              )}
 
-              {/* Lead Events */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Eventi Lead ({events?.length || 0})
-                </h3>
+              {/* Lead Message (in evidenza se presente) */}
+              {!isEditing && (contact as any).lead_message && (
+                <SectionCard icon={FileText} title="Messaggio Lead" muted>
+                  <p className="whitespace-pre-wrap break-words text-sm">
+                    {(contact as any).lead_message}
+                  </p>
+                </SectionCard>
+              )}
 
-                {eventsLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                  </div>
-                ) : events && events.length > 0 ? (
-                  <div className="space-y-3">
-                    {events.map((event) => (
-                      <LeadEventCard key={event.id} event={event as any} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Nessun evento registrato</p>
-                )}
-              </div>
+              {/* Note */}
+              {!isEditing && contact.notes && (
+                <SectionCard title="Note" muted>
+                  <p className="whitespace-pre-wrap text-sm">{contact.notes}</p>
+                </SectionCard>
+              )}
+
+              {/* Sezioni avanzate (collapsible) */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <Collapsible>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trascrizioni chiamate</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                      <CallTranscriptsSection contactId={contact.id} />
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  <Collapsible>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Campi personalizzati</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                      <CustomFieldsSection contactId={contact.id} />
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {events && events.length > 0 && (
+                    <Collapsible>
+                      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tag sito web</span>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2">
+                        <WebsiteTagsSection events={events} />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  <Collapsible>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                        Eventi lead
+                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{events?.length || 0}</Badge>
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2 space-y-2">
+                      {eventsLoading ? (
+                        <>
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
+                        </>
+                      ) : events && events.length > 0 ? (
+                        events.map((event) => (
+                          <LeadEventCard key={event.id} event={event as any} />
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground px-2">Nessun evento registrato</p>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              )}
             </div>
           </ScrollArea>
             </TabsContent>
 
             <TabsContent value="audit" className="flex-1 overflow-hidden mt-2">
-              <ScrollArea className="h-[calc(100vh-200px)] pr-4">
+              <ScrollArea className="h-[calc(100vh-220px)] px-5 sm:px-6">
                 <AuditTimeline entityType="contact" entityId={contact.id} />
               </ScrollArea>
             </TabsContent>
