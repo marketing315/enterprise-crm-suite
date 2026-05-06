@@ -10978,6 +10978,16 @@ export type Database = {
         Args: { p_new_user_id: string; p_role?: string; p_thread_id: string }
         Returns: undefined
       }
+      admin_create_user: {
+        Args: {
+          p_brand_ids: string[]
+          p_caller_auth_id: string
+          p_email: string
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_target_user_id: string
+        }
+        Returns: Json
+      }
       apply_ai_deal_tags: {
         Args: { p_confidence?: number; p_deal_id: string; p_tag_ids: string[] }
         Returns: number
