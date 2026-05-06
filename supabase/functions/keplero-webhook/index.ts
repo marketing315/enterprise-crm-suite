@@ -261,21 +261,34 @@ async function handleKepleroPayload(
   const beneficiaryPhone = beneficiaryPhoneRaw ? normalizePhone(beneficiaryPhoneRaw) : null;
   const isSamePerson = !beneficiaryPhone || requesterPhone.normalized === beneficiaryPhone.normalized;
 
-  // ── Idempotency check ──
+  // ── Idempotency claim (C2: TOCTOU-safe via beginIdempotency) ──
+  // Use payload fingerprint as Idempotency-Key (Keplero non invia header dedicato).
+  // Atomic INSERT su idempotency_keys; in caso di race, il secondo arrivo
+  // riceve "in_progress" (409+Retry-After) o "replay" (cached full response 200).
   const fingerprint = computeFingerprint(brandId, args);
-  const { data: existingInteraction } = await supabaseAdmin
-    .from("keplero_interactions")
-    .select("id")
-    .eq("fingerprint", fingerprint)
-    .maybeSingle();
+  const idem = await beginIdempotency(supabaseAdmin, {
+    scope: "keplero-webhook",
+    callerId: null,
+    callerFp: extractClientIp(req) ?? "keplero",
+    idemKey: `kep_${fingerprint}`,
+    payload: rawBody || JSON.stringify(payload),
+    ttlSeconds: 86400,
+  });
 
-  if (existingInteraction) {
-    console.log("[Keplero] Duplicate detected, fingerprint:", fingerprint);
-    return new Response(JSON.stringify({ success: true, duplicate: true, interaction_id: existingInteraction.id }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (idem.kind === "replay") {
+    console.log("[Keplero] Replay served from cache, fingerprint:", fingerprint);
+    return idem.cachedResponse(corsHeaders);
   }
+  if (idem.kind === "in_progress") {
+    console.log("[Keplero] In-progress duplicate, fingerprint:", fingerprint);
+    return idem.inProgressResponse(corsHeaders);
+  }
+  if (idem.kind === "payload_mismatch") {
+    console.warn("[Keplero] Payload mismatch on idem key:", fingerprint);
+    return idem.mismatchResponse(corsHeaders);
+  }
+  // kind === "inserted" | "no_key" → procedi con la work; solo "inserted" può cachare.
+  const idemInserted = idem.kind === "inserted" ? idem : null;
 
   // ── Emit inbound event ──
   const esito = args.esito_chiamata?.toLowerCase() || "";
