@@ -7131,6 +7131,7 @@ export type Database = {
       }
       meta_apps: {
         Row: {
+          access_secret_id: string | null
           access_token: string
           ad_account_id: string | null
           app_secret: string
@@ -7149,6 +7150,7 @@ export type Database = {
           verify_token: string
         }
         Insert: {
+          access_secret_id?: string | null
           access_token: string
           ad_account_id?: string | null
           app_secret: string
@@ -7167,6 +7169,7 @@ export type Database = {
           verify_token: string
         }
         Update: {
+          access_secret_id?: string | null
           access_token?: string
           ad_account_id?: string | null
           app_secret?: string
@@ -7390,6 +7393,7 @@ export type Database = {
       }
       meta_lead_sources: {
         Row: {
+          access_secret_id: string | null
           access_token: string
           brand_id: string
           created_at: string
@@ -7400,6 +7404,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_secret_id?: string | null
           access_token: string
           brand_id: string
           created_at?: string
@@ -7410,6 +7415,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_secret_id?: string | null
           access_token?: string
           brand_id?: string
           created_at?: string
@@ -13014,6 +13020,19 @@ export type Database = {
       merge_contacts: {
         Args: { p_source_id: string; p_target_id: string }
         Returns: Json
+      }
+      meta_apps_get_access_token: { Args: { p_id: string }; Returns: string }
+      meta_apps_put_access_token: {
+        Args: { p_id: string; p_value: string }
+        Returns: string
+      }
+      meta_lead_sources_get_access_token: {
+        Args: { p_id: string }
+        Returns: string
+      }
+      meta_lead_sources_put_access_token: {
+        Args: { p_id: string; p_value: string }
+        Returns: string
       }
       move_to_dlq: {
         Args: {

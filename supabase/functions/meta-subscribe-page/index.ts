@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getMetaAppAccessToken } from "../_shared/meta-secrets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,12 +95,14 @@ Deno.serve(async (req) => {
   console.log(`[META-SUBSCRIBE] Getting Page Access Token for page ${metaApp.page_id}`);
 
   try {
+    // A2: resolve from Vault, fallback to legacy column.
+    const resolvedToken = (await getMetaAppAccessToken(supabaseService, metaApp.id)) ?? metaApp.access_token;
     // Try to get Page Access Token
-    const pageTokenUrl = `https://graph.facebook.com/v20.0/${metaApp.page_id}?fields=access_token&access_token=${metaApp.access_token}`;
+    const pageTokenUrl = `https://graph.facebook.com/v20.0/${metaApp.page_id}?fields=access_token&access_token=${resolvedToken}`;
     const pageTokenRes = await fetch(pageTokenUrl);
     const pageTokenData = await pageTokenRes.json();
 
-    let pageAccessToken = metaApp.access_token;
+    let pageAccessToken = resolvedToken;
 
     if (pageTokenData.access_token) {
       pageAccessToken = pageTokenData.access_token;
