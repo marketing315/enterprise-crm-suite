@@ -69,10 +69,15 @@ export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare 
   }
 
   const ordered = [...stages].sort((a, b) => a.stage_order - b.stage_order);
-  // For relative bar height we use a normalized scale: spend & revenue (money) vs counts.
-  // Use independent scales: max within count stages and max within money stages.
-  const moneyMax = Math.max(...ordered.filter(s => s.stage_id === "spend" || s.stage_id === "revenue").map(s => s.metric_value), 1);
-  const countMax = Math.max(...ordered.filter(s => s.stage_id !== "spend" && s.stage_id !== "revenue").map(s => Number(s.metric_count)), 1);
+  // Three independent scales to avoid impressions dwarfing pipeline bars:
+  // - money: spend/revenue
+  // - ads counts: impressions/clicks
+  // - pipeline counts: lead/appointment/deal_won
+  const isMoneyStage = (id: string) => id === "spend" || id === "revenue";
+  const isAdsCountStage = (id: string) => id === "impressions" || id === "clicks";
+  const moneyMax = Math.max(...ordered.filter(s => isMoneyStage(s.stage_id)).map(s => s.metric_value), 1);
+  const adsCountMax = Math.max(...ordered.filter(s => isAdsCountStage(s.stage_id)).map(s => Number(s.metric_count)), 1);
+  const pipelineCountMax = Math.max(...ordered.filter(s => !isMoneyStage(s.stage_id) && !isAdsCountStage(s.stage_id)).map(s => Number(s.metric_count)), 1);
 
   return (
     <Card className="border-0 shadow-sm">
