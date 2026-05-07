@@ -11170,6 +11170,22 @@ export type Database = {
         }
         Relationships: []
       }
+      v_io_pressure: {
+        Row: {
+          dead_pct: number | null
+          last_autoanalyze: string | null
+          last_autovacuum: string | null
+          n_dead_tup: number | null
+          n_tup_del: number | null
+          n_tup_ins: number | null
+          n_tup_upd: number | null
+          table_name: string | null
+          total_size: string | null
+          total_size_bytes: number | null
+          total_writes: number | null
+        }
+        Relationships: []
+      }
       webhook_sources_safe: {
         Row: {
           brand_id: string | null
