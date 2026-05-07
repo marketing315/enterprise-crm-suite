@@ -9,6 +9,7 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePipelineStages, useDeals, useUpdateDealStage, type DealWithBrand } from "@/hooks/usePipeline";
 import { recordKanbanTransition } from "@/hooks/useKanbanTransitionAudit";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
