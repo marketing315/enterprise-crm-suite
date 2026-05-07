@@ -103,7 +103,9 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
 
-  // Initialize form data when contact loads
+  // Initialize form data when contact loads.
+  // Bug #2 (MEDIA): reset isEditing quando contact cambia per evitare di restare
+  // in editing mode con dati stantii dopo aver cambiato contatto.
   useEffect(() => {
     if (contact) {
       setFormData({
@@ -115,10 +117,11 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         address: contact.address || '',
         notes: contact.notes || '',
         status: contact.status || 'new',
-        marketing_consent: (contact as any).marketing_consent || false,
+        marketing_consent: (contact as { marketing_consent?: boolean }).marketing_consent ?? false,
       });
+      setIsEditing(false);
     }
-  }, [contact]);
+  }, [contact?.id]);
 
   // Reset editing state when sheet closes
   useEffect(() => {
