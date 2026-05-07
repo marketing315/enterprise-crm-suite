@@ -226,13 +226,13 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
               <span className="truncate">{getFullName()}</span>
             </div>
             <div className="flex items-center gap-1">
-              {/* Assigned User Badge */}
-              {(deal as any).assigned_user && (
+              {/* Assigned User Badge — Bug #3 (MEDIA): tipo già su DealWithBrand, no `as any` */}
+              {deal.assigned_user && (
                 <div 
                   className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary"
-                  title={`Assegnato a: ${(deal as any).assigned_user.full_name || (deal as any).assigned_user.email}`}
+                  title={`Assegnato a: ${deal.assigned_user.full_name || deal.assigned_user.email}`}
                 >
-                  {((deal as any).assigned_user.full_name || (deal as any).assigned_user.email)
+                  {(deal.assigned_user.full_name || deal.assigned_user.email)
                     ?.split(" ")
                     .map((n: string) => n[0])
                     .join("")

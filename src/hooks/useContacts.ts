@@ -15,6 +15,9 @@ export function useContacts(status?: ContactStatus, limit: number = CONTACTS_PAG
 
   return useQuery({
     queryKey: ['contacts', isAllBrandsSelected ? 'all' : currentBrand?.id, status, limit],
+    // Note: Bug #5 (ALTA report) — questo hook NON accetta filterTagIds nei suoi parametri
+    // attuali, quindi la queryKey è già stabile. Se in futuro si aggiungono array dinamici,
+    // serializzarli con JSON.stringify per evitare cache miss.
     queryFn: async () => {
       if (!isAllBrandsSelected && !currentBrand?.id) return [];
       if (isAllBrandsSelected && allBrandIds.length === 0) return [];
