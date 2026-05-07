@@ -40,7 +40,7 @@ export function usePaginatedContactSearch(
 
   const offset = showAll ? 0 : page * PAGE_SIZE;
 
-  const { data: pageData = [], isLoading, isFetching, isError, error, refetch } = useContactSearch(
+  const { data: pageData, isLoading, isFetching, isError, error, refetch } = useContactSearch(
     query,
     filters,
     effectiveLimit,
@@ -49,18 +49,25 @@ export function usePaginatedContactSearch(
 
   const { data: totalCount } = useContactCount(query, filters);
 
-  // Append new page data when it arrives and reset the load guard
+  // Append new page data when it arrives and reset the load guard.
+  // IMPORTANT: depend on the actual `pageData` reference from React Query
+  // (which is stable across renders) — never on a defaulted `[]` literal,
+  // otherwise this effect fires every render and causes "Maximum update
+  // depth exceeded".
   useEffect(() => {
+    if (!pageData) return;
     if (pageData.length > 0) {
       setAllResults((prev) => {
         if (page === 0 || showAll) return pageData;
         const existingIds = new Set(prev.map((r) => r.id));
         const newItems = pageData.filter((r) => !existingIds.has(r.id));
+        if (newItems.length === 0) return prev;
         return [...prev, ...newItems];
       });
       loadTriggeredRef.current = false;
     } else if (page === 0) {
-      setAllResults([]);
+      // Avoid setting a brand-new [] reference each render
+      setAllResults((prev) => (prev.length === 0 ? prev : []));
       loadTriggeredRef.current = false;
     } else if (!isFetching) {
       loadTriggeredRef.current = false;
