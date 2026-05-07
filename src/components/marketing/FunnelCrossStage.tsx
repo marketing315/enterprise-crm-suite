@@ -33,7 +33,7 @@ function fmtMoney(v: number): string {
   return `€${fmtNum(v)}`;
 }
 
-export function FunnelCrossStage({ stages, isLoading }: Props) {
+export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare }: Props) {
   if (isLoading) {
     return (
       <Card className="border-0 shadow-sm">
