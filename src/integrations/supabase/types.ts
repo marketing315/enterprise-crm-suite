@@ -11209,6 +11209,7 @@ export type Database = {
         }
         Returns: string
       }
+      _oneshot_cleanup_system_logs: { Args: never; Returns: undefined }
       acquire_cron_lease: {
         Args: {
           p_acquired_by?: string
