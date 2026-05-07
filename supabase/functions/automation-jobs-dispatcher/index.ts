@@ -97,13 +97,14 @@ Deno.serve(async (req: Request) => {
   console.log(`[automation-jobs-dispatcher] Claimed ${jobs.length} jobs`);
 
   const results: { id: string; status: string; error?: string }[] = [];
+  const successIds: string[] = [];
 
   // Process jobs with parallelism limit of 10
   // Jobs are already marked as 'running' by claim_automation_jobs RPC
   const PARALLELISM = 10;
   for (let i = 0; i < jobs.length; i += PARALLELISM) {
     const batch = jobs.slice(i, i + PARALLELISM);
-    
+
     // Bug #1 (CRITICA): Promise.allSettled invece di Promise.all per non terminare
     // l'intera batch al primo errore. Bug #10: clearTimeout sempre via try/finally.
     await Promise.allSettled(batch.map(async (job: AutomationJob) => {
@@ -121,17 +122,8 @@ Deno.serve(async (req: Request) => {
         });
 
         if (response.ok) {
-          // Success - mark as sent
-          await supabaseAdmin
-            .from("automation_jobs")
-            .update({
-              status: "sent",
-              sent_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", job.id);
-
-          console.log(`[automation-jobs-dispatcher] Job ${job.id} sent successfully`);
+          // Success - accumulate id for a single batched UPDATE at the end (Bug #3, N+1).
+          successIds.push(job.id);
           results.push({ id: job.id, status: "sent" });
         } else {
           // HTTP error - schedule retry or mark as failed
@@ -148,6 +140,18 @@ Deno.serve(async (req: Request) => {
         clearTimeout(timeout);
       }
     }));
+  }
+
+  // Bug #3 (CRITICA): batch UPDATE per tutti i success, evita N+1.
+  if (successIds.length > 0) {
+    const nowIso = new Date().toISOString();
+    const { error: batchUpdErr } = await supabaseAdmin
+      .from("automation_jobs")
+      .update({ status: "sent", sent_at: nowIso, updated_at: nowIso })
+      .in("id", successIds);
+    if (batchUpdErr) {
+      console.error("[automation-jobs-dispatcher] Batch success UPDATE failed:", batchUpdErr);
+    }
   }
 
   const sent = results.filter(r => r.status === "sent").length;
