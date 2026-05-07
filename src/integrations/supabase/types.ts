@@ -2480,6 +2480,10 @@ export type Database = {
           checksum: string | null
           completed_at: string | null
           created_at: string
+          drive_error: string | null
+          drive_file_id: string | null
+          drive_uploaded_at: string | null
+          drive_web_view_link: string | null
           duration_ms: number
           error: string | null
           expires_at: string | null
@@ -2500,6 +2504,10 @@ export type Database = {
           checksum?: string | null
           completed_at?: string | null
           created_at?: string
+          drive_error?: string | null
+          drive_file_id?: string | null
+          drive_uploaded_at?: string | null
+          drive_web_view_link?: string | null
           duration_ms?: number
           error?: string | null
           expires_at?: string | null
@@ -2520,6 +2528,10 @@ export type Database = {
           checksum?: string | null
           completed_at?: string | null
           created_at?: string
+          drive_error?: string | null
+          drive_file_id?: string | null
+          drive_uploaded_at?: string | null
+          drive_web_view_link?: string | null
           duration_ms?: number
           error?: string | null
           expires_at?: string | null
