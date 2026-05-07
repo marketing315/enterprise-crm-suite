@@ -42,8 +42,7 @@ export function useMutationFeedback(opts: FeedbackOptions = {}) {
         opts.errorMap?.[raw] ??
         DEFAULT_ERROR_MAP[raw] ??
         DEFAULT_ERROR_MAP[raw.split(":")[0] ?? ""] ??
-        raw ||
-        "Errore sconosciuto";
+        (raw || "Errore sconosciuto");
       toast.error(opts.errorTitle ?? "Operazione non riuscita", {
         description: mapped,
       });
