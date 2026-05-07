@@ -18,7 +18,7 @@ export default function Login() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
       <div className="mb-8 flex flex-col items-center">
         <div className="flex items-center gap-3 mb-2">
-          <Building2 className="h-10 w-10 text-primary" />
+          <img src={logo} alt="Gruppo Benessere" className="h-12 w-auto" />
           <h1 className="text-3xl font-bold">CRM Gruppo Benessere</h1>
         </div>
         <p className="text-muted-foreground">Gestione Lead Multi-Brand</p>
