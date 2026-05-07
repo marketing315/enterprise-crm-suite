@@ -93,8 +93,15 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
   const { currentBrand } = useBrand();
   const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
 
+  // Bug #6 (ALTA): stable cache key — sort+join evita cache miss su array ricreati
+  // ad ogni render del parent (anche con stessi tag).
+  const tagKey = useMemo(
+    () => (filterTagIds && filterTagIds.length > 0 ? [...filterTagIds].sort().join(",") : null),
+    [filterTagIds],
+  );
+
   return useQuery({
-    queryKey: ["deals", currentBrand?.id, status, filterTagIds],
+    queryKey: ["deals", currentBrand?.id, status, tagKey],
     queryFn: async (): Promise<DealWithBrand[]> => {
       if (!currentBrand) return [];
 
