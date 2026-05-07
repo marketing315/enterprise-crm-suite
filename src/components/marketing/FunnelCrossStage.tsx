@@ -1,11 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingDown, Megaphone, Users, CalendarCheck, Trophy, Banknote } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, Megaphone, Users, CalendarCheck, Trophy, Banknote } from "lucide-react";
 import type { FunnelOverviewStage } from "@/hooks/useFunnelOverview";
 
+interface StageWithCompare extends FunnelOverviewStage {
+  delta_pct?: number | null;
+  prev_metric_value?: number;
+  prev_metric_count?: number;
+}
+
 interface Props {
-  stages: FunnelOverviewStage[] | undefined;
+  stages: StageWithCompare[] | undefined;
   isLoading: boolean;
+  onStageClick?: (stageId: string, stageLabel: string) => void;
+  showCompare?: boolean;
 }
 
 const STAGE_VISUAL: Record<string, { icon: typeof Megaphone; color: string; bg: string }> = {
