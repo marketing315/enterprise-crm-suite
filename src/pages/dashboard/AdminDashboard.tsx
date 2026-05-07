@@ -1,6 +1,6 @@
 // AdminDashboard — v2
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { Shield, Users, Webhook, Ticket, AlertCircle, Kanban, TrendingUp, Target } from 'lucide-react';
+import { Shield, Users, Webhook, Ticket, AlertCircle, Kanban, TrendingUp, Target, Gauge } from 'lucide-react';
 import { DashboardKpiGrid, KpiItem } from '@/components/dashboard/DashboardKpiGrid';
 import { DashboardTrendChart } from '@/components/dashboard/DashboardTrendChart';
 import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemStatus';
@@ -143,6 +143,14 @@ export default function AdminDashboard() {
             >
               <Target className="h-4 w-4" />
               SLO Board
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate('/admin/slow-queries')}
+            >
+              <Gauge className="h-4 w-4" />
+              Slow Queries
             </Button>
             <Button
               variant="outline"
