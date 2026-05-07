@@ -130,9 +130,11 @@ export function CeoExpensesPanel({ from, to }: CeoExpensesPanelProps) {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{formatCurrency(exp.amount)}</span>
                   {hasAccess && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(exp.id)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
+                    <ConfirmDeleteButton
+                      onConfirm={() => handleDelete(exp.id)}
+                      title="Eliminare questo costo?"
+                      description={`"${exp.description || exp.vendor_name || 'Costo'}" — ${formatCurrency(exp.amount)}. L'azione viene tracciata nei log audit.`}
+                    />
                   )}
                 </div>
               </div>
