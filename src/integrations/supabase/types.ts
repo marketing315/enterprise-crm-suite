@@ -4365,6 +4365,27 @@ export type Database = {
         }
         Relationships: []
       }
+      db_size_history: {
+        Row: {
+          id: number
+          measured_at: string
+          top_tables: Json
+          total_bytes: number
+        }
+        Insert: {
+          id?: number
+          measured_at?: string
+          top_tables: Json
+          total_bytes: number
+        }
+        Update: {
+          id?: number
+          measured_at?: string
+          top_tables?: Json
+          total_bytes?: number
+        }
+        Relationships: []
+      }
       deal_scores: {
         Row: {
           brand_id: string
