@@ -404,6 +404,11 @@ export default function MarketingDashboard() {
         <TabsContent value="website" className="mt-6">
           <Ga4StatsTab fromDate={dateRange.from} toDate={dateRange.to} />
         </TabsContent>
+
+        <TabsContent value="email" className="mt-6 space-y-6">
+          <EmailCampaignsCard data={emailKpis} isLoading={emailLoading} />
+          <AutomationDonut fromIso={fromIso} toIso={toIso} />
+        </TabsContent>
       </Tabs>
     </div>
   );
