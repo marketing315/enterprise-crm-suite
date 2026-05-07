@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
