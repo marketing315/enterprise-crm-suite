@@ -140,7 +140,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
         map.set(uid, { id: uid, email: entry.user.email, full_name: entry.user.full_name, roles: [] });
       }
       // Bug #12 (MEDIA): valida il role; se sconosciuto fallback a 'venditore' (no UI rotta)
-      const validRoles: AppRole[] = ['admin', 'ceo', 'callcenter', 'venditore', 'marketing', 'admin_brand'];
+      const validRoles: AppRole[] = ['admin', 'ceo', 'callcenter', 'venditore'];
       const safeRole: AppRole = validRoles.includes(entry.role as AppRole) ? (entry.role as AppRole) : 'venditore';
       map.get(uid)!.roles.push({
         id: entry.id,
