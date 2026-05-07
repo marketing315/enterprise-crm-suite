@@ -466,6 +466,19 @@ export function AdStatsTab() {
 
       {/* Campaign Table */}
       <AdStatsTable data={stats} isLoading={statsLoading} showBrand={isAllBrandsSelected} />
+
+      {/* Adset (Gruppi di inserzioni) Table */}
+      <AdsetStatsTable
+        fromDate={dateRange.from}
+        toDate={dateRange.to}
+        platform={platform}
+        campaignExternalId={campaignFilter === "all" ? null : campaignFilter}
+        campaignLabel={
+          campaignFilter === "all"
+            ? null
+            : campaignOptions.find((c) => c.id === campaignFilter)?.name ?? null
+        }
+      />
     </div>
   );
 }
