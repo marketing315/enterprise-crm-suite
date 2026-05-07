@@ -357,45 +357,44 @@ export function useAddTicketComment() {
   });
 }
 
+/**
+ * Sprint 4b: assign via `assign_ticket` RPC with optimistic version check.
+ * Server raises 'STALE_TICKET' (SQLSTATE 40001) when expectedVersion mismatches → caller refetches.
+ */
 export function useAssignTicket() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ticketId, userId }: { ticketId: string; userId: string | null }) => {
-      const updates: Record<string, unknown> = { 
-        assigned_to_user_id: userId,
-        assigned_at: userId ? new Date().toISOString() : null,
-      };
-
-      // Get current user to set assigned_by_user_id
-      if (userId) {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser) {
-          const { data: currentUserData } = await supabase
-            .from("users")
-            .select("id")
-            .eq("supabase_auth_id", authUser.id)
-            .single();
-          
-          if (currentUserData) {
-            updates.assigned_by_user_id = currentUserData.id;
-          }
+    mutationFn: async ({
+      ticketId,
+      userId,
+      expectedVersion,
+    }: {
+      ticketId: string;
+      userId: string | null;
+      expectedVersion?: number | null;
+    }) => {
+      const { error } = await supabase.rpc("assign_ticket", {
+        p_ticket_id: ticketId,
+        p_assignee_user_id: userId,
+        p_expected_version: expectedVersion ?? null,
+      });
+      if (error) {
+        if ((error.message || "").includes("STALE_TICKET")) {
+          throw new Error("STALE_TICKET");
         }
-      } else {
-        updates.assigned_by_user_id = null;
+        throw error;
       }
-
-      const { error } = await supabase
-        .from("tickets")
-        .update(updates)
-        .eq("id", ticketId);
-
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket"] });
       queryClient.invalidateQueries({ queryKey: ["ticket-queue-counts"] });
+    },
+    onError: () => {
+      // Rollback any optimistic UI by refetching
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket"] });
     },
   });
 }
