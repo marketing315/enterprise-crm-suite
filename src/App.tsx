@@ -241,6 +241,7 @@ const App = () => (
                     <Route path="/admin/sheets-health" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSheetsHealth /></RoleGuard>} />
                     <Route path="/admin/sessions" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSessions /></RoleGuard>} />
                     <Route path="/admin/slow-queries" element={<RoleGuard allowedRoles={['admin']}><AdminSlowQueries /></RoleGuard>} />
+                    <Route path="/admin/changelog" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminChangelog /></RoleGuard>} />
                     <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>
                   
