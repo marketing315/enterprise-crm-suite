@@ -1,75 +1,107 @@
 
-# Piano — Prevenzione "DB pieno" (5 deliverable)
+# Performance hardening — IO/CPU al 100% (DB solo 368 MB, NON è disco)
 
-Obiettivo: rendere strutturalmente impossibile il ripetersi dell'incidente del 7 maggio. Lavoro **infrastrutturale**, zero tocchi a tabelle business (audit_events, lead_events, contacts, deals, appointments, tickets, ad_*, slo_measurements, ai_decision_logs sono governati da compliance/prodotto e restano fuori da questo lavoro).
+## Diagnosi misurata (pg_stat_statements ultimo periodo)
 
-Stato già esistente: `db_size_history` + 3 cron retention (`cleanup-cron-job-run-details` 30g, `cleanup-pg-net-responses` 7g, `track-db-growth` daily) sono **già attivi** dal cleanup precedente — questo piano li integra con guard rail e alerting.
+| # | Hot spot | Costo | Causa |
+|---|----------|-------|-------|
+| 1 | **Realtime WAL decode** `SELECT wal->>...` | **45.7% CPU totale**, 13.4M call, 32 GB shared hit | 34 tabelle pubblicate su `supabase_realtime` (alcune con scritture massicce: `lead_events`, `deal_stage_history`, `ticket_audit_logs`, `automation_jobs`, `chat_messages`) |
+| 2 | DELETE retention `net._http_response` (batch 50k) | **18.7%**, 2.3M call, 4.7 GB hit | il cron `cleanup-pg-net-responses` gira in loop molto stretto |
+| 3 | `process-email-queue` cron | **14.170 run/24h** (1 ogni 5s!), 651 KO/giorno | schedule troppo aggressivo, costoso (vault decrypt ad ogni run) |
+| 4 | `ad_sync_log` query | 94 ms medi, 16.633 call, **138M tuple seq-scan** | indice mancante su `(provider, account_id, sync_to)` — solo PK presente |
+| 5 | 9 dispatcher cron `* * * * *` via `cron-relay` | 9 × 1436 run/giorno = **~13k run/giorno** | tutti partono allo stesso minuto → spike CPU |
+| 6 | `record_slo_snapshot()` ogni 5 min | 324 ms medi × 2.501 call = 13 min CPU/giorno | costoso, refresh-rate eccessivo |
+| 7 | `admin_purge_cron_job_run_details` | 30 sec medi × 118 run = 38M block read | cleanup non incrementale |
 
-## Deliverable 1 — Linter CI `check-retention-policy`
+## Piano (4 deliverable, tutti reversibili, zero perdita dati)
 
-- Crea `scripts/ci/check-retention-policy.mjs` come da prompt: scansiona le migration modificate nella PR, blocca CREATE TABLE log-pattern (`_log/_logs/_events/_history/_audit/_runs/_jobs/_requests/_responses/_stats/_metrics/_queue/_dlq/_dispatches/_deliveries/_changes/_relay/_attempts/_executions/_telemetry/_measurements/_traces`) senza retention dichiarata. Pattern accettati: commento `-- retention: N giorni`, `cron.schedule`, `PARTITION BY`, `pg_partman`, oppure escape `-- @no-retention-needed: <motivazione>`. Check secondario: se ha colonna timestamp, deve avere indice su quella colonna.
-- Crea test in `scripts/ci/__tests__/check-retention-policy.test.mjs` (3 fixture: log senza retention → fail; log + cron → pass; tabella business → pass; `@no-retention-needed` → pass).
-- Aggiunge step in `.github/workflows/code-hygiene.yml` che lancia il linter sui file `supabase/migrations/*.sql` modificati rispetto a origin/main.
+### D1 — Sgrassa realtime publication (impatto stimato: -35% CPU)
 
-## Deliverable 2 — Monitor + alerting
+Tolgo dalla publication `supabase_realtime` le tabelle che non hanno UI live (sono ad alta scrittura ma nessun client le ascolta):
 
-- **`db_size_history` esiste già** (creata in cleanup precedente). Nuova migration aggiunge:
-  - colonne `wal_bytes bigint`, `inactive_replication_slots jsonb` (additive, nullable+default).
-  - aggiorna il cron `track-db-growth` per popolare anche queste due colonne (via `cron.unschedule` + `cron.schedule` re-issue, idempotente).
-  - cron `cleanup-db-size-history` (30 4 * * *, retention 90gg).
-  - VIEW `v_db_growth_alerts` con severity CRITICAL >6 GB, WARNING crescita >1 GB/giorno (soglia adatta al piano 8 GB Supabase).
-- Edge function `db-growth-alert` (cron orario): legge la view, se ci sono righe CRITICAL/WARNING invia notifica via `notification-webhook-dispatcher` esistente (pattern `slo-breach-checker`). Schedulata via `supabase--insert` cron (NON migration, contiene URL/anon key).
+- `lead_events` — append-only, alto volume
+- `deal_stage_history`, `deal_stage_transitions` — usate solo in viste audit
+- `ticket_audit_logs` — letti via query on-demand, no live
+- `ticket_comments` — pollati solo all'apertura ticket
+- `automation_jobs`, `sales_order_items` — nessun listener UI
+- `chat_message_reads`, `thread_read_state` — già aggregati nel hook
+- `system_settings`, `pipeline_stages`, `tags`, `tag_assignments` — quasi mai cambiano
+- `marketing_campaigns`, `marketing_costs`, `budgets`, `expenses` — letti via TanStack Query con invalidate
+- `incoming_calls`, `call_transcripts` — usano già hook dedicato non-realtime
 
-## Deliverable 3 — Audit retroattivo (run-once + tabella ticket)
+**Mantengo realtime su**: `appointments`, `contacts`, `deals`, `tickets`, `chat_messages`, `notifications`, `action_suggestions`, `admin_todos`, `payments`, `ai_call_action_proposals`, `webhook_inbound_events`, `contact_phones`, `products`, `sales_orders`, `call_logs`, `automation_jobs` (resta perché dispatch UI lo usa). 
 
-Audit eseguito ora su ralphloop. Risultato: 5 tabelle critiche da prioritizzare (le rimanenti sono < 200 KB e governate dalla compliance — passa per il policy doc, non per cron).
+Migration `ALTER PUBLICATION supabase_realtime DROP TABLE ...` (idempotente, reversibile).
 
-| Tabella | Size | Decisione proposta |
-|---|---|---|
-| `mcp_resource_changes` | 8 MB | retention 30g via cron |
-| `incoming_requests` | 2.4 MB | retention 14g via cron |
-| `slo_measurements` | 2 MB | governance prodotto → esente con motivazione |
-| `sheets_export_logs` | 432 KB | retention 30g via cron |
-| `cron_run_log` | 104 KB | retention 30g via cron |
-| `meta_capi_event_queue` | 520 KB | review separata (queue, non solo append-only) |
+### D2 — Throttle cron iperattivi (impatto stimato: -25% CPU)
 
-Migration nuova `<ts>_retention_phase1.sql`: aggiunge 4 cron (`cleanup-mcp-resource-changes`, `cleanup-incoming-requests`, `cleanup-sheets-export-logs`, `cleanup-cron-run-log`) registrati in `cron_job_registry` con `auto_recreate_sql`.
+| Cron | Da | A | Motivo |
+|------|----|----|--------|
+| `process-email-queue` | 5 secondi | **30 secondi** | KO 4.6%, retry esiste; latenza accettabile per email |
+| `cleanup-pg-net-responses` | continuo (2.3M call) | **batch 10k, una volta/15min** | retention basta giornaliera, batch più piccoli |
+| `ai-classify-processor` | `* * * * *` | **`*/2 * * * *`** | run vuote nell'80% dei casi |
+| `notification-webhook-dispatcher-1min` | `* * * * *` | **`* * * * *`** stagger +30s | Resta minutely ma stagger per evitare spike |
+| `slo-snapshot-every-5min` | `*/5` | **`*/15 * * * *`** | snapshot SLO non serve così denso |
+| `record_slo_snapshot()` | inline RPC | aggiunto LIMIT + materializzazione |
+| `mcp-slo-evaluator` | `*/5` | **`*/10 * * * *`** | |
+| `cron-health-monitor-5min` | `*/5` | **`*/10 * * * *`** | |
+| `refresh-anomaly-baselines` | daily ok | invariato | |
 
-Le restanti tabelle log-pattern (audit_events, ad_*, ai_decision_logs, lead_events, ticket_audit_logs, ecc.) **NON vengono toccate** — vengono solo dichiarate in `docs/db-retention-policy.md` come "esenti / governate da compliance" con motivazione.
+Stagger gli 8 dispatcher minutely (offset minuti diversi via `* * * * *` → `0,15,30,45 * * * *` per i meno critici).
 
-## Deliverable 4 — ADR + policy doc
+Tutti applicabili via `supabase--insert` (cron.unschedule + cron.schedule).
 
-- `docs/decisions/ADR-001-retention-mandatory.md` — testo del prompt (Status: Accepted 2026-05-07, Trigger: incident 7 maggio).
-- `docs/db-retention-policy.md` — tabella retention attive (incluse le 3 + 4 nuove), procedura per nuove tabelle accumulative, esempi di migration corrette, lista esenti con motivazione (audit/compliance/business).
-- Link da `docs/decisions.md` (se esiste) o crea index minimale.
+### D3 — Indici mancanti (impatto stimato: -10% CPU, query 100x)
 
-## Deliverable 5 — Cadenza operativa
+Migration:
 
-- Aggiungi sezione "Capacity & retention" a `docs/admin-runbook.md`:
-  - Mensile: capacity review (15 min) — link `db_size_history`, verifica cron attivi, alert pendenza > 5%/mese.
-  - Trimestrale: retention audit (30 min) — query Deliverable 3 + decisione su NO CLEANUP nuovi.
-  - Annuale: DR drill "disco pieno 5 minuti" → nuovo file `docs/dr/04-disk-full.md`.
+```sql
+-- ad_sync_log: oggi 138M tuple lette in seq-scan
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ad_sync_log_provider_account_to
+  ON public.ad_sync_log(provider, account_id, sync_to DESC);
 
-## Cosa NON faccio (vincoli del prompt)
+-- ai_jobs: 21M tuple lette
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ai_jobs_status_created
+  ON public.ai_jobs(status, created_at) WHERE status IN ('pending','processing');
 
-- Nessun DELETE/cleanup retroattivo su tabelle business (audit_events, lead_events, ad_*, slo_measurements, ai_*, mcp_*, ticket_audit_logs).
-- Nessuna nuova dipendenza SaaS (no Datadog/PagerDuty): l'allerta passa per dispatcher interno.
-- Cron applicativi esistenti invariati.
-- Tutte le migration idempotenti (`IF NOT EXISTS`, `cron.unschedule` prima di `cron.schedule`).
+-- contacts: 1.4M tuple seq-scan (già ha brand_id idx ma manca composito)
+-- Verifico prima esistenza indici, aggiungo solo se manca
+```
+
+Tutti `CREATE INDEX CONCURRENTLY` → zero downtime, niente lock.
+
+### D4 — VACUUM ANALYZE settimanale (impatto: stabilità planner)
+
+Cron settimanale `vacuum-analyze-hot-tables` (domenica notte):
+```sql
+VACUUM (ANALYZE) public.contacts, public.deals, public.appointments, 
+                 public.tickets, public.lead_events, public.ad_sync_log;
+```
+
+Niente FULL → niente lock.
+
+## Cose che NON faccio (vincoli safety)
+
+- **NO DROP table/colonna** business
+- **NO** modifiche RLS / policies
+- **NO** modifiche schema business — solo indici additivi e publication
+- **NO** rimozione cron core (compliance/SLO/backup restano)
+- **NO** VACUUM FULL (lock + tu hai detto solo VACUUM)
+- Tutte le modifiche reversibili in 1 migration di rollback se necessario
 
 ## Definition of Done
 
-- [ ] Linter `check-retention-policy.mjs` + test + step in code-hygiene.yml — verifica con migration sbagliata di prova
-- [ ] `db_size_history` esteso (wal_bytes, slots) + view `v_db_growth_alerts` + cleanup 90gg
-- [ ] Edge function `db-growth-alert` deployata + cron orario + test manuale notifica
-- [ ] 4 nuovi cron retention attivi (mcp_resource_changes, incoming_requests, sheets_export_logs, cron_run_log) + registry
-- [ ] ADR-001 + `db-retention-policy.md` + sezione runbook + DR drill 04-disk-full
-- [ ] Memoria aggiornata (`mem://features/db-retention-cleanup` integrata)
+- [ ] D1: publication ridotta da 34 → ~16 tabelle, verificato che nessun hook frontend ascolta quelle rimosse (grep `supabase.channel` su src/)
+- [ ] D2: 7 cron riconfigurati, registry aggiornato, monitorato 30 min post-change
+- [ ] D3: 2-3 indici creati con CONCURRENTLY, verificato `idx_scan` cresce su `ad_sync_log`
+- [ ] D4: cron VACUUM settimanale registrato
+- [ ] Misurazione: snapshot `pg_stat_statements` prima/dopo (reset + 30 min finestra)
+- [ ] Memory `db-retention-cleanup` aggiornata con sezione "Performance tuning maggio 2026"
 
 ## Domande per te
 
-1. **Soglia CRITICAL**: confermi 6 GB su 8 GB plan (75%), o vuoi più aggressiva 5 GB (62%)?
-2. **Edge function notifica**: usa il dispatcher esistente generico, oppure preferisci un canale dedicato (es. nuova entry in `notification_channels` per "infra-alerts")?
-3. **Le 4 retention proposte (mcp_resource_changes 30g, incoming_requests 14g, sheets_export_logs 30g, cron_run_log 30g)** ti vanno bene così o vuoi rivedere durate?
+1. **Realtime D1**: confermo la lista mantenuta vs rimossa, oppure vuoi che faccia un grep esaustivo su `src/hooks/use*Realtime*` e `useGlobalRealtime` prima per essere sicuri al 100% che nessun hook si rompa? (consigliato — aggiunge 5 min al lavoro)
+2. **`process-email-queue` 5s → 30s**: ok o lo vuoi a 15s? (5s è eccessivo per email)
+3. **VACUUM settimanale (D4)**: ok la domenica 03:00 UTC, o preferisci un altro orario?
 
-Confermi e procedo, oppure aggiusto prima.
+Confermi e procedo.
