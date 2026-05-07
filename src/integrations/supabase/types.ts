@@ -11256,6 +11256,10 @@ export type Database = {
         }
         Returns: string
       }
+      _md_authorized_brand_ids: {
+        Args: { p_brand_ids: string[] }
+        Returns: string[]
+      }
       _oneshot_cleanup_system_logs: { Args: never; Returns: undefined }
       acquire_cron_lease: {
         Args: {
@@ -12531,6 +12535,21 @@ export type Database = {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
       }
+      get_email_campaign_kpis: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          bounced: number
+          click_rate: number
+          clicked: number
+          delivered: number
+          failed: number
+          open_rate: number
+          opened: number
+          sent: number
+          template_name: string
+          unsubscribed: number
+        }[]
+      }
       get_funnel_breakdown: {
         Args: {
           p_brand_id: string
@@ -12561,9 +12580,40 @@ export type Database = {
         }
         Returns: Json
       }
+      get_funnel_overview: {
+        Args: {
+          p_brand_ids: string[]
+          p_from: string
+          p_sources?: string[]
+          p_to: string
+        }
+        Returns: {
+          conversion_from_prev: number
+          drop_off_pct: number
+          metric_count: number
+          metric_value: number
+          stage_id: string
+          stage_label: string
+          stage_order: number
+        }[]
+      }
       get_lead_source_analytics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
+      }
+      get_leads_by_source_day: {
+        Args: {
+          p_brand_ids: string[]
+          p_from: string
+          p_granularity?: string
+          p_to: string
+        }
+        Returns: {
+          bucket: string
+          lead_count: number
+          source: string
+          source_total: number
+        }[]
       }
       get_marketing_campaign_kpis: {
         Args: {
@@ -12739,6 +12789,19 @@ export type Database = {
       get_pipeline_funnel_analytics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
+      }
+      get_portfolio_kpis: {
+        Args: { p_brand_ids: string[]; p_from: string; p_to: string }
+        Returns: {
+          brand_id: string
+          brand_name: string
+          cpl: number
+          deals_won: number
+          leads: number
+          revenue: number
+          roas: number
+          spend: number
+        }[]
       }
       get_revenue_by_payment_method: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
