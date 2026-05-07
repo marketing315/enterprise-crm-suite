@@ -169,6 +169,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         email: contact.email || '',
         city: contact.city || '',
         cap: contact.cap || '',
+        province: (contact as { province?: string | null }).province || '',
         address: contact.address || '',
         notes: contact.notes || '',
         status: contact.status || 'new',
