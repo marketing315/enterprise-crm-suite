@@ -201,19 +201,18 @@ Deno.serve(async (req) => {
     // Reuse existing unused token
     unsubscribeToken = existingToken.token
   } else if (!existingToken) {
-    // Create new token — upsert handles concurrent inserts gracefully
-    unsubscribeToken = generateToken()
-    const { error: tokenError } = await supabase
+    // Bug #6 (ALTA - send-transactional-email): l'upsert con ignoreDuplicates=true
+    // ritornava SILENZIOSAMENTE 0 righe in caso di race; il codice usava poi un
+    // token mai persistito → il link unsubscribe nell'email non era valido.
+    // Strategia corretta: insert "best effort" e SEMPRE re-read del valore canonico.
+    const candidateToken = generateToken()
+    const { error: insertError } = await supabase
       .from('email_unsubscribe_tokens')
-      .upsert(
-        { token: unsubscribeToken, email: normalizedEmail },
-        { onConflict: 'email', ignoreDuplicates: true }
-      )
+      .insert({ token: candidateToken, email: normalizedEmail })
 
-    if (tokenError) {
-      console.error('Failed to create unsubscribe token', {
-        error: tokenError,
-      })
+    // 23505 = unique_violation: un'altra request ha vinto la corsa, va bene.
+    if (insertError && insertError.code !== '23505') {
+      console.error('Failed to create unsubscribe token', { error: insertError })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
         template_name: templateName,
@@ -223,15 +222,11 @@ Deno.serve(async (req) => {
       })
       return new Response(
         JSON.stringify({ error: 'Failed to prepare email' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // If another request raced us, our upsert was silently ignored.
-    // Re-read to get the actual stored token.
+    // Re-read canonical token (vincitore della race se 23505, altrimenti il nostro)
     const { data: storedToken, error: reReadError } = await supabase
       .from('email_unsubscribe_tokens')
       .select('token')
@@ -239,7 +234,7 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (reReadError || !storedToken) {
-      console.error('Failed to read back unsubscribe token after upsert', {
+      console.error('Failed to read back unsubscribe token after insert', {
         error: reReadError,
         email: normalizedEmail,
       })

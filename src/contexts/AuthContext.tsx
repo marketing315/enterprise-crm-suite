@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { purgeSupabaseBrowserCaches } from '@/lib/auth-cache-purge';
@@ -344,33 +344,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch { /* no-op */ }
   };
 
-  const hasRole = (role: AppRole, brandId?: string): boolean => {
+  const hasRole = useCallback((role: AppRole, brandId?: string): boolean => {
     if (brandId) {
       return userRoles.some(r => r.role === role && r.brand_id === brandId);
     }
     return userRoles.some(r => r.role === role);
-  };
+  }, [userRoles]);
 
-  const isAdmin = hasRole('admin');
-  const isCeo = hasRole('ceo');
+  const isAdmin = useMemo(() => userRoles.some(r => r.role === 'admin'), [userRoles]);
+  const isCeo = useMemo(() => userRoles.some(r => r.role === 'ceo'), [userRoles]);
+
+  // Bug #9 (ALTA): context value memoizzato → evita re-render globali ad ogni render del provider.
+  const contextValue = useMemo(
+    () => ({
+      session,
+      user,
+      supabaseUser,
+      userRoles,
+      isLoading,
+      isRealtimeReady,
+      signIn,
+      signUp,
+      signOut,
+      hasRole,
+      isAdmin,
+      isCeo,
+    }),
+    [session, user, supabaseUser, userRoles, isLoading, isRealtimeReady, hasRole, isAdmin, isCeo],
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user,
-        supabaseUser,
-        userRoles,
-        isLoading,
-        isRealtimeReady,
-        signIn,
-        signUp,
-        signOut,
-        hasRole,
-        isAdmin,
-        isCeo,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

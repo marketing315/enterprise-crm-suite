@@ -18,6 +18,7 @@ import {
   useDecideProposal,
   CallActionType,
 } from "@/hooks/useCallActionProposals";
+import { toast } from "sonner";
 import { useBrand } from "@/contexts/BrandContext";
 import { cn } from "@/lib/utils";
 
@@ -132,8 +133,9 @@ export function CallActionProposalCard({ proposal }: CallActionProposalCardProps
         editedChanges: parsed,
       });
       setEditMode(false);
-    } catch {
-      // invalid json, user will see syntax error
+    } catch (e) {
+      // Bug #1 (ALTA): mostra esplicitamente l'errore, prima il fallimento era silenzioso.
+      toast.error(`JSON non valido: ${e instanceof Error ? e.message : "errore di parsing"}`);
     }
   };
 

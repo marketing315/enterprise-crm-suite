@@ -110,6 +110,8 @@ export function QuickSaleDialog({ open, onOpenChange, onSuccess }: QuickSaleDial
   const resetDialog = useCallback(() => {
     setStep("upload");
     setIsProcessing(false);
+    setIsSaving(false); // Bug #10 (MEDIA): reset isSaving — altrimenti dopo errore+riapertura il pulsante resta disabilitato
+    submitInFlightRef.current = false;
     setPreviewUrl(null);
     setParsedData(null);
     setPlanErrors([]);
