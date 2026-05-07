@@ -17,6 +17,7 @@ import { CeoBudgetPanel } from '@/components/ceo/CeoBudgetPanel';
 import { CeoAlertsPanel } from '@/components/ceo/CeoAlertsPanel';
 import { BudgetBaselineCard } from '@/components/ceo/BudgetBaselineCard';
 import { CeoCostBreakdown } from '@/components/ceo/CeoCostBreakdown';
+import { CeoCalcVersionBanner } from '@/components/ceo/CeoCalcVersionBanner';
 
 export default function CeoDashboardView() {
   const { isAdmin, isCeo } = useAuth();
