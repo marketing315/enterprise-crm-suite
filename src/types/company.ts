@@ -241,4 +241,7 @@ export interface CeoKpi {
   
   // Budget baseline
   budget_baseline: BudgetBaseline;
+
+  // Calc version (when KPI logic was last updated)
+  calc_version?: string;
 }
