@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, subDays, differenceInDays, subMilliseconds } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,15 @@ import { useMarketingSummaryKpis, useMarketingChannelKpis } from "@/hooks/useMar
 import { useAdPlatformStatsSummary } from "@/hooks/useAdPlatformStats";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { useFunnelOverview } from "@/hooks/useFunnelOverview";
+import { useFunnelOverviewCompare } from "@/hooks/useFunnelOverviewCompare";
 import { useLeadsBySourceDay, type LeadHistogramGranularity } from "@/hooks/useLeadsBySourceDay";
 import { useEmailCampaignKpis } from "@/hooks/useEmailCampaignKpis";
 import { usePortfolioKpis } from "@/hooks/usePortfolioKpis";
 import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
 import { FunnelCrossStage } from "@/components/marketing/FunnelCrossStage";
+import { FunnelStageDrillPanel } from "@/components/marketing/FunnelStageDrillPanel";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { LeadsHistogram } from "@/components/marketing/LeadsHistogram";
 import { EmailCampaignsCard } from "@/components/marketing/EmailCampaignsCard";
 import { AutomationDonut } from "@/components/marketing/AutomationDonut";
@@ -89,7 +93,27 @@ export default function MarketingDashboard() {
   // New cross-stage funnel + histogram + email + portfolio
   const fromIso = useMemo(() => funnelFrom.toISOString(), [funnelFrom]);
   const toIso = useMemo(() => funnelTo.toISOString(), [funnelTo]);
+
+  // Comparison toggle (vs previous period of same length)
+  const [showCompare, setShowCompare] = useState(false);
+  const { compareFromIso, compareToIso } = useMemo(() => {
+    if (!showCompare) return { compareFromIso: null as string | null, compareToIso: null as string | null };
+    const days = Math.max(1, differenceInDays(funnelTo, funnelFrom) + 1);
+    const cTo = subMilliseconds(funnelFrom, 1);
+    const cFrom = subDays(cTo, days - 1);
+    return { compareFromIso: cFrom.toISOString(), compareToIso: cTo.toISOString() };
+  }, [showCompare, funnelFrom, funnelTo]);
+
   const { data: funnelOverview, isLoading: funnelOvLoading } = useFunnelOverview(fromIso, toIso);
+  const { data: funnelCompare, isLoading: funnelCmpLoading } = useFunnelOverviewCompare(
+    fromIso,
+    toIso,
+    compareFromIso,
+    compareToIso
+  );
+
+  // Drill panel state
+  const [drillStage, setDrillStage] = useState<{ id: string; label: string } | null>(null);
 
   const [histGranularity, setHistGranularity] = useState<LeadHistogramGranularity>("day");
   const { data: histData, isLoading: histLoading } = useLeadsBySourceDay(fromIso, toIso, histGranularity);
@@ -234,6 +258,12 @@ export default function MarketingDashboard() {
             <Button variant="outline" size="sm" onClick={() => handlePreset(30)}>30gg</Button>
             <Button variant="outline" size="sm" onClick={() => handlePreset(90)}>90gg</Button>
             <Button variant="outline" size="sm" onClick={handleThisMonth}>Mese</Button>
+            <div className="ml-auto flex items-center gap-2">
+              <Switch id="compare-toggle" checked={showCompare} onCheckedChange={setShowCompare} />
+              <Label htmlFor="compare-toggle" className="text-sm cursor-pointer">
+                vs periodo precedente
+              </Label>
+            </div>
           </div>
 
           {/* KPI Cards (with ADV metrics integrated) */}
@@ -245,7 +275,12 @@ export default function MarketingDashboard() {
           />
 
           {/* Cross-stage end-to-end funnel */}
-          <FunnelCrossStage stages={funnelOverview} isLoading={funnelOvLoading} />
+          <FunnelCrossStage
+            stages={showCompare ? funnelCompare : funnelOverview}
+            isLoading={showCompare ? funnelCmpLoading : funnelOvLoading}
+            showCompare={showCompare}
+            onStageClick={(id, label) => setDrillStage({ id, label })}
+          />
 
           {/* Stacked histogram leads-by-source */}
           <LeadsHistogram
@@ -410,6 +445,15 @@ export default function MarketingDashboard() {
           <AutomationDonut fromIso={fromIso} toIso={toIso} />
         </TabsContent>
       </Tabs>
+
+      <FunnelStageDrillPanel
+        stageId={drillStage?.id ?? null}
+        stageLabel={drillStage?.label ?? null}
+        fromIso={fromIso}
+        toIso={toIso}
+        open={!!drillStage}
+        onOpenChange={(o) => !o && setDrillStage(null)}
+      />
     </div>
   );
 }

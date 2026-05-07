@@ -1,11 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingDown, Megaphone, Users, CalendarCheck, Trophy, Banknote } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, Megaphone, Users, CalendarCheck, Trophy, Banknote } from "lucide-react";
 import type { FunnelOverviewStage } from "@/hooks/useFunnelOverview";
 
+interface StageWithCompare extends FunnelOverviewStage {
+  delta_pct?: number | null;
+  prev_metric_value?: number;
+  prev_metric_count?: number;
+}
+
 interface Props {
-  stages: FunnelOverviewStage[] | undefined;
+  stages: StageWithCompare[] | undefined;
   isLoading: boolean;
+  onStageClick?: (stageId: string, stageLabel: string) => void;
+  showCompare?: boolean;
 }
 
 const STAGE_VISUAL: Record<string, { icon: typeof Megaphone; color: string; bg: string }> = {
@@ -25,7 +33,7 @@ function fmtMoney(v: number): string {
   return `€${fmtNum(v)}`;
 }
 
-export function FunnelCrossStage({ stages, isLoading }: Props) {
+export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare }: Props) {
   if (isLoading) {
     return (
       <Card className="border-0 shadow-sm">
@@ -101,13 +109,24 @@ export function FunnelCrossStage({ stages, isLoading }: Props) {
                     )}
                   </div>
                 )}
-                <div className="flex flex-col items-center gap-1.5 flex-1 min-w-[88px]">
+                <div
+                  className={`flex flex-col items-center gap-1.5 flex-1 min-w-[88px] rounded-lg p-2 -m-2 transition-colors ${onStageClick ? "cursor-pointer hover:bg-muted/40" : ""}`}
+                  onClick={onStageClick ? () => onStageClick(stage.stage_id, stage.stage_label) : undefined}
+                  role={onStageClick ? "button" : undefined}
+                  tabIndex={onStageClick ? 0 : undefined}
+                >
                   <div className={`w-full rounded-t-lg ${v.bg} transition-all duration-500`} style={{ height: `${h}px` }} />
                   <span className={`text-base font-bold ${v.color}`}>{display}</span>
                   <div className="flex items-center gap-1">
                     <Icon className={`h-3.5 w-3.5 ${v.color}`} />
                     <span className="text-xs text-muted-foreground">{stage.stage_label}</span>
                   </div>
+                  {showCompare && stage.delta_pct != null && (
+                    <span className={`text-[11px] font-medium flex items-center gap-0.5 ${stage.delta_pct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
+                      {stage.delta_pct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {stage.delta_pct >= 0 ? "+" : ""}{stage.delta_pct.toFixed(1)}%
+                    </span>
+                  )}
                 </div>
               </div>
             );
