@@ -79,17 +79,26 @@ async function sha256(data: Uint8Array): Promise<string> {
 
 function shouldRunNow(s: any, now: Date): boolean {
   if (!s.enabled) return false;
-  if (s.hour_utc !== now.getUTCHours()) return false;
-  if (s.frequency === "weekly") {
-    const dow = s.day_of_week ?? 0;
-    if (dow !== now.getUTCDay()) return false;
-  }
-  // Dedup: non rieseguire se già lanciato nelle ultime 23h
+
+  // Dedup: mai più di un run ogni 23h per la stessa schedule
   if (s.last_run_at) {
     const last = new Date(s.last_run_at).getTime();
     if (now.getTime() - last < 23 * 3600 * 1000) return false;
   }
-  return true;
+
+  const hour = now.getUTCHours();
+  const targetHour = s.hour_utc ?? 0;
+
+  if (s.frequency === "weekly") {
+    const dow = s.day_of_week ?? 0;
+    // Run nella finestra corretta o in catch-up nello stesso giorno
+    if (dow !== now.getUTCDay()) return false;
+    return hour >= targetHour;
+  }
+
+  // daily: finestra esatta o catch-up entro la stessa giornata UTC
+  // (il dedup 23h evita doppi run; se ieri è stato saltato, parte oggi alla prima ora >= targetHour)
+  return hour >= targetHour;
 }
 
 async function runBackupForBrand(
