@@ -31,9 +31,10 @@ const LOG_PATTERN_SUFFIX = [
 const RETENTION_DECLARATION_RE = [
   /--\s*retention\s*:/i,
   /pg_cron|cron\.schedule/i,
-  /create\s+.*partition/i,
+  /partition\s+by\s+range/i,
   /pg_partman/i,
-  /--\s*@no-retention-needed\s*:\s*\S/i, // richiede motivazione (almeno un char dopo i due punti)
+  // Escape: stessa riga, almeno un char non-spazio dopo i due punti
+  /--\s*@no-retention-needed\s*:[^\n\r]*\S/i,
 ];
 
 function checkSql(file, sql) {
