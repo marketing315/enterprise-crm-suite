@@ -9,6 +9,7 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePipelineStages, useDeals, useUpdateDealStage, type DealWithBrand } from "@/hooks/usePipeline";
 import { recordKanbanTransition } from "@/hooks/useKanbanTransitionAudit";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
@@ -41,6 +42,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   const dealIds = useMemo(() => (deals || []).map((d) => d.id), [deals]);
   const { data: tagsMap } = useBatchEntityTags("deal", dealIds);
   const updateStage = useUpdateDealStage();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const canEditDeals = useCanEditDeals();
   
@@ -136,9 +138,10 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
     const fromStageLabel = stages?.find((s) => s.id === fromStageId)?.name || null;
     const toStageLabel = stages?.find((s) => s.id === newStageId)?.name || "";
 
-    // Optimistic update - pass the deal's brand_id for proper update
+    // Sprint 4a: optimistic concurrency — pass current version; on STALE_DEAL roll back via refetch
+    const expectedVersion = (deal as unknown as { version?: number | null }).version ?? null;
     updateStage.mutate(
-      { dealId, stageId: newStageId, dealBrandId: deal.brand_id },
+      { dealId, stageId: newStageId, dealBrandId: deal.brand_id, expectedVersion },
       {
         onSuccess: () => {
           toast.success(`Deal spostato in "${toStageLabel}"`);
@@ -152,9 +155,15 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
             toStageLabel,
           });
         },
-        onError: (error) => {
+        onError: (error: Error) => {
           console.error("Stage update error:", error);
-          toast.error("Errore nello spostamento del deal");
+          if (error.message === "STALE_DEAL") {
+            toast.error("Il deal è stato modificato da un altro utente. Aggiorno la vista.");
+          } else {
+            toast.error("Errore nello spostamento del deal");
+          }
+          // Rollback optimistic UI by invalidating cache
+          queryClient.invalidateQueries({ queryKey: ["deals"] });
         },
       }
     );

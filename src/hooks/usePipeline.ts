@@ -169,23 +169,37 @@ export function useDeals(status?: DealStatus, filterTagIds?: string[]) {
   });
 }
 
+/**
+ * Sprint 4a: kanban move via `move_deal_stage` RPC with optimistic version check.
+ * Server raises 'STALE_DEAL' (SQLSTATE 40001) when expected_version mismatches → caller rolls back.
+ */
 export function useUpdateDealStage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ dealId, stageId, dealBrandId }: { dealId: string; stageId: string; dealBrandId?: string }) => {
-      // Use dealBrandId if provided (for global view), otherwise update without brand filter
-      let query = untypedClient
-        .from("deals")
-        .update({ current_stage_id: stageId })
-        .eq("id", dealId);
-
-      if (dealBrandId) {
-        query = query.eq("brand_id", dealBrandId);
+    mutationFn: async ({
+      dealId,
+      stageId,
+      expectedVersion,
+    }: {
+      dealId: string;
+      stageId: string;
+      dealBrandId?: string;
+      expectedVersion?: number | null;
+    }) => {
+      const { data, error } = await untypedClient.rpc("move_deal_stage", {
+        p_deal_id: dealId,
+        p_stage_id: stageId,
+        p_expected_version: expectedVersion ?? null,
+      });
+      if (error) {
+        const msg = error.message || "";
+        if (msg.includes("STALE_DEAL")) {
+          throw new Error("STALE_DEAL");
+        }
+        throw error;
       }
-
-      const { error } = await query;
-      if (error) throw error;
+      return Array.isArray(data) ? data[0] : data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });

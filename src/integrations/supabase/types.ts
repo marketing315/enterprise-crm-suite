@@ -13377,6 +13377,18 @@ export type Database = {
         Args: { p_id: string; p_value: string }
         Returns: string
       }
+      move_deal_stage: {
+        Args: {
+          p_deal_id: string
+          p_expected_version?: number
+          p_stage_id: string
+        }
+        Returns: {
+          deal_id: string
+          new_stage_id: string
+          new_version: number
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
