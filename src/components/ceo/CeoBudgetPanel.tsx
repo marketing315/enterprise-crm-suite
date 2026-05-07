@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/formatKpi';
+import { ConfirmDeleteButton } from '@/components/shared/ConfirmDeleteButton';
 import { useBudgets, useCreateBudget, useDeleteBudget, useExpenseCategories, useHasFinanceAccess } from '@/hooks/useCompanyFinance';
 
 interface CeoBudgetPanelProps {
