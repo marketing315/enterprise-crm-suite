@@ -93,7 +93,27 @@ export default function MarketingDashboard() {
   // New cross-stage funnel + histogram + email + portfolio
   const fromIso = useMemo(() => funnelFrom.toISOString(), [funnelFrom]);
   const toIso = useMemo(() => funnelTo.toISOString(), [funnelTo]);
+
+  // Comparison toggle (vs previous period of same length)
+  const [showCompare, setShowCompare] = useState(false);
+  const { compareFromIso, compareToIso } = useMemo(() => {
+    if (!showCompare) return { compareFromIso: null as string | null, compareToIso: null as string | null };
+    const days = Math.max(1, differenceInDays(funnelTo, funnelFrom) + 1);
+    const cTo = subMilliseconds(funnelFrom, 1);
+    const cFrom = subDays(cTo, days - 1);
+    return { compareFromIso: cFrom.toISOString(), compareToIso: cTo.toISOString() };
+  }, [showCompare, funnelFrom, funnelTo]);
+
   const { data: funnelOverview, isLoading: funnelOvLoading } = useFunnelOverview(fromIso, toIso);
+  const { data: funnelCompare, isLoading: funnelCmpLoading } = useFunnelOverviewCompare(
+    fromIso,
+    toIso,
+    compareFromIso,
+    compareToIso
+  );
+
+  // Drill panel state
+  const [drillStage, setDrillStage] = useState<{ id: string; label: string } | null>(null);
 
   const [histGranularity, setHistGranularity] = useState<LeadHistogramGranularity>("day");
   const { data: histData, isLoading: histLoading } = useLeadsBySourceDay(fromIso, toIso, histGranularity);
