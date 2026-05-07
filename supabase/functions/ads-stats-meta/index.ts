@@ -42,6 +42,21 @@ interface MetaAdInsight {
   date_stop: string;
 }
 
+interface MetaAdsetInsight {
+  campaign_id: string;
+  campaign_name: string;
+  adset_id: string;
+  adset_name: string;
+  spend: string;
+  impressions: string;
+  clicks: string;
+  reach?: string;
+  frequency?: string;
+  actions?: Array<{ action_type: string; value: string }>;
+  date_start: string;
+  date_stop: string;
+}
+
 interface MetaDemoInsight {
   campaign_id: string;
   spend: string;
@@ -409,6 +424,85 @@ Deno.serve(async (req) => {
           } else {
             adsUpserted = adStatsToUpsert.length;
           }
+        }
+
+        // ---- ADSET-LEVEL INSIGHTS ----
+        let adsetsUpserted = 0;
+        try {
+          let allAdsetInsights: MetaAdsetInsight[] = [];
+          let adsetUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
+          adsetUrl += `fields=campaign_id,campaign_name,adset_id,adset_name,spend,impressions,clicks,reach,frequency,actions`;
+          adsetUrl += `&level=adset&time_increment=1`;
+          if (datePreset) {
+            adsetUrl += `&date_preset=${datePreset}`;
+          } else if (sinceDate && untilDate) {
+            adsetUrl += `&time_range={"since":"${sinceDate}","until":"${untilDate}"}`;
+          }
+          adsetUrl += `&access_token=${metaApp.access_token}`;
+
+          let adsetCurrentUrl: string | null = adsetUrl;
+          let adsetPageCount = 0;
+          while (adsetCurrentUrl && adsetPageCount < maxPages) {
+            const response = await fetch(adsetCurrentUrl);
+            const data = await response.json() as { data?: MetaAdsetInsight[]; paging?: { next?: string }; error?: { message: string } };
+            if (data.error) {
+              console.warn(`[ads-stats-meta] Adset-level API error for ${accountId}:`, data.error.message);
+              adsetCurrentUrl = null;
+              break;
+            }
+            if (data.data?.length) allAdsetInsights = allAdsetInsights.concat(data.data);
+            adsetCurrentUrl = data.paging?.next || null;
+            adsetPageCount++;
+          }
+
+          if (allAdsetInsights.length > 0) {
+            const adsetStatsToUpsert = allAdsetInsights.map(a => {
+              let conversions: number | null = null;
+              if (a.actions) {
+                const leadAction = a.actions.find(x =>
+                  x.action_type === "lead" || x.action_type === "onsite_conversion.lead_grouped"
+                );
+                if (leadAction) conversions = parseFloat(leadAction.value);
+              }
+              const externalId = `meta:${a.campaign_id}`;
+              const campId = campaignByExternalId.get(externalId)
+                ?? (campaignsByName.get(a.campaign_name)?.length === 1 ? campaignsByName.get(a.campaign_name)![0].id : null);
+              return {
+                brand_id: metaApp.brand_id,
+                campaign_id: campId,
+                platform: "meta",
+                account_id: accountId,
+                external_campaign_id: a.campaign_id,
+                external_campaign_name: a.campaign_name,
+                external_adset_id: a.adset_id,
+                external_adset_name: a.adset_name,
+                stat_date: a.date_start,
+                currency: "EUR",
+                spend: parseFloat(a.spend) || 0,
+                impressions: parseInt(a.impressions) || 0,
+                clicks: parseInt(a.clicks) || 0,
+                reach: parseInt(a.reach || "0") || 0,
+                frequency: parseFloat(a.frequency || "0") || 0,
+                conversions,
+                raw_data: a as unknown as Record<string, unknown>,
+                imported_at: new Date().toISOString(),
+              };
+            });
+
+            const { error: adsetUpsertError } = await supabase
+              .from("ad_platform_adset_stats")
+              .upsert(adsetStatsToUpsert, {
+                onConflict: "brand_id,platform,account_id,external_adset_id,stat_date",
+                ignoreDuplicates: false,
+              });
+            if (adsetUpsertError) {
+              console.error(`Adset upsert error for ${accountId}:`, adsetUpsertError);
+            } else {
+              adsetsUpserted = adsetStatsToUpsert.length;
+            }
+          }
+        } catch (adsetErr) {
+          console.warn(`Adset fetch failed for ${accountId}:`, adsetErr);
         }
 
         // ---- DEMOGRAPHIC BREAKDOWN ----

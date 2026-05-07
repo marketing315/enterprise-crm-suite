@@ -1,63 +1,79 @@
+# Marketing: gruppi inserzioni + attribuzione manuale lead
 
-# MyMed · solo Meta Ads · ultimi 10 giorni (28/04 → 07/05)
-
-## TL;DR
-
-Su Meta MyMed, **negli ultimi 10 giorni hai bruciato di più (+9 % spend) per raggiungere più persone (+34 % reach), ma il pubblico clicca meno (CTR -32 %) e i lead Meta diretti sono crollati da 8 a 2/giorno (-75 %)**. È un classico **affaticamento creativo + saturazione audience** su un'unica campagna.
+Due interventi separati, entrambi su brand già in uso (MyMed in primis).
 
 ---
 
-## 1. Numeri Meta MyMed giorno per giorno
+## A) Vedere i Gruppi di inserzioni in "Statistiche ADV"
 
-| data   | spend €  | impr   | reach  | freq | click | CTR %    | CPC € |
-|--------|---------:|-------:|-------:|-----:|------:|---------:|------:|
-| 28/04  | 309      | 16.782 | 12.616 | 1,53 | 513   | **3,06** | 0,60  |
-| 29/04  | 204      | 13.452 | 9.943  | 1,35 | 386   | 2,87     | 0,53  |
-| 30/04  | 198      | 13.956 | 11.768 | 1,19 | 370   | 2,65     | 0,54  |
-| 01/05  | 231      | 15.896 | 11.416 | 1,39 | 312   | 1,96     | 0,74  |
-| 02/05  | 214      | 16.980 | 13.161 | 1,29 | 358   | 2,11     | 0,60  |
-| 03/05  | 300      | 22.623 | 16.220 | 1,39 | 467   | 2,06     | 0,64  |
-| 04/05  | 244      | 16.297 | 12.332 | 1,32 | 389   | 2,39     | 0,63  |
-| 05/05  | 292      | 24.264 | 21.230 | 1,15 | 469   | 1,93     | 0,62  |
-| 06/05  | 233      | 17.349 | 13.616 | 1,27 | 332   | **1,91** | 0,70  |
-| 07/05  | 253      | 21.107 | 16.568 | 1,27 | 484   | 2,29     | 0,52  |
+Oggi `ad_platform_stats` salva una riga per **campagna/giorno**. Meta espone anche il livello **adset** (gruppo di inserzioni). L'API `ads-stats-meta` già scarica le inserzioni (livello `ad`) per i creativi, ma NON gli adset.
 
-**Δ ultimi 5g vs primi 5g:**
+### Cosa faccio
 
-| metrica  | 28/04-02/05 | 03/05-07/05 | Δ |
-|----------|------------:|------------:|---:|
-| Spend €  | 1.156       | 1.322       | +14 % |
-| Impr     | 77.066      | 101.640     | +32 % |
-| Reach    | 58.904      | 79.966      | +36 % |
-| Click    | 1.939       | 2.141       | +10 % |
-| **CTR %**| **2,55**    | **2,11**    | **-17 %** |
-| **CPC €**| **0,60**    | **0,62**    | +3 % |
-| Lead Meta diretti | **25** | **17** | **-32 %** |
+1. **DB** — nuova tabella `ad_platform_adset_stats` (parallela a `ad_platform_stats`):
+   - `external_adset_id`, `external_adset_name`, `external_campaign_id`, `external_campaign_name`
+   - metriche: `spend, impressions, clicks, reach, frequency, conversions`
+   - chiave unica `(brand_id, platform, account_id, external_adset_id, stat_date)`
+   - RLS identica (`has_marketing_access`)
+2. **Edge `ads-stats-meta`** — aggiunta chiamata Insights con `level=adset` e upsert su nuova tabella (stesso ciclo brand/chunk già in essere).
+3. **RPC** — `get_ad_adset_stats(p_brand_id, p_from, p_to, p_platform, p_campaign_id)` che aggrega per adset.
+4. **UI** — in `AdStatsTab`:
+   - quando l'utente seleziona **una campagna** dal filtro, sotto la tabella campagne appare una nuova sezione "Gruppi di inserzioni" con tabella (nome adset, spesa, impr., reach, CPL, lead). 
+   - Se nessuna campagna è selezionata, la sezione resta collassata con CTA "Seleziona una campagna per vedere i gruppi di inserzioni".
+5. **Backfill** — bottone "Sync storica Meta" già esistente: lo estendo per popolare anche gli adset nello stesso ciclo (no nuovo bottone).
 
-## 2. Cosa sta succedendo, in chiaro
+Google Ads: per ora resta solo livello campagna (l'API Google ha "ad_group" — lo aggiungo in un secondo giro se serve).
 
-1. **Una sola campagna porta ~95 % del traffico** ("Lead generation - 21/04/26", attiva dal 21/04). Tutto Meta MyMed dipende da lei.
-2. **Dal 05/05 è subentrata "Lead generation - 21/04/26 - Copia"**, che eredita la spesa: tipico segnale di duplicazione campagna per "rinfrescare", ma usa la stessa creatività → non risolve il calo CTR.
-3. **Frequency stabile a ~1,3 e reach in crescita di +36 %**: Meta sta mostrando i tuoi annunci a *più persone nuove* (non è saturazione del pubblico classico, anzi). Quindi l'ipotesi non è "audience bruciato" ma **creatività che non parla al pubblico nuovo** raggiunto.
-4. **CTR dimezzato (3,06 → 1,91)** mentre il CPC resta stabile: paghi quasi uguale per click ma ne porti molti meno per impressione → costo per lead in salita.
-5. **Lead Meta diretti -75 % (8 → 2/g)**: il calo lead non si spiega solo col CTR (-17 %). C'è probabilmente anche un problema **a valle del click** (form/landing) — la conversion rate click→lead è peggiorata, non solo l'attrazione.
+---
 
-## 3. Diagnosi (probabili cause, in ordine di peso)
+## B) Attribuire manualmente un lead a una campagna
 
-a) **Creative fatigue al pubblico ampliato**: Meta sta espandendo la copertura (reach +36 %) ma la creatività resta la stessa → utenti nuovi meno reattivi.
-b) **"Copia" della campagna senza variazione creativa** dal 5/5: serve solo a sbloccare il delivery ma non risolve.
-c) **Possibile problema landing/form**: con CTR -17 % i lead dovrebbero scendere ~17 %, invece scendono -75 %. Da verificare se il form attualmente in uso ha avuto modifiche/bug, o se i click stanno arrivando da posizionamenti meno qualificati (Reels/Audience Network).
+Oggi `lead_events.marketing_campaign_id` esiste ma viene compilato solo in alcuni webhook. Se un lead arriva da un sorgente non riconosciuto (es. Quiz funnel, WordPress, CallAI…), nessuno lo lega a una campagna ADV → KPI "lead da Meta" lo esclude.
 
-## 4. Azioni concrete (lato marketing, non codice)
+### Cosa faccio
 
-1. Sostituire la creatività della campagna principale con 2-3 varianti nuove.
-2. Verificare la **conversion rate click → lead** sulla landing/form della campagna "21/04/26": è atteso ~5-7 %, controllare se è crollato.
-3. Controllare il **breakdown placement** in Meta Ads Manager: se il delivery si è spostato su Reels/Audience Network il CTR cala fisiologicamente.
+1. **DB** — nessuna nuova colonna, uso `lead_events.marketing_campaign_id` già esistente. Aggiungo trigger di audit su update (chi ha riassegnato, quando, da quale campagna a quale).
+2. **RPC** — `set_lead_event_campaign(p_event_id, p_campaign_id)`:
+   - controllo brand-scoped (`assert_brand_access`)
+   - log su `audit_log_unified`
+   - rate-limit standard
+3. **UI nel ContactDetailSheet → sezione "Storico lead"**:
+   - per ogni `lead_event` mostro un piccolo badge "Campagna: {nome}" oppure "Non attribuita"
+   - icona matita → popover con `Combobox` campagne del brand (filtro per nome) + opzione "Nessuna" → salva via RPC
+   - feedback con `useMutationFeedback` standard
+4. **Bulk attribution (admin/marketing)** — nella pagina `/marketing/leads` aggiungo:
+   - colonna "Campagna" 
+   - selezione multipla → azione "Attribuisci a campagna…" (Combobox stesso pattern)
+   - utile per fissare in massa "Quiz funnel - Prova Gratuita" → campagna "Quiz Fibromialgia"
+5. **Effetto KPI** — i conteggi "lead da Meta" in Statistiche ADV usano già `marketing_campaign_id` quando presente (cambio la RPC `get_ad_platform_stats_summary` per preferire join via `marketing_campaign_id` invece del solo `ILIKE source_name`). Fallback al match per nome resta per retrocompatibilità.
 
-## 5. Cosa posso aggiungere io alla dashboard (se vuoi)
+---
 
-- Card **Meta Health** per brand: trend giornaliero CTR/CPC/Reach con badge rosso quando CTR scende >25 % rispetto alla settimana prima.
-- Tabella **Click→Lead conversion** per campagna, per intercettare il caso "click ok ma lead crollati".
-- Alert "campagna duplicata stessa creatività" (per evitare il caso "Copia" silenzioso).
+## Dettagli tecnici
 
-Vuoi che proceda con queste 3 aggiunte alla Marketing Dashboard?
+```text
+ad_platform_adset_stats
+  brand_id, platform, account_id,
+  external_campaign_id, external_campaign_name,
+  external_adset_id, external_adset_name,
+  stat_date, spend, impressions, clicks, reach, frequency,
+  conversions, raw_data
+  UNIQUE(brand_id, platform, account_id, external_adset_id, stat_date)
+```
+
+Edge call Meta:
+`/{ad_account}/insights?level=adset&fields=campaign_id,campaign_name,adset_id,adset_name,spend,impressions,clicks,reach,frequency&time_range=...&time_increment=1`
+
+RPC `set_lead_event_campaign(event_id uuid, campaign_id uuid|null)` — SECURITY DEFINER, search_path=public, brand check, audit append, rate-limit `consume_critical_rate_limit('set_lead_event_campaign', 60, 15)`.
+
+UI: `MarketingLeads.tsx` aggiunge colonna + bulk bar; `ContactDetailSheet → ContactLeadDataSection` aggiunge il selector inline.
+
+---
+
+## Fuori scope
+
+- Livello "ad" in tabella (esiste già `AdCreativesTab`)
+- Google Ads ad_group breakdown (rimando)
+- Riscrittura attribuzione automatica via regex (è la sol. (3) discussa prima)
+
+Procedo?

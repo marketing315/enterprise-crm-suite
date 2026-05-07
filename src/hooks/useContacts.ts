@@ -138,7 +138,7 @@ export function useLeadEvents(contactId?: string) {
 
       let query = supabase
         .from('lead_events')
-        .select('*')
+        .select('*, marketing_campaigns:marketing_campaign_id (id, name)')
         .eq('archived', false)
         .order('received_at', { ascending: false })
         .limit(100);

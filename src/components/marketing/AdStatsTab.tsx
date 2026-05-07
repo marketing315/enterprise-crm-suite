@@ -30,6 +30,7 @@ import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { AdStatsKpiCards } from "./AdStatsKpiCards";
 import { AdStatsTrendChart } from "./AdStatsTrendChart";
 import { AdStatsTable } from "./AdStatsTable";
+import { AdsetStatsTable } from "./AdsetStatsTable";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { AdPlatform } from "@/types/adPlatform";
@@ -466,6 +467,19 @@ export function AdStatsTab() {
 
       {/* Campaign Table */}
       <AdStatsTable data={stats} isLoading={statsLoading} showBrand={isAllBrandsSelected} />
+
+      {/* Adset (Gruppi di inserzioni) Table */}
+      <AdsetStatsTable
+        fromDate={dateRange.from}
+        toDate={dateRange.to}
+        platform={platform}
+        campaignExternalId={campaignFilter === "all" ? null : campaignFilter}
+        campaignLabel={
+          campaignFilter === "all"
+            ? null
+            : campaignOptions.find((c) => c.id === campaignFilter)?.name ?? null
+        }
+      />
     </div>
   );
 }

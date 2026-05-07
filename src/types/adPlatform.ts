@@ -88,3 +88,19 @@ export interface AdCreativeStat {
   cpm: number | null;
   days_count: number;
 }
+
+export interface AdAdsetStat {
+  external_adset_id: string;
+  external_adset_name: string | null;
+  external_campaign_id: string;
+  external_campaign_name: string | null;
+  platform: AdPlatform;
+  total_spend: number;
+  total_impressions: number;
+  total_clicks: number;
+  total_reach: number;
+  avg_frequency: number | null;
+  total_conversions: number | null;
+  total_leads: number;
+  cpl: number | null;
+}

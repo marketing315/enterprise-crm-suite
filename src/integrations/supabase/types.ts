@@ -337,6 +337,90 @@ export type Database = {
           },
         ]
       }
+      ad_platform_adset_stats: {
+        Row: {
+          account_id: string
+          brand_id: string
+          campaign_id: string | null
+          clicks: number
+          conversions: number | null
+          created_at: string
+          currency: string
+          external_adset_id: string
+          external_adset_name: string | null
+          external_campaign_id: string
+          external_campaign_name: string | null
+          frequency: number | null
+          id: string
+          imported_at: string
+          impressions: number
+          platform: Database["public"]["Enums"]["ad_platform"]
+          raw_data: Json | null
+          reach: number | null
+          spend: number
+          stat_date: string
+        }
+        Insert: {
+          account_id: string
+          brand_id: string
+          campaign_id?: string | null
+          clicks?: number
+          conversions?: number | null
+          created_at?: string
+          currency?: string
+          external_adset_id: string
+          external_adset_name?: string | null
+          external_campaign_id: string
+          external_campaign_name?: string | null
+          frequency?: number | null
+          id?: string
+          imported_at?: string
+          impressions?: number
+          platform: Database["public"]["Enums"]["ad_platform"]
+          raw_data?: Json | null
+          reach?: number | null
+          spend?: number
+          stat_date: string
+        }
+        Update: {
+          account_id?: string
+          brand_id?: string
+          campaign_id?: string | null
+          clicks?: number
+          conversions?: number | null
+          created_at?: string
+          currency?: string
+          external_adset_id?: string
+          external_adset_name?: string | null
+          external_campaign_id?: string
+          external_campaign_name?: string | null
+          frequency?: number | null
+          id?: string
+          imported_at?: string
+          impressions?: number
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          raw_data?: Json | null
+          reach?: number | null
+          spend?: number
+          stat_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_platform_adset_stats_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_platform_adset_stats_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_platform_stats: {
         Row: {
           account_id: string
@@ -12184,6 +12268,30 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string[]
       }
+      get_ad_adset_stats: {
+        Args: {
+          p_brand_id: string
+          p_campaign_external_id?: string
+          p_from: string
+          p_platform?: Database["public"]["Enums"]["ad_platform"]
+          p_to: string
+        }
+        Returns: {
+          avg_frequency: number
+          cpl: number
+          external_adset_id: string
+          external_adset_name: string
+          external_campaign_id: string
+          external_campaign_name: string
+          platform: Database["public"]["Enums"]["ad_platform"]
+          total_clicks: number
+          total_conversions: number
+          total_impressions: number
+          total_leads: number
+          total_reach: number
+          total_spend: number
+        }[]
+      }
       get_ad_creative_stats: {
         Args: {
           p_brand_ids: string[]
@@ -13928,6 +14036,10 @@ export type Database = {
       }
       set_lead_event_archived: {
         Args: { p_archived: boolean; p_event_id: string }
+        Returns: undefined
+      }
+      set_lead_event_campaign: {
+        Args: { p_campaign_id: string; p_event_id: string }
         Returns: undefined
       }
       set_lead_event_clinical_topics: {
