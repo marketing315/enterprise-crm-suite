@@ -103,42 +103,44 @@ export default function AdminSlowQueries() {
             onChange={(e) => setFilter(e.target.value)}
             className="max-w-md"
           />
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50%]">Query</TableHead>
-                <TableHead className="text-right">Calls</TableHead>
-                <TableHead className="text-right">Mean</TableHead>
-                <TableHead className="text-right">Max</TableHead>
-                <TableHead className="text-right">Total (s)</TableHead>
-                <TableHead className="text-right">Rows</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Caricamento…</TableCell></TableRow>
-              )}
-              {!isLoading && rows.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">
-                  Nessuna query registrata.
-                </TableCell></TableRow>
-              )}
-              {rows.map((r, i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <pre className="text-xs whitespace-pre-wrap break-all max-h-32 overflow-auto font-mono">
-                      {r.query}
-                    </pre>
-                  </TableCell>
-                  <TableCell className="text-right">{r.calls.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{sevBadge(r.mean_exec_ms)}</TableCell>
-                  <TableCell className="text-right text-xs">{fmt(r.max_exec_ms)} ms</TableCell>
-                  <TableCell className="text-right text-xs">{(r.total_exec_ms / 1000).toFixed(1)}</TableCell>
-                  <TableCell className="text-right text-xs">{r.rows_returned.toLocaleString()}</TableCell>
+          {isLoading ? (
+            <TableSkeleton rows={8} headers={["Query", "Calls", "Mean", "Max", "Total (s)", "Rows"]} />
+          ) : rows.length === 0 ? (
+            <EmptyState
+              icon={Gauge}
+              title="Nessuna query registrata"
+              description="pg_stat_statements non ha ancora raccolto dati, oppure le statistiche sono state appena azzerate."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50%]">Query</TableHead>
+                  <TableHead className="text-right">Calls</TableHead>
+                  <TableHead className="text-right">Mean</TableHead>
+                  <TableHead className="text-right">Max</TableHead>
+                  <TableHead className="text-right">Total (s)</TableHead>
+                  <TableHead className="text-right">Rows</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <pre className="text-xs whitespace-pre-wrap break-all max-h-32 overflow-auto font-mono">
+                        {r.query}
+                      </pre>
+                    </TableCell>
+                    <TableCell className="text-right">{r.calls.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{sevBadge(r.mean_exec_ms)}</TableCell>
+                    <TableCell className="text-right text-xs">{fmt(r.max_exec_ms)} ms</TableCell>
+                    <TableCell className="text-right text-xs">{(r.total_exec_ms / 1000).toFixed(1)}</TableCell>
+                    <TableCell className="text-right text-xs">{r.rows_returned.toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
