@@ -169,7 +169,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         address: contact.address || '',
         notes: contact.notes || '',
         status: contact.status || 'new',
-        marketing_consent: (contact as any).marketing_consent || false,
+        marketing_consent: (contact as { marketing_consent?: boolean | null }).marketing_consent ?? false,
       });
     }
     setIsEditing(false);
