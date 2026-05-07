@@ -118,32 +118,38 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     fetchBrands();
   }, [fetchBrands, userRoles]);
 
-  const setCurrentBrand = (brand: Brand | null) => {
+  const setCurrentBrand = useCallback((brand: Brand | null) => {
     setCurrentBrandState(brand);
     if (brand) {
       userStorage.setItem(BRAND_STORAGE_KEY, brand.id);
     } else {
       userStorage.removeItem(BRAND_STORAGE_KEY);
     }
-  };
+  }, []);
 
   const isAllBrandsSelected = currentBrandState?.id === SYSTEM_BRAND_ID || currentBrandState?.is_system === true;
-  const allBrandIds = brands.map(b => b.id);
+  // Bug #9 (ALTA): allBrandIds memoizzato — evita ricreazione array ad ogni render
+  // che invalidava query key dei consumer (`useContacts`, `useLeadEvents`, ecc.).
+  const allBrandIds = useMemo(() => brands.map(b => b.id), [brands]);
+
+  // Bug #9 (ALTA): context value memoizzato per evitare re-render di tutti i consumer.
+  const contextValue = useMemo(
+    () => ({
+      brands,
+      currentBrand: currentBrandState,
+      systemBrand,
+      setCurrentBrand,
+      refetchBrands: fetchBrands,
+      isLoading: isLoading || authLoading,
+      hasBrandSelected: currentBrandState !== null,
+      isAllBrandsSelected,
+      allBrandIds,
+    }),
+    [brands, currentBrandState, systemBrand, setCurrentBrand, fetchBrands, isLoading, authLoading, isAllBrandsSelected, allBrandIds],
+  );
 
   return (
-    <BrandContext.Provider
-      value={{
-        brands,
-        currentBrand: currentBrandState,
-        systemBrand,
-        setCurrentBrand,
-        refetchBrands: fetchBrands,
-        isLoading: isLoading || authLoading,
-        hasBrandSelected: currentBrandState !== null,
-        isAllBrandsSelected,
-        allBrandIds,
-      }}
-    >
+    <BrandContext.Provider value={contextValue}>
       {children}
     </BrandContext.Provider>
   );
