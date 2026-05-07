@@ -86,6 +86,23 @@ export default function MarketingDashboard() {
     to: funnelTo,
   });
 
+  // New cross-stage funnel + histogram + email + portfolio
+  const fromIso = useMemo(() => funnelFrom.toISOString(), [funnelFrom]);
+  const toIso = useMemo(() => funnelTo.toISOString(), [funnelTo]);
+  const { data: funnelOverview, isLoading: funnelOvLoading } = useFunnelOverview(fromIso, toIso);
+
+  const [histGranularity, setHistGranularity] = useState<LeadHistogramGranularity>("day");
+  const { data: histData, isLoading: histLoading } = useLeadsBySourceDay(fromIso, toIso, histGranularity);
+
+  const { data: emailKpis, isLoading: emailLoading } = useEmailCampaignKpis(fromIso, toIso);
+
+  const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
+  const { data: portfolioData, isLoading: portfolioLoading } = usePortfolioKpis(
+    dateRange.from,
+    dateRange.to,
+    isSystemBrand
+  );
+
   const handlePreset = (days: number) => {
     setSelectedRange({ from: subDays(new Date(), days), to: new Date() });
   };
