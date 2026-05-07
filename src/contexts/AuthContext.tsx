@@ -293,24 +293,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
-    // A7: enforce password policy at runtime (mirror of edge _shared/password-policy)
-    const { validatePassword } = await import("@/lib/password-policy");
-    const policy = validatePassword(password);
-    if (!policy.ok) {
-      return { error: new Error(policy.error || "Password non valida") };
-    }
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: {
-          full_name: fullName || email
-        }
-      }
-    });
-    return { error: error as Error | null };
+  const signUp = async (_email: string, _password: string, _fullName?: string) => {
+    // Sprint 3 — Self-signup disabilitato lato server (auth.disable_signup=true).
+    // L'unico modo di creare utenti è la RPC admin_create_user invocata da admin/CEO.
+    return {
+      error: new Error('La registrazione autonoma è disabilitata. Contatta un amministratore per ottenere un account.')
+    };
   };
 
   const signOut = async () => {

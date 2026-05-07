@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { ConfirmDeleteButton } from '@/components/shared/ConfirmDeleteButton';
 import { formatCurrency } from '@/lib/formatKpi';
 import { useExpenses, useCreateExpense, useDeleteExpense, useExpenseCategories, useHasFinanceAccess } from '@/hooks/useCompanyFinance';
 import { toast } from 'sonner';
@@ -129,9 +130,11 @@ export function CeoExpensesPanel({ from, to }: CeoExpensesPanelProps) {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{formatCurrency(exp.amount)}</span>
                   {hasAccess && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(exp.id)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
+                    <ConfirmDeleteButton
+                      onConfirm={() => handleDelete(exp.id)}
+                      title="Eliminare questo costo?"
+                      description={`"${exp.description || exp.vendor_name || 'Costo'}" — ${formatCurrency(exp.amount)}. L'azione viene tracciata nei log audit.`}
+                    />
                   )}
                 </div>
               </div>
