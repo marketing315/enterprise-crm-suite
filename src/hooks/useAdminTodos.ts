@@ -53,8 +53,9 @@ export function useAdminTodos() {
     mutationFn: async (title: string) => {
       const targetBrandId = getWriteBrandId();
 
+      // Bug #17 (MEDIA): null-safe access a userData.user.id durante loading
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("Not authenticated");
+      if (!userData?.user?.id) throw new Error("Not authenticated");
 
       // Get user_id from users table using RPC
       const { data: userId, error: rpcError } = await supabase.rpc("get_user_id", { 
