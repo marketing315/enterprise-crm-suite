@@ -11627,6 +11627,9 @@ export type Database = {
       }
       cleanup_session_audit: { Args: never; Returns: number }
       cleanup_session_data_all: { Args: never; Returns: Json }
+      cleanup_system_log_tables:
+        | { Args: never; Returns: Json }
+        | { Args: { p_batch_size?: number }; Returns: Json }
       cleanup_webhook_dedup: { Args: never; Returns: number }
       complete_ai_tag_job: {
         Args: { p_error?: string; p_job_id: string }
