@@ -13026,6 +13026,7 @@ export type Database = {
           is_duplicate: boolean
         }[]
       }
+      invoke_db_growth_alert: { Args: never; Returns: number }
       is_admin_or_ceo_user: { Args: { p_user_id: string }; Returns: boolean }
       is_audit_admin: { Args: { _supabase_auth_id: string }; Returns: boolean }
       is_column_hidden_for_user: {
