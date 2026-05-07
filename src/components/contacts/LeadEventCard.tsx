@@ -3,6 +3,7 @@ import { it } from 'date-fns/locale';
 import { FileJson, Brain } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { sanitizeUrl } from '@/lib/safe-url';
+import { LeadEventCampaignSelector } from './LeadEventCampaignSelector';
 
 interface LeadEvent {
   id: string;
@@ -16,6 +17,8 @@ interface LeadEvent {
   ai_confidence?: number | null;
   ai_rationale?: string | null;
   ai_conversation_summary?: string | null;
+  marketing_campaign_id?: string | null;
+  marketing_campaigns?: { id: string; name: string } | null;
 }
 
 interface LeadEventCardProps {
