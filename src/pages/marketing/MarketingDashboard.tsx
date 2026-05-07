@@ -184,6 +184,10 @@ export default function MarketingDashboard() {
             <Globe className="h-4 w-4" />
             Sito Web
           </TabsTrigger>
+          <TabsTrigger value="email" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Email & Automation
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
