@@ -201,6 +201,7 @@ export interface CeoKpi {
   // Revenue
   revenue_total: number;
   revenue_from_won_deals: number;
+  revenue_marketing_attributable?: number;
   
   // Costs
   costs_total: number;
