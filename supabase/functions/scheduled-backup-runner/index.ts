@@ -3,6 +3,12 @@
 // coincide con l'ora corrente. Carica l'archivio nello Storage privato
 // `backup-archives` e applica retention pulendo i file scaduti.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import {
+  ensureBackupFolderPath,
+  uploadArchiveToDrive,
+  deleteDriveFile,
+  isDriveConfigured,
+} from "../_shared/drive-upload.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
