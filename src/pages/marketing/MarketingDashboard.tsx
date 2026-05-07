@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, subDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, subDays, differenceInDays, subMilliseconds } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,15 @@ import { useMarketingSummaryKpis, useMarketingChannelKpis } from "@/hooks/useMar
 import { useAdPlatformStatsSummary } from "@/hooks/useAdPlatformStats";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { useFunnelOverview } from "@/hooks/useFunnelOverview";
+import { useFunnelOverviewCompare } from "@/hooks/useFunnelOverviewCompare";
 import { useLeadsBySourceDay, type LeadHistogramGranularity } from "@/hooks/useLeadsBySourceDay";
 import { useEmailCampaignKpis } from "@/hooks/useEmailCampaignKpis";
 import { usePortfolioKpis } from "@/hooks/usePortfolioKpis";
 import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
 import { FunnelCrossStage } from "@/components/marketing/FunnelCrossStage";
+import { FunnelStageDrillPanel } from "@/components/marketing/FunnelStageDrillPanel";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { LeadsHistogram } from "@/components/marketing/LeadsHistogram";
 import { EmailCampaignsCard } from "@/components/marketing/EmailCampaignsCard";
 import { AutomationDonut } from "@/components/marketing/AutomationDonut";
