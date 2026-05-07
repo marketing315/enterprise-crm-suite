@@ -56,7 +56,7 @@ export function MarketingFunnelChart({ data, isLoading }: MarketingFunnelChartPr
 
   // Bug #34 (MEDIA): se tutti gli stage sono 0, evita di forzare max=1 che renderebbe
   // il grafico illegibile. Mostriamo "Nessun dato" tramite il check `!data` sotto.
-  const stageValues = data ? FUNNEL_STAGES.map(s => Number((data as Record<string, unknown>)[s.key] ?? 0)) : [];
+  const stageValues = data ? FUNNEL_STAGES.map(s => Number((data as unknown as Record<string, unknown>)[s.key] ?? 0)) : [];
   const totalValue = stageValues.reduce((a, b) => a + b, 0);
   const maxValue = stageValues.length > 0 ? Math.max(...stageValues, 1) : 1;
   const allZero = totalValue === 0;
