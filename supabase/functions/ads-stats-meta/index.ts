@@ -42,6 +42,21 @@ interface MetaAdInsight {
   date_stop: string;
 }
 
+interface MetaAdsetInsight {
+  campaign_id: string;
+  campaign_name: string;
+  adset_id: string;
+  adset_name: string;
+  spend: string;
+  impressions: string;
+  clicks: string;
+  reach?: string;
+  frequency?: string;
+  actions?: Array<{ action_type: string; value: string }>;
+  date_start: string;
+  date_stop: string;
+}
+
 interface MetaDemoInsight {
   campaign_id: string;
   spend: string;
