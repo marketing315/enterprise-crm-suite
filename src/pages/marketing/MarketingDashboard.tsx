@@ -5,19 +5,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, CalendarIcon, Megaphone, BarChart3, Image as ImageIcon, Users2, Globe } from "lucide-react";
+import { AlertCircle, CalendarIcon, Megaphone, BarChart3, Image as ImageIcon, Users2, Globe, Mail, Building2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
-import { useBrand } from "@/contexts/BrandContext";
+import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { CustomReportDialog } from "@/components/marketing/CustomReportDialog";
 import { useHasMarketingAccess } from "@/hooks/useMarketingAccess";
 import { useMarketingSummaryKpis, useMarketingChannelKpis } from "@/hooks/useMarketingKpis";
 import { useAdPlatformStatsSummary } from "@/hooks/useAdPlatformStats";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
+import { useFunnelOverview } from "@/hooks/useFunnelOverview";
+import { useLeadsBySourceDay, type LeadHistogramGranularity } from "@/hooks/useLeadsBySourceDay";
+import { useEmailCampaignKpis } from "@/hooks/useEmailCampaignKpis";
+import { usePortfolioKpis } from "@/hooks/usePortfolioKpis";
 import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
-import { MarketingMiniFunnel } from "@/components/marketing/MarketingMiniFunnel";
+import { FunnelCrossStage } from "@/components/marketing/FunnelCrossStage";
+import { LeadsHistogram } from "@/components/marketing/LeadsHistogram";
+import { EmailCampaignsCard } from "@/components/marketing/EmailCampaignsCard";
+import { AutomationDonut } from "@/components/marketing/AutomationDonut";
+import { PortfolioBrandTable } from "@/components/marketing/PortfolioBrandTable";
 import { AdStatsTab } from "@/components/marketing/AdStatsTab";
 import { AdCreativesTab } from "@/components/marketing/AdCreativesTab";
 import { AdDemographicsTab } from "@/components/marketing/AdDemographicsTab";
@@ -77,6 +85,23 @@ export default function MarketingDashboard() {
     from: funnelFrom,
     to: funnelTo,
   });
+
+  // New cross-stage funnel + histogram + email + portfolio
+  const fromIso = useMemo(() => funnelFrom.toISOString(), [funnelFrom]);
+  const toIso = useMemo(() => funnelTo.toISOString(), [funnelTo]);
+  const { data: funnelOverview, isLoading: funnelOvLoading } = useFunnelOverview(fromIso, toIso);
+
+  const [histGranularity, setHistGranularity] = useState<LeadHistogramGranularity>("day");
+  const { data: histData, isLoading: histLoading } = useLeadsBySourceDay(fromIso, toIso, histGranularity);
+
+  const { data: emailKpis, isLoading: emailLoading } = useEmailCampaignKpis(fromIso, toIso);
+
+  const isSystemBrand = currentBrand?.id === SYSTEM_BRAND_ID;
+  const { data: portfolioData, isLoading: portfolioLoading } = usePortfolioKpis(
+    dateRange.from,
+    dateRange.to,
+    isSystemBrand
+  );
 
   const handlePreset = (days: number) => {
     setSelectedRange({ from: subDays(new Date(), days), to: new Date() });
@@ -159,6 +184,10 @@ export default function MarketingDashboard() {
             <Globe className="h-4 w-4" />
             Sito Web
           </TabsTrigger>
+          <TabsTrigger value="email" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Email & Automation
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
@@ -215,8 +244,21 @@ export default function MarketingDashboard() {
             isLoading={summaryLoading || advLoading || funnelLoading}
           />
 
-          {/* Mini Funnel */}
-          <MarketingMiniFunnel metrics={funnelMetrics} isLoading={funnelLoading} />
+          {/* Cross-stage end-to-end funnel */}
+          <FunnelCrossStage stages={funnelOverview} isLoading={funnelOvLoading} />
+
+          {/* Stacked histogram leads-by-source */}
+          <LeadsHistogram
+            data={histData}
+            isLoading={histLoading}
+            granularity={histGranularity}
+            onGranularityChange={setHistGranularity}
+          />
+
+          {/* Portfolio cross-brand (system brand only) */}
+          {isSystemBrand && (
+            <PortfolioBrandTable data={portfolioData} isLoading={portfolioLoading} />
+          )}
 
           {/* Charts */}
           <div className="grid md:grid-cols-2 gap-6">
@@ -361,6 +403,11 @@ export default function MarketingDashboard() {
 
         <TabsContent value="website" className="mt-6">
           <Ga4StatsTab fromDate={dateRange.from} toDate={dateRange.to} />
+        </TabsContent>
+
+        <TabsContent value="email" className="mt-6 space-y-6">
+          <EmailCampaignsCard data={emailKpis} isLoading={emailLoading} />
+          <AutomationDonut fromIso={fromIso} toIso={toIso} />
         </TabsContent>
       </Tabs>
     </div>

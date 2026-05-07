@@ -1,107 +1,91 @@
 
-# Performance hardening — IO/CPU al 100% (DB solo 368 MB, NON è disco)
+# Marketing Manager Dashboard v1 — Piano sprint-per-sprint
 
-## Diagnosi misurata (pg_stat_statements ultimo periodo)
+## Stato attuale (verificato da codice)
 
-| # | Hot spot | Costo | Causa |
-|---|----------|-------|-------|
-| 1 | **Realtime WAL decode** `SELECT wal->>...` | **45.7% CPU totale**, 13.4M call, 32 GB shared hit | 34 tabelle pubblicate su `supabase_realtime` (alcune con scritture massicce: `lead_events`, `deal_stage_history`, `ticket_audit_logs`, `automation_jobs`, `chat_messages`) |
-| 2 | DELETE retention `net._http_response` (batch 50k) | **18.7%**, 2.3M call, 4.7 GB hit | il cron `cleanup-pg-net-responses` gira in loop molto stretto |
-| 3 | `process-email-queue` cron | **14.170 run/24h** (1 ogni 5s!), 651 KO/giorno | schedule troppo aggressivo, costoso (vault decrypt ad ogni run) |
-| 4 | `ad_sync_log` query | 94 ms medi, 16.633 call, **138M tuple seq-scan** | indice mancante su `(provider, account_id, sync_to)` — solo PK presente |
-| 5 | 9 dispatcher cron `* * * * *` via `cron-relay` | 9 × 1436 run/giorno = **~13k run/giorno** | tutti partono allo stesso minuto → spike CPU |
-| 6 | `record_slo_snapshot()` ogni 5 min | 324 ms medi × 2.501 call = 13 min CPU/giorno | costoso, refresh-rate eccessivo |
-| 7 | `admin_purge_cron_job_run_details` | 30 sec medi × 118 run = 38M block read | cleanup non incrementale |
+La pagina `/marketing` esiste (`MarketingDashboard.tsx`) con: tabs Overview/ADV/Creatives/Demographics/Website, KPI cards, mini-funnel base, BarChart canale, PieChart distribuzione, tabella canali. RPC esistenti coprono ~70% di quello che serve:
 
-## Piano (4 deliverable, tutti reversibili, zero perdita dati)
+✅ `get_marketing_summary_kpis`, `get_marketing_channel_kpis`, `get_marketing_campaign_kpis`
+✅ `get_ad_platform_stats_summary/_trend`, `get_ad_creative_stats`, `get_ad_demographics`
+✅ `get_funnel_metrics/_breakdown/_losses`, `get_pipeline_funnel_analytics`
+✅ `get_marketing_leads_by_campaign`, `get_attribution_summary`
+✅ `get_appointments_by_campaign`, `get_marketing_monthly_trend`
 
-### D1 — Sgrassa realtime publication (impatto stimato: -35% CPU)
+❌ Mancano: `get_funnel_overview` (cross-stage Spend→Lead→Appt→Deal→Revenue end-to-end con per-source split), `get_leads_by_source_day` (istogramma), `get_email_campaign_kpis` (open/click rate aggregati), `get_portfolio_kpis(brand_ids[])` (cross-brand vista system).
+❌ `lead_events` non in publication realtime (utile per istogramma live).
+❌ Indici: `lead_events(brand_id, received_at desc, source)` e `appointments(brand_id, status, scheduled_at)`.
 
-Tolgo dalla publication `supabase_realtime` le tabelle che non hanno UI live (sono ad alta scrittura ma nessun client le ascolta):
+## Sprint plan (5 sprint, ~6-8 giorni effort)
 
-- `lead_events` — append-only, alto volume
-- `deal_stage_history`, `deal_stage_transitions` — usate solo in viste audit
-- `ticket_audit_logs` — letti via query on-demand, no live
-- `ticket_comments` — pollati solo all'apertura ticket
-- `automation_jobs`, `sales_order_items` — nessun listener UI
-- `chat_message_reads`, `thread_read_state` — già aggregati nel hook
-- `system_settings`, `pipeline_stages`, `tags`, `tag_assignments` — quasi mai cambiano
-- `marketing_campaigns`, `marketing_costs`, `budgets`, `expenses` — letti via TanStack Query con invalidate
-- `incoming_calls`, `call_transcripts` — usano già hook dedicato non-realtime
+### Sprint M1 — Backend foundation (1.5 giorni BE)
+Owner: BE. Output: 4 RPC nuove + 2 indici + realtime su `lead_events`.
 
-**Mantengo realtime su**: `appointments`, `contacts`, `deals`, `tickets`, `chat_messages`, `notifications`, `action_suggestions`, `admin_todos`, `payments`, `ai_call_action_proposals`, `webhook_inbound_events`, `contact_phones`, `products`, `sales_orders`, `call_logs`, `automation_jobs` (resta perché dispatch UI lo usa). 
+**Migration unica**:
+- `get_funnel_overview(p_brand_ids uuid[], p_from, p_to, p_sources text[]?)` → restituisce per stage `{stage_id, stage_label, count, conversion_rate_from_prev, drop_off_pct, avg_velocity_hours}` + opzionale split per source.
+- `get_leads_by_source_day(p_brand_ids uuid[], p_from, p_to, p_granularity text)` → bucket day/week/hour × source × campaign con `lead_count`, ritorna anche totale periodo per sorgente (per legenda).
+- `get_email_campaign_kpis(p_brand_id uuid, p_from, p_to)` → aggregato da `email_send_log` con sent/delivered/opened/clicked/bounced/unsubscribed.
+- `get_portfolio_kpis(p_brand_ids uuid[], p_from, p_to)` → wrapper che cicla brand_ids e ritorna riga per brand con KPI core (spend, lead, deal_won, revenue, ROAS, CPL).
+- Indici: `idx_lead_events_brand_received_source`, `idx_appointments_brand_status_scheduled`.
+- `ALTER PUBLICATION supabase_realtime ADD TABLE public.lead_events`.
 
-Migration `ALTER PUBLICATION supabase_realtime DROP TABLE ...` (idempotente, reversibile).
+**Sicurezza**: tutte RPC `SECURITY DEFINER`, `search_path=public`, `assert_brand_access` per ogni brand_id, grant `authenticated`.
 
-### D2 — Throttle cron iperattivi (impatto stimato: -25% CPU)
+### Sprint M2 — Funnel cross-stage component (1.5 giorni FE)
+Owner: FE.
 
-| Cron | Da | A | Motivo |
-|------|----|----|--------|
-| `process-email-queue` | 5 secondi | **30 secondi** | KO 4.6%, retry esiste; latenza accettabile per email |
-| `cleanup-pg-net-responses` | continuo (2.3M call) | **batch 10k, una volta/15min** | retention basta giornaliera, batch più piccoli |
-| `ai-classify-processor` | `* * * * *` | **`*/2 * * * *`** | run vuote nell'80% dei casi |
-| `notification-webhook-dispatcher-1min` | `* * * * *` | **`* * * * *`** stagger +30s | Resta minutely ma stagger per evitare spike |
-| `slo-snapshot-every-5min` | `*/5` | **`*/15 * * * *`** | snapshot SLO non serve così denso |
-| `record_slo_snapshot()` | inline RPC | aggiunto LIMIT + materializzazione |
-| `mcp-slo-evaluator` | `*/5` | **`*/10 * * * *`** | |
-| `cron-health-monitor-5min` | `*/5` | **`*/10 * * * *`** | |
-| `refresh-anomaly-baselines` | daily ok | invariato | |
+- Hook `useFunnelOverview(brandIds, from, to, sources?)` con TanStack Query, staleTime 60s.
+- Componente `<FunnelCrossStage>` orizzontale (Spend → Lead → Appt → Deal → Revenue) con barre proporzionali, conversion% tra step, drop-off pct sotto. Toggle "split per source" che apre layout multi-row.
+- Click su stage → side-panel drill (riusa `MarketingMiniFunnel` per pattern).
+- Telemetria: `marketing.funnel.stage_hovered/clicked`.
+- Sostituisce `MarketingMiniFunnel` nella tab Overview.
 
-Stagger gli 8 dispatcher minutely (offset minuti diversi via `* * * * *` → `0,15,30,45 * * * *` per i meno critici).
+### Sprint M3 — Stacked histogram lead-by-source (1.5 giorni FE + 0.5 BE)
+Owner: FE + BE.
 
-Tutti applicabili via `supabase--insert` (cron.unschedule + cron.schedule).
+- Hook `useLeadsBySourceDay(brandIds, from, to, granularity)`.
+- Componente `<LeadsHistogram>` recharts stacked bar: x=bucket, y=lead_count, stack=source. Tooltip custom mostra breakdown campaign live (lazy fetch on hover via secondary query).
+- Toggle granularità day/week/hour. Legenda con totali periodo per sorgente.
+- Click su barra → propaga filtro sorgente al context globale Filters.
+- Realtime: subscribe a `lead_events` (post Sprint M1) → invalidate query su INSERT.
+- Telemetria: `marketing.histogram.live_lead_received`, `granularity_changed`.
 
-### D3 — Indici mancanti (impatto stimato: -10% CPU, query 100x)
+### Sprint M4 — Gallery creativi + Email/Automation donut (1.5 giorni FE)
+Owner: FE.
 
-Migration:
+- `<CreativesGallery>`: griglia card creative best-performing (riusa `get_ad_creative_stats`), thumbnail + KPI (CTR, CPL, Spend, Lead). Sort dropdown per CTR/CPL/Spend/Lead. Click → modal con dettaglio + breakdown adset.
+- `<EmailCampaignsCard>`: tabella template con sent/delivered/open rate/click rate (open=opened/delivered standard ESP). Click template → modal dettaglio invii (recipient hash mascherato `t***@dom.it`).
+- `<AutomationDonut>`: usa `automation_jobs` aggregato (RPC nuovo o query inline) per success/failed/DLQ. Click "failed" → link admin DLQ (gated su `admin`).
+- Aggiungo nuova tab `Email & Automation` o sezione in Overview (decido a vista, default: nuova tab).
 
-```sql
--- ad_sync_log: oggi 138M tuple lette in seq-scan
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ad_sync_log_provider_account_to
-  ON public.ad_sync_log(provider, account_id, sync_to DESC);
+### Sprint M5 — Portfolio cross-brand + polish + telemetria (1 giorno FE + 0.5 QA)
+Owner: FE.
 
--- ai_jobs: 21M tuple lette
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ai_jobs_status_created
-  ON public.ai_jobs(status, created_at) WHERE status IN ('pending','processing');
+- Quando `currentBrand.id === SYSTEM_BRAND_ID`: mostra vista "Azienda Intera" con tabella `<PortfolioBrandTable>` (riga per brand: spend, lead, ROAS, CPL, mini-sparkline trend). Click brand → switch brand + redirect a `/marketing` di quel brand.
+- Toggle "vs periodo precedente" e "vs YoY" su KPI cards (delta colorati verde/rosso, freccia).
+- Empty states puliti (zero spesa, zero lead) per ogni card.
+- Telemetria centralizzata via hook esistente (CSP-safe, no PII).
+- Test: smoke E2E (login MM → naviga `/marketing` → cambio range → drill su stage funnel).
+- Documentazione: `/docs/marketing-metrics.md` con formule (CPL = spend/lead, ROAS = revenue/spend, CPA = spend/deal_won).
 
--- contacts: 1.4M tuple seq-scan (già ha brand_id idx ma manca composito)
--- Verifico prima esistenza indici, aggiungo solo se manca
-```
+## Vincoli safety (ricordati ad ogni sprint)
 
-Tutti `CREATE INDEX CONCURRENTLY` → zero downtime, niente lock.
+- **NO modifiche** a tabelle business (lead_events, contacts, deals, appointments, email_send_log) — solo SELECT via RPC.
+- Tutte nuove RPC aggregano e ritornano numeri, **mai PII raw**. Email mascherate via helper.
+- Brand isolation HARD: ogni RPC valida `assert_brand_access(brand_id)` per ogni brand passato.
+- Performance: query a 90gg < 800 ms. Se sforano → indice o materialized view.
+- Realtime publication su `lead_events`: monitorare CPU dopo M1 (memo: appena ridotta del 35% — verifico non risalga sopra soglia).
+- Niente feature flag (rollout diretto per tua scelta).
 
-### D4 — VACUUM ANALYZE settimanale (impatto: stabilità planner)
+## Definition of Done globale
 
-Cron settimanale `vacuum-analyze-hot-tables` (domenica notte):
-```sql
-VACUUM (ANALYZE) public.contacts, public.deals, public.appointments, 
-                 public.tickets, public.lead_events, public.ad_sync_log;
-```
+- `/marketing` carica < 2s su 30gg, < 4s su 90gg.
+- Funnel + histogram + creatives + email + automation tutti funzionanti su brand singolo e system brand.
+- Numeri totali coincidono tra funnel (Lead step) e histogram (somma bucket) entro ±1%.
+- Memory aggiornata: nuova entry `mem://features/marketing-dashboard-v1`.
+- Zero security warning nuovi nel linter.
 
-Niente FULL → niente lock.
+## Domande prima di partire
 
-## Cose che NON faccio (vincoli safety)
-
-- **NO DROP table/colonna** business
-- **NO** modifiche RLS / policies
-- **NO** modifiche schema business — solo indici additivi e publication
-- **NO** rimozione cron core (compliance/SLO/backup restano)
-- **NO** VACUUM FULL (lock + tu hai detto solo VACUUM)
-- Tutte le modifiche reversibili in 1 migration di rollback se necessario
-
-## Definition of Done
-
-- [ ] D1: publication ridotta da 34 → ~16 tabelle, verificato che nessun hook frontend ascolta quelle rimosse (grep `supabase.channel` su src/)
-- [ ] D2: 7 cron riconfigurati, registry aggiornato, monitorato 30 min post-change
-- [ ] D3: 2-3 indici creati con CONCURRENTLY, verificato `idx_scan` cresce su `ad_sync_log`
-- [ ] D4: cron VACUUM settimanale registrato
-- [ ] Misurazione: snapshot `pg_stat_statements` prima/dopo (reset + 30 min finestra)
-- [ ] Memory `db-retention-cleanup` aggiornata con sezione "Performance tuning maggio 2026"
-
-## Domande per te
-
-1. **Realtime D1**: confermo la lista mantenuta vs rimossa, oppure vuoi che faccia un grep esaustivo su `src/hooks/use*Realtime*` e `useGlobalRealtime` prima per essere sicuri al 100% che nessun hook si rompa? (consigliato — aggiunge 5 min al lavoro)
-2. **`process-email-queue` 5s → 30s**: ok o lo vuoi a 15s? (5s è eccessivo per email)
-3. **VACUUM settimanale (D4)**: ok la domenica 03:00 UTC, o preferisci un altro orario?
-
-Confermi e procedo.
+1. **Email/Automation in nuova tab o sezione Overview?** Spec dice card; io propongo nuova tab `Email & Automation` (Overview è già pieno). OK?
+2. **Portfolio cross-brand**: ti serve già nella v1 (Sprint M5) o lo possiamo posticipare a v1.1? Sblocco 1 giorno se posticipato.
+3. **Avvio**: parto subito con **Sprint M1 (backend)** in questo turno?
