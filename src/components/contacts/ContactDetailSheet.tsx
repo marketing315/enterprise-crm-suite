@@ -72,6 +72,7 @@ interface EditFormData {
   email: string;
   city: string;
   cap: string;
+  province: string;
   address: string;
   notes: string;
   status: ContactStatus;
@@ -89,6 +90,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     email: '',
     city: '',
     cap: '',
+    province: '',
     address: '',
     notes: '',
     status: 'new',
@@ -114,6 +116,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         email: contact.email || '',
         city: contact.city || '',
         cap: contact.cap || '',
+        province: (contact as { province?: string | null }).province || '',
         address: contact.address || '',
         notes: contact.notes || '',
         status: contact.status || 'new',
@@ -166,6 +169,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
         email: contact.email || '',
         city: contact.city || '',
         cap: contact.cap || '',
+        province: (contact as { province?: string | null }).province || '',
         address: contact.address || '',
         notes: contact.notes || '',
         status: contact.status || 'new',
@@ -337,7 +341,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="city">Città</Label>
                       <Input
@@ -345,6 +349,16 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                         value={formData.city}
                         onChange={(e) => setFormData((p) => ({ ...p, city: e.target.value }))}
                         placeholder="Città"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="province">Provincia</Label>
+                      <Input
+                        id="province"
+                        value={formData.province}
+                        onChange={(e) => setFormData((p) => ({ ...p, province: e.target.value.toUpperCase().slice(0, 2) }))}
+                        placeholder="MI"
+                        maxLength={2}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -477,16 +491,22 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     </div>
                   )}
 
-                  {(contact.city || contact.cap || (contact as any).address) && (
+                  {(contact.city || contact.cap || (contact as any).province || (contact as any).address) && (
                     <div className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        {(contact.city || contact.cap) && (
-                          <div>{[contact.city, contact.cap].filter(Boolean).join(' · ')}</div>
+                        {(contact.city || contact.cap || (contact as any).province) && (
+                          <div>
+                            {[
+                              contact.city,
+                              (contact as any).province ? `(${(contact as any).province})` : null,
+                              contact.cap,
+                            ].filter(Boolean).join(' · ')}
+                          </div>
                         )}
                         {(contact as any).address && (
                           <div className="text-muted-foreground text-xs">
-                            {[(contact as any).address, (contact as any).province, (contact as any).country].filter(Boolean).join(', ')}
+                            {[(contact as any).address, (contact as any).country].filter(Boolean).join(', ')}
                           </div>
                         )}
                       </div>
