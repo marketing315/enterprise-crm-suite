@@ -3,6 +3,12 @@
 // coincide con l'ora corrente. Carica l'archivio nello Storage privato
 // `backup-archives` e applica retention pulendo i file scaduti.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import {
+  ensureBackupFolderPath,
+  uploadArchiveToDrive,
+  deleteDriveFile,
+  isDriveConfigured,
+} from "../_shared/drive-upload.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -210,6 +216,27 @@ async function runBackupForBrand(
 
     const expiresAt = new Date(Date.now() + retentionDays * 86400 * 1000).toISOString();
 
+    // Upload off-site su Google Drive (best-effort, non blocca il backup)
+    let driveFileId: string | null = null;
+    let driveWebViewLink: string | null = null;
+    let driveError: string | null = null;
+    let driveUploadedAt: string | null = null;
+    if (isDriveConfigured()) {
+      try {
+        const { data: brandRow } = await admin
+          .from("brands").select("name").eq("id", brandId).maybeSingle();
+        const brandLabel = (brandRow?.name as string | undefined) ?? brandId.slice(0, 8);
+        const folderId = await ensureBackupFolderPath(brandLabel);
+        const up = await uploadArchiveToDrive(fileName, archive, folderId);
+        driveFileId = up.fileId;
+        driveWebViewLink = up.webViewLink;
+        driveUploadedAt = new Date().toISOString();
+      } catch (e) {
+        driveError = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+        console.error("[scheduled-backup-runner] drive upload failed", driveError);
+      }
+    }
+
     await admin.from("backup_runs").update({
       status: "completed",
       total_rows: totalRows,
@@ -221,6 +248,10 @@ async function runBackupForBrand(
       storage_path: storagePath,
       storage_uploaded_at: new Date().toISOString(),
       expires_at: expiresAt,
+      drive_file_id: driveFileId,
+      drive_uploaded_at: driveUploadedAt,
+      drive_web_view_link: driveWebViewLink,
+      drive_error: driveError,
     }).eq("id", runId);
 
     return { ok: true, runId, sizeBytes: archive.length, rows: totalRows };
@@ -239,21 +270,33 @@ async function runBackupForBrand(
 async function cleanupExpired(admin: any): Promise<number> {
   const { data: expired } = await admin
     .from("backup_runs")
-    .select("id, storage_path")
-    .not("storage_path", "is", null)
+    .select("id, storage_path, drive_file_id")
+    .or("storage_path.not.is.null,drive_file_id.not.is.null")
     .lt("expires_at", new Date().toISOString())
     .limit(200);
   if (!expired || expired.length === 0) return 0;
   let deleted = 0;
   for (const r of expired) {
-    if (!r.storage_path) continue;
-    const { error: delErr } = await admin.storage
-      .from("backup-archives")
-      .remove([r.storage_path]);
-    if (!delErr) {
+    let storageOk = !r.storage_path;
+    let driveOk = !r.drive_file_id;
+    if (r.storage_path) {
+      const { error: delErr } = await admin.storage
+        .from("backup-archives").remove([r.storage_path]);
+      storageOk = !delErr;
+    }
+    if (r.drive_file_id && isDriveConfigured()) {
+      try { driveOk = await deleteDriveFile(r.drive_file_id); }
+      catch { driveOk = false; }
+    } else if (r.drive_file_id) {
+      // Drive non configurato: lascia traccia ma non bloccare il cleanup storage
+      driveOk = false;
+    }
+    if (storageOk && driveOk) {
       await admin.from("backup_runs").update({
-        storage_path: null,
-        storage_uploaded_at: null,
+        storage_path: r.storage_path ? null : r.storage_path,
+        storage_uploaded_at: r.storage_path ? null : undefined,
+        drive_file_id: r.drive_file_id ? null : r.drive_file_id,
+        drive_uploaded_at: r.drive_file_id ? null : undefined,
         expires_at: null,
       }).eq("id", r.id);
       deleted++;
