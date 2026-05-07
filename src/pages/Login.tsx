@@ -21,7 +21,7 @@ export default function Login() {
           <img src={logo} alt="Gruppo Benessere" className="h-12 w-auto" />
           <h1 className="text-3xl font-bold">CRM Gruppo Benessere</h1>
         </div>
-        <p className="text-muted-foreground">Gestione Lead Multi-Brand</p>
+        <p className="text-muted-foreground">Il cuore digitale del Gruppo Benessere</p>
       </div>
 
       <LoginForm />
