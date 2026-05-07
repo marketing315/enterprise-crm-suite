@@ -88,7 +88,7 @@ export function usePaginatedContactSearch(
     setPage((p) => p + 1);
   }, [showAll]);
 
-  const hasMore = !showAll && pageData.length === effectiveLimit;
+  const hasMore = !showAll && (pageData?.length ?? 0) === effectiveLimit;
   const contacts = allResults;
 
   return {
