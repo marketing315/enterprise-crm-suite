@@ -26,13 +26,21 @@ export default function AdminChangelog() {
 
       <Tabs defaultValue="changelog" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="changelog"><ScrollText className="w-4 h-4 mr-2" />Changelog</TabsTrigger>
-          <TabsTrigger value="runbook"><BookOpen className="w-4 h-4 mr-2" />Runbook</TabsTrigger>
+          <TabsTrigger value="changelog">
+            <ScrollText className="w-4 h-4 mr-2" />
+            Changelog
+          </TabsTrigger>
+          <TabsTrigger value="runbook">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Runbook
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="changelog">
           <Card>
-            <CardHeader><CardTitle>Releases</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Releases</CardTitle>
+            </CardHeader>
             <CardContent>
               <article className="prose prose-sm dark:prose-invert max-w-none">
                 <SafeMarkdown>{changelogContent}</SafeMarkdown>
@@ -43,7 +51,9 @@ export default function AdminChangelog() {
 
         <TabsContent value="runbook">
           <Card>
-            <CardHeader><CardTitle>Admin Runbook</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Admin Runbook</CardTitle>
+            </CardHeader>
             <CardContent>
               <article className="prose prose-sm dark:prose-invert max-w-none">
                 <SafeMarkdown>{runbookContent}</SafeMarkdown>
@@ -52,50 +62,6 @@ export default function AdminChangelog() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-  return (
-    <div className="container mx-auto py-8 space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <ScrollText className="w-7 h-7 text-primary" />
-          Release Changelog
-        </h1>
-        <p className="text-muted-foreground">
-          Storico ufficiale dei rilasci in produzione (fonte: <code>docs/changelog.md</code>).
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Releases</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <EmptyState
-              icon={AlertCircle}
-              title="Changelog non disponibile"
-              description={`Impossibile caricare il file (${error}). Controlla che docs/changelog.md sia servito staticamente.`}
-            />
-          ) : content === null ? (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-1/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-6 w-1/4 mt-6" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-4/5" />
-            </div>
-          ) : (
-            <article className="prose prose-sm dark:prose-invert max-w-none">
-              <SafeMarkdown>{content}</SafeMarkdown>
-            </article>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
