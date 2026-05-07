@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { ConfirmDeleteButton } from '@/components/shared/ConfirmDeleteButton';
 import { formatCurrency } from '@/lib/formatKpi';
 import { useExpenses, useCreateExpense, useDeleteExpense, useExpenseCategories, useHasFinanceAccess } from '@/hooks/useCompanyFinance';
 import { toast } from 'sonner';
