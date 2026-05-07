@@ -258,6 +258,12 @@ export default function MarketingDashboard() {
             <Button variant="outline" size="sm" onClick={() => handlePreset(30)}>30gg</Button>
             <Button variant="outline" size="sm" onClick={() => handlePreset(90)}>90gg</Button>
             <Button variant="outline" size="sm" onClick={handleThisMonth}>Mese</Button>
+            <div className="ml-auto flex items-center gap-2">
+              <Switch id="compare-toggle" checked={showCompare} onCheckedChange={setShowCompare} />
+              <Label htmlFor="compare-toggle" className="text-sm cursor-pointer">
+                vs periodo precedente
+              </Label>
+            </div>
           </div>
 
           {/* KPI Cards (with ADV metrics integrated) */}
@@ -269,7 +275,12 @@ export default function MarketingDashboard() {
           />
 
           {/* Cross-stage end-to-end funnel */}
-          <FunnelCrossStage stages={funnelOverview} isLoading={funnelOvLoading} />
+          <FunnelCrossStage
+            stages={showCompare ? funnelCompare : funnelOverview}
+            isLoading={showCompare ? funnelCmpLoading : funnelOvLoading}
+            showCompare={showCompare}
+            onStageClick={(id, label) => setDrillStage({ id, label })}
+          />
 
           {/* Stacked histogram leads-by-source */}
           <LeadsHistogram
