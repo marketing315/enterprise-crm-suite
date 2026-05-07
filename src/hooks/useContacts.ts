@@ -108,10 +108,12 @@ export function useDeleteContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (contactId: string, reason?: string) => {
+    mutationFn: async (input: string | { contactId: string; reason?: string }) => {
+      const contactId = typeof input === 'string' ? input : input.contactId;
+      const reason = typeof input === 'string' ? null : input.reason ?? null;
       const { error } = await supabase.rpc('archive_contact', {
         p_contact_id: contactId,
-        p_reason: reason ?? null,
+        p_reason: reason,
       });
       if (error) throw error;
     },
