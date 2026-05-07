@@ -42,6 +42,7 @@ export function KanbanBoard({ onDealClick, filterTagIds = [] }: KanbanBoardProps
   const dealIds = useMemo(() => (deals || []).map((d) => d.id), [deals]);
   const { data: tagsMap } = useBatchEntityTags("deal", dealIds);
   const updateStage = useUpdateDealStage();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const canEditDeals = useCanEditDeals();
   
