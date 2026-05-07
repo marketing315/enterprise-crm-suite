@@ -270,21 +270,33 @@ async function runBackupForBrand(
 async function cleanupExpired(admin: any): Promise<number> {
   const { data: expired } = await admin
     .from("backup_runs")
-    .select("id, storage_path")
-    .not("storage_path", "is", null)
+    .select("id, storage_path, drive_file_id")
+    .or("storage_path.not.is.null,drive_file_id.not.is.null")
     .lt("expires_at", new Date().toISOString())
     .limit(200);
   if (!expired || expired.length === 0) return 0;
   let deleted = 0;
   for (const r of expired) {
-    if (!r.storage_path) continue;
-    const { error: delErr } = await admin.storage
-      .from("backup-archives")
-      .remove([r.storage_path]);
-    if (!delErr) {
+    let storageOk = !r.storage_path;
+    let driveOk = !r.drive_file_id;
+    if (r.storage_path) {
+      const { error: delErr } = await admin.storage
+        .from("backup-archives").remove([r.storage_path]);
+      storageOk = !delErr;
+    }
+    if (r.drive_file_id && isDriveConfigured()) {
+      try { driveOk = await deleteDriveFile(r.drive_file_id); }
+      catch { driveOk = false; }
+    } else if (r.drive_file_id) {
+      // Drive non configurato: lascia traccia ma non bloccare il cleanup storage
+      driveOk = false;
+    }
+    if (storageOk && driveOk) {
       await admin.from("backup_runs").update({
-        storage_path: null,
-        storage_uploaded_at: null,
+        storage_path: r.storage_path ? null : r.storage_path,
+        storage_uploaded_at: r.storage_path ? null : undefined,
+        drive_file_id: r.drive_file_id ? null : r.drive_file_id,
+        drive_uploaded_at: r.drive_file_id ? null : undefined,
         expires_at: null,
       }).eq("id", r.id);
       deleted++;
