@@ -216,6 +216,27 @@ async function runBackupForBrand(
 
     const expiresAt = new Date(Date.now() + retentionDays * 86400 * 1000).toISOString();
 
+    // Upload off-site su Google Drive (best-effort, non blocca il backup)
+    let driveFileId: string | null = null;
+    let driveWebViewLink: string | null = null;
+    let driveError: string | null = null;
+    let driveUploadedAt: string | null = null;
+    if (isDriveConfigured()) {
+      try {
+        const { data: brandRow } = await admin
+          .from("brands").select("name").eq("id", brandId).maybeSingle();
+        const brandLabel = (brandRow?.name as string | undefined) ?? brandId.slice(0, 8);
+        const folderId = await ensureBackupFolderPath(brandLabel);
+        const up = await uploadArchiveToDrive(fileName, archive, folderId);
+        driveFileId = up.fileId;
+        driveWebViewLink = up.webViewLink;
+        driveUploadedAt = new Date().toISOString();
+      } catch (e) {
+        driveError = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+        console.error("[scheduled-backup-runner] drive upload failed", driveError);
+      }
+    }
+
     await admin.from("backup_runs").update({
       status: "completed",
       total_rows: totalRows,
@@ -227,6 +248,10 @@ async function runBackupForBrand(
       storage_path: storagePath,
       storage_uploaded_at: new Date().toISOString(),
       expires_at: expiresAt,
+      drive_file_id: driveFileId,
+      drive_uploaded_at: driveUploadedAt,
+      drive_web_view_link: driveWebViewLink,
+      drive_error: driveError,
     }).eq("id", runId);
 
     return { ok: true, runId, sizeBytes: archive.length, rows: totalRows };
