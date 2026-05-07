@@ -34,23 +34,23 @@ export function FunnelStageDrillPanel({ stageId, stageLabel, fromIso, toIso, ope
               Nessun dato disponibile per questo stage.
             </p>
           ) : (
-            data.map((it) => (
+            data.map((row) => (
               <div
-                key={it.item_id}
+                key={row.item_id}
                 className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2.5 hover:bg-muted/40 transition-colors"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{it.item_label}</p>
-                  {it.item_subtitle && (
-                    <p className="text-xs text-muted-foreground truncate">{it.item_subtitle}</p>
+                  <p className="text-sm font-medium truncate">{row.item_label}</p>
+                  {row.item_subtitle && (
+                    <p className="text-xs text-muted-foreground truncate">{row.item_subtitle}</p>
                   )}
                 </div>
                 <div className="text-right shrink-0">
-                  {it.item_value != null && (
-                    <p className="text-sm font-semibold">€{Number(it.item_value).toLocaleString("it-IT")}</p>
+                  {row.item_value != null && (
+                    <p className="text-sm font-semibold">€{Number(row.item_value).toLocaleString("it-IT")}</p>
                   )}
                   <p className="text-[11px] text-muted-foreground">
-                    {format(new Date(it.item_at), "d MMM, HH:mm", { locale: it })}
+                    {format(new Date(row.item_at), "d MMM, HH:mm", { locale: it })}
                   </p>
                 </div>
               </div>
