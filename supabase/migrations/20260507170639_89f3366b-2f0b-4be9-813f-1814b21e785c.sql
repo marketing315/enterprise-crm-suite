@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.cleanup_system_log_tables(integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.admin_purge_cron_job_run_details(integer, integer) FROM PUBLIC, anon, authenticated;
