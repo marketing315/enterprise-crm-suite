@@ -11293,6 +11293,18 @@ export type Database = {
         Args: { p_appointment_id: string; p_sales_user_id: string }
         Returns: undefined
       }
+      assign_ticket: {
+        Args: {
+          p_assignee_user_id: string
+          p_expected_version?: number
+          p_ticket_id: string
+        }
+        Returns: {
+          assigned_to_user_id: string
+          new_version: number
+          ticket_id: string
+        }[]
+      }
       assign_ticket_round_robin: {
         Args: { p_brand_id: string; p_ticket_id: string }
         Returns: string
