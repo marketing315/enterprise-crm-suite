@@ -53,6 +53,12 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
         </p>
       )}
 
+      <LeadEventCampaignSelector
+        eventId={event.id}
+        currentCampaignId={event.marketing_campaign_id ?? null}
+        currentCampaignName={event.marketing_campaigns?.name ?? null}
+      />
+
       {event.raw_payload && typeof event.raw_payload === 'object' && (event.raw_payload as any).source_url && (() => {
         const safe = sanitizeUrl((event.raw_payload as any).source_url);
         if (!safe) return null;
