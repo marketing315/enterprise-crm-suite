@@ -114,9 +114,11 @@ export function CeoBudgetPanel({ from }: CeoBudgetPanelProps) {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{formatCurrency(b.planned_amount)}</span>
                     {hasAccess && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteBudget.mutate(b.id)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                      <ConfirmDeleteButton
+                        onConfirm={() => deleteBudget.mutate(b.id)}
+                        title="Eliminare questo budget?"
+                        description={`Budget ${b.expense_categories?.name || 'Generale'} — ${formatCurrency(b.planned_amount)}. L'azione viene tracciata nei log audit.`}
+                      />
                     )}
                   </div>
                 </div>
