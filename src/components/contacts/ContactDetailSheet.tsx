@@ -72,6 +72,7 @@ interface EditFormData {
   email: string;
   city: string;
   cap: string;
+  province: string;
   address: string;
   notes: string;
   status: ContactStatus;
