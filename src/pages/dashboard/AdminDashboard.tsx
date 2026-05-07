@@ -147,6 +147,14 @@ export default function AdminDashboard() {
             <Button
               variant="outline"
               className="w-full justify-start gap-2"
+              onClick={() => navigate('/admin/slow-queries')}
+            >
+              <Gauge className="h-4 w-4" />
+              Slow Queries
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
               onClick={() => navigate('/settings')}
             >
               <AlertCircle className="h-4 w-4" />
