@@ -18,6 +18,7 @@ import {
   useDecideProposal,
   CallActionType,
 } from "@/hooks/useCallActionProposals";
+import { toast } from "sonner";
 import { useBrand } from "@/contexts/BrandContext";
 import { cn } from "@/lib/utils";
 
