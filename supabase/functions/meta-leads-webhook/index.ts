@@ -260,25 +260,45 @@ async function processLeadChange(
     const phoneSuffix = normalizedPhone.normalized.slice(-4);
     console.log(`[META-EVENT] Normalized phone: ***${phoneSuffix} (${normalizedPhone.countryCode})`);
 
-    const { data: contactResult, error: contactError } = await supabase.rpc(
-      "find_or_create_contact",
-      {
-        p_brand_id: metaApp.brand_id,
-        p_phone_normalized: normalizedPhone.normalized,
-        p_phone_raw: normalizedPhone.raw,
-        p_country_code: normalizedPhone.countryCode,
-        p_assumed_country: normalizedPhone.assumedCountry,
-        p_first_name: firstName,
-        p_last_name: lastName,
-        p_email: email,
-        p_city: city,
-        p_cap: cap,
-        p_lead_message: combinedMessage || null,
+    // Retry find_or_create_contact up to 3 times with exponential backoff
+    // and persist last_error on meta_lead_events when it ultimately fails.
+    let contactResult: string | null = null;
+    let contactError: unknown = null;
+    const rpcArgs = {
+      p_brand_id: metaApp.brand_id,
+      p_phone_normalized: normalizedPhone.normalized,
+      p_phone_raw: normalizedPhone.raw,
+      p_country_code: normalizedPhone.countryCode,
+      p_assumed_country: normalizedPhone.assumedCountry,
+      p_first_name: firstName,
+      p_last_name: lastName,
+      p_email: email,
+      p_city: city,
+      p_cap: cap,
+      p_lead_message: combinedMessage || null,
+    };
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const res = await supabase.rpc("find_or_create_contact", rpcArgs);
+      if (!res.error && res.data) {
+        contactResult = res.data as string;
+        contactError = null;
+        break;
       }
-    );
+      contactError = res.error ?? new Error("empty_contact_result");
+      console.warn(`[META-EVENT] find_or_create_contact attempt ${attempt}/3 failed for ${leadgenId}:`, contactError);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 250 * attempt));
+    }
 
     if (contactError || !contactResult) {
-      console.error(`[META-EVENT] Failed to create contact for ${leadgenId}:`, contactError);
+      const errMsg = (contactError as { message?: string; code?: string } | null)?.message
+        ?? (contactError as { code?: string } | null)?.code
+        ?? "unknown_error";
+      console.error(`[META-EVENT] Failed to create contact for ${leadgenId} after retries:`, contactError);
+      // Persist last_error so we can see WHY contact_id is NULL (no log retention dependency)
+      await supabase.from("meta_lead_events").update({
+        status: "error",
+        error: `find_or_create_contact: ${String(errMsg).slice(0, 500)}`,
+      }).eq("id", metaEventId);
     } else {
       contactId = contactResult;
       console.log(`[META-EVENT] Contact: ${contactId}`);
