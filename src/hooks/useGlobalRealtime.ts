@@ -28,6 +28,19 @@ const TABLE_QUERY_MAP: Record<string, InvalidationEntry[]> = {
     { key: ['forecast-history'] },
     { key: ['dashboard-open-deals'] },
     { key: ['dashboard-trend'] },
+    { key: ['ceo-dashboard-bundle'] },
+    { key: ['ceo-dashboard-kpis'] },
+    { key: ['ceo-operational-kpis'] },
+  ],
+  expenses: [
+    { key: ['ceo-dashboard-bundle'] },
+    { key: ['ceo-dashboard-kpis'] },
+    { key: ['expenses'] },
+  ],
+  budgets: [
+    { key: ['ceo-dashboard-bundle'] },
+    { key: ['ceo-dashboard-kpis'] },
+    { key: ['budgets'] },
   ],
   deal_stage_history: [{ key: ['deals'] }],
   lead_events: [
