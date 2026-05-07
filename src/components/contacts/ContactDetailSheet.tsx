@@ -491,16 +491,22 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     </div>
                   )}
 
-                  {(contact.city || contact.cap || (contact as any).address) && (
+                  {(contact.city || contact.cap || (contact as any).province || (contact as any).address) && (
                     <div className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        {(contact.city || contact.cap) && (
-                          <div>{[contact.city, contact.cap].filter(Boolean).join(' · ')}</div>
+                        {(contact.city || contact.cap || (contact as any).province) && (
+                          <div>
+                            {[
+                              contact.city,
+                              (contact as any).province ? `(${(contact as any).province})` : null,
+                              contact.cap,
+                            ].filter(Boolean).join(' · ')}
+                          </div>
                         )}
                         {(contact as any).address && (
                           <div className="text-muted-foreground text-xs">
-                            {[(contact as any).address, (contact as any).province, (contact as any).country].filter(Boolean).join(', ')}
+                            {[(contact as any).address, (contact as any).country].filter(Boolean).join(', ')}
                           </div>
                         )}
                       </div>
