@@ -144,6 +144,8 @@ Deno.serve(async (req: Request) => {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         await handleJobFailure(supabaseAdmin, job, errorMessage);
         results.push({ id: job.id, status: "failed", error: errorMessage });
+      } finally {
+        clearTimeout(timeout);
       }
     }));
   }
