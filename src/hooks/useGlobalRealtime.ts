@@ -105,6 +105,7 @@ const CHANNEL_GROUPS: Record<string, string[]> = {
   'global-tags-rt': ['tags', 'tag_assignments'],
   'global-admin-rt': ['admin_todos', 'action_suggestions'],
   'global-tickets-rt': ['tickets'],
+  'global-finance-rt': ['expenses', 'budgets'],
 };
 
 /**
