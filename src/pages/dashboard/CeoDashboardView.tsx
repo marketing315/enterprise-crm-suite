@@ -61,6 +61,8 @@ export default function CeoDashboardView() {
     >
       <CeoPeriodSelector from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
 
+      <CeoCalcVersionBanner calcVersion={finData?.calc_version} />
+
       <TaxDisclaimer />
 
       {isLoading && <CeoDashboardSkeleton />}
