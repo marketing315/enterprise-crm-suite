@@ -142,7 +142,9 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
     try {
       const updates: Record<string, any> = { ...formData };
       // Set marketing_consent_at when consent changes
-      if (formData.marketing_consent !== (contact as any).marketing_consent) {
+      // Bug #8 (MEDIA): usare ?? false per gestire correttamente null/undefined dal DB
+      const prevConsent = (contact as { marketing_consent?: boolean | null }).marketing_consent ?? false;
+      if (formData.marketing_consent !== prevConsent) {
         updates.marketing_consent_at = formData.marketing_consent ? new Date().toISOString() : null;
       }
       await updateContact.mutateAsync({
