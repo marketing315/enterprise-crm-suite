@@ -1,6 +1,6 @@
 // AdminDashboard — v2
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { Shield, Users, Webhook, Ticket, AlertCircle, Kanban, TrendingUp, Target } from 'lucide-react';
+import { Shield, Users, Webhook, Ticket, AlertCircle, Kanban, TrendingUp, Target, Gauge } from 'lucide-react';
 import { DashboardKpiGrid, KpiItem } from '@/components/dashboard/DashboardKpiGrid';
 import { DashboardTrendChart } from '@/components/dashboard/DashboardTrendChart';
 import { DashboardSystemStatus } from '@/components/dashboard/DashboardSystemStatus';
