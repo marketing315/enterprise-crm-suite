@@ -1158,14 +1158,28 @@ Deno.serve(async (req: Request) => {
   
   for (const event of events as WebhookInboundEvent[]) {
     try {
-      // Load active rules for this brand and event type
-      const { data: rules } = await supabase
+      // Bug #2 (CRITICA): il filtro `.like.%.\\*` era rotto — non matchava le regole
+      // wildcard (es. trigger_event_type = "lead.*"). Ora carichiamo le regole exact
+      // + tutte quelle che terminano con ".*" (PostgREST `like` usa `*` come wildcard
+      // SQL `%`, quindi `like.*.\*` significa "qualunque prefisso seguito da `.*`").
+      // Il match wildcard finale è verificato in memoria su `event.event_type`.
+      const { data: allRules } = await supabase
         .from("automation_rules")
         .select("*")
         .eq("brand_id", event.brand_id)
         .eq("is_active", true)
-        .or(`trigger_event_type.eq.${event.event_type},trigger_event_type.like.%.\\*`);
-      
+        .or(`trigger_event_type.eq.${event.event_type},trigger_event_type.like.*.\\*`);
+
+      const rules = (allRules || []).filter((r: { trigger_event_type: string }) => {
+        const t = r.trigger_event_type;
+        if (t === event.event_type) return true;
+        if (t.endsWith(".*")) {
+          const prefix = t.slice(0, -2); // strip trailing ".*"
+          return event.event_type === prefix || event.event_type.startsWith(prefix + ".");
+        }
+        return false;
+      });
+
       if (rules && rules.length > 0) {
         const result = await processEvent(supabase, event, rules as AutomationRule[]);
         
