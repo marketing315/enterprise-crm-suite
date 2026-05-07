@@ -4368,21 +4368,27 @@ export type Database = {
       db_size_history: {
         Row: {
           id: number
+          inactive_replication_slots: Json | null
           measured_at: string
           top_tables: Json
           total_bytes: number
+          wal_bytes: number | null
         }
         Insert: {
           id?: number
+          inactive_replication_slots?: Json | null
           measured_at?: string
           top_tables: Json
           total_bytes: number
+          wal_bytes?: number | null
         }
         Update: {
           id?: number
+          inactive_replication_slots?: Json | null
           measured_at?: string
           top_tables?: Json
           total_bytes?: number
+          wal_bytes?: number | null
         }
         Relationships: []
       }
@@ -11153,6 +11159,17 @@ export type Database = {
           },
         ]
       }
+      v_db_growth_alerts: {
+        Row: {
+          daily_growth: string | null
+          daily_growth_bytes: number | null
+          db_size: string | null
+          measured_at: string | null
+          severity: string | null
+          total_bytes: number | null
+        }
+        Relationships: []
+      }
       webhook_sources_safe: {
         Row: {
           brand_id: string | null
@@ -12499,6 +12516,17 @@ export type Database = {
         }[]
       }
       get_cron_secret: { Args: never; Returns: string }
+      get_db_growth_alerts: {
+        Args: never
+        Returns: {
+          daily_growth: string
+          daily_growth_bytes: number
+          db_size: string
+          measured_at: string
+          severity: string
+          total_bytes: number
+        }[]
+      }
       get_deal_velocity_metrics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json

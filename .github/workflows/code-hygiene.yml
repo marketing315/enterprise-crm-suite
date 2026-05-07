@@ -99,3 +99,25 @@ jobs:
         if: always()
         run: bash scripts/ci/check-edge-error-leak.sh
 
+      # ---------------------------------------------------------------
+      # 11. ADR-001 — Retention obbligatoria su nuove tabelle log-pattern
+      # ---------------------------------------------------------------
+      - name: Check retention policy on new migrations
+        if: always()
+        run: |
+          git fetch origin main --depth=50 || true
+          BASE=$(git merge-base origin/main HEAD || git rev-parse HEAD~1)
+          CHANGED=$(git diff --name-only "$BASE"...HEAD -- 'supabase/migrations/*.sql' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "$CHANGED" | xargs node scripts/ci/check-retention-policy.mjs
+          else
+            echo "No migration changes to check."
+          fi
+
+      # ---------------------------------------------------------------
+      # 11.bis Retention linter self-test
+      # ---------------------------------------------------------------
+      - name: Retention linter unit tests
+        if: always()
+        run: node --test scripts/ci/__tests__/check-retention-policy.test.mjs
+

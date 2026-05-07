@@ -58,6 +58,13 @@ Guida operativa rapida per amministratori della piattaforma. Per dettagli archit
 - Indici hot path verificati in snapshot 2026-05-07: `idx_deals_brand_id`, `idx_tickets_brand_assignee_status_opened`, `idx_tickets_sla_breach`. Aggiungere nuovi indici **solo** dietro evidenza dalla dashboard.
 - Cloud compute: se l'app è lenta sotto carico, valutare upgrade istanza Cloud (Backend → Advanced settings → Upgrade instance).
 
+## 5.bis Capacity & retention (ADR-001)
+
+- **Mensile (15 min)**: trend `db_size_history`. Se pendenza > 5%/mese → indaga. Verifica cron `cleanup-*` con `SELECT jobname, active FROM cron.job WHERE jobname LIKE 'cleanup-%' OR jobname='track-db-growth';`.
+- **Trimestrale (30 min)**: re-run audit retroattivo (vedi `docs/db-retention-policy.md` §Audit). Tabelle nuove `NO CLEANUP` → ticket `retention-review`.
+- **Annuale**: DR drill "disco pieno" → `docs/dr/04-disk-full.md`.
+- Soglie alert (view `v_db_growth_alerts`): CRITICAL > 6 GB (75% di 8 GB), WARNING crescita > 1 GB/giorno.
+
 ## 6. Convenzioni di sviluppo da rispettare
 
 - Migrazioni puramente additive su tabelle business (vedi Core memory "Data Safety").
