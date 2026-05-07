@@ -146,8 +146,9 @@ export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare 
           {ordered.map((stage, i) => {
             const v = STAGE_VISUAL[stage.stage_id] ?? STAGE_VISUAL.lead;
             const Icon = v.icon;
-            const isMoney = stage.stage_id === "spend" || stage.stage_id === "revenue";
-            const denom = isMoney ? moneyMax : countMax;
+            const isMoney = isMoneyStage(stage.stage_id);
+            const isAdsCount = isAdsCountStage(stage.stage_id);
+            const denom = isMoney ? moneyMax : isAdsCount ? adsCountMax : pipelineCountMax;
             const numeric = isMoney ? Number(stage.metric_value) : Number(stage.metric_count);
             const w = Math.max(8, (numeric / denom) * 100);
             const display = isMoney ? fmtMoney(numeric) : fmtNum(numeric);
