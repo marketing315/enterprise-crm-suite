@@ -445,6 +445,15 @@ export default function MarketingDashboard() {
           <AutomationDonut fromIso={fromIso} toIso={toIso} />
         </TabsContent>
       </Tabs>
+
+      <FunnelStageDrillPanel
+        stageId={drillStage?.id ?? null}
+        stageLabel={drillStage?.label ?? null}
+        fromIso={fromIso}
+        toIso={toIso}
+        open={!!drillStage}
+        onOpenChange={(o) => !o && setDrillStage(null)}
+      />
     </div>
   );
 }
