@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingDown, TrendingUp, Megaphone, Users, CalendarCheck, Trophy, Banknote } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, Megaphone, Users, CalendarCheck, Trophy, Banknote, Eye, MousePointerClick } from "lucide-react";
 import type { FunnelOverviewStage } from "@/hooks/useFunnelOverview";
 
 interface StageWithCompare extends FunnelOverviewStage {
@@ -17,11 +17,13 @@ interface Props {
 }
 
 const STAGE_VISUAL: Record<string, { icon: typeof Megaphone; color: string; bg: string }> = {
-  spend:       { icon: Banknote,      color: "text-violet-600 dark:text-violet-400",   bg: "bg-violet-100/60 dark:bg-violet-900/30" },
-  lead:        { icon: Users,         color: "text-cyan-600 dark:text-cyan-400",       bg: "bg-cyan-100/60 dark:bg-cyan-900/30" },
-  appointment: { icon: CalendarCheck, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100/60 dark:bg-emerald-900/30" },
-  deal_won:    { icon: Trophy,        color: "text-amber-600 dark:text-amber-400",     bg: "bg-amber-100/60 dark:bg-amber-900/30" },
-  revenue:     { icon: Banknote,      color: "text-green-600 dark:text-green-400",     bg: "bg-green-100/60 dark:bg-green-900/30" },
+  spend:       { icon: Banknote,           color: "text-violet-600 dark:text-violet-400",   bg: "bg-violet-100/60 dark:bg-violet-900/30" },
+  impressions: { icon: Eye,                color: "text-sky-600 dark:text-sky-400",         bg: "bg-sky-100/60 dark:bg-sky-900/30" },
+  clicks:      { icon: MousePointerClick,  color: "text-indigo-600 dark:text-indigo-400",   bg: "bg-indigo-100/60 dark:bg-indigo-900/30" },
+  lead:        { icon: Users,              color: "text-cyan-600 dark:text-cyan-400",       bg: "bg-cyan-100/60 dark:bg-cyan-900/30" },
+  appointment: { icon: CalendarCheck,      color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100/60 dark:bg-emerald-900/30" },
+  deal_won:    { icon: Trophy,             color: "text-amber-600 dark:text-amber-400",     bg: "bg-amber-100/60 dark:bg-amber-900/30" },
+  revenue:     { icon: Banknote,           color: "text-green-600 dark:text-green-400",     bg: "bg-green-100/60 dark:bg-green-900/30" },
 };
 
 function fmtNum(v: number): string {
