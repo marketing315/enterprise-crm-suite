@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingDown, TrendingUp, Megaphone, Users, CalendarCheck, Trophy, Banknote } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, Megaphone, Users, CalendarCheck, Trophy, Banknote, Eye, MousePointerClick } from "lucide-react";
 import type { FunnelOverviewStage } from "@/hooks/useFunnelOverview";
 
 interface StageWithCompare extends FunnelOverviewStage {
@@ -17,11 +17,13 @@ interface Props {
 }
 
 const STAGE_VISUAL: Record<string, { icon: typeof Megaphone; color: string; bg: string }> = {
-  spend:       { icon: Banknote,      color: "text-violet-600 dark:text-violet-400",   bg: "bg-violet-100/60 dark:bg-violet-900/30" },
-  lead:        { icon: Users,         color: "text-cyan-600 dark:text-cyan-400",       bg: "bg-cyan-100/60 dark:bg-cyan-900/30" },
-  appointment: { icon: CalendarCheck, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100/60 dark:bg-emerald-900/30" },
-  deal_won:    { icon: Trophy,        color: "text-amber-600 dark:text-amber-400",     bg: "bg-amber-100/60 dark:bg-amber-900/30" },
-  revenue:     { icon: Banknote,      color: "text-green-600 dark:text-green-400",     bg: "bg-green-100/60 dark:bg-green-900/30" },
+  spend:       { icon: Banknote,           color: "text-violet-600 dark:text-violet-400",   bg: "bg-violet-100/60 dark:bg-violet-900/30" },
+  impressions: { icon: Eye,                color: "text-sky-600 dark:text-sky-400",         bg: "bg-sky-100/60 dark:bg-sky-900/30" },
+  clicks:      { icon: MousePointerClick,  color: "text-indigo-600 dark:text-indigo-400",   bg: "bg-indigo-100/60 dark:bg-indigo-900/30" },
+  lead:        { icon: Users,              color: "text-cyan-600 dark:text-cyan-400",       bg: "bg-cyan-100/60 dark:bg-cyan-900/30" },
+  appointment: { icon: CalendarCheck,      color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100/60 dark:bg-emerald-900/30" },
+  deal_won:    { icon: Trophy,             color: "text-amber-600 dark:text-amber-400",     bg: "bg-amber-100/60 dark:bg-amber-900/30" },
+  revenue:     { icon: Banknote,           color: "text-green-600 dark:text-green-400",     bg: "bg-green-100/60 dark:bg-green-900/30" },
 };
 
 function fmtNum(v: number): string {
@@ -67,10 +69,15 @@ export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare 
   }
 
   const ordered = [...stages].sort((a, b) => a.stage_order - b.stage_order);
-  // For relative bar height we use a normalized scale: spend & revenue (money) vs counts.
-  // Use independent scales: max within count stages and max within money stages.
-  const moneyMax = Math.max(...ordered.filter(s => s.stage_id === "spend" || s.stage_id === "revenue").map(s => s.metric_value), 1);
-  const countMax = Math.max(...ordered.filter(s => s.stage_id !== "spend" && s.stage_id !== "revenue").map(s => Number(s.metric_count)), 1);
+  // Three independent scales to avoid impressions dwarfing pipeline bars:
+  // - money: spend/revenue
+  // - ads counts: impressions/clicks
+  // - pipeline counts: lead/appointment/deal_won
+  const isMoneyStage = (id: string) => id === "spend" || id === "revenue";
+  const isAdsCountStage = (id: string) => id === "impressions" || id === "clicks";
+  const moneyMax = Math.max(...ordered.filter(s => isMoneyStage(s.stage_id)).map(s => s.metric_value), 1);
+  const adsCountMax = Math.max(...ordered.filter(s => isAdsCountStage(s.stage_id)).map(s => Number(s.metric_count)), 1);
+  const pipelineCountMax = Math.max(...ordered.filter(s => !isMoneyStage(s.stage_id) && !isAdsCountStage(s.stage_id)).map(s => Number(s.metric_count)), 1);
 
   return (
     <Card className="border-0 shadow-sm">
@@ -83,8 +90,9 @@ export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare 
           {ordered.map((stage, i) => {
             const v = STAGE_VISUAL[stage.stage_id] ?? STAGE_VISUAL.lead;
             const Icon = v.icon;
-            const isMoney = stage.stage_id === "spend" || stage.stage_id === "revenue";
-            const denom = isMoney ? moneyMax : countMax;
+            const isMoney = isMoneyStage(stage.stage_id);
+            const isAdsCount = isAdsCountStage(stage.stage_id);
+            const denom = isMoney ? moneyMax : isAdsCount ? adsCountMax : pipelineCountMax;
             const numeric = isMoney ? Number(stage.metric_value) : Number(stage.metric_count);
             const h = Math.max(28, (numeric / denom) * 140);
             const display = isMoney ? fmtMoney(numeric) : fmtNum(numeric);
@@ -138,8 +146,9 @@ export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare 
           {ordered.map((stage, i) => {
             const v = STAGE_VISUAL[stage.stage_id] ?? STAGE_VISUAL.lead;
             const Icon = v.icon;
-            const isMoney = stage.stage_id === "spend" || stage.stage_id === "revenue";
-            const denom = isMoney ? moneyMax : countMax;
+            const isMoney = isMoneyStage(stage.stage_id);
+            const isAdsCount = isAdsCountStage(stage.stage_id);
+            const denom = isMoney ? moneyMax : isAdsCount ? adsCountMax : pipelineCountMax;
             const numeric = isMoney ? Number(stage.metric_value) : Number(stage.metric_count);
             const w = Math.max(8, (numeric / denom) * 100);
             const display = isMoney ? fmtMoney(numeric) : fmtNum(numeric);
