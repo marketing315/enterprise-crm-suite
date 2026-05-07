@@ -341,7 +341,7 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="city">Città</Label>
                       <Input
@@ -349,6 +349,16 @@ export function ContactDetailSheet({ contactId, open, onOpenChange }: ContactDet
                         value={formData.city}
                         onChange={(e) => setFormData((p) => ({ ...p, city: e.target.value }))}
                         placeholder="Città"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="province">Provincia</Label>
+                      <Input
+                        id="province"
+                        value={formData.province}
+                        onChange={(e) => setFormData((p) => ({ ...p, province: e.target.value.toUpperCase().slice(0, 2) }))}
+                        placeholder="MI"
+                        maxLength={2}
                       />
                     </div>
                     <div className="space-y-1.5">
