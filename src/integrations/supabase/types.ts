@@ -12741,6 +12741,19 @@ export type Database = {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
       }
+      get_slow_queries: {
+        Args: { p_limit?: number }
+        Returns: {
+          calls: number
+          max_exec_ms: number
+          mean_exec_ms: number
+          query: string
+          rows_returned: number
+          shared_blks_hit: number
+          shared_blks_read: number
+          total_exec_ms: number
+        }[]
+      }
       get_tag_assignment_counts: {
         Args: { p_brand_id: string }
         Returns: {
@@ -13546,6 +13559,7 @@ export type Database = {
         Args: { p_identity_hash: string; p_scope: string }
         Returns: undefined
       }
+      reset_slow_queries: { Args: never; Returns: undefined }
       resolve_lead_campaign_attribution: {
         Args: {
           p_brand_id: string
