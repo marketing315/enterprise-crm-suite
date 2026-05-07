@@ -1,0 +1,1 @@
+DROP SCHEMA IF EXISTS import_storico CASCADE;
