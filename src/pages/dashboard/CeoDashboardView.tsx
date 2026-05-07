@@ -17,6 +17,7 @@ import { CeoBudgetPanel } from '@/components/ceo/CeoBudgetPanel';
 import { CeoAlertsPanel } from '@/components/ceo/CeoAlertsPanel';
 import { BudgetBaselineCard } from '@/components/ceo/BudgetBaselineCard';
 import { CeoCostBreakdown } from '@/components/ceo/CeoCostBreakdown';
+import { CeoCalcVersionBanner } from '@/components/ceo/CeoCalcVersionBanner';
 
 export default function CeoDashboardView() {
   const { isAdmin, isCeo } = useAuth();
@@ -59,6 +60,8 @@ export default function CeoDashboardView() {
       queryKeys={[['ceo-dashboard-bundle']]}
     >
       <CeoPeriodSelector from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+
+      <CeoCalcVersionBanner calcVersion={finData?.calc_version} />
 
       <TaxDisclaimer />
 
