@@ -53,7 +53,18 @@ Deno.serve(async (req) => {
     }
 
     const list = (alerts ?? []) as AlertRow[];
-    if (list.length === 0) {
+
+    // 1.b) IO pressure check (Fase 5 piano IO): tabelle con dead_pct >30% o write rate alto
+    const { data: ioRows } = await supabase
+      .from("v_io_pressure")
+      .select("table_name,total_writes,dead_pct,total_size")
+      .order("total_writes", { ascending: false })
+      .limit(5);
+    const ioWarn = (ioRows ?? []).filter((r: any) =>
+      Number(r.dead_pct) > 30 || Number(r.total_writes) > 1000000
+    );
+
+    if (list.length === 0 && ioWarn.length === 0) {
       return new Response(
         JSON.stringify({ ok: true, alerts: 0, notifications: 0, outbox: 0 }),
         {
@@ -61,6 +72,19 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // Sintetizza top alert: prima size critical/warning, altrimenti io pressure
+    if (list.length === 0 && ioWarn.length > 0) {
+      const t = ioWarn[0] as any;
+      list.push({
+        severity: "WARNING",
+        measured_at: new Date().toISOString(),
+        db_size: String(t.total_size ?? "n/d"),
+        total_bytes: 0,
+        daily_growth: `${t.table_name} writes=${t.total_writes} dead=${t.dead_pct}%`,
+        daily_growth_bytes: 0,
+      });
     }
 
     // 2) Dedup: salta se ho già inviato una notifica negli ultimi 6h con lo stesso severity

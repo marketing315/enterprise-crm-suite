@@ -1,0 +1,1 @@
+ALTER VIEW public.v_io_pressure SET (security_invoker = true);
