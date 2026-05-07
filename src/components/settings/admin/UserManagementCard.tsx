@@ -139,11 +139,14 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
       if (!map.has(uid)) {
         map.set(uid, { id: uid, email: entry.user.email, full_name: entry.user.full_name, roles: [] });
       }
+      // Bug #12 (MEDIA): valida il role; se sconosciuto fallback a 'venditore' (no UI rotta)
+      const validRoles: AppRole[] = ['admin', 'ceo', 'callcenter', 'venditore', 'marketing', 'admin_brand'];
+      const safeRole: AppRole = validRoles.includes(entry.role as AppRole) ? (entry.role as AppRole) : 'venditore';
       map.get(uid)!.roles.push({
         id: entry.id,
         brand_id: entry.brand_id,
         brand_name: entry.brand?.name || "—",
-        role: entry.role as AppRole,
+        role: safeRole,
       });
     }
     return Array.from(map.values());
