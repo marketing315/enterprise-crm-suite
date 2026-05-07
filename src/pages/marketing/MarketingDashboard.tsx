@@ -240,8 +240,21 @@ export default function MarketingDashboard() {
             isLoading={summaryLoading || advLoading || funnelLoading}
           />
 
-          {/* Mini Funnel */}
-          <MarketingMiniFunnel metrics={funnelMetrics} isLoading={funnelLoading} />
+          {/* Cross-stage end-to-end funnel */}
+          <FunnelCrossStage stages={funnelOverview} isLoading={funnelOvLoading} />
+
+          {/* Stacked histogram leads-by-source */}
+          <LeadsHistogram
+            data={histData}
+            isLoading={histLoading}
+            granularity={histGranularity}
+            onGranularityChange={setHistGranularity}
+          />
+
+          {/* Portfolio cross-brand (system brand only) */}
+          {isSystemBrand && (
+            <PortfolioBrandTable data={portfolioData} isLoading={portfolioLoading} />
+          )}
 
           {/* Charts */}
           <div className="grid md:grid-cols-2 gap-6">
