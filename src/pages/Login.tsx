@@ -19,7 +19,7 @@ export default function Login() {
       <div className="mb-8 flex flex-col items-center">
         <div className="flex items-center gap-3 mb-2">
           <Building2 className="h-10 w-10 text-primary" />
-          <h1 className="text-3xl font-bold">CRM Enterprise</h1>
+          <h1 className="text-3xl font-bold">CRM Gruppo Benessere</h1>
         </div>
         <p className="text-muted-foreground">Gestione Lead Multi-Brand</p>
       </div>
