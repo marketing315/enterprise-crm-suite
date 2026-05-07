@@ -12597,6 +12597,44 @@ export type Database = {
           stage_order: number
         }[]
       }
+      get_funnel_overview_compare: {
+        Args: {
+          p_brand_ids: string[]
+          p_compare_from: string
+          p_compare_to: string
+          p_from: string
+          p_sources?: string[]
+          p_to: string
+        }
+        Returns: {
+          conversion_from_prev: number
+          delta_pct: number
+          drop_off_pct: number
+          metric_count: number
+          metric_value: number
+          prev_metric_count: number
+          prev_metric_value: number
+          stage_id: string
+          stage_label: string
+          stage_order: number
+        }[]
+      }
+      get_funnel_stage_drill: {
+        Args: {
+          p_brand_ids: string[]
+          p_from: string
+          p_limit?: number
+          p_stage_id: string
+          p_to: string
+        }
+        Returns: {
+          item_at: string
+          item_id: string
+          item_label: string
+          item_subtitle: string
+          item_value: number
+        }[]
+      }
       get_lead_source_analytics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
