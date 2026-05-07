@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.get_user_id(uuid) TO anon;
