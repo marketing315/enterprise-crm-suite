@@ -104,11 +104,12 @@ Deno.serve(async (req: Request) => {
   for (let i = 0; i < jobs.length; i += PARALLELISM) {
     const batch = jobs.slice(i, i + PARALLELISM);
     
-    await Promise.all(batch.map(async (job: AutomationJob) => {
+    // Bug #1 (CRITICA): Promise.allSettled invece di Promise.all per non terminare
+    // l'intera batch al primo errore. Bug #10: clearTimeout sempre via try/finally.
+    await Promise.allSettled(batch.map(async (job: AutomationJob) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
         const response = await fetch(job.endpoint, {
           method: job.method,
           headers: {
@@ -118,8 +119,6 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify(job.payload),
           signal: controller.signal,
         });
-
-        clearTimeout(timeout);
 
         if (response.ok) {
           // Success - mark as sent
