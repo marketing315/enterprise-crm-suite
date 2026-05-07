@@ -99,17 +99,22 @@ export function useUpdateContact() {
   });
 }
 
+/**
+ * LE-001: archivia un contatto (soft-delete) tramite RPC `archive_contact`.
+ * Conserva il vecchio nome del hook per non rompere i call-site esistenti.
+ * Hard-delete reale è ora consentito solo a admin di brand / CEO via RLS.
+ */
 export function useDeleteContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (contactId: string) => {
-      // Filter by ID only — RLS handles security, no brand filter needed
-      const { error } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', contactId);
-
+    mutationFn: async (input: string | { contactId: string; reason?: string }) => {
+      const contactId = typeof input === 'string' ? input : input.contactId;
+      const reason = typeof input === 'string' ? null : input.reason ?? null;
+      const { error } = await supabase.rpc('archive_contact', {
+        p_contact_id: contactId,
+        p_reason: reason,
+      });
       if (error) throw error;
     },
     onSuccess: () => {

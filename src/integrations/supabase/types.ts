@@ -3878,6 +3878,9 @@ export type Database = {
       contacts: {
         Row: {
           address: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           brand_id: string
           callback_requested: boolean
           cap: string | null
@@ -3935,6 +3938,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           brand_id: string
           callback_requested?: boolean
           cap?: string | null
@@ -3992,6 +3998,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           brand_id?: string
           callback_requested?: boolean
           cap?: string | null
@@ -11253,6 +11262,10 @@ export type Database = {
       }
       apply_ai_fallback: {
         Args: { p_lead_event_id: string }
+        Returns: undefined
+      }
+      archive_contact: {
+        Args: { p_contact_id: string; p_reason?: string }
         Returns: undefined
       }
       assert_brand_access: {
