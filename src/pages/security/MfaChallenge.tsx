@@ -173,6 +173,24 @@ export default function MfaChallenge() {
                 disabled={verifying}
               />
             </div>
+            <div className="flex items-start gap-2 rounded-md border p-3">
+              <Checkbox
+                id="trust-device"
+                checked={trustDevice}
+                onCheckedChange={(v) => setTrustDevice(v === true)}
+                disabled={verifying}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="trust-device" className="cursor-pointer text-sm font-medium">
+                  Fidati di questo dispositivo per 30 giorni
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Non ti chiederemo più il codice MFA su questo browser per i prossimi 30 giorni.
+                  Usa questa opzione solo su dispositivi personali.
+                </p>
+              </div>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
             <Button type="submit" className="w-full" disabled={verifying || code.length !== 6}>
