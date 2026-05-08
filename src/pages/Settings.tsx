@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Settings as SettingsIcon,
   Tags,
@@ -175,9 +176,19 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
 export default function Settings() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const { hasRole, isAdmin } = useAuth();
-  const [activeSection, setActiveSection] = useState("pipeline");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sectionFromUrl = searchParams.get("section") || "pipeline";
+  const [activeSection, setActiveSection] = useState(sectionFromUrl);
   // Mobile: show nav or content
   const [mobileShowContent, setMobileShowContent] = useState(false);
+
+  // Sync URL → state when navigating with browser back/forward
+  useEffect(() => {
+    if (sectionFromUrl !== activeSection) {
+      setActiveSection(sectionFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionFromUrl]);
 
   const isBrandAdmin = currentBrand ? hasRole("admin", currentBrand.id) : false;
 
@@ -215,6 +226,11 @@ export default function Settings() {
 
   const handleSelectSection = (id: string) => {
     setActiveSection(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("section", id);
+      return next;
+    }, { replace: true });
     setMobileShowContent(true);
   };
 
