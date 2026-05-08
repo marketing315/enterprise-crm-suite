@@ -1,21 +1,37 @@
+import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMfaStatus } from "@/hooks/useMfaStatus";
+import { isDeviceTrusted } from "@/lib/mfa-trusted-device";
 
 /**
  * A5 — enforce MFA for admin/CEO globally on protected routes:
  *   - admin/ceo without enrolled factor → /security/mfa-enroll
  *   - any user with verified factor at AAL1 → /security/mfa-challenge
- * Other users pass through.
- *
- * Whitelisted paths (login, MFA flows, password reset) are exempt and
- * must be handled at routing level (this guard sits inside the
- * authenticated tree).
+ *     UNLESS this browser is registered as "trusted device" for the user.
  */
 export function MfaGuard({ children }: { children: React.ReactNode }) {
-  const { isAdmin, isCeo, isLoading } = useAuth();
+  const { isAdmin, isCeo, isLoading, user } = useAuth();
   const { loading, enrolled, needsChallenge } = useMfaStatus();
   const location = useLocation();
+
+  // null = ancora da verificare, true/false = esito
+  const [trusted, setTrusted] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!needsChallenge || !user?.id) {
+      setTrusted(null);
+      return;
+    }
+    setTrusted(null);
+    void isDeviceTrusted(user.id).then((ok) => {
+      if (!cancelled) setTrusted(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsChallenge, user?.id]);
 
   // Allow MFA flow pages themselves through
   if (location.pathname.startsWith("/security/mfa-")) {
@@ -26,9 +42,13 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
 
   const next = encodeURIComponent(location.pathname + location.search);
 
-  // Already enrolled but session is AAL1 → must challenge
   if (needsChallenge) {
-    return <Navigate to={`/security/mfa-challenge?next=${next}`} replace />;
+    // Aspetta l'esito del check trusted device prima di redirigere.
+    if (trusted === null) return null;
+    if (!trusted) {
+      return <Navigate to={`/security/mfa-challenge?next=${next}`} replace />;
+    }
+    // dispositivo fidato → bypass challenge
   }
 
   // Admin/CEO must enroll if they don't have a factor yet

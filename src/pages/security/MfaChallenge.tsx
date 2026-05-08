@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { markIdleActivity } from "@/lib/idle-activity";
 import { decodeJwtAal } from "@/lib/jwt-decode";
+import { Checkbox } from "@/components/ui/checkbox";
+import { registerTrustedDevice } from "@/lib/mfa-trusted-device";
 
 const MFA_READY_TIMEOUT_MS = 6000;
 
@@ -40,6 +42,7 @@ export default function MfaChallenge() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,6 +116,15 @@ export default function MfaChallenge() {
         return;
       }
 
+      // Registra dispositivo come fidato (se selezionato)
+      if (trustDevice) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData.session?.user?.id;
+        if (uid) {
+          await registerTrustedDevice(uid, { days: 30 });
+        }
+      }
+
       toast.success("Verifica MFA completata");
       navigate(next, { replace: true });
     } finally {
@@ -160,6 +172,24 @@ export default function MfaChallenge() {
                 required
                 disabled={verifying}
               />
+            </div>
+            <div className="flex items-start gap-2 rounded-md border p-3">
+              <Checkbox
+                id="trust-device"
+                checked={trustDevice}
+                onCheckedChange={(v) => setTrustDevice(v === true)}
+                disabled={verifying}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="trust-device" className="cursor-pointer text-sm font-medium">
+                  Fidati di questo dispositivo per 30 giorni
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Non ti chiederemo più il codice MFA su questo browser per i prossimi 30 giorni.
+                  Usa questa opzione solo su dispositivi personali.
+                </p>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-2">

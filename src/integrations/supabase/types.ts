@@ -7607,6 +7607,42 @@ export type Database = {
           },
         ]
       }
+      mfa_trusted_devices: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          label: string | null
+          last_used_at: string
+          revoked_at: string | null
+          token_hash: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          label?: string | null
+          last_used_at?: string
+          revoked_at?: string | null
+          token_hash: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          label?: string | null
+          last_used_at?: string
+          revoked_at?: string | null
+          token_hash?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       module_usage_events: {
         Row: {
           brand_id: string
@@ -11611,6 +11647,10 @@ export type Database = {
         Args: { p_threshold_hours?: number }
         Returns: Json
       }
+      check_mfa_trusted_device: {
+        Args: { _token_hash: string }
+        Returns: boolean
+      }
       check_phone_duplicate: {
         Args: { p_brand_id: string; p_phone_normalized: string }
         Returns: {
@@ -13774,6 +13814,15 @@ export type Database = {
       }
       record_slo_snapshot: { Args: never; Returns: number }
       refresh_anomaly_baselines: { Args: never; Returns: Json }
+      register_mfa_trusted_device: {
+        Args: {
+          _days?: number
+          _label?: string
+          _token_hash: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       release_cron_lease: {
         Args: { p_brand_id: string; p_job_name: string; p_token: string }
         Returns: boolean
