@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  DialogDescription} from "@/components/ui/dialog";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import { Webhook, Plus, AlertCircle, CheckCircle2, Activity } from "lucide-react";
@@ -166,6 +167,7 @@ export default function AdminNotificationWebhooks() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Nuova destinazione webhook</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">

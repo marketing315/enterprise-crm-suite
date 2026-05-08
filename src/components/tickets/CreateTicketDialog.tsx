@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ticket } from "lucide-react";
-import {
-  Dialog,
+import {Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+  DialogDescription} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,6 +112,7 @@ export function CreateTicketDialog({
             <Ticket className="h-5 w-5" />
             Nuovo Ticket
           </DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

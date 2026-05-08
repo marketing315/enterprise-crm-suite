@@ -6,13 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
+import {Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+  DialogDescription} from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -195,6 +194,7 @@ export function CampaignGroupsManager() {
             <DialogTitle>
               {editing ? "Modifica Gruppo" : "Nuovo Gruppo Campagna"}
             </DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

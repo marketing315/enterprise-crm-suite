@@ -1,11 +1,10 @@
 import { useState } from "react";
-import {
-  Dialog,
+import {Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+  DialogDescription} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +80,7 @@ export function CreateMarketingLeadDialog({ open, onOpenChange }: Props) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Nuovo Lead Manuale</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

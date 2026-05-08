@@ -12,14 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
+import {Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+  DialogDescription} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -104,6 +103,7 @@ function ChannelDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{channel ? "Modifica canale" : "Nuovo canale alert"}</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>

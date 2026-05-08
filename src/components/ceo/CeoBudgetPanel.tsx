@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
+  DialogDescription} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/formatKpi';
@@ -64,6 +65,7 @@ export function CeoBudgetPanel({ from }: CeoBudgetPanelProps) {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Aggiungi Budget</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>

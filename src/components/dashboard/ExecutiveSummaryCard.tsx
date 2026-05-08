@@ -3,12 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
+import {Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+  DialogDescription} from "@/components/ui/dialog";
 import { FileText, ExternalLink, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
@@ -115,6 +114,7 @@ export function ExecutiveSummaryCard() {
               <FileText className="h-5 w-5" />
               Report Settimanale - {format(new Date(report.period_start), "d MMM", { locale: it })} / {format(new Date(report.period_end), "d MMM yyyy", { locale: it })}
             </DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
           </DialogHeader>
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <SafeMarkdown>{report.content_markdown}</SafeMarkdown>
