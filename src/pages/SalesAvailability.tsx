@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  DialogDescription} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -380,6 +381,7 @@ function NewSlotDialog({ userId, onClose }: { userId: string; onClose: () => voi
     <DialogContent>
       <DialogHeader>
         <DialogTitle>Nuovo turno settimanale</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-2">
         <div className="space-y-2">
@@ -443,6 +445,7 @@ function NewTimeOffDialog({ userId, onClose }: { userId: string; onClose: () => 
     <DialogContent>
       <DialogHeader>
         <DialogTitle>Nuovo periodo di assenza</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-2">
         <div className="grid grid-cols-2 gap-3">

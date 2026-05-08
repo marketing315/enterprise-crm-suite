@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+  DialogDescription} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -170,6 +171,7 @@ export default function CompanyBudget() {
               <DialogTitle>
                 {editingBudget ? 'Modifica Budget' : 'Nuovo Budget'}
               </DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
             </DialogHeader>
             
             <div className="grid gap-4 py-4">

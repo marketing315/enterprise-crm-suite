@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { it } from "date-fns/locale";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  DialogDescription} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -89,6 +90,7 @@ export function CustomReportDialog() {
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>Invia Report Marketing</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">

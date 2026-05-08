@@ -9,13 +9,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Dialog,
+import {Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+  DialogDescription} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Inbox, Eye, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
 import type { WebhookInboundEvent } from "@/hooks/useAutomationRules";
@@ -132,6 +131,7 @@ export function InboundEventsTable({ events }: Props) {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Dettaglio Evento</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
           </DialogHeader>
           {selectedEvent && (
             <div className="space-y-4">

@@ -17,13 +17,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
+import {Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+  DialogDescription} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -212,6 +211,7 @@ export function AutomationJobsTable() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Modifica data esecuzione</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -240,6 +240,7 @@ export function AutomationJobsTable() {
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Payload Job</DialogTitle>
+          <DialogDescription className="sr-only">Finestra di dialogo</DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[60vh]">
             <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto">
