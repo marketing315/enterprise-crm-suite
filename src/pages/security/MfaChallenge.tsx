@@ -116,6 +116,15 @@ export default function MfaChallenge() {
         return;
       }
 
+      // Registra dispositivo come fidato (se selezionato)
+      if (trustDevice) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData.session?.user?.id;
+        if (uid) {
+          await registerTrustedDevice(uid, { days: 30 });
+        }
+      }
+
       toast.success("Verifica MFA completata");
       navigate(next, { replace: true });
     } finally {
