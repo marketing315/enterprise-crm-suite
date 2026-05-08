@@ -44,7 +44,7 @@ export function IdleTimeoutWatcher() {
   // Admin/CEO non possono disattivarlo (compliance audit F): forziamo enabled=true.
   const canDisable = !(isAdmin || isCeo);
   const enabled = !!session && (canDisable ? prefEnabled : true);
-  const idleMinutes = isAdmin || isCeo ? 15 : 30;
+  const idleMinutes = 60;
 
   const handleTimeout = useCallback(async () => {
     await signOut();

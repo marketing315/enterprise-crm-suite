@@ -24,12 +24,12 @@ export function IdleTimeoutSettingsCard() {
     toast({
       title: next ? "Logout automatico attivato" : "Logout automatico disattivato",
       description: next
-        ? "La sessione verrà chiusa dopo 30 minuti di inattività."
+        ? "La sessione verrà chiusa dopo 60 minuti di inattività."
         : "Resterai connesso anche dopo periodi di inattività su questo dispositivo.",
     });
   };
 
-  const minutes = forced ? 15 : 30;
+  const minutes = 60;
 
   return (
     <Card>
