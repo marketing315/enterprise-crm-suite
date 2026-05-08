@@ -226,6 +226,11 @@ export default function Settings() {
 
   const handleSelectSection = (id: string) => {
     setActiveSection(id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("section", id);
+      return next;
+    }, { replace: true });
     setMobileShowContent(true);
   };
 
