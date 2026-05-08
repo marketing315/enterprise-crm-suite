@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { markIdleActivity } from "@/lib/idle-activity";
 import { decodeJwtAal } from "@/lib/jwt-decode";
+import { Checkbox } from "@/components/ui/checkbox";
+import { registerTrustedDevice } from "@/lib/mfa-trusted-device";
 
 const MFA_READY_TIMEOUT_MS = 6000;
 
