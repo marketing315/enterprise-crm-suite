@@ -29,7 +29,7 @@ export function IdleTimeoutSettingsCard() {
     });
   };
 
-  const minutes = forced ? 15 : 30;
+  const minutes = 60;
 
   return (
     <Card>
