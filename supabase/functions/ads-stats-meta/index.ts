@@ -189,18 +189,24 @@ Deno.serve(async (req) => {
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
 
-    let datePreset = "yesterday";
+    // Default: pull yesterday + today (today is partial, refreshed on every cron run).
+    // This ensures the dashboard shows up-to-the-minute spend for the current day.
+    let datePreset = "";
     let sinceDate: string | null = null;
     let untilDate: string | null = null;
 
     if (dateParam) {
       sinceDate = dateParam;
       untilDate = dateParam;
-      datePreset = "";
     } else if (fromParam && toParam) {
       sinceDate = fromParam;
       untilDate = toParam;
-      datePreset = "";
+    } else {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setUTCDate(today.getUTCDate() - 1);
+      sinceDate = yesterday.toISOString().split("T")[0];
+      untilDate = today.toISOString().split("T")[0];
     }
 
     const { data: metaApps, error: metaAppsError } = await supabase
