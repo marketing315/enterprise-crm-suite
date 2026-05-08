@@ -57,13 +57,14 @@ export function useUIPreferences() {
     initialData: readLocal,
     queryFn: async () => {
       if (!user) return readLocal();
+      // RLS già filtra la riga sull'utente corrente (user_id = get_user_id(auth.uid())).
+      // Non aggiungere .eq("user_id", user.id): user.id è auth.uid() ma la colonna contiene l'internal id.
       const { data, error } = await supabase
         .from("user_ui_preferences")
         .select("theme, density, language, preferences")
-        .eq("user_id", user.id)
         .maybeSingle();
       if (error) {
-        console.warn("[useUIPreferences] fetch error", error.message);
+        if (import.meta.env.DEV) console.debug("[useUIPreferences] fetch error", error.message);
         return readLocal();
       }
       const merged: UIPreferences = data
@@ -87,11 +88,17 @@ export function useUIPreferences() {
       const next: UIPreferences = { ...current, ...patch };
       writeLocal(next);
       if (!user) return next;
+      // Risolvi l'internal id (la colonna user_id contiene quello, non auth.uid())
+      const { data: internalId, error: idErr } = await supabase.rpc("get_user_id", { _auth_uid: user.id });
+      if (idErr || !internalId) {
+        if (import.meta.env.DEV) console.debug("[useUIPreferences] get_user_id error", idErr?.message);
+        return next;
+      }
       const { error } = await supabase
         .from("user_ui_preferences")
         .upsert(
           {
-            user_id: user.id,
+            user_id: internalId as string,
             theme: next.theme,
             density: next.density,
             language: next.language,
@@ -99,7 +106,7 @@ export function useUIPreferences() {
           },
           { onConflict: "user_id" }
         );
-      if (error) console.warn("[useUIPreferences] upsert error", error.message);
+      if (error && import.meta.env.DEV) console.debug("[useUIPreferences] upsert error", error.message);
       return next;
     },
     onSuccess: (next) => {
