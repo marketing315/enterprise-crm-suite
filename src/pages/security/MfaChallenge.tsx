@@ -42,6 +42,7 @@ export default function MfaChallenge() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
