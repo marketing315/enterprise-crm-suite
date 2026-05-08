@@ -57,13 +57,14 @@ export function useUIPreferences() {
     initialData: readLocal,
     queryFn: async () => {
       if (!user) return readLocal();
+      // RLS già filtra la riga sull'utente corrente (user_id = get_user_id(auth.uid())).
+      // Non aggiungere .eq("user_id", user.id): user.id è auth.uid() ma la colonna contiene l'internal id.
       const { data, error } = await supabase
         .from("user_ui_preferences")
         .select("theme, density, language, preferences")
-        .eq("user_id", user.id)
         .maybeSingle();
       if (error) {
-        console.warn("[useUIPreferences] fetch error", error.message);
+        if (import.meta.env.DEV) console.debug("[useUIPreferences] fetch error", error.message);
         return readLocal();
       }
       const merged: UIPreferences = data
