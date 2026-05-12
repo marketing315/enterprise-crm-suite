@@ -250,7 +250,7 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
       <details className="text-xs">
         <summary className="cursor-pointer text-muted-foreground flex items-center gap-1">
           <FileJson className="h-3 w-3" />
-          Payload raw
+          Payload grezzo
         </summary>
         <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto whitespace-pre-wrap break-words">
           {JSON.stringify(event.raw_payload, null, 2)}
