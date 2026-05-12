@@ -222,6 +222,31 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
         </details>
       )}
 
+      {(() => {
+        const groups = buildGroups(event.raw_payload);
+        if (!groups.length) return null;
+        return (
+          <div className="rounded-md border bg-card/40 divide-y">
+            {groups.map((g) => (
+              <div key={g.title} className="p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {g.icon}
+                  {g.title}
+                </div>
+                <dl className="grid grid-cols-1 sm:grid-cols-[minmax(140px,auto)_1fr] gap-x-4 gap-y-1 text-sm">
+                  {g.rows.map((r, i) => (
+                    <div key={i} className="contents">
+                      <dt className="text-muted-foreground">{r.label}</dt>
+                      <dd className="break-words font-medium">{r.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       <details className="text-xs">
         <summary className="cursor-pointer text-muted-foreground flex items-center gap-1">
           <FileJson className="h-3 w-3" />
