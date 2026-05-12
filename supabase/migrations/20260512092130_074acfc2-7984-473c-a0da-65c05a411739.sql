@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_sheets_append_lead ON public.lead_events;
