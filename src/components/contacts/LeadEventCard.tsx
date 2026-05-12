@@ -1,9 +1,118 @@
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { FileJson, Brain } from 'lucide-react';
+import { FileJson, Brain, User, Megaphone, ListChecks, Settings2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { sanitizeUrl } from '@/lib/safe-url';
 import { LeadEventCampaignSelector } from './LeadEventCampaignSelector';
+
+// --- Payload prettifier ----------------------------------------------------
+type Row = { label: string; value: string };
+type Group = { title: string; icon: React.ReactNode; rows: Row[] };
+
+const FIELD_LABELS: Record<string, string> = {
+  first_name: 'Nome', nome: 'Nome',
+  last_name: 'Cognome', cognome: 'Cognome',
+  email: 'Email', 'e-mail': 'Email',
+  phone: 'Telefono', telefono: 'Telefono',
+  cap: 'CAP', codice_postale: 'CAP', zip: 'CAP',
+  city: 'Città', citta: 'Città',
+  province: 'Provincia', provincia: 'Provincia',
+  region: 'Regione', regione: 'Regione',
+  meta_ad_name: 'Annuncio (Ad)',
+  meta_adset_name: 'Gruppo inserzioni',
+  meta_campaign_name: 'Campagna Meta',
+  meta_form_name: 'Form Meta',
+  meta_ad_id: 'Ad ID', meta_adset_id: 'Adset ID', meta_campaign_id: 'Campaign ID',
+  meta_form_id: 'Form ID', meta_page_id: 'Page ID',
+  utm_source: 'UTM Source', utm_medium: 'UTM Medium', utm_campaign: 'UTM Campaign',
+  utm_content: 'UTM Content', utm_term: 'UTM Term',
+  source_url: 'URL sorgente', landing_url: 'Landing URL',
+  note: 'Note', notes: 'Note', message: 'Messaggio',
+};
+
+const HIDDEN_KEYS = new Set([
+  'fetched_payload', 'field_data', 'answers', 'raw', 'raw_body',
+  'id', 'created_at', 'updated_at', 'platform', 'type',
+]);
+
+function fmtValue(v: unknown): string {
+  if (v == null) return '';
+  if (Array.isArray(v)) return v.map(fmtValue).filter(Boolean).join(', ');
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function labelize(key: string): string {
+  if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+  return key.replace(/_/g, ' ').replace(/\?$/, '').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function buildGroups(payload: any): Group[] {
+  if (!payload || typeof payload !== 'object') return [];
+
+  // Merge meta fetched_payload (richer info from Graph API) over root
+  const merged: Record<string, any> = { ...(payload.fetched_payload || {}), ...payload };
+
+  const contact: Row[] = [];
+  const campaign: Row[] = [];
+  const answers: Row[] = [];
+  const technical: Row[] = [];
+
+  const contactKeys = ['first_name', 'nome', 'last_name', 'cognome', 'email', 'e-mail', 'phone', 'telefono', 'cap', 'codice_postale', 'zip', 'city', 'citta', 'province', 'provincia', 'region', 'regione'];
+  const campaignKeys = ['meta_campaign_name', 'campaign_name', 'meta_adset_name', 'adset_name', 'meta_ad_name', 'ad_name', 'meta_form_name', 'form_name', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'source_url', 'landing_url', 'campaign'];
+  const technicalKeys = ['meta_ad_id', 'ad_id', 'meta_adset_id', 'adset_id', 'meta_campaign_id', 'campaign_id', 'meta_form_id', 'form_id', 'meta_page_id', 'page_id'];
+
+  const seen = new Set<string>();
+  const push = (bucket: Row[], key: string, val: unknown) => {
+    const s = fmtValue(val);
+    if (!s || seen.has(key)) return;
+    seen.add(key);
+    bucket.push({ label: labelize(key), value: s });
+  };
+
+  contactKeys.forEach((k) => merged[k] != null && push(contact, k, merged[k]));
+  campaignKeys.forEach((k) => merged[k] != null && push(campaign, k, merged[k]));
+  technicalKeys.forEach((k) => merged[k] != null && push(technical, k, merged[k]));
+
+  // Meta field_data → answers
+  const fd = merged.field_data;
+  if (Array.isArray(fd)) {
+    fd.forEach((f: any) => {
+      const name = String(f?.name ?? '').toLowerCase();
+      if (!name || contactKeys.includes(name)) return;
+      const val = fmtValue(f?.values);
+      if (!val) return;
+      answers.push({ label: labelize(name), value: val });
+    });
+  }
+
+  // Quiz answers object
+  if (merged.answers && typeof merged.answers === 'object' && !Array.isArray(merged.answers)) {
+    Object.entries(merged.answers).forEach(([q, a]) => {
+      const val = fmtValue(a);
+      if (val) answers.push({ label: q, value: val });
+    });
+  }
+
+  // Catch-all extra fields
+  Object.entries(merged).forEach(([k, v]) => {
+    if (HIDDEN_KEYS.has(k) || seen.has(k)) return;
+    if (contactKeys.includes(k) || campaignKeys.includes(k) || technicalKeys.includes(k)) return;
+    if (v == null || typeof v === 'boolean') return;
+    if (typeof v === 'object' && !Array.isArray(v)) return;
+    const val = fmtValue(v);
+    if (!val) return;
+    technical.push({ label: labelize(k), value: val });
+    seen.add(k);
+  });
+
+  const groups: Group[] = [];
+  if (contact.length) groups.push({ title: 'Contatto', icon: <User className="h-3.5 w-3.5" />, rows: contact });
+  if (campaign.length) groups.push({ title: 'Campagna & Tracking', icon: <Megaphone className="h-3.5 w-3.5" />, rows: campaign });
+  if (answers.length) groups.push({ title: 'Risposte form', icon: <ListChecks className="h-3.5 w-3.5" />, rows: answers });
+  if (technical.length) groups.push({ title: 'Dettagli tecnici', icon: <Settings2 className="h-3.5 w-3.5" />, rows: technical });
+  return groups;
+}
 
 interface LeadEvent {
   id: string;
