@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Edit, Trash2, TestTube, Link, Zap } from "lucide-react";
+import { Copy, Edit, Trash2, TestTube, Link, Zap, History } from "lucide-react";
 import { useMetaApps, MetaApp } from "@/hooks/useMetaApps";
 import { MetaAppFormDrawer } from "./MetaAppFormDrawer";
 import { DeleteMetaAppDialog } from "./DeleteMetaAppDialog";
 import { TestLeadDialog } from "./TestLeadDialog";
+import { MetaBackfillDialog } from "./MetaBackfillDialog";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 
