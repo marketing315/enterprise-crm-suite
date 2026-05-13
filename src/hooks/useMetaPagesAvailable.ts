@@ -34,6 +34,21 @@ export interface MetaPagesError {
 }
 
 /**
+ * Wrap structured edge errors in a real Error so React Query / global
+ * unhandledrejection handlers don't classify them as runtime crashes.
+ */
+class MetaPagesApiError extends Error implements MetaPagesError {
+  error: string;
+  code?: number;
+  constructor(payload: MetaPagesError) {
+    super(payload.message ?? payload.error);
+    this.name = "MetaPagesApiError";
+    this.error = payload.error;
+    this.code = payload.code;
+  }
+}
+
+/**
  * Lists Meta Pages / Businesses / Ad Accounts available to the authenticated
  * user for a given brand. Requires Meta OAuth completed for that brand.
  */
