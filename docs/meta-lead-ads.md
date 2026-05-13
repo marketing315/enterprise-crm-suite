@@ -303,3 +303,15 @@ Meta Graph API:
 Il sistema gestisce automaticamente:
 - Retry su rate limit
 - Logging errori in `meta_lead_events.error`
+
+---
+
+## Backfill storico (Stream 4)
+
+Per recuperare lead già esistenti su Meta non ricevuti via webhook in tempo reale,
+vedi il runbook dedicato: [`docs/meta-leads-backfill-runbook.md`](./meta-leads-backfill-runbook.md)
+o consulta il tab **Meta Backfill** in `/admin/changelog`.
+
+UI: `Settings → Meta Lead Ads → icona 🕘 sulla riga della Meta App`.
+Edge function: `meta-leads-backfill` (chained con `meta-leads-recover`).
+Audit table: `meta_leads_backfill_runs`.
