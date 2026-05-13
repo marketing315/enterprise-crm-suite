@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { assertRedirectAllowed, createOAuthSession } from "../_shared/oauth-session.ts";
+import { META_OAUTH_DIALOG_BASE } from "../_shared/meta-graph.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
 
     const scopes = "ads_read,ads_management,business_management";
 
-    const authUrl = new URL("https://www.facebook.com/v20.0/dialog/oauth");
+    const authUrl = new URL(META_OAUTH_DIALOG_BASE);
     authUrl.searchParams.set("client_id", metaAppId);
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "code");
