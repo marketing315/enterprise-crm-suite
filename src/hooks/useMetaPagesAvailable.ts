@@ -24,6 +24,9 @@ export interface MetaPagesAvailable {
   pages: MetaPage[];
   businesses: MetaBusiness[];
   ad_accounts: MetaAdAccount[];
+  requires_oauth?: boolean;
+  oauth_status?: "not_completed";
+  message?: string;
   warnings?: Array<{ code?: number; message?: string }>;
 }
 

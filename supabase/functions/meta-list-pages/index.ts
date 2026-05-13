@@ -81,7 +81,16 @@ Deno.serve(async (req) => {
       .order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
     if (!oauthRow?.id) {
-      return jsonResp({ error: "oauth_not_completed", message: "Connetti prima Meta via OAuth" }, 400);
+      // OAuth mancante è uno stato atteso della UI, non un errore runtime:
+      // rispondiamo 200 per evitare che il client/preview lo classifichi come crash.
+      return jsonResp({
+        pages: [],
+        businesses: [],
+        ad_accounts: [],
+        requires_oauth: true,
+        oauth_status: "not_completed",
+        message: "Connetti prima Meta via OAuth",
+      });
     }
 
     const { data: tokenStr, error: vaultErr } = await admin
