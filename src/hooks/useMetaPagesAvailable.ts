@@ -34,6 +34,21 @@ export interface MetaPagesError {
 }
 
 /**
+ * Wrap structured edge errors in a real Error so React Query / global
+ * unhandledrejection handlers don't classify them as runtime crashes.
+ */
+class MetaPagesApiError extends Error implements MetaPagesError {
+  error: string;
+  code?: number;
+  constructor(payload: MetaPagesError) {
+    super(payload.message ?? payload.error);
+    this.name = "MetaPagesApiError";
+    this.error = payload.error;
+    this.code = payload.code;
+  }
+}
+
+/**
  * Lists Meta Pages / Businesses / Ad Accounts available to the authenticated
  * user for a given brand. Requires Meta OAuth completed for that brand.
  */
@@ -49,20 +64,20 @@ export function useMetaPagesAvailable(brandId: string | null | undefined, enable
         { body: { brand_id: brandId } },
       );
       if (error) {
-        // Try to extract structured error from edge response
         const ctx = (error as { context?: Response }).context;
         if (ctx) {
           try {
-            const json = await ctx.json();
-            throw json as MetaPagesError;
-          } catch {
-            // fallthrough
+            const json = (await ctx.json()) as MetaPagesError;
+            throw new MetaPagesApiError(json);
+          } catch (e) {
+            if (e instanceof MetaPagesApiError) throw e;
+            // fallthrough to network error
           }
         }
-        throw { error: "network", message: error.message } as MetaPagesError;
+        throw new MetaPagesApiError({ error: "network", message: error.message });
       }
       if (data && (data as MetaPagesError).error) {
-        throw data as MetaPagesError;
+        throw new MetaPagesApiError(data as MetaPagesError);
       }
       return data as MetaPagesAvailable;
     },
