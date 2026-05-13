@@ -100,7 +100,16 @@ Deno.serve(async (req) => {
       redirect_uri: redirectUri,
     });
 
-    const scopes = "ads_read,ads_management,business_management";
+    const scopes = [
+      "ads_read",
+      "ads_management",
+      "business_management",
+      "pages_show_list",
+      "pages_read_engagement",
+      "pages_manage_metadata",
+      "pages_manage_ads",
+      "leads_retrieval",
+    ].join(",");
 
     const authUrl = new URL(META_OAUTH_DIALOG_BASE);
     authUrl.searchParams.set("client_id", metaAppId);
