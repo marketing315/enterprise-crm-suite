@@ -67,7 +67,8 @@ export async function resolveMetaPageAccessToken(
   if (!pageId) return accessToken;
 
   try {
-    const url = new URL(`https://graph.facebook.com/v20.0/${pageId}`);
+    const { metaGraphUrl } = await import("./meta-graph.ts");
+    const url = new URL(metaGraphUrl(`/${pageId}`));
     url.searchParams.set("fields", "access_token");
     url.searchParams.set("access_token", accessToken);
 
