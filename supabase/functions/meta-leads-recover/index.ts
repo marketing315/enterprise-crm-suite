@@ -59,7 +59,7 @@ function buildMessage(fd: FieldData[]): string {
 
 async function fetchMetaLeadData(leadgenId: string, formId: string | undefined, token: string) {
   const fields = "created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform";
-  const directRes = await fetch(`https://graph.facebook.com/v20.0/${leadgenId}?fields=${fields}&access_token=${token}`);
+  const directRes = await fetch(`https://graph.facebook.com/v21.0/${leadgenId}?fields=${fields}&access_token=${token}`);
   const directParsed = await safeJson<LeadData>(directRes);
   if (directParsed.ok) return { data: directParsed.data, error: null };
 
@@ -67,7 +67,7 @@ async function fetchMetaLeadData(leadgenId: string, formId: string | undefined, 
   const directError = `Graph API ${directParsed.error} status=${directParsed.status} body=${safeBody}`;
   if (!formId) return { data: null, error: directError };
 
-  const leadsUrl = new URL(`https://graph.facebook.com/v20.0/${formId}/leads`);
+  const leadsUrl = new URL(`https://graph.facebook.com/v21.0/${formId}/leads`);
   leadsUrl.searchParams.set("fields", `id,${fields}`);
   leadsUrl.searchParams.set("limit", "100");
   leadsUrl.searchParams.set("access_token", token);
@@ -149,13 +149,13 @@ Deno.serve(async (req) => {
       };
       const formId = body.probe.form_id;
       const checks = [
-        await probeOne("token_identity (stored)", "https://graph.facebook.com/v20.0/me?fields=id,name", stored),
-        await probeOne("page_visible (stored)", `https://graph.facebook.com/v20.0/${pageId}?fields=id,name,access_token`, stored),
-        await probeOne("page_visible (page_token)", `https://graph.facebook.com/v20.0/${pageId}?fields=id,name`, pageTok),
-        await probeOne("form_visible (stored)", `https://graph.facebook.com/v20.0/${formId}?fields=id,name,status,leads_count,page`, stored),
-        await probeOne("form_visible (page_token)", `https://graph.facebook.com/v20.0/${formId}?fields=id,name,status,leads_count,page`, pageTok),
-        await probeOne("form_leads_list (page_token)", `https://graph.facebook.com/v20.0/${formId}/leads?fields=id,created_time&limit=3`, pageTok),
-        await probeOne("page_leadgen_forms (page_token)", `https://graph.facebook.com/v20.0/${pageId}/leadgen_forms?fields=id,name,status&limit=10`, pageTok),
+        await probeOne("token_identity (stored)", "https://graph.facebook.com/v21.0/me?fields=id,name", stored),
+        await probeOne("page_visible (stored)", `https://graph.facebook.com/v21.0/${pageId}?fields=id,name,access_token`, stored),
+        await probeOne("page_visible (page_token)", `https://graph.facebook.com/v21.0/${pageId}?fields=id,name`, pageTok),
+        await probeOne("form_visible (stored)", `https://graph.facebook.com/v21.0/${formId}?fields=id,name,status,leads_count,page`, stored),
+        await probeOne("form_visible (page_token)", `https://graph.facebook.com/v21.0/${formId}?fields=id,name,status,leads_count,page`, pageTok),
+        await probeOne("form_leads_list (page_token)", `https://graph.facebook.com/v21.0/${formId}/leads?fields=id,created_time&limit=3`, pageTok),
+        await probeOne("page_leadgen_forms (page_token)", `https://graph.facebook.com/v21.0/${pageId}/leadgen_forms?fields=id,name,status&limit=10`, pageTok),
       ];
       return new Response(JSON.stringify({ page_id: pageId, form_id: formId, page_token_resolved: pageTok !== stored, checks }, null, 2), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
