@@ -1,71 +1,78 @@
+# Stream 2 — Scope completi + UI connessione pagina
 
-# Meta Lead Ads — Piano implementazione (4 stream)
+## Obiettivo
 
-Tutto si appoggia sull'infrastruttura esistente: `meta_apps`, `meta_lead_sources`, `_shared/meta-secrets.ts` (vault A2), `_shared/oauth-session.ts` (CSRF C7), `_shared/circuit-breaker.ts` (H7), `_shared/safe-error-response.ts` (H6).
+Dopo che un admin completa l'OAuth con Facebook, mostrare automaticamente le Pagine accessibili e permettere di collegarne una con un click. Il "collegamento" deve:
+1. Recuperare il **Page Access Token** (long-lived, ~60gg) per quella specifica pagina
+2. Creare/aggiornare una riga in `meta_apps` per il brand corrente con quel token
+3. Iscrivere la pagina al webhook leadgen automaticamente (`POST /{page_id}/subscribed_apps`)
+4. Sincronizzare anche `ad_account_id` (selezionabile) e popolare `app_secret` dall'env condivisa
 
-## Stream 1 — Bump Graph API v20 → v21 + appsecret_proof
+## Architettura attuale (già in DB)
 
-**Cosa:**
-- Centralizzo versione e proof in `supabase/functions/_shared/meta-graph.ts` (nuovo): costante `META_GRAPH_VERSION = "v21.0"` + helper `appsecretProof(token, appSecret)` + `metaFetch(url, { token, appSecret })` che inietta `access_token` + `appsecret_proof` automaticamente.
-- Refactor di tutte le edge function che chiamano `graph.facebook.com`:
-  - `meta-oauth-start`, `meta-oauth-callback`
-  - `meta-leads-webhook`, `meta-subscribe-page`, `meta-unsubscribe-page`
-  - `meta-lead-sources-*` (list/sync forms/pages)
-  - `capi-event-sender` (CAPI usa stessa proof)
-  - eventuali `meta-ads-*` per insights
-- `app_secret` letto da `meta_apps` via vault helper esistente.
-- Test Deno: `meta-graph_test.ts` verifica HMAC della proof.
+- `meta_apps` — 1 riga per brand: `page_id`, `access_token`, `app_secret`, webhook receiver
+- `oauth_tokens` (provider=`meta_ads`) — token user-level salvato dal callback OAuth, usato dal sync stats Ads
+- Manca un ponte: il callback OAuth oggi salva solo in `oauth_tokens`, non popola `meta_apps`
 
-**Rischio:** zero se proof è opzionale lato Meta. Se "Require App Secret Proof" non è attivo nell'app, funziona uguale; se attivato in futuro, già pronto.
+## Componenti nuovi
 
-## Stream 2 — Scope completi + UI "collega pagina"
+### Edge `meta-list-pages` (POST, JWT auth admin/CEO)
+Body: `{ brand_id }`. Risponde:
+```json
+{
+  "pages":     [{ "id":"...", "name":"...", "category":"..." }],   // GET /me/accounts
+  "businesses":[{ "id":"...", "name":"..." }],                      // GET /me/businesses
+  "ad_accounts":[{ "id":"act_...", "name":"...", "currency":"..." }]// GET /me/adaccounts
+}
+```
+Risolve il token user dalla riga `oauth_tokens` (provider=meta_ads, brand_id) via `vault_get_oauth_secret`. Tutti i fetch passano per `withProof` (Stream 1).
 
-**Cosa:**
-- `meta-oauth-start`: aggiungo scope mancanti `pages_manage_metadata`, `pages_manage_ads`, `leads_retrieval` (oggi ha solo `ads_read,ads_management,business_management`).
-- `meta-oauth-callback`: dopo lo scambio code→token, chiama `fb_exchange_token` per long-lived, salva su `meta_oauth_tokens` (nuova tabella o campo su `meta_apps`).
-- Nuova edge `meta-list-pages`: ritorna `/me/accounts` + `/me/businesses` + `/me/adaccounts` per la UI.
-- Nuova edge `meta-connect-page`: dato `page_id`, recupera page-token non scadente da `/me/accounts`, crea/aggiorna riga `meta_apps` (page_id, brand, access_token via vault) e chiama `subscribed_apps` con `subscribed_fields=leadgen`.
-- UI in `src/pages/Settings.tsx` sezione `meta-apps`:
-  - Dopo callback OK → `MetaPageConnectDialog` che fa GET `meta-list-pages`, lista pagine con bottone "Collega" (chiama `meta-connect-page`), mostra stato `is_subscribed`.
-  - Hook `useMetaPagesAvailable` accanto a `useMetaApps`.
+### Edge `meta-connect-page` (POST, JWT auth admin/CEO)
+Body: `{ brand_id, page_id, ad_account_id?: string }`.
+Flusso:
+1. Verifica admin/CEO + `assert_brand_membership(brand_id)`
+2. `GET /{page_id}?fields=access_token,name` → ottiene **Page Token** long-lived (eredita la durata del User Token long-lived)
+3. Upsert in `meta_apps` (`brand_id` come chiave): `page_id`, `access_token=pageToken`, `ad_account_id`, `app_secret=META_OAUTH_APP_SECRET`, `is_active=true`, `token_status='valid'`, `token_last_checked_at=now()`
+4. `POST /{page_id}/subscribed_apps?subscribed_fields=leadgen` con Page Token + `appsecret_proof`
+5. Audit: insert in `meta_token_health_runs` con status `valid`
+6. Risposta: `{ ok:true, meta_app_id, page_name, subscribed:true }`
 
-**Migration:**
-- Tabella `meta_oauth_tokens (brand_id, user_id, long_lived_token vault, expires_at, scopes[], created_at)` con RLS admin/ceo per brand.
+### Frontend
+- **Hook** `useMetaPagesAvailable(brandId)` — invoca `meta-list-pages`, ritorna `{ pages, businesses, ad_accounts, loading, error }`. Gestisce caso "OAuth non completato" → mostra CTA "Connetti Meta" che apre la URL di `meta-oauth-start`.
+- **Componente** `MetaPageConnectDialog` — Dialog con lista Pagine (RadioGroup) + dropdown Ad Account opzionale + bottone "Collega". Su success chiude e invalida la query `meta-apps` di `useMetaApps`.
+- **Integrazione**: in `MetaAppsSettings.tsx` aggiungere pulsante secondario **"Collega pagina (OAuth)"** accanto a "Nuova Meta App". Apre `MetaPageConnectDialog`. Se OAuth non ancora fatto, mostra prima CTA verso start-oauth.
 
-## Stream 3 — Health-check token settimanale
+## Migrazione (nessuna)
 
-**Cosa:**
-- Nuova edge `meta-token-health-check`:
-  - per ogni `meta_apps.is_active=true`: leggi token via vault, chiama `GET /debug_token?input_token=...&access_token={app_id}|{app_secret}`, leggi `is_valid`, `expires_at`, `scopes`.
-  - aggiorna `meta_apps.token_status` (`valid|expiring|invalid`), `token_expires_at`, `token_last_checked_at`.
-  - se `is_valid=false` o expires < 7 giorni → `report_client_incident` (F6) + notification webhook admin (canale `meta_token_health`).
-- Migration: aggiungo colonne `token_status text default 'unknown'`, `token_expires_at timestamptz`, `token_last_checked_at timestamptz`, `token_scopes text[]` su `meta_apps` (additive, nullable).
-- Cron via `cron-relay` esistente: registro `meta-token-health-check` ogni lunedì 06:00 Europe/Rome in `cron_job_registry` (A10).
-- Dashboard admin: piccola card in `AdminObservability` o nuova `/admin/meta-health` con tabella stato token per brand.
-
-## Stream 4 — Backfill storico lead per form
-
-**Cosa:**
-- Nuova edge `meta-leads-backfill`:
-  - input: `{ meta_app_id, form_id, since? (ISO) }`
-  - cursor pagination su `/{form_id}/leads?fields=id,created_time,ad_id,form_id,campaign_id,field_data&limit=100` (con filtering `time_created` se `since`)
-  - per ogni lead → `mapLead(field_data)` → riusa la pipeline `lead-ingest` esistente (idempotenza per `external_lead_id = leadgen_id`).
-  - risultato: `{ fetched, inserted, skipped_duplicates, errors[] }`, salvato in nuova tabella `meta_backfill_runs` per audit.
-- Migration: tabella `meta_backfill_runs (id, brand_id, meta_app_id, form_id, since, fetched, inserted, skipped, errors jsonb, started_at, finished_at, status)` con RLS admin/ceo.
-- UI: in `Settings → meta-apps`, per ogni page connessa, lista form (già esistente in `meta-lead-sources`) con bottone "Backfill" → dialog che chiede `since` (default ultimi 30gg), avvia job, mostra progress + risultato finale + link a contacts importati.
+Riusiamo le colonne esistenti di `meta_apps`. Il nuovo flusso convive con quello manuale: chi vuole può ancora inserire i campi a mano dal drawer esistente.
 
 ## Note tecniche
 
-- Tutte le chiamate Graph passano per nuovo helper `metaFetch` → coerenza versione + proof + circuit breaker (`provider="meta_graph"`).
-- Errori Graph mappati: 4/17/32/613 → backoff esponenziale; 190 → marca token invalid e triggera health-check; 200 → non-retry, log scope mancante.
-- Logging: solo `code/subcode/fbtrace_id`, mai token né `field_data` in chiaro (rispetta C4 PII redaction + H6 safe error).
-- Memoria: aggiorno `mem://features/meta-integration-flow` + nuovo `mem://technical/meta-graph-helper` con `META_GRAPH_VERSION` e regole proof.
+- **Scope OAuth già aggiornati in Stream 1**: `pages_show_list`, `pages_read_engagement`, `pages_manage_metadata`, `pages_manage_ads`, `leads_retrieval`, `pages_manage_engagement`, `business_management`, `ads_management`, `ads_read`, `email`. Sufficienti per `subscribed_apps` + `me/accounts` + `me/adaccounts`.
+- **app_secret** in `meta_apps` sarà popolato con `META_OAUTH_APP_SECRET` env (non più richiesto a mano nel form OAuth-driven). Validazione: se manca env → 422.
+- **Idempotenza**: upsert `meta_apps` su `(brand_id, page_id)` se esiste constraint, altrimenti su `brand_id`. Verifica vincoli prima dell'edge.
+- **Errori comuni**:
+  - Page token non disponibile → utente deve concedere `pages_show_list` (re-auth)
+  - `subscribed_apps` 200 success ma webhook non riceve → app in Development Mode (fuori scope, documentare)
+- **Audit**: log_audit_event `META_PAGE_CONNECTED` con `{brand_id, page_id, page_name, ad_account_id}`.
+- **Cron-relay whitelist**: non serve (call user-driven).
 
-## Ordine di esecuzione consigliato
+## Ordine implementazione
 
-1. **Stream 1** (helper + bump v21 + proof) — base condivisa, no migration.
-2. **Stream 3** (migration meta_apps + health-check) — sblocca visibilità prima di toccare flussi utente.
-3. **Stream 2** (scope + UI page connect) — depende da Stream 1.
-4. **Stream 4** (backfill) — dipende da Stream 2 (page-token affidabile).
+1. Verifica unique constraint su `meta_apps` (`brand_id` o `brand_id,page_id`)
+2. Edge `meta-list-pages`
+3. Edge `meta-connect-page`
+4. Hook `useMetaPagesAvailable`
+5. Component `MetaPageConnectDialog`
+6. Integrazione in `MetaAppsSettings`
+7. Memory update
 
-Approva per partire dallo Stream 1, oppure dimmi se vuoi un sottoinsieme/ordine diverso.
+## Fuori scope (separato)
+
+- UI per gestire **più pagine** per brand (oggi 1 brand = 1 meta_apps row)
+- Refresh automatico Page Token quando User Token long-lived scade (l'health-check Stream 3 lo segnala già; refresh richiede re-OAuth admin)
+- Backfill storico lead per pagina (= Stream 4)
+
+Confermi questa architettura, in particolare:
+- (a) **1 brand = 1 pagina collegata** (upsert su `brand_id`), oppure vuoi supportare **più pagine per brand** (richiede modifica unique constraint)?
+- (b) `app_secret` auto-popolato da env `META_OAUTH_APP_SECRET` (single Meta App per tutta l'installazione) — confermi?
