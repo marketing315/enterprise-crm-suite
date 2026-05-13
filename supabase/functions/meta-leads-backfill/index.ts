@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
   // ---- Load meta_app ----
   const { data: app, error: appErr } = await supabase
     .from("meta_apps")
-    .select("id, brand_id, page_id, is_active")
+    .select("id, brand_id, page_id, is_active, app_secret")
     .eq("id", body.source_id)
     .single();
   if (appErr || !app) {
