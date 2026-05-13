@@ -1,7 +1,7 @@
 // Recover stuck meta_lead_events: re-fetch Graph API and create contact/deal/lead_event.
 // Admin-only. Use for events that webhook-failed (fetched_payload IS NULL).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getMetaAppAccessToken } from "../_shared/meta-secrets.ts";
+import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "../_shared/meta-secrets.ts";
 import { safeJson } from "../_shared/safe-json.ts";
 
 const corsHeaders = {
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
       // Load meta_app
       const { data: app, error: appErr } = await supabase
         .from("meta_apps")
-        .select("id, brand_id, access_token")
+        .select("id, brand_id, page_id, access_token")
         .eq("id", ev.source_id)
         .single();
       if (appErr || !app) {
@@ -131,11 +131,12 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const token = (await getMetaAppAccessToken(supabase, app.id)) ?? app.access_token;
-      if (!token) {
+      const storedToken = (await getMetaAppAccessToken(supabase, app.id)) ?? app.access_token;
+      if (!storedToken) {
         results.push({ id: ev.id, status: "no_token" });
         continue;
       }
+      const token = await resolveMetaPageAccessToken(storedToken, ev.page_id || app.page_id);
 
       // Graph fetch
       const url = `https://graph.facebook.com/v20.0/${ev.leadgen_id}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${token}`;
