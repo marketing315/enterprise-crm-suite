@@ -288,32 +288,6 @@ Deno.serve(async (req) => {
       sheet: parsed.length, missing: missing.length, recovered,
     });
 
-    // Notify admins if anything recovered
-    if (recovered > 0) {
-      try {
-        const { data: adminRoles } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .in("role", ["admin", "ceo"])
-          .eq("is_active", true);
-        const ids = Array.from(new Set((adminRoles ?? []).map((r) => r.user_id).filter(Boolean)));
-        if (ids.length > 0) {
-          await supabase.from("notifications").insert(
-            ids.map((uid) => ({
-              brand_id: MYMED_BRAND_ID,
-              user_id: uid,
-              type: "slo_alert" as const,
-              title: `🛟 Recuperati ${recovered} lead Meta dal foglio MyMed`,
-              body: `Lead non ricevuti via webhook ma presenti nel Google Sheet sono stati importati. Verifica il funnel.`,
-              entity_type: "meta_sheet_reconcile",
-            })),
-          );
-        }
-      } catch (e) {
-        log("error", "notify failed", { err: e instanceof Error ? e.message : String(e) });
-      }
-    }
-
     return new Response(JSON.stringify({
       ok: true,
       sheet_rows: parsed.length,
