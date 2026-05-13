@@ -50,6 +50,7 @@ const ALLOWED_TARGETS = new Set<string>([
   "sales-route-dispatcher",
   "ticket-assign-recovery",
   "cron-health-monitor",
+  "meta-token-health-check",
 ]);
 
 Deno.serve(async (req) => {

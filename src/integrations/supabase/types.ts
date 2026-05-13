@@ -7318,6 +7318,11 @@ export type Database = {
           page_id: string | null
           pixel_id: string | null
           stats_enabled: boolean
+          token_expires_at: string | null
+          token_last_checked_at: string | null
+          token_last_error: string | null
+          token_scopes: string[] | null
+          token_status: string
           updated_at: string
           verify_token: string
         }
@@ -7337,6 +7342,11 @@ export type Database = {
           page_id?: string | null
           pixel_id?: string | null
           stats_enabled?: boolean
+          token_expires_at?: string | null
+          token_last_checked_at?: string | null
+          token_last_error?: string | null
+          token_scopes?: string[] | null
+          token_status?: string
           updated_at?: string
           verify_token: string
         }
@@ -7356,6 +7366,11 @@ export type Database = {
           page_id?: string | null
           pixel_id?: string | null
           stats_enabled?: boolean
+          token_expires_at?: string | null
+          token_last_checked_at?: string | null
+          token_last_error?: string | null
+          token_scopes?: string[] | null
+          token_status?: string
           updated_at?: string
           verify_token?: string
         }
@@ -7603,6 +7618,65 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_token_health_runs: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          error_code: number | null
+          error_message: string | null
+          expires_at: string | null
+          id: string
+          incident_created: boolean
+          is_valid: boolean | null
+          meta_app_id: string | null
+          page_id: string | null
+          raw_response: Json | null
+          run_at: string
+          scopes: string[] | null
+          status: string
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          error_code?: number | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          incident_created?: boolean
+          is_valid?: boolean | null
+          meta_app_id?: string | null
+          page_id?: string | null
+          raw_response?: Json | null
+          run_at?: string
+          scopes?: string[] | null
+          status: string
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          error_code?: number | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          incident_created?: boolean
+          is_valid?: boolean | null
+          meta_app_id?: string | null
+          page_id?: string | null
+          raw_response?: Json | null
+          run_at?: string
+          scopes?: string[] | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_token_health_runs_meta_app_id_fkey"
+            columns: ["meta_app_id"]
+            isOneToOne: false
+            referencedRelation: "meta_apps"
             referencedColumns: ["id"]
           },
         ]
