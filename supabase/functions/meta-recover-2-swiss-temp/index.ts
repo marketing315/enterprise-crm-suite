@@ -61,9 +61,9 @@ Deno.serve(async (req) => {
   const results: any[] = [];
 
   for (const L of LEADS) {
-    // dedup check on lead_events.external_id
-    const { data: existing } = await supabase.from("lead_events").select("id").eq("external_id", L.leadgen_id).maybeSingle();
-    if (existing) { results.push({ leadgen_id: L.leadgen_id, status: "already_exists", lead_event_id: existing.id }); continue; }
+    // Check existing lead_event (likely empty shell from failed webhook fetch)
+    const { data: existing } = await supabase.from("lead_events").select("id, contact_id").eq("external_id", L.leadgen_id).maybeSingle();
+    if (existing && existing.contact_id) { results.push({ leadgen_id: L.leadgen_id, status: "already_complete", lead_event_id: existing.id }); continue; }
 
     const np = normalizePhone(L.phone);
     const message = `Quiz: ${L.quiz}\nCAP: ${L.cap}`;
