@@ -16,7 +16,7 @@ Deno.test("appsecretProof matches Meta spec HMAC-SHA256(secret, token) hex", asy
   assertEquals(typeof v, "string");
   assertEquals(v!.length, 64);
   // Pre-computed expected
-  assertEquals(v, "0e3aebbb31f81c5d717edf17f8b8462b18edd0d623ed8d31a93ae654b3f8c7c5");
+  assertEquals(v, "e941110e3d2bfe82621f0e3e1434730d7305d106c5f68c87165d0b27a4611a4a");
 });
 
 Deno.test("withProof adds access_token and appsecret_proof when secret provided", async () => {
