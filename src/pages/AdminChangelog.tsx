@@ -1,11 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SafeMarkdown } from "@/components/ui/SafeMarkdown";
-import { ScrollText, BookOpen } from "lucide-react";
+import { ScrollText, BookOpen, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // eslint-disable-next-line import/no-unresolved
 import changelogContent from "../../docs/changelog.md?raw";
 // eslint-disable-next-line import/no-unresolved
 import runbookContent from "../../docs/admin-runbook.md?raw";
+// eslint-disable-next-line import/no-unresolved
+import metaBackfillRunbook from "../../docs/meta-leads-backfill-runbook.md?raw";
 
 /**
  * Sprint 8: rendering in-app del changelog e del runbook admin.
