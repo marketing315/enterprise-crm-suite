@@ -84,7 +84,7 @@ export function MetaPageConnectDialog({ open, onOpenChange }: MetaPageConnectDia
     },
   });
 
-  const oauthNotCompleted = error?.error === "oauth_not_completed";
+  const oauthNotCompleted = error?.error === "oauth_not_completed" || data?.requires_oauth === true;
 
   const startOAuth = async () => {
     if (!brandId) return;
@@ -144,7 +144,7 @@ export function MetaPageConnectDialog({ open, onOpenChange }: MetaPageConnectDia
           </Alert>
         )}
 
-        {data && data.pages.length === 0 && (
+        {data && !data.requires_oauth && data.pages.length === 0 && (
           <Alert className="my-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -154,7 +154,7 @@ export function MetaPageConnectDialog({ open, onOpenChange }: MetaPageConnectDia
           </Alert>
         )}
 
-        {data && data.pages.length > 0 && (
+        {data && !data.requires_oauth && data.pages.length > 0 && (
           <div className="space-y-4 py-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
