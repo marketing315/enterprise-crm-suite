@@ -78,21 +78,42 @@ export function tryExtractContactFields(payload: Record<string, unknown>): Parti
     if (cityMatch && !result.city) result.city = cityMatch[1].trim();
   }
 
-  // Preferred days / time slot → append to notes
+  // Landing page / pain point / city / preferred days+time → append to notes
+  // Generic: si applica a qualunque payload (es. landing prova.my-med.it) che
+  // contenga questi campi. Se mancano, non vengono aggiunte righe.
+  const painPoint = pickFirstString(payload, ["pain_point", "painPoint", "pain", "Pain Point"]);
+  const landingPage = pickFirstString(payload, [
+    "landing_page", "landingPage", "Landing Page",
+    "landing_page_url", "landingPageUrl", "Landing Page Url",
+  ]);
+  const noteCity = result.city || pickFirstString(payload, ["address", "indirizzo", "Address"]);
+
   const preferredDays = payload.preferred_days;
-  const preferredTimeSlot = payload.preferred_time_slot || payload.preferredTimeSlot;
-  if (preferredDays || preferredTimeSlot) {
-    const parts: string[] = [];
-    if (Array.isArray(preferredDays) && preferredDays.length > 0) {
-      parts.push(`Giorni preferiti: ${preferredDays.join(", ")}`);
-    }
-    if (typeof preferredTimeSlot === "string") {
-      parts.push(`Fascia oraria: ${preferredTimeSlot}`);
-    }
-    if (parts.length > 0) {
-      const prefNote = parts.join(" | ");
-      result.notes = result.notes ? `${result.notes}\n${prefNote}` : prefNote;
-    }
+  const preferredTimeSlotRaw =
+    payload.preferred_time_slot ??
+    payload.preferredTimeSlot ??
+    payload.preferred_time_slots ??
+    payload.preferredTimeSlots;
+  let preferredTimeSlot: string | null = null;
+  if (typeof preferredTimeSlotRaw === "string" && preferredTimeSlotRaw.trim()) {
+    preferredTimeSlot = preferredTimeSlotRaw.trim();
+  } else if (Array.isArray(preferredTimeSlotRaw) && preferredTimeSlotRaw.length > 0) {
+    preferredTimeSlot = preferredTimeSlotRaw
+      .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+      .join(", ");
+  }
+
+  const extraParts: string[] = [];
+  if (painPoint) extraParts.push(`Pain point: ${painPoint}`);
+  if (landingPage) extraParts.push(`Landing page: ${landingPage}`);
+  if (noteCity) extraParts.push(`Città: ${noteCity}`);
+  if (preferredTimeSlot) extraParts.push(`Orario preferito: ${preferredTimeSlot}`);
+  if (Array.isArray(preferredDays) && preferredDays.length > 0) {
+    extraParts.push(`Giorni preferiti: ${preferredDays.join(", ")}`);
+  }
+  if (extraParts.length > 0) {
+    const extraNote = extraParts.join("\n");
+    result.notes = result.notes ? `${result.notes}\n${extraNote}` : extraNote;
   }
 
   // Quiz data (e.g. fibromialgia.ch) → append to notes

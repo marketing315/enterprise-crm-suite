@@ -61,7 +61,25 @@ Deno.test("tryExtractContactFields: appends preferred days/time to notes", () =>
   });
   assert(r.notes?.includes("Richiesta info"));
   assert(r.notes?.includes("Giorni preferiti: Lun, Mer"));
-  assert(r.notes?.includes("Fascia oraria: Pomeriggio"));
+  assert(r.notes?.includes("Orario preferito: Pomeriggio"));
+});
+
+Deno.test("tryExtractContactFields: appends pain_point/landing/city/preferred_time_slots (my-med shape)", () => {
+  const r = tryExtractContactFields({
+    address: "Olgiate Comasco",
+    pain_point: "Artrosi alle mani",
+    landing_code: "lp-b",
+    landing_page: "/magnetoterapia-mani",
+    preferred_days: ["2026-05-22"],
+    landing_page_url: "https://prova.my-med.it/magnetoterapia-mani?utm=x",
+    preferred_time_slots: ["pomeriggio"],
+  });
+  assert(r.notes?.includes("Pain point: Artrosi alle mani"));
+  // landing_page wins over landing_page_url (first match)
+  assert(r.notes?.includes("Landing page: /magnetoterapia-mani"));
+  assert(r.notes?.includes("Città: Olgiate Comasco"));
+  assert(r.notes?.includes("Orario preferito: pomeriggio"));
+  assert(r.notes?.includes("Giorni preferiti: 2026-05-22"));
 });
 
 Deno.test("tryExtractContactFields: appends quiz summary", () => {
