@@ -4,7 +4,8 @@ import { assertSafeUrl } from "../_shared/safe-outbound.ts";
 
 const PII_PSEUDO_SECRET = Deno.env.get("PII_PSEUDONYM_SECRET") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const ALLOWED_URL_PARAM_KEYS = new Set(["api_key", "brand_id", "token", "ref", "source"]);
+// idprogetto = required by SiLeads (sileads.siseco.it) to route the lead to the correct project
+const ALLOWED_URL_PARAM_KEYS = new Set(["api_key", "brand_id", "token", "ref", "source", "idprogetto"]);
 const URL_PARAM_VALUE_RE = /^[A-Za-z0-9._\-:]{1,256}$/;
 
 const corsHeaders = {
