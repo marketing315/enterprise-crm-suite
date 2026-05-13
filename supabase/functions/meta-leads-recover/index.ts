@@ -106,16 +106,18 @@ Deno.serve(async (req) => {
     const results: Array<Record<string, unknown>> = [];
 
     for (const ev of events ?? []) {
-      // Verify caller is admin for this brand
-      const { data: isAdmin } = await supabase.rpc("has_role", {
-        _user_id: internalId, _role: "admin", _brand_id: ev.brand_id,
-      });
-      const { data: isCeo } = await supabase.rpc("has_role", {
-        _user_id: internalId, _role: "ceo", _brand_id: ev.brand_id,
-      }).catch(() => ({ data: false }));
-      if (!isAdmin && !isCeo) {
-        results.push({ id: ev.id, status: "forbidden" });
-        continue;
+      // Verify caller is admin for this brand (skip when called via INTERNAL_SERVICE_TOKEN)
+      if (!isInternal) {
+        const { data: isAdmin } = await supabase.rpc("has_role", {
+          _user_id: internalId, _role: "admin", _brand_id: ev.brand_id,
+        });
+        const { data: isCeo } = await supabase.rpc("has_role", {
+          _user_id: internalId, _role: "ceo", _brand_id: ev.brand_id,
+        }).catch(() => ({ data: false }));
+        if (!isAdmin && !isCeo) {
+          results.push({ id: ev.id, status: "forbidden" });
+          continue;
+        }
       }
 
       // Load meta_app
