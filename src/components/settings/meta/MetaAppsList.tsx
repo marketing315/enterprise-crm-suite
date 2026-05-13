@@ -19,6 +19,7 @@ export function MetaAppsList() {
   const [deletingApp, setDeletingApp] = useState<MetaApp | null>(null);
   const [testingApp, setTestingApp] = useState<MetaApp | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
+  const [backfillingApp, setBackfillingApp] = useState<MetaApp | null>(null);
 
   const handleCopyToClipboard = (text: string, label: string) => {
     copyToClipboard(text, label);
