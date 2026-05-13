@@ -67,6 +67,19 @@ export default function AdminChangelog() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="meta-backfill">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meta Lead Ads — Backfill storico</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <article className="prose prose-sm dark:prose-invert max-w-none">
+                <SafeMarkdown>{metaBackfillRunbook}</SafeMarkdown>
+              </article>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
