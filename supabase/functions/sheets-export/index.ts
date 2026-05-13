@@ -1020,6 +1020,12 @@ Deno.serve(async (req: Request) => {
     const adsetName = String(rawPayload.adset_name || rawPayload.adset || rawPayload.utm_content || "");
     const adName = String(rawPayload.ad_name || rawPayload.ad || rawPayload.creative || "");
 
+    // Fallback to raw_payload when contact fields are empty (recovery flows).
+    const pFirst = String(rawPayload.first_name || rawPayload.nome || "").trim();
+    const pLast = String(rawPayload.last_name || rawPayload.cognome || "").trim();
+    const pEmail = String(rawPayload.email || "").trim();
+    const pPhone = String(rawPayload.phone || rawPayload.phone_number || rawPayload.telefono || "").trim();
+
     const row = [
       leadEvent.received_at,                              // A - Timestamp
       brand?.name || "",                                  // B - Brand
@@ -1027,10 +1033,10 @@ Deno.serve(async (req: Request) => {
       campaignName,                                       // D - Campagna
       adsetName,                                          // E - AdSet
       adName,                                             // F - Ad
-      contact?.first_name || "",                          // G - Nome
-      contact?.last_name || "",                           // H - Cognome
-      phone?.phone_normalized || contact?.phone_normalized || "",  // I - Telefono
-      contact?.email || "",                               // J - Email
+      contact?.first_name || pFirst,                      // G - Nome
+      contact?.last_name || pLast,                        // H - Cognome
+      phone?.phone_normalized || contact?.phone_normalized || pPhone,  // I - Telefono
+      contact?.email || pEmail,                           // J - Email
       contact?.city || "",                                // K - Città
       message,                                            // L - Messaggio/Pain Area
       leadEvent.ai_priority?.toString() || "",            // M - Priorità AI
