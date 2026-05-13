@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Edit, Trash2, TestTube, Link, Zap } from "lucide-react";
+import { Copy, Edit, Trash2, TestTube, Link, Zap, History } from "lucide-react";
 import { useMetaApps, MetaApp } from "@/hooks/useMetaApps";
 import { MetaAppFormDrawer } from "./MetaAppFormDrawer";
 import { DeleteMetaAppDialog } from "./DeleteMetaAppDialog";
 import { TestLeadDialog } from "./TestLeadDialog";
+import { MetaBackfillDialog } from "./MetaBackfillDialog";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 
@@ -18,6 +19,7 @@ export function MetaAppsList() {
   const [deletingApp, setDeletingApp] = useState<MetaApp | null>(null);
   const [testingApp, setTestingApp] = useState<MetaApp | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
+  const [backfillingApp, setBackfillingApp] = useState<MetaApp | null>(null);
 
   const handleCopyToClipboard = (text: string, label: string) => {
     copyToClipboard(text, label);
@@ -145,6 +147,14 @@ export function MetaAppsList() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => setBackfillingApp(app)}
+                    title="Backfill lead storici"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => testWebhook(app)}
                     title="Test Webhook Verifica"
                   >
@@ -189,6 +199,12 @@ export function MetaAppsList() {
         open={!!testingApp}
         onOpenChange={(open) => !open && setTestingApp(null)}
         metaApp={testingApp}
+      />
+
+      <MetaBackfillDialog
+        open={!!backfillingApp}
+        onOpenChange={(open) => !open && setBackfillingApp(null)}
+        metaApp={backfillingApp}
       />
     </>
   );

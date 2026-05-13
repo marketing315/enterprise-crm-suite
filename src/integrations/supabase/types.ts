@@ -7622,6 +7622,93 @@ export type Database = {
           },
         ]
       }
+      meta_leads_backfill_runs: {
+        Row: {
+          brand_id: string
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          form_id: string | null
+          forms: Json | null
+          id: string
+          leads_duplicate: number
+          leads_failed: number
+          leads_inserted: number
+          leads_recovered: number
+          leads_seen: number
+          page_id: string
+          pages_fetched: number
+          since_at: string | null
+          source_id: string
+          started_at: string
+          status: string
+          trigger_kind: string
+          triggered_by: string | null
+          until_at: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          form_id?: string | null
+          forms?: Json | null
+          id?: string
+          leads_duplicate?: number
+          leads_failed?: number
+          leads_inserted?: number
+          leads_recovered?: number
+          leads_seen?: number
+          page_id: string
+          pages_fetched?: number
+          since_at?: string | null
+          source_id: string
+          started_at?: string
+          status?: string
+          trigger_kind?: string
+          triggered_by?: string | null
+          until_at?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          form_id?: string | null
+          forms?: Json | null
+          id?: string
+          leads_duplicate?: number
+          leads_failed?: number
+          leads_inserted?: number
+          leads_recovered?: number
+          leads_seen?: number
+          page_id?: string
+          pages_fetched?: number
+          since_at?: string | null
+          source_id?: string
+          started_at?: string
+          status?: string
+          trigger_kind?: string
+          triggered_by?: string | null
+          until_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_leads_backfill_runs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_leads_backfill_runs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "meta_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_token_health_runs: {
         Row: {
           brand_id: string | null
