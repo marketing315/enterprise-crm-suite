@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SECURE_HTML_HEADERS } from "../_shared/secure-html.ts";
+import { metaGraphUrl, withProof } from "../_shared/meta-graph.ts";
 
 function escapeHtml(str: string): string {
   return str
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
 
     // Exchange code for short-lived token
     const redirectUri = `${supabaseUrl}/functions/v1/meta-oauth-callback`;
-    const tokenUrl = new URL("https://graph.facebook.com/v20.0/oauth/access_token");
+    const tokenUrl = new URL(metaGraphUrl("/oauth/access_token"));
     tokenUrl.searchParams.set("client_id", metaAppId);
     tokenUrl.searchParams.set("client_secret", metaAppSecret);
     tokenUrl.searchParams.set("redirect_uri", redirectUri);
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
     }
 
     // Exchange for long-lived token
-    const longLivedUrl = new URL("https://graph.facebook.com/v20.0/oauth/access_token");
+    const longLivedUrl = new URL(metaGraphUrl("/oauth/access_token"));
     longLivedUrl.searchParams.set("grant_type", "fb_exchange_token");
     longLivedUrl.searchParams.set("client_id", metaAppId);
     longLivedUrl.searchParams.set("client_secret", metaAppSecret);
@@ -135,9 +136,9 @@ Deno.serve(async (req) => {
     // Get ad accounts accessible with this token
     let accountId = "unknown";
     try {
-      const meResp = await fetch(
-        `https://graph.facebook.com/v20.0/me/adaccounts?fields=account_id,name&access_token=${accessToken}`
-      );
+      const meAdAccountsUrl = new URL(metaGraphUrl("/me/adaccounts"));
+      meAdAccountsUrl.searchParams.set("fields", "account_id,name");
+      const meResp = await fetch(await withProof(meAdAccountsUrl, accessToken, metaAppSecret));
       const meData = await meResp.json();
       if (meData.data?.length > 0) {
         accountId = meData.data[0].account_id;
