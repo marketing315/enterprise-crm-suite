@@ -1,11 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SafeMarkdown } from "@/components/ui/SafeMarkdown";
-import { ScrollText, BookOpen } from "lucide-react";
+import { ScrollText, BookOpen, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // eslint-disable-next-line import/no-unresolved
 import changelogContent from "../../docs/changelog.md?raw";
 // eslint-disable-next-line import/no-unresolved
 import runbookContent from "../../docs/admin-runbook.md?raw";
+// eslint-disable-next-line import/no-unresolved
+import metaBackfillRunbook from "../../docs/meta-leads-backfill-runbook.md?raw";
 
 /**
  * Sprint 8: rendering in-app del changelog e del runbook admin.
@@ -34,6 +36,10 @@ export default function AdminChangelog() {
             <BookOpen className="w-4 h-4 mr-2" />
             Runbook
           </TabsTrigger>
+          <TabsTrigger value="meta-backfill">
+            <History className="w-4 h-4 mr-2" />
+            Meta Backfill
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="changelog">
@@ -57,6 +63,19 @@ export default function AdminChangelog() {
             <CardContent>
               <article className="prose prose-sm dark:prose-invert max-w-none">
                 <SafeMarkdown>{runbookContent}</SafeMarkdown>
+              </article>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="meta-backfill">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meta Lead Ads — Backfill storico</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <article className="prose prose-sm dark:prose-invert max-w-none">
+                <SafeMarkdown>{metaBackfillRunbook}</SafeMarkdown>
               </article>
             </CardContent>
           </Card>
