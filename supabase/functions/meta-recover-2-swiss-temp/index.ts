@@ -102,39 +102,49 @@ Deno.serve(async (req) => {
       { name: "quiz", values: [L.quiz] },
     ];
 
-    const { data: le, error: leErr } = await supabase.from("lead_events").insert({
-      brand_id: BRAND_ID,
-      contact_id: cId,
-      deal_id: dId ?? null,
-      source: "meta",
-      source_name: `Meta: ${CAMPAIGN_NAME}`,
-      external_id: L.leadgen_id,
-      occurred_at: new Date(L.created_time).toISOString(),
-      raw_payload: {
-        meta_leadgen_id: L.leadgen_id, meta_page_id: PAGE_ID, meta_form_id: FORM_ID,
-        meta_ad_id: L.ad_id, meta_ad_name: L.ad_name,
-        meta_adset_id: ADSET_ID, meta_adset_name: ADSET_NAME,
-        meta_campaign_id: CAMPAIGN_ID, meta_campaign_name: CAMPAIGN_NAME,
-        platform: L.platform,
-        first_name: L.first_name, last_name: L.last_name,
-        email: L.email, phone: L.phone, cap: L.cap, quiz: L.quiz,
-        field_data,
-        recovered: true, recovery_source: "google_sheet_manual",
-      },
-    }).select("id").single();
-    if (leErr) { results.push({ leadgen_id: L.leadgen_id, status: "lead_event_failed", error: leErr.message, code: leErr.code }); continue; }
+    const raw_payload = {
+      meta_leadgen_id: L.leadgen_id, meta_page_id: PAGE_ID, meta_form_id: FORM_ID,
+      meta_ad_id: L.ad_id, meta_ad_name: L.ad_name,
+      meta_adset_id: ADSET_ID, meta_adset_name: ADSET_NAME,
+      meta_campaign_id: CAMPAIGN_ID, meta_campaign_name: CAMPAIGN_NAME,
+      platform: L.platform,
+      first_name: L.first_name, last_name: L.last_name,
+      email: L.email, phone: L.phone, cap: L.cap, quiz: L.quiz,
+      field_data,
+      recovered: true, recovery_source: "google_sheet_manual",
+    };
 
-    // Insert meta_lead_events row marker for traceability
-    await supabase.from("meta_lead_events").insert({
-      brand_id: BRAND_ID, source_id: SOURCE_ID, page_id: PAGE_ID, form_id: FORM_ID,
-      ad_id: L.ad_id, leadgen_id: L.leadgen_id,
-      raw_event: { source: "google_sheet_manual_recover" },
+    let leId: string;
+    if (existing) {
+      // Enrich the existing empty lead_event
+      const { error: upErr } = await supabase.from("lead_events").update({
+        contact_id: cId, deal_id: dId ?? null,
+        source_name: `Meta: ${CAMPAIGN_NAME}`,
+        raw_payload,
+      }).eq("id", existing.id);
+      if (upErr) { results.push({ leadgen_id: L.leadgen_id, status: "update_failed", error: upErr.message }); continue; }
+      leId = existing.id;
+    } else {
+      const { data: le, error: leErr } = await supabase.from("lead_events").insert({
+        brand_id: BRAND_ID, contact_id: cId, deal_id: dId ?? null,
+        source: "meta", source_name: `Meta: ${CAMPAIGN_NAME}`,
+        external_id: L.leadgen_id,
+        occurred_at: new Date(L.created_time).toISOString(),
+        raw_payload,
+      }).select("id").single();
+      if (leErr) { results.push({ leadgen_id: L.leadgen_id, status: "lead_event_failed", error: leErr.message }); continue; }
+      leId = le.id;
+    }
+
+    // Update existing meta_lead_events row
+    await supabase.from("meta_lead_events").update({
       fetched_payload: { field_data, ad_name: L.ad_name, campaign_name: CAMPAIGN_NAME, created_time: L.created_time, platform: L.platform },
-      contact_id: cId, lead_event_id: le.id,
+      contact_id: cId, lead_event_id: leId,
       status: "ingested", processed_at: new Date().toISOString(),
-    });
+      error: null,
+    }).eq("leadgen_id", L.leadgen_id);
 
-    results.push({ leadgen_id: L.leadgen_id, status: "recovered", contact_id: cId, deal_id: dId, lead_event_id: le.id });
+    results.push({ leadgen_id: L.leadgen_id, status: "recovered", contact_id: cId, deal_id: dId, lead_event_id: leId });
   }
 
   return new Response(JSON.stringify({ results }, null, 2), { headers: { ...cors, "Content-Type": "application/json" } });
