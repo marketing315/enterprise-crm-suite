@@ -81,6 +81,37 @@ interface MetaLeadData {
   platform?: string;
 }
 
+async function fetchMetaLeadData(
+  leadgenId: string,
+  formId: string | undefined,
+  token: string,
+): Promise<{ data: MetaLeadData | null; error: string | null }> {
+  const fields = "created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform";
+  const directUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=${fields}&access_token=${token}`;
+  const directRes = await fetch(directUrl);
+  const directParsed = await safeJson<MetaLeadData>(directRes);
+  if (directParsed.ok) return { data: directParsed.data, error: null };
+
+  const safeBody = directParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  const directError = `Graph API ${directParsed.error} status=${directParsed.status} body=${safeBody}`;
+  if (!formId) return { data: null, error: directError };
+
+  const leadsUrl = new URL(`https://graph.facebook.com/v20.0/${formId}/leads`);
+  leadsUrl.searchParams.set("fields", `id,${fields}`);
+  leadsUrl.searchParams.set("limit", "100");
+  leadsUrl.searchParams.set("access_token", token);
+  const listRes = await fetch(leadsUrl.toString());
+  const listParsed = await safeJson<{ data?: MetaLeadData[] }>(listRes);
+  if (listParsed.ok) {
+    const matched = listParsed.data?.data?.find((lead) => lead.id === leadgenId) ?? null;
+    if (matched) return { data: matched, error: null };
+    return { data: null, error: `${directError}; form_leads_lookup: lead_not_found` };
+  }
+
+  const listSafeBody = listParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  return { data: null, error: `${directError}; form_leads_lookup: Graph API ${listParsed.error} status=${listParsed.status} body=${listSafeBody}` };
+}
+
 interface MetaChangeValue {
   leadgen_id?: string;
   page_id?: string;
