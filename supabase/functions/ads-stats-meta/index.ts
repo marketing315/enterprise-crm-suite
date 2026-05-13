@@ -103,7 +103,7 @@ async function fetchAdThumbnails(
     const ids = batch.join(",");
     try {
       const resp = await fetch(
-        `https://graph.facebook.com/v20.0/?ids=${ids}&fields=creative{thumbnail_url}&access_token=${accessToken}`
+        `https://graph.facebook.com/v21.0/?ids=${ids}&fields=creative{thumbnail_url}&access_token=${accessToken}`
       );
       const data = await resp.json();
       if (data && !data.error) {
@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
         // ---- CAMPAIGN-LEVEL INSIGHTS ----
         let allInsights: MetaInsight[] = [];
         
-        let insightsUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
+        let insightsUrl = `https://graph.facebook.com/v21.0/${accountId}/insights?`;
         insightsUrl += `fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,actions`;
         insightsUrl += `&level=campaign&time_increment=1`;
         
@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
         // ---- AD-LEVEL INSIGHTS ----
         let allAdInsights: MetaAdInsight[] = [];
 
-        let adInsightsUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
+        let adInsightsUrl = `https://graph.facebook.com/v21.0/${accountId}/insights?`;
         adInsightsUrl += `fields=campaign_id,campaign_name,ad_id,ad_name,spend,impressions,clicks,reach,frequency`;
         adInsightsUrl += `&level=ad&time_increment=1`;
         
@@ -436,7 +436,7 @@ Deno.serve(async (req) => {
         let adsetsUpserted = 0;
         try {
           let allAdsetInsights: MetaAdsetInsight[] = [];
-          let adsetUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
+          let adsetUrl = `https://graph.facebook.com/v21.0/${accountId}/insights?`;
           adsetUrl += `fields=campaign_id,campaign_name,adset_id,adset_name,spend,impressions,clicks,reach,frequency,actions`;
           adsetUrl += `&level=adset&time_increment=1`;
           if (datePreset) {
@@ -514,7 +514,7 @@ Deno.serve(async (req) => {
         // ---- DEMOGRAPHIC BREAKDOWN ----
         let allDemoInsights: MetaDemoInsight[] = [];
 
-        let demoUrl = `https://graph.facebook.com/v20.0/${accountId}/insights?`;
+        let demoUrl = `https://graph.facebook.com/v21.0/${accountId}/insights?`;
         demoUrl += `fields=campaign_id,spend,impressions,clicks,reach`;
         demoUrl += `&level=campaign&time_increment=1`;
         demoUrl += `&breakdowns=age,gender`;

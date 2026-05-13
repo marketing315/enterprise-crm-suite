@@ -1,79 +1,71 @@
-# Marketing: gruppi inserzioni + attribuzione manuale lead
 
-Due interventi separati, entrambi su brand già in uso (MyMed in primis).
+# Meta Lead Ads — Piano implementazione (4 stream)
 
----
+Tutto si appoggia sull'infrastruttura esistente: `meta_apps`, `meta_lead_sources`, `_shared/meta-secrets.ts` (vault A2), `_shared/oauth-session.ts` (CSRF C7), `_shared/circuit-breaker.ts` (H7), `_shared/safe-error-response.ts` (H6).
 
-## A) Vedere i Gruppi di inserzioni in "Statistiche ADV"
+## Stream 1 — Bump Graph API v20 → v21 + appsecret_proof
 
-Oggi `ad_platform_stats` salva una riga per **campagna/giorno**. Meta espone anche il livello **adset** (gruppo di inserzioni). L'API `ads-stats-meta` già scarica le inserzioni (livello `ad`) per i creativi, ma NON gli adset.
+**Cosa:**
+- Centralizzo versione e proof in `supabase/functions/_shared/meta-graph.ts` (nuovo): costante `META_GRAPH_VERSION = "v21.0"` + helper `appsecretProof(token, appSecret)` + `metaFetch(url, { token, appSecret })` che inietta `access_token` + `appsecret_proof` automaticamente.
+- Refactor di tutte le edge function che chiamano `graph.facebook.com`:
+  - `meta-oauth-start`, `meta-oauth-callback`
+  - `meta-leads-webhook`, `meta-subscribe-page`, `meta-unsubscribe-page`
+  - `meta-lead-sources-*` (list/sync forms/pages)
+  - `capi-event-sender` (CAPI usa stessa proof)
+  - eventuali `meta-ads-*` per insights
+- `app_secret` letto da `meta_apps` via vault helper esistente.
+- Test Deno: `meta-graph_test.ts` verifica HMAC della proof.
 
-### Cosa faccio
+**Rischio:** zero se proof è opzionale lato Meta. Se "Require App Secret Proof" non è attivo nell'app, funziona uguale; se attivato in futuro, già pronto.
 
-1. **DB** — nuova tabella `ad_platform_adset_stats` (parallela a `ad_platform_stats`):
-   - `external_adset_id`, `external_adset_name`, `external_campaign_id`, `external_campaign_name`
-   - metriche: `spend, impressions, clicks, reach, frequency, conversions`
-   - chiave unica `(brand_id, platform, account_id, external_adset_id, stat_date)`
-   - RLS identica (`has_marketing_access`)
-2. **Edge `ads-stats-meta`** — aggiunta chiamata Insights con `level=adset` e upsert su nuova tabella (stesso ciclo brand/chunk già in essere).
-3. **RPC** — `get_ad_adset_stats(p_brand_id, p_from, p_to, p_platform, p_campaign_id)` che aggrega per adset.
-4. **UI** — in `AdStatsTab`:
-   - quando l'utente seleziona **una campagna** dal filtro, sotto la tabella campagne appare una nuova sezione "Gruppi di inserzioni" con tabella (nome adset, spesa, impr., reach, CPL, lead). 
-   - Se nessuna campagna è selezionata, la sezione resta collassata con CTA "Seleziona una campagna per vedere i gruppi di inserzioni".
-5. **Backfill** — bottone "Sync storica Meta" già esistente: lo estendo per popolare anche gli adset nello stesso ciclo (no nuovo bottone).
+## Stream 2 — Scope completi + UI "collega pagina"
 
-Google Ads: per ora resta solo livello campagna (l'API Google ha "ad_group" — lo aggiungo in un secondo giro se serve).
+**Cosa:**
+- `meta-oauth-start`: aggiungo scope mancanti `pages_manage_metadata`, `pages_manage_ads`, `leads_retrieval` (oggi ha solo `ads_read,ads_management,business_management`).
+- `meta-oauth-callback`: dopo lo scambio code→token, chiama `fb_exchange_token` per long-lived, salva su `meta_oauth_tokens` (nuova tabella o campo su `meta_apps`).
+- Nuova edge `meta-list-pages`: ritorna `/me/accounts` + `/me/businesses` + `/me/adaccounts` per la UI.
+- Nuova edge `meta-connect-page`: dato `page_id`, recupera page-token non scadente da `/me/accounts`, crea/aggiorna riga `meta_apps` (page_id, brand, access_token via vault) e chiama `subscribed_apps` con `subscribed_fields=leadgen`.
+- UI in `src/pages/Settings.tsx` sezione `meta-apps`:
+  - Dopo callback OK → `MetaPageConnectDialog` che fa GET `meta-list-pages`, lista pagine con bottone "Collega" (chiama `meta-connect-page`), mostra stato `is_subscribed`.
+  - Hook `useMetaPagesAvailable` accanto a `useMetaApps`.
 
----
+**Migration:**
+- Tabella `meta_oauth_tokens (brand_id, user_id, long_lived_token vault, expires_at, scopes[], created_at)` con RLS admin/ceo per brand.
 
-## B) Attribuire manualmente un lead a una campagna
+## Stream 3 — Health-check token settimanale
 
-Oggi `lead_events.marketing_campaign_id` esiste ma viene compilato solo in alcuni webhook. Se un lead arriva da un sorgente non riconosciuto (es. Quiz funnel, WordPress, CallAI…), nessuno lo lega a una campagna ADV → KPI "lead da Meta" lo esclude.
+**Cosa:**
+- Nuova edge `meta-token-health-check`:
+  - per ogni `meta_apps.is_active=true`: leggi token via vault, chiama `GET /debug_token?input_token=...&access_token={app_id}|{app_secret}`, leggi `is_valid`, `expires_at`, `scopes`.
+  - aggiorna `meta_apps.token_status` (`valid|expiring|invalid`), `token_expires_at`, `token_last_checked_at`.
+  - se `is_valid=false` o expires < 7 giorni → `report_client_incident` (F6) + notification webhook admin (canale `meta_token_health`).
+- Migration: aggiungo colonne `token_status text default 'unknown'`, `token_expires_at timestamptz`, `token_last_checked_at timestamptz`, `token_scopes text[]` su `meta_apps` (additive, nullable).
+- Cron via `cron-relay` esistente: registro `meta-token-health-check` ogni lunedì 06:00 Europe/Rome in `cron_job_registry` (A10).
+- Dashboard admin: piccola card in `AdminObservability` o nuova `/admin/meta-health` con tabella stato token per brand.
 
-### Cosa faccio
+## Stream 4 — Backfill storico lead per form
 
-1. **DB** — nessuna nuova colonna, uso `lead_events.marketing_campaign_id` già esistente. Aggiungo trigger di audit su update (chi ha riassegnato, quando, da quale campagna a quale).
-2. **RPC** — `set_lead_event_campaign(p_event_id, p_campaign_id)`:
-   - controllo brand-scoped (`assert_brand_access`)
-   - log su `audit_log_unified`
-   - rate-limit standard
-3. **UI nel ContactDetailSheet → sezione "Storico lead"**:
-   - per ogni `lead_event` mostro un piccolo badge "Campagna: {nome}" oppure "Non attribuita"
-   - icona matita → popover con `Combobox` campagne del brand (filtro per nome) + opzione "Nessuna" → salva via RPC
-   - feedback con `useMutationFeedback` standard
-4. **Bulk attribution (admin/marketing)** — nella pagina `/marketing/leads` aggiungo:
-   - colonna "Campagna" 
-   - selezione multipla → azione "Attribuisci a campagna…" (Combobox stesso pattern)
-   - utile per fissare in massa "Quiz funnel - Prova Gratuita" → campagna "Quiz Fibromialgia"
-5. **Effetto KPI** — i conteggi "lead da Meta" in Statistiche ADV usano già `marketing_campaign_id` quando presente (cambio la RPC `get_ad_platform_stats_summary` per preferire join via `marketing_campaign_id` invece del solo `ILIKE source_name`). Fallback al match per nome resta per retrocompatibilità.
+**Cosa:**
+- Nuova edge `meta-leads-backfill`:
+  - input: `{ meta_app_id, form_id, since? (ISO) }`
+  - cursor pagination su `/{form_id}/leads?fields=id,created_time,ad_id,form_id,campaign_id,field_data&limit=100` (con filtering `time_created` se `since`)
+  - per ogni lead → `mapLead(field_data)` → riusa la pipeline `lead-ingest` esistente (idempotenza per `external_lead_id = leadgen_id`).
+  - risultato: `{ fetched, inserted, skipped_duplicates, errors[] }`, salvato in nuova tabella `meta_backfill_runs` per audit.
+- Migration: tabella `meta_backfill_runs (id, brand_id, meta_app_id, form_id, since, fetched, inserted, skipped, errors jsonb, started_at, finished_at, status)` con RLS admin/ceo.
+- UI: in `Settings → meta-apps`, per ogni page connessa, lista form (già esistente in `meta-lead-sources`) con bottone "Backfill" → dialog che chiede `since` (default ultimi 30gg), avvia job, mostra progress + risultato finale + link a contacts importati.
 
----
+## Note tecniche
 
-## Dettagli tecnici
+- Tutte le chiamate Graph passano per nuovo helper `metaFetch` → coerenza versione + proof + circuit breaker (`provider="meta_graph"`).
+- Errori Graph mappati: 4/17/32/613 → backoff esponenziale; 190 → marca token invalid e triggera health-check; 200 → non-retry, log scope mancante.
+- Logging: solo `code/subcode/fbtrace_id`, mai token né `field_data` in chiaro (rispetta C4 PII redaction + H6 safe error).
+- Memoria: aggiorno `mem://features/meta-integration-flow` + nuovo `mem://technical/meta-graph-helper` con `META_GRAPH_VERSION` e regole proof.
 
-```text
-ad_platform_adset_stats
-  brand_id, platform, account_id,
-  external_campaign_id, external_campaign_name,
-  external_adset_id, external_adset_name,
-  stat_date, spend, impressions, clicks, reach, frequency,
-  conversions, raw_data
-  UNIQUE(brand_id, platform, account_id, external_adset_id, stat_date)
-```
+## Ordine di esecuzione consigliato
 
-Edge call Meta:
-`/{ad_account}/insights?level=adset&fields=campaign_id,campaign_name,adset_id,adset_name,spend,impressions,clicks,reach,frequency&time_range=...&time_increment=1`
+1. **Stream 1** (helper + bump v21 + proof) — base condivisa, no migration.
+2. **Stream 3** (migration meta_apps + health-check) — sblocca visibilità prima di toccare flussi utente.
+3. **Stream 2** (scope + UI page connect) — depende da Stream 1.
+4. **Stream 4** (backfill) — dipende da Stream 2 (page-token affidabile).
 
-RPC `set_lead_event_campaign(event_id uuid, campaign_id uuid|null)` — SECURITY DEFINER, search_path=public, brand check, audit append, rate-limit `consume_critical_rate_limit('set_lead_event_campaign', 60, 15)`.
-
-UI: `MarketingLeads.tsx` aggiunge colonna + bulk bar; `ContactDetailSheet → ContactLeadDataSection` aggiunge il selector inline.
-
----
-
-## Fuori scope
-
-- Livello "ad" in tabella (esiste già `AdCreativesTab`)
-- Google Ads ad_group breakdown (rimando)
-- Riscrittura attribuzione automatica via regex (è la sol. (3) discussa prima)
-
-Procedo?
+Approva per partire dallo Stream 1, oppure dimmi se vuoi un sottoinsieme/ordine diverso.

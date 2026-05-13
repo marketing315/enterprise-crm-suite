@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getMetaAppAccessToken } from "../_shared/meta-secrets.ts";
+import { metaGraphUrl, withProof, proofParams } from "../_shared/meta-graph.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,9 +98,10 @@ Deno.serve(async (req) => {
   try {
     // A2: resolve from Vault, fallback to legacy column.
     const resolvedToken = (await getMetaAppAccessToken(supabaseService, metaApp.id)) ?? metaApp.access_token;
-    // Try to get Page Access Token
-    const pageTokenUrl = `https://graph.facebook.com/v20.0/${metaApp.page_id}?fields=access_token&access_token=${resolvedToken}`;
-    const pageTokenRes = await fetch(pageTokenUrl);
+    // Try to get Page Access Token (proof signs against the user/system token)
+    const pageTokenLookup = new URL(metaGraphUrl(`/${metaApp.page_id}`));
+    pageTokenLookup.searchParams.set("fields", "access_token");
+    const pageTokenRes = await fetch(await withProof(pageTokenLookup, resolvedToken, metaApp.app_secret));
     const pageTokenData = await pageTokenRes.json();
 
     let pageAccessToken = resolvedToken;
@@ -114,13 +116,14 @@ Deno.serve(async (req) => {
     }
 
     // Subscribe page to leadgen webhooks via Graph API
-    const graphUrl = `https://graph.facebook.com/v20.0/${metaApp.page_id}/subscribed_apps`;
-    
+    const graphUrl = metaGraphUrl(`/${metaApp.page_id}/subscribed_apps`);
+
     console.log(`[META-SUBSCRIBE] Subscribing page ${metaApp.page_id} to leadgen webhooks`);
 
+    const proof = await proofParams(pageAccessToken, metaApp.app_secret);
     const formData = new URLSearchParams();
     formData.append("subscribed_fields", "leadgen");
-    formData.append("access_token", pageAccessToken);
+    for (const [k, v] of Object.entries(proof)) formData.append(k, v as string);
 
     const graphRes = await fetch(graphUrl, {
       method: "POST",
