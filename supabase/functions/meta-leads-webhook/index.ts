@@ -197,6 +197,7 @@ async function processLeadChange(
 
   // 2. Fetch lead details from Graph API
   let leadData: MetaLeadData | null = null;
+  let graphErrorMessage: string | null = null;
   try {
     // A2: resolve access token via Vault wrapper (fallback included).
     const resolvedToken = (await getMetaAppAccessToken(supabase, metaApp.id)) ?? metaApp.access_token;
@@ -208,22 +209,31 @@ async function processLeadChange(
       console.log(`[META-EVENT] Graph API OK for ${leadgenId}`);
     } else {
       // Never log access_token. Status + error code + truncated body are safe.
-      console.error(
-        `[META-EVENT] Graph API ${parsed.error} for ${leadgenId}: status=${parsed.status} fallback=${parsed.fallback} body="${parsed.body.slice(0, 200)}"`,
-      );
+      const safeBody = parsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+      graphErrorMessage = `Graph API ${parsed.error} status=${parsed.status} body=${safeBody}`;
+      console.error(`[META-EVENT] ${graphErrorMessage} for ${leadgenId}`);
     }
   } catch (graphErr) {
-    console.error(`[META-EVENT] Graph API fetch error:`, graphErr);
+    graphErrorMessage = `Graph API fetch exception: ${graphErr instanceof Error ? graphErr.message : String(graphErr)}`;
+    console.error(`[META-EVENT] ${graphErrorMessage}`);
   }
 
-  // Update meta_lead_events with fetched payload
+  // Update meta_lead_events with fetched payload OR persist the error so it's visible in dashboard
   if (leadData) {
     const { error: fetchUpdateErr } = await supabase
       .from("meta_lead_events")
-      .update({ fetched_payload: leadData, status: "fetched" })
+      .update({ fetched_payload: leadData, status: "fetched", error: null })
       .eq("id", metaEventId);
     if (fetchUpdateErr) {
       console.error(`[META-EVENT] Failed to update fetched_payload for ${metaEventId}:`, fetchUpdateErr);
+    }
+  } else if (graphErrorMessage) {
+    const { error: errUpdateErr } = await supabase
+      .from("meta_lead_events")
+      .update({ error: graphErrorMessage })
+      .eq("id", metaEventId);
+    if (errUpdateErr) {
+      console.error(`[META-EVENT] Failed to persist graph error for ${metaEventId}:`, errUpdateErr);
     }
   }
 
