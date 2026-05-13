@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqual } from "../_shared/crypto.ts";
 import { safeJson } from "../_shared/safe-json.ts";
-import { getMetaAppAccessToken } from "../_shared/meta-secrets.ts";
+import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "../_shared/meta-secrets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +79,37 @@ interface MetaLeadData {
   campaign_name?: string;
   form_id?: string;
   platform?: string;
+}
+
+async function fetchMetaLeadData(
+  leadgenId: string,
+  formId: string | undefined,
+  token: string,
+): Promise<{ data: MetaLeadData | null; error: string | null }> {
+  const fields = "created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform";
+  const directUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=${fields}&access_token=${token}`;
+  const directRes = await fetch(directUrl);
+  const directParsed = await safeJson<MetaLeadData>(directRes);
+  if (directParsed.ok) return { data: directParsed.data, error: null };
+
+  const safeBody = directParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  const directError = `Graph API ${directParsed.error} status=${directParsed.status} body=${safeBody}`;
+  if (!formId) return { data: null, error: directError };
+
+  const leadsUrl = new URL(`https://graph.facebook.com/v20.0/${formId}/leads`);
+  leadsUrl.searchParams.set("fields", `id,${fields}`);
+  leadsUrl.searchParams.set("limit", "100");
+  leadsUrl.searchParams.set("access_token", token);
+  const listRes = await fetch(leadsUrl.toString());
+  const listParsed = await safeJson<{ data?: MetaLeadData[] }>(listRes);
+  if (listParsed.ok) {
+    const matched = listParsed.data?.data?.find((lead) => lead.id === leadgenId) ?? null;
+    if (matched) return { data: matched, error: null };
+    return { data: null, error: `${directError}; form_leads_lookup: lead_not_found` };
+  }
+
+  const listSafeBody = listParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  return { data: null, error: `${directError}; form_leads_lookup: Graph API ${listParsed.error} status=${listParsed.status} body=${listSafeBody}` };
 }
 
 interface MetaChangeValue {
@@ -200,17 +231,14 @@ async function processLeadChange(
   let graphErrorMessage: string | null = null;
   try {
     // A2: resolve access token via Vault wrapper (fallback included).
-    const resolvedToken = (await getMetaAppAccessToken(supabase, metaApp.id)) ?? metaApp.access_token;
-    const graphUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${resolvedToken}`;
-    const graphRes = await fetch(graphUrl);
-    const parsed = await safeJson<MetaLeadData>(graphRes);
-    if (parsed.ok) {
-      leadData = parsed.data;
+    const storedToken = (await getMetaAppAccessToken(supabase, metaApp.id)) ?? metaApp.access_token;
+    const resolvedToken = await resolveMetaPageAccessToken(storedToken, pageId || metaApp.page_id);
+    const fetched = await fetchMetaLeadData(leadgenId, formId, resolvedToken);
+    if (fetched.data) {
+      leadData = fetched.data;
       console.log(`[META-EVENT] Graph API OK for ${leadgenId}`);
     } else {
-      // Never log access_token. Status + error code + truncated body are safe.
-      const safeBody = parsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
-      graphErrorMessage = `Graph API ${parsed.error} status=${parsed.status} body=${safeBody}`;
+      graphErrorMessage = fetched.error;
       console.error(`[META-EVENT] ${graphErrorMessage} for ${leadgenId}`);
     }
   } catch (graphErr) {

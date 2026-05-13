@@ -1,7 +1,7 @@
 // Recover stuck meta_lead_events: re-fetch Graph API and create contact/deal/lead_event.
 // Admin-only. Use for events that webhook-failed (fetched_payload IS NULL).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getMetaAppAccessToken } from "../_shared/meta-secrets.ts";
+import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "../_shared/meta-secrets.ts";
 import { safeJson } from "../_shared/safe-json.ts";
 
 const corsHeaders = {
@@ -11,6 +11,7 @@ const corsHeaders = {
 
 interface FieldData { name?: string; values?: string[] }
 interface LeadData {
+  id?: string;
   created_time?: string;
   field_data?: FieldData[];
   ad_id?: string; ad_name?: string;
@@ -54,6 +55,31 @@ function buildMessage(fd: FieldData[]): string {
     }
   }
   return [lm, ...extras].filter(Boolean).join('\n');
+}
+
+async function fetchMetaLeadData(leadgenId: string, formId: string | undefined, token: string) {
+  const fields = "created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform";
+  const directRes = await fetch(`https://graph.facebook.com/v20.0/${leadgenId}?fields=${fields}&access_token=${token}`);
+  const directParsed = await safeJson<LeadData>(directRes);
+  if (directParsed.ok) return { data: directParsed.data, error: null };
+
+  const safeBody = directParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  const directError = `Graph API ${directParsed.error} status=${directParsed.status} body=${safeBody}`;
+  if (!formId) return { data: null, error: directError };
+
+  const leadsUrl = new URL(`https://graph.facebook.com/v20.0/${formId}/leads`);
+  leadsUrl.searchParams.set("fields", `id,${fields}`);
+  leadsUrl.searchParams.set("limit", "100");
+  leadsUrl.searchParams.set("access_token", token);
+  const listRes = await fetch(leadsUrl.toString());
+  const listParsed = await safeJson<{ data?: LeadData[] }>(listRes);
+  if (listParsed.ok) {
+    const matched = listParsed.data?.data?.find((lead) => lead.id === leadgenId) ?? null;
+    if (matched) return { data: matched, error: null };
+    return { data: null, error: `${directError}; form_leads_lookup: lead_not_found` };
+  }
+  const listSafeBody = listParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  return { data: null, error: `${directError}; form_leads_lookup: Graph API ${listParsed.error} status=${listParsed.status} body=${listSafeBody}` };
 }
 
 Deno.serve(async (req) => {
@@ -123,7 +149,7 @@ Deno.serve(async (req) => {
       // Load meta_app
       const { data: app, error: appErr } = await supabase
         .from("meta_apps")
-        .select("id, brand_id, access_token")
+        .select("id, brand_id, page_id, access_token")
         .eq("id", ev.source_id)
         .single();
       if (appErr || !app) {
@@ -131,24 +157,22 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const token = (await getMetaAppAccessToken(supabase, app.id)) ?? app.access_token;
-      if (!token) {
+      const storedToken = (await getMetaAppAccessToken(supabase, app.id)) ?? app.access_token;
+      if (!storedToken) {
         results.push({ id: ev.id, status: "no_token" });
         continue;
       }
+      const token = await resolveMetaPageAccessToken(storedToken, ev.page_id || app.page_id);
 
-      // Graph fetch
-      const url = `https://graph.facebook.com/v20.0/${ev.leadgen_id}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${token}`;
-      const res = await fetch(url);
-      const parsed = await safeJson<LeadData>(res);
-      if (!parsed.ok) {
-        const safeBody = parsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
-        const msg = `Graph API ${parsed.error} status=${parsed.status} body=${safeBody}`;
+      // Graph fetch; some production leads only resolve through the form leads endpoint.
+      const fetched = await fetchMetaLeadData(ev.leadgen_id, ev.form_id, token);
+      if (!fetched.data) {
+        const msg = fetched.error ?? "Graph API unknown_error";
         await supabase.from("meta_lead_events").update({ error: msg }).eq("id", ev.id);
         results.push({ id: ev.id, leadgen_id: ev.leadgen_id, status: "graph_failed", error: msg });
         continue;
       }
-      const leadData = parsed.data!;
+      const leadData = fetched.data;
       await supabase.from("meta_lead_events")
         .update({ fetched_payload: leadData, status: "fetched", error: null })
         .eq("id", ev.id);
