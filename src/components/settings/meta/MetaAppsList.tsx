@@ -200,6 +200,12 @@ export function MetaAppsList() {
         onOpenChange={(open) => !open && setTestingApp(null)}
         metaApp={testingApp}
       />
+
+      <MetaBackfillDialog
+        open={!!backfillingApp}
+        onOpenChange={(open) => !open && setBackfillingApp(null)}
+        metaApp={backfillingApp}
+      />
     </>
   );
 }
