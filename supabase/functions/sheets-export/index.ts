@@ -413,13 +413,21 @@ function buildLeadsRow(
   const apptTime = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[1]?.substring(0, 5) || "" : "";
   const { street, number: civico } = extractStreetNumber(appointment?.address);
 
+  // Fallback: when contact lookup is incomplete (e.g. recovery/reconcile flows
+  // that fire export before find_or_create_contact saved the names), read from
+  // raw_payload so the LEADS row still has Nome/Cognome/Email/Numero filled.
+  const pFirst = String(payload.first_name || payload.nome || "").trim();
+  const pLast = String(payload.last_name || payload.cognome || "").trim();
+  const pEmail = String(payload.email || "").trim();
+  const pPhone = String(payload.phone || payload.phone_number || payload.telefono || "").trim();
+
   return [
     leadEvent.received_at ? new Date(leadEvent.received_at).toISOString().replace("T", " ").substring(0, 16) : "",
     brandName,
-    contact?.first_name || "",
-    contact?.last_name || "",
-    phone || contact?.phone_normalized || "",
-    contact?.email || "",
+    contact?.first_name || pFirst,
+    contact?.last_name || pLast,
+    phone || contact?.phone_normalized || pPhone,
+    contact?.email || pEmail,
     String(payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || ""),
     leadEvent.source_name || leadEvent.source,
     String(payload.adset || payload.adset_name || payload.meta_adset_name || ""),
