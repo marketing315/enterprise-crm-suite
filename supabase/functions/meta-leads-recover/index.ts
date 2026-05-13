@@ -164,18 +164,15 @@ Deno.serve(async (req) => {
       }
       const token = await resolveMetaPageAccessToken(storedToken, ev.page_id || app.page_id);
 
-      // Graph fetch
-      const url = `https://graph.facebook.com/v20.0/${ev.leadgen_id}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${token}`;
-      const res = await fetch(url);
-      const parsed = await safeJson<LeadData>(res);
-      if (!parsed.ok) {
-        const safeBody = parsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
-        const msg = `Graph API ${parsed.error} status=${parsed.status} body=${safeBody}`;
+      // Graph fetch; some production leads only resolve through the form leads endpoint.
+      const fetched = await fetchMetaLeadData(ev.leadgen_id, ev.form_id, token);
+      if (!fetched.data) {
+        const msg = fetched.error ?? "Graph API unknown_error";
         await supabase.from("meta_lead_events").update({ error: msg }).eq("id", ev.id);
         results.push({ id: ev.id, leadgen_id: ev.leadgen_id, status: "graph_failed", error: msg });
         continue;
       }
-      const leadData = parsed.data!;
+      const leadData = fetched.data;
       await supabase.from("meta_lead_events")
         .update({ fetched_payload: leadData, status: "fetched", error: null })
         .eq("id", ev.id);
