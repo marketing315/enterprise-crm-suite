@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqual } from "../_shared/crypto.ts";
 import { safeJson } from "../_shared/safe-json.ts";
 import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "../_shared/meta-secrets.ts";
+import { metaGraphUrl, withProof } from "../_shared/meta-graph.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,9 +86,12 @@ async function fetchMetaLeadData(
   leadgenId: string,
   formId: string | undefined,
   token: string,
+  appSecret?: string | null,
 ): Promise<{ data: MetaLeadData | null; error: string | null }> {
   const fields = "created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform";
-  const directUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=${fields}&access_token=${token}`;
+  const directLookup = new URL(metaGraphUrl(`/${leadgenId}`));
+  directLookup.searchParams.set("fields", fields);
+  const directUrl = await withProof(directLookup, token, appSecret);
   const directRes = await fetch(directUrl);
   const directParsed = await safeJson<MetaLeadData>(directRes);
   if (directParsed.ok) return { data: directParsed.data, error: null };
@@ -96,11 +100,11 @@ async function fetchMetaLeadData(
   const directError = `Graph API ${directParsed.error} status=${directParsed.status} body=${safeBody}`;
   if (!formId) return { data: null, error: directError };
 
-  const leadsUrl = new URL(`https://graph.facebook.com/v20.0/${formId}/leads`);
+  const leadsUrl = new URL(metaGraphUrl(`/${formId}/leads`));
   leadsUrl.searchParams.set("fields", `id,${fields}`);
   leadsUrl.searchParams.set("limit", "100");
-  leadsUrl.searchParams.set("access_token", token);
-  const listRes = await fetch(leadsUrl.toString());
+  const leadsFinal = await withProof(leadsUrl, token, appSecret);
+  const listRes = await fetch(leadsFinal);
   const listParsed = await safeJson<{ data?: MetaLeadData[] }>(listRes);
   if (listParsed.ok) {
     const matched = listParsed.data?.data?.find((lead) => lead.id === leadgenId) ?? null;
