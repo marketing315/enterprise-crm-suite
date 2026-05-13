@@ -59,3 +59,34 @@ export async function putMetaLeadSourceAccessToken(
   });
   if (error) throw new Error(`meta_lead_sources_put_access_token: ${error.message}`);
 }
+
+export async function resolveMetaPageAccessToken(
+  accessToken: string,
+  pageId: string | null | undefined,
+): Promise<string> {
+  if (!pageId) return accessToken;
+
+  try {
+    const url = new URL(`https://graph.facebook.com/v20.0/${pageId}`);
+    url.searchParams.set("fields", "access_token");
+    url.searchParams.set("access_token", accessToken);
+
+    const res = await fetch(url.toString());
+    const data = await res.json() as { access_token?: string; error?: { message?: string; code?: number } };
+    if (res.ok && data.access_token) return data.access_token;
+
+    console.warn("[meta-secrets] could not resolve page token; falling back to stored token", {
+      page_id: pageId,
+      status: res.status,
+      code: data.error?.code,
+      message: data.error?.message,
+    });
+  } catch (err) {
+    console.warn("[meta-secrets] page token resolution failed; falling back to stored token", {
+      page_id: pageId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return accessToken;
+}
