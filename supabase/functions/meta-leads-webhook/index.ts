@@ -233,16 +233,12 @@ async function processLeadChange(
     // A2: resolve access token via Vault wrapper (fallback included).
     const storedToken = (await getMetaAppAccessToken(supabase, metaApp.id)) ?? metaApp.access_token;
     const resolvedToken = await resolveMetaPageAccessToken(storedToken, pageId || metaApp.page_id);
-    const graphUrl = `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform&access_token=${resolvedToken}`;
-    const graphRes = await fetch(graphUrl);
-    const parsed = await safeJson<MetaLeadData>(graphRes);
-    if (parsed.ok) {
-      leadData = parsed.data;
+    const fetched = await fetchMetaLeadData(leadgenId, formId, resolvedToken);
+    if (fetched.data) {
+      leadData = fetched.data;
       console.log(`[META-EVENT] Graph API OK for ${leadgenId}`);
     } else {
-      // Never log access_token. Status + error code + truncated body are safe.
-      const safeBody = parsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
-      graphErrorMessage = `Graph API ${parsed.error} status=${parsed.status} body=${safeBody}`;
+      graphErrorMessage = fetched.error;
       console.error(`[META-EVENT] ${graphErrorMessage} for ${leadgenId}`);
     }
   } catch (graphErr) {
