@@ -11,6 +11,7 @@ const corsHeaders = {
 
 interface FieldData { name?: string; values?: string[] }
 interface LeadData {
+  id?: string;
   created_time?: string;
   field_data?: FieldData[];
   ad_id?: string; ad_name?: string;
@@ -54,6 +55,31 @@ function buildMessage(fd: FieldData[]): string {
     }
   }
   return [lm, ...extras].filter(Boolean).join('\n');
+}
+
+async function fetchMetaLeadData(leadgenId: string, formId: string | undefined, token: string) {
+  const fields = "created_time,field_data,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,platform";
+  const directRes = await fetch(`https://graph.facebook.com/v20.0/${leadgenId}?fields=${fields}&access_token=${token}`);
+  const directParsed = await safeJson<LeadData>(directRes);
+  if (directParsed.ok) return { data: directParsed.data, error: null };
+
+  const safeBody = directParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  const directError = `Graph API ${directParsed.error} status=${directParsed.status} body=${safeBody}`;
+  if (!formId) return { data: null, error: directError };
+
+  const leadsUrl = new URL(`https://graph.facebook.com/v20.0/${formId}/leads`);
+  leadsUrl.searchParams.set("fields", `id,${fields}`);
+  leadsUrl.searchParams.set("limit", "100");
+  leadsUrl.searchParams.set("access_token", token);
+  const listRes = await fetch(leadsUrl.toString());
+  const listParsed = await safeJson<{ data?: LeadData[] }>(listRes);
+  if (listParsed.ok) {
+    const matched = listParsed.data?.data?.find((lead) => lead.id === leadgenId) ?? null;
+    if (matched) return { data: matched, error: null };
+    return { data: null, error: `${directError}; form_leads_lookup: lead_not_found` };
+  }
+  const listSafeBody = listParsed.body.slice(0, 500).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+  return { data: null, error: `${directError}; form_leads_lookup: Graph API ${listParsed.error} status=${listParsed.status} body=${listSafeBody}` };
 }
 
 Deno.serve(async (req) => {
