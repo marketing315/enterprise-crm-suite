@@ -237,7 +237,7 @@ async function processLeadChange(
     // A2: resolve access token via Vault wrapper (fallback included).
     const storedToken = (await getMetaAppAccessToken(supabase, metaApp.id)) ?? metaApp.access_token;
     const resolvedToken = await resolveMetaPageAccessToken(storedToken, pageId || metaApp.page_id);
-    const fetched = await fetchMetaLeadData(leadgenId, formId, resolvedToken);
+    const fetched = await fetchMetaLeadData(leadgenId, formId, resolvedToken, metaApp.app_secret);
     if (fetched.data) {
       leadData = fetched.data;
       console.log(`[META-EVENT] Graph API OK for ${leadgenId}`);
