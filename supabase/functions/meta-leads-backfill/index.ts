@@ -18,8 +18,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   getMetaAppAccessToken,
   resolveMetaPageAccessToken,
-  getMetaAppSecret,
 } from "../_shared/meta-secrets.ts";
+
+const META_OAUTH_APP_SECRET = Deno.env.get("META_OAUTH_APP_SECRET") ?? "";
 import { META_GRAPH_BASE, withProof } from "../_shared/meta-graph.ts";
 import { safeJson } from "../_shared/safe-json.ts";
 
