@@ -115,9 +115,52 @@ Deno.serve(async (req) => {
       }
     }
 
-    // body: { brand_id?: string, meta_event_ids?: string[] }
-    let body: { brand_id?: string; meta_event_ids?: string[] } = {};
+    // body: { brand_id?: string, meta_event_ids?: string[], probe?: { source_id: string, form_id: string, page_id?: string } }
+    let body: { brand_id?: string; meta_event_ids?: string[]; probe?: { source_id: string; form_id: string; page_id?: string } } = {};
     try { body = await req.json(); } catch (_) { /* allow empty */ }
+
+    // ---- Diagnostic probe mode ----
+    if (body.probe) {
+      const { data: app } = await supabase
+        .from("meta_apps")
+        .select("id, brand_id, page_id, access_token")
+        .eq("id", body.probe.source_id)
+        .single();
+      if (!app) {
+        return new Response(JSON.stringify({ error: "app_not_found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const stored = (await getMetaAppAccessToken(supabase, app.id)) ?? app.access_token;
+      if (!stored) {
+        return new Response(JSON.stringify({ error: "no_token" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const pageId = body.probe.page_id || app.page_id;
+      const pageTok = await resolveMetaPageAccessToken(stored, pageId);
+      const probeOne = async (label: string, url: string, tok: string) => {
+        try {
+          const u = new URL(url);
+          u.searchParams.set("access_token", tok);
+          const r = await fetch(u.toString());
+          const txt = await r.text();
+          const safe = txt.slice(0, 600).replace(/access_token=[^&"\s]+/gi, "access_token=***");
+          return { label, status: r.status, body: safe };
+        } catch (e) {
+          return { label, status: 0, body: e instanceof Error ? e.message : String(e) };
+        }
+      };
+      const formId = body.probe.form_id;
+      const checks = [
+        await probeOne("token_identity (stored)", "https://graph.facebook.com/v20.0/me?fields=id,name", stored),
+        await probeOne("page_visible (stored)", `https://graph.facebook.com/v20.0/${pageId}?fields=id,name,access_token`, stored),
+        await probeOne("page_visible (page_token)", `https://graph.facebook.com/v20.0/${pageId}?fields=id,name`, pageTok),
+        await probeOne("form_visible (stored)", `https://graph.facebook.com/v20.0/${formId}?fields=id,name,status,leads_count,page`, stored),
+        await probeOne("form_visible (page_token)", `https://graph.facebook.com/v20.0/${formId}?fields=id,name,status,leads_count,page`, pageTok),
+        await probeOne("form_leads_list (page_token)", `https://graph.facebook.com/v20.0/${formId}/leads?fields=id,created_time&limit=3`, pageTok),
+        await probeOne("page_leadgen_forms (page_token)", `https://graph.facebook.com/v20.0/${pageId}/leadgen_forms?fields=id,name,status&limit=10`, pageTok),
+      ];
+      return new Response(JSON.stringify({ page_id: pageId, form_id: formId, page_token_resolved: pageTok !== stored, checks }, null, 2), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Load stuck events
     let q = supabase.from("meta_lead_events")
