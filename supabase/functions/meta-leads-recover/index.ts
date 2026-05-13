@@ -63,28 +63,35 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Auth: require admin
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userRes, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userRes?.user) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Auth: require admin user OR INTERNAL_SERVICE_TOKEN
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const internalToken = Deno.env.get("INTERNAL_SERVICE_TOKEN");
+    const isInternal = !!internalToken && (
+      req.headers.get("x-internal-service-token") === internalToken ||
+      authHeader === `Bearer ${internalToken}`
+    );
+
+    let internalId: string | null = null;
+    if (!isInternal) {
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userRes, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userRes?.user) {
+        return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const r = await supabase.rpc("get_user_id", { p_user_id: userRes.user.id });
+      internalId = (r.data as string | null) ?? null;
+      if (!internalId) {
+        return new Response(JSON.stringify({ error: "no_internal_user" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     // body: { brand_id?: string, meta_event_ids?: string[] }
     let body: { brand_id?: string; meta_event_ids?: string[] } = {};
     try { body = await req.json(); } catch (_) { /* allow empty */ }
-
-    // Verify caller is admin (any brand) — use has_role
-    const internalUserIdRes = await supabase.rpc("get_user_id", { p_user_id: userRes.user.id });
-    const internalId = internalUserIdRes.data as string | null;
-    if (!internalId) {
-      return new Response(JSON.stringify({ error: "no_internal_user" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
 
     // Load stuck events
     let q = supabase.from("meta_lead_events")
