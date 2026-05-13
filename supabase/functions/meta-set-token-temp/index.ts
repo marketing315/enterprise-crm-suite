@@ -1,41 +1,22 @@
 Deno.serve(async () => {
   const token = Deno.env.get("META_NEW_ACCESS_TOKEN")!;
   const pageId = "103625122097164";
+  const pageTokRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}?fields=access_token&access_token=${token}`);
+  const pageToken = (await pageTokRes.json()).access_token || token;
 
-  // Resolve page access token from user/system token
-  const pageTokRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}?fields=access_token,name&access_token=${token}`);
-  const pageTokJson = await pageTokRes.json();
-  const pageToken = pageTokJson.access_token || token;
-
-  // List all lead forms on the page
-  const formsRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/leadgen_forms?fields=id,name,status,leads_count,created_time&limit=200&access_token=${pageToken}`);
-  const formsJson = await formsRes.json();
-
-  // Search for the 2 specific leadgen IDs across forms
-  const targetIds = ["2175957616496043", "1637716710662561"];
+  const ids = ["1526930192278168", "1950617768859224", "859201857097512"];
   const results: any[] = [];
-  for (const form of (formsJson.data || [])) {
-    if (!form.leads_count) continue;
-    const leadsRes = await fetch(`https://graph.facebook.com/v20.0/${form.id}/leads?fields=id,created_time,ad_id&limit=200&access_token=${pageToken}`);
-    const leadsJson = await leadsRes.json();
-    const ids = (leadsJson.data || []).map((l: any) => l.id);
-    const hits = ids.filter((id: string) => targetIds.includes(id));
-    results.push({
-      form_id: form.id,
-      form_name: form.name,
-      status: form.status,
-      leads_count: form.leads_count,
-      api_returned: ids.length,
-      lead_ids_sample: ids.slice(0, 5),
-      target_hits: hits,
-      error: leadsJson.error || null,
-    });
+  for (const id of ids) {
+    const r = await fetch(`https://graph.facebook.com/v20.0/${id}?fields=created_time,ad_id,ad_name,campaign_id,campaign_name,form_id,field_data&access_token=${pageToken}`);
+    const j = await r.json();
+    // mask phone/email partially
+    if (j.field_data) {
+      j.field_data = j.field_data.map((f: any) => ({
+        name: f.name,
+        sample: f.values?.[0] ? (f.name === "email" ? f.values[0].replace(/(.{2}).*@/, "$1***@") : f.values[0].slice(0, 4) + "***") : null,
+      }));
+    }
+    results.push({ leadgen_id: id, ...j });
   }
-
-  return new Response(JSON.stringify({
-    page: pageTokJson.name,
-    page_token_resolved: !!pageTokJson.access_token,
-    forms_total: (formsJson.data || []).length,
-    forms: results,
-  }, null, 2), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(results, null, 2), { headers: { "Content-Type": "application/json" } });
 });
