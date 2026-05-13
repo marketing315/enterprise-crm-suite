@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
     });
   }
   const pageToken = await resolveMetaPageAccessToken(storedToken, app.page_id);
-  const appSecret = await getMetaAppSecret(supabase, app.id).catch(() => null);
+  const appSecret = (app as { app_secret?: string | null }).app_secret || META_OAUTH_APP_SECRET || null;
 
   // ---- Open run audit row ----
   let runId: string | null = null;
