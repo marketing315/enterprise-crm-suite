@@ -147,6 +147,14 @@ export function MetaAppsList() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => setBackfillingApp(app)}
+                    title="Backfill lead storici"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => testWebhook(app)}
                     title="Test Webhook Verifica"
                   >
