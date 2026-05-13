@@ -413,13 +413,21 @@ function buildLeadsRow(
   const apptTime = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[1]?.substring(0, 5) || "" : "";
   const { street, number: civico } = extractStreetNumber(appointment?.address);
 
+  // Fallback: when contact lookup is incomplete (e.g. recovery/reconcile flows
+  // that fire export before find_or_create_contact saved the names), read from
+  // raw_payload so the LEADS row still has Nome/Cognome/Email/Numero filled.
+  const pFirst = String(payload.first_name || payload.nome || "").trim();
+  const pLast = String(payload.last_name || payload.cognome || "").trim();
+  const pEmail = String(payload.email || "").trim();
+  const pPhone = String(payload.phone || payload.phone_number || payload.telefono || "").trim();
+
   return [
     leadEvent.received_at ? new Date(leadEvent.received_at).toISOString().replace("T", " ").substring(0, 16) : "",
     brandName,
-    contact?.first_name || "",
-    contact?.last_name || "",
-    phone || contact?.phone_normalized || "",
-    contact?.email || "",
+    contact?.first_name || pFirst,
+    contact?.last_name || pLast,
+    phone || contact?.phone_normalized || pPhone,
+    contact?.email || pEmail,
     String(payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || ""),
     leadEvent.source_name || leadEvent.source,
     String(payload.adset || payload.adset_name || payload.meta_adset_name || ""),
@@ -1012,6 +1020,12 @@ Deno.serve(async (req: Request) => {
     const adsetName = String(rawPayload.adset_name || rawPayload.adset || rawPayload.utm_content || "");
     const adName = String(rawPayload.ad_name || rawPayload.ad || rawPayload.creative || "");
 
+    // Fallback to raw_payload when contact fields are empty (recovery flows).
+    const pFirst = String(rawPayload.first_name || rawPayload.nome || "").trim();
+    const pLast = String(rawPayload.last_name || rawPayload.cognome || "").trim();
+    const pEmail = String(rawPayload.email || "").trim();
+    const pPhone = String(rawPayload.phone || rawPayload.phone_number || rawPayload.telefono || "").trim();
+
     const row = [
       leadEvent.received_at,                              // A - Timestamp
       brand?.name || "",                                  // B - Brand
@@ -1019,10 +1033,10 @@ Deno.serve(async (req: Request) => {
       campaignName,                                       // D - Campagna
       adsetName,                                          // E - AdSet
       adName,                                             // F - Ad
-      contact?.first_name || "",                          // G - Nome
-      contact?.last_name || "",                           // H - Cognome
-      phone?.phone_normalized || contact?.phone_normalized || "",  // I - Telefono
-      contact?.email || "",                               // J - Email
+      contact?.first_name || pFirst,                      // G - Nome
+      contact?.last_name || pLast,                        // H - Cognome
+      phone?.phone_normalized || contact?.phone_normalized || pPhone,  // I - Telefono
+      contact?.email || pEmail,                           // J - Email
       contact?.city || "",                                // K - Città
       message,                                            // L - Messaggio/Pain Area
       leadEvent.ai_priority?.toString() || "",            // M - Priorità AI
