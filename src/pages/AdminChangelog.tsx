@@ -36,6 +36,10 @@ export default function AdminChangelog() {
             <BookOpen className="w-4 h-4 mr-2" />
             Runbook
           </TabsTrigger>
+          <TabsTrigger value="meta-backfill">
+            <History className="w-4 h-4 mr-2" />
+            Meta Backfill
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="changelog">
