@@ -66,7 +66,7 @@ export function tryExtractContactFields(payload: Record<string, unknown>): Parti
   if (emailRaw) result.email = emailRaw.toLowerCase();
 
   result.city = pickFirstString(payload, ["city", "citta", "città", "City", "Citta", "locality", "Locality", "ort"]) ?? undefined;
-  result.cap = pickFirstString(payload, ["cap", "zip", "postal_code", "postalCode", "CAP", "Zip"]) ?? undefined;
+  result.cap = pickFirstString(payload, ["cap", "zip", "postal_code", "postalCode", "post_code", "postCode", "postcode", "Postcode", "PostCode", "zip_code", "zipCode", "codice_postale", "CAP", "Zip"]) ?? undefined;
   result.notes = pickFirstString(payload, ["notes", "note", "message", "messaggio", "richiesta", "Notes", "Message"]) ?? undefined;
   result.address = pickFirstString(payload, ["address", "indirizzo", "Address", "Indirizzo", "full_address", "fullAddress"]) ?? undefined;
 
