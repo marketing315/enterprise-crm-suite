@@ -30,11 +30,17 @@ export function useMfaStatus(): MfaStatus {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: aal }, { data: factorList }] = await Promise.all([
+      const [{ data: aal }, { data: factorList }, { data: userData }] = await Promise.all([
         supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
         supabase.auth.mfa.listFactors(),
+        supabase.auth.getUser(),
       ]);
-      const totpVerified = (factorList?.totp ?? []).filter((f) => f.status === "verified");
+      // Fallback: listFactors() può ritornare vuoto anche se il factor esiste
+      // server-side. getUser().factors è la fonte di verità.
+      const fromList = (factorList?.totp ?? []).filter((f) => f.status === "verified");
+      const fromUser = ((userData?.user as unknown as { factors?: Array<{ id: string; status: string; factor_type: string; friendly_name?: string | null; created_at: string }> })?.factors ?? [])
+        .filter((f) => f.factor_type === "totp" && f.status === "verified");
+      const totpVerified = fromList.length > 0 ? fromList : fromUser;
       setFactors(
         totpVerified.map((f) => ({
           id: f.id,
