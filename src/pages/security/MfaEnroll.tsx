@@ -35,11 +35,18 @@ export default function MfaEnroll() {
     let cancelled = false;
     (async () => {
       try {
-        // If a verified factor already exists, skip enrollment
-        const { data: list } = await supabase.auth.mfa.listFactors();
-        const existing = (list?.totp ?? []).find((f) => f.status === "verified");
-        if (existing) {
-          navigate(next, { replace: true });
+        // If a verified factor already exists, skip enrollment.
+        // listFactors() può ritornare vuoto: usiamo anche getUser().factors come fallback.
+        const [{ data: list }, { data: userData }] = await Promise.all([
+          supabase.auth.mfa.listFactors(),
+          supabase.auth.getUser(),
+        ]);
+        const fromList = (list?.totp ?? []).find((f) => f.status === "verified");
+        const fromUser = ((userData?.user as unknown as { factors?: Array<{ id: string; status: string; factor_type: string }> })?.factors ?? [])
+          .find((f) => f.factor_type === "totp" && f.status === "verified");
+        if (fromList || fromUser) {
+          // Factor già attivo: deve passare per la challenge, non re-enrollare.
+          navigate(`/security/mfa-challenge?next=${encodeURIComponent(next)}`, { replace: true });
           return;
         }
         // Drop any pending unverified factor before enrolling a new one
