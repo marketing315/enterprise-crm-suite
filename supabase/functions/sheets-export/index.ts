@@ -8,6 +8,27 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Format ISO timestamp in Europe/Rome timezone (CET/CEST aware).
+// Output: "YYYY-MM-DD HH:MM" — matches what Italian users expect in the sheet.
+function formatRomeDateTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
+}
+function formatRomeDate(iso: string | null | undefined): string {
+  return formatRomeDateTime(iso).split(" ")[0] || "";
+}
+function formatRomeTime(iso: string | null | undefined): string {
+  return formatRomeDateTime(iso).split(" ")[1] || "";
+}
+
 interface LeadEventRow {
   id: string;
   brand_id: string;
@@ -409,8 +430,8 @@ function buildLeadsRow(
   stageName: string,
 ): string[] {
   const payload = leadEvent.raw_payload || {};
-  const apptDate = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[0] : "";
-  const apptTime = appointment?.scheduled_at ? new Date(appointment.scheduled_at).toISOString().split("T")[1]?.substring(0, 5) || "" : "";
+  const apptDate = formatRomeDate(appointment?.scheduled_at);
+  const apptTime = formatRomeTime(appointment?.scheduled_at);
   const { street, number: civico } = extractStreetNumber(appointment?.address);
 
   // Fallback: when contact lookup is incomplete (e.g. recovery/reconcile flows
@@ -422,7 +443,7 @@ function buildLeadsRow(
   const pPhone = String(payload.phone || payload.phone_number || payload.telefono || "").trim();
 
   return [
-    leadEvent.received_at ? new Date(leadEvent.received_at).toISOString().replace("T", " ").substring(0, 16) : "",
+    formatRomeDateTime(leadEvent.received_at),
     brandName,
     contact?.first_name || pFirst,
     contact?.last_name || pLast,
@@ -1027,7 +1048,7 @@ Deno.serve(async (req: Request) => {
     const pPhone = String(rawPayload.phone || rawPayload.phone_number || rawPayload.telefono || "").trim();
 
     const row = [
-      leadEvent.received_at,                              // A - Timestamp
+      formatRomeDateTime(leadEvent.received_at),          // A - Timestamp (Europe/Rome)
       brand?.name || "",                                  // B - Brand
       leadEvent.source_name || leadEvent.source,          // C - Fonte
       campaignName,                                       // D - Campagna
@@ -1043,7 +1064,7 @@ Deno.serve(async (req: Request) => {
       stage?.name || "",                                  // N - Stage Pipeline
       tagsFlat,                                           // O - Tags
       appointment?.status || "",                          // P - Appuntamento Status
-      appointment?.scheduled_at || "",                    // Q - Appuntamento Data
+      formatRomeDateTime(appointment?.scheduled_at),      // Q - Appuntamento Data (Europe/Rome)
       deal?.status || "",                                 // R - Vendita Outcome
       deal?.value?.toString() || "",                      // S - Vendita Valore
       lastOperatorAction,                                 // T - Operatore Ultima Azione
