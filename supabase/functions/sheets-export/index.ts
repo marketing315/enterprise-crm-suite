@@ -1064,7 +1064,7 @@ Deno.serve(async (req: Request) => {
       stage?.name || "",                                  // N - Stage Pipeline
       tagsFlat,                                           // O - Tags
       appointment?.status || "",                          // P - Appuntamento Status
-      appointment?.scheduled_at || "",                    // Q - Appuntamento Data
+      formatRomeDateTime(appointment?.scheduled_at),      // Q - Appuntamento Data (Europe/Rome)
       deal?.status || "",                                 // R - Vendita Outcome
       deal?.value?.toString() || "",                      // S - Vendita Valore
       lastOperatorAction,                                 // T - Operatore Ultima Azione
