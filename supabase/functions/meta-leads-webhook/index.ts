@@ -161,7 +161,7 @@ function buildLeadMessage(fieldData: MetaFieldData[]): string {
     getField(fieldData, "sintomi");
 
   const standardFields = ['full_name', 'first_name', 'last_name', 'nome', 'cognome', 'email', 'e-mail',
-    'phone_number', 'phone', 'city', 'zip', 'postal_code', 'codice_postale'];
+    'phone_number', 'phone', 'city', 'zip', 'postal_code', 'post_code', 'postcode', 'codice_postale'];
   const additionalMessages: string[] = [];
   for (const field of fieldData) {
     const fieldName = field.name?.toLowerCase();
@@ -277,7 +277,7 @@ async function processLeadChange(
   let email = getField(fieldData, "email") || getField(fieldData, "e-mail");
   let phone = getField(fieldData, "phone_number") || getField(fieldData, "phone");
   const city = getField(fieldData, "city");
-  let cap = getField(fieldData, "zip") || getField(fieldData, "postal_code") || getField(fieldData, "codice_postale");
+  let cap = getField(fieldData, "zip") || getField(fieldData, "postal_code") || getField(fieldData, "post_code") || getField(fieldData, "postcode") || getField(fieldData, "codice_postale");
   const combinedMessage = buildLeadMessage(fieldData);
 
   // Handle Meta test lead placeholders
