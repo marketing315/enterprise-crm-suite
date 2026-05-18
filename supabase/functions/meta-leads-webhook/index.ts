@@ -161,7 +161,7 @@ function buildLeadMessage(fieldData: MetaFieldData[]): string {
     getField(fieldData, "sintomi");
 
   const standardFields = ['full_name', 'first_name', 'last_name', 'nome', 'cognome', 'email', 'e-mail',
-    'phone_number', 'phone', 'city', 'zip', 'postal_code', 'codice_postale'];
+    'phone_number', 'phone', 'city', 'zip', 'postal_code', 'post_code', 'postcode', 'codice_postale'];
   const additionalMessages: string[] = [];
   for (const field of fieldData) {
     const fieldName = field.name?.toLowerCase();
