@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
       const email = getField(fd, "email") || getField(fd, "e-mail");
       let phone = getField(fd, "phone_number") || getField(fd, "phone");
       const city = getField(fd, "city");
-      let cap = getField(fd, "zip") || getField(fd, "postal_code") || getField(fd, "codice_postale");
+      let cap = getField(fd, "zip") || getField(fd, "postal_code") || getField(fd, "post_code") || getField(fd, "postcode") || getField(fd, "codice_postale");
       const combined = buildMessage(fd);
 
       if (isPlaceholder(firstName)) firstName = "Test";
