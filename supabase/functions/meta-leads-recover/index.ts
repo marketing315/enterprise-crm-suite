@@ -46,7 +46,7 @@ function normalizePhone(phone: string, defaultCountry = "IT"): Norm {
 function buildMessage(fd: FieldData[]): string {
   const lm = getField(fd, "message") || getField(fd, "messaggio") || getField(fd, "note") ||
     getField(fd, "richiesta") || getField(fd, "motivo") || getField(fd, "descrizione") || getField(fd, "problema") || getField(fd, "sintomi");
-  const std = ['full_name','first_name','last_name','nome','cognome','email','e-mail','phone_number','phone','city','zip','postal_code','codice_postale'];
+  const std = ['full_name','first_name','last_name','nome','cognome','email','e-mail','phone_number','phone','city','zip','postal_code','post_code','postcode','codice_postale'];
   const extras: string[] = [];
   for (const f of fd) {
     const n = f.name?.toLowerCase();
