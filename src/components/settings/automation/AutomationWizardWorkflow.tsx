@@ -268,8 +268,8 @@ function WorkflowNodeCard({
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+          </div>
         </button>
-        </div>
         {expanded && (
           <div className="px-3 pb-3 pt-0">
             <div className={cn("rounded-lg p-3", config.bg, "bg-opacity-30")}>
