@@ -163,10 +163,10 @@ function InactiveStageItem({
                 if (e.key === "Escape") handleCancel();
               }}
             />
-            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleSave} disabled={updateStage.isPending}>
+            <Button size="icon" variant="ghost" aria-label="Salva fase" className="h-7 w-7 shrink-0" onClick={handleSave} disabled={updateStage.isPending}>
               <Check className="h-3.5 w-3.5 text-primary" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleCancel}>
+            <Button size="icon" variant="ghost" aria-label="Annulla modifica" className="h-7 w-7 shrink-0" onClick={handleCancel}>
               <X className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           </div>
@@ -187,6 +187,7 @@ function InactiveStageItem({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Modifica nome fase"
                 className="h-7 w-7"
                 onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
               >
@@ -200,6 +201,7 @@ function InactiveStageItem({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Riattiva fase"
                 className="h-7 w-7"
                 onClick={onReactivate}
                 disabled={isReactivating}
@@ -214,6 +216,7 @@ function InactiveStageItem({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Elimina fase definitivamente"
                 className="h-7 w-7"
                 onClick={onDelete}
                 disabled={isDeleting}

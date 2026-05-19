@@ -235,6 +235,7 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Visualizza contatto"
                       onClick={() => setSelectedContactId(contact.id)}
                     >
                       <Eye className="h-4 w-4" />
@@ -242,6 +243,7 @@ export function ContactsTable({ contacts, isLoading }: ContactsTableProps) {
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Elimina contatto"
                       className="text-muted-foreground hover:text-destructive"
                       onClick={() => handleDeleteClick(contact)}
                     >

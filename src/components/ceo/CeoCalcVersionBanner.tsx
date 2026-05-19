@@ -43,7 +43,7 @@ export function CeoCalcVersionBanner({ calcVersion }: Props) {
           <strong>I criteri di calcolo KPI sono stati aggiornati il {calcVersion}.</strong>{' '}
           Fuso orario allineato a Europa/Roma, ROI Marketing ora basato solo sul fatturato attribuibile a campagne, vendite "won" senza data di chiusura ora incluse, budget mensile mostrato anche su periodi corti.
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleDismiss}>
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleDismiss} aria-label="Chiudi avviso">
           <X className="h-3.5 w-3.5" />
         </Button>
       </AlertDescription>
