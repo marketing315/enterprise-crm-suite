@@ -91,6 +91,7 @@ export function ChatThreadItem({
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Altre azioni conversazione"
                   className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <MoreVertical className="h-3.5 w-3.5" />

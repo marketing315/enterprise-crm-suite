@@ -72,6 +72,7 @@ export function ChatThreadList({
               onClick={onNewAIChat}
               disabled={isCreatingAI}
               title="Nuova chat AI"
+              aria-label="Nuova chat AI"
             >
               {isCreatingAI ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -85,6 +86,7 @@ export function ChatThreadList({
               className="h-8 w-8 rounded-lg"
               onClick={onCreateGroup}
               title="Nuovo gruppo"
+              aria-label="Nuovo gruppo"
             >
               <Plus className="h-4 w-4" />
             </Button>

@@ -158,7 +158,7 @@ export const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
           >
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
+                <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Azioni deal">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

@@ -105,6 +105,7 @@ export function ChatMessagePanel({
             className="h-8 w-8 rounded-lg"
             onClick={onGroupSettings}
             title="Impostazioni gruppo"
+            aria-label="Impostazioni gruppo"
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -188,6 +189,7 @@ export function ChatMessagePanel({
             type="submit"
             size="icon"
             disabled={!messageInput.trim() || isPending}
+            aria-label={askAI ? "Invia messaggio all'AI" : "Invia messaggio"}
             className={cn(
               "shrink-0 rounded-xl h-[42px] w-[42px] transition-all duration-200",
               askAI && "bg-primary shadow-sm",
