@@ -267,8 +267,8 @@ function WorkflowNodeCard({
             <Button variant="ghost" size="icon" type="button" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
-            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")} />
-          </div>
+          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+        </button>
         </div>
         {expanded && (
           <div className="px-3 pb-3 pt-0">
