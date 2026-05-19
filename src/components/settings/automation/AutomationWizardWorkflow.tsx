@@ -234,7 +234,13 @@ function WorkflowNodeCard({
     <div className="relative">
       {index > 0 && <div className="flex justify-center h-3"><div className="w-px bg-border" /></div>}
       <div className={cn("rounded-xl border transition-all duration-200 bg-card hover:shadow-sm", expanded && "shadow-sm")}>
-        <div className="flex items-center gap-2.5 p-3 cursor-pointer select-none" onClick={() => setExpanded(!expanded)}>
+        <button
+          type="button"
+          className="flex items-center gap-2.5 p-3 w-full text-left cursor-pointer select-none bg-transparent border-0"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Comprimi nodo " + label : "Espandi nodo " + label}
+        >
           <WorkflowNodeIcon type={action.type} size="md" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
