@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SalespersonKpi } from "@/hooks/useSalespersonKpis";
+import { onActivateKey } from "@/lib/a11y";
 
 interface SalespersonTableProps {
   kpis: SalespersonKpi[];

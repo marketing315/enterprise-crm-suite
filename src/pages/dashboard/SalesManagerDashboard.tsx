@@ -13,6 +13,7 @@ import { useRevenueForecast } from '@/hooks/useForecast';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatKpi';
 import { OverduePaymentsWidget } from '@/components/sales/OverduePaymentsWidget';
+import { onActivateKey } from "@/lib/a11y";
 
 export default function SalesManagerDashboard() {
   const navigate = useNavigate();

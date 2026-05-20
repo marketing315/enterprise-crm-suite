@@ -24,6 +24,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import type { AppRole, Brand } from "@/types/database";
+import { onActivateKey } from "@/lib/a11y";
 
 interface UserManagementCardProps {
   brands: Brand[];

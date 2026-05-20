@@ -16,6 +16,7 @@ import { untypedClient } from '@/integrations/supabase/untypedClient';
 import { useMyActionSuggestions, useDismissSuggestion, useMarkSuggestionActed } from '@/hooks/useActionSuggestions';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatKpi';
+import { onActivateKey } from "@/lib/a11y";
 
 export default function SalespersonDashboard() {
   const navigate = useNavigate();

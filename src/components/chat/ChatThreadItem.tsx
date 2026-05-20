@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ChatThreadIcon } from "./ChatThreadIcon";
 import type { ChatThread } from "@/hooks/useChat";
+import { onActivateKey } from "@/lib/a11y";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   contact: "Contatto",

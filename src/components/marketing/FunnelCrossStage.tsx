@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, TrendingDown, TrendingUp, Megaphone, Users, CalendarCheck, Trophy, Banknote, Eye, MousePointerClick } from "lucide-react";
 import type { FunnelOverviewStage } from "@/hooks/useFunnelOverview";
+import { onActivateKey } from "@/lib/a11y";
 
 interface StageWithCompare extends FunnelOverviewStage {
   delta_pct?: number | null;

@@ -61,6 +61,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { onActivateKey } from "@/lib/a11y";
 
 const STAGE_COLORS = [
   "#6366f1", "#3b82f6", "#06b6d4", "#14b8a6", "#22c55e",

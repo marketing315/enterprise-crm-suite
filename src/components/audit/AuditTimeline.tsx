@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { onActivateKey } from "@/lib/a11y";
 
 interface AuditTimelineProps {
   entityType: string;
