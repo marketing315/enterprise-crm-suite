@@ -533,7 +533,7 @@ function WeekEmptyState({ onNewAppointment }: { onNewAppointment: () => void }) 
         <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary/10" />
         <div className="absolute -bottom-3 -left-3 h-8 w-8 rounded-full bg-primary/5" />
       </div>
-      <h3 className="text-lg font-medium mb-1">Nessun appuntamento questa settimana</h3>
+      <h2 className="text-lg font-medium mb-1">Nessun appuntamento questa settimana</h2>
       <p className="text-sm text-muted-foreground mb-4">
         Pianifica il primo appuntamento per iniziare
       </p>

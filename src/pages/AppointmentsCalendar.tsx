@@ -456,7 +456,7 @@ export default function AppointmentsCalendar() {
       {pendingMove && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl border bg-card p-5 shadow-xl">
-            <h3 className="text-base font-semibold">Spostare appuntamento?</h3>
+            <h2 className="text-base font-semibold">Spostare appuntamento?</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Nuovo orario:{" "}
               <span className="font-medium text-foreground">
