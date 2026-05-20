@@ -157,6 +157,7 @@ export function MetaAppsList() {
                     size="icon"
                     onClick={() => testWebhook(app)}
                     title="Test Webhook Verifica"
+                    aria-label="Testa webhook di verifica"
                   >
                     <TestTube className="h-4 w-4" />
                   </Button>
