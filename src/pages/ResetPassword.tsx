@@ -92,7 +92,7 @@ export default function ResetPassword() {
 
   if (isValidating) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Verifica link di recupero...</p>
       </div>
@@ -101,7 +101,7 @@ export default function ResetPassword() {
 
   if (isSuccess) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
         <div className="mb-8 flex flex-col items-center">
           <div className="flex items-center gap-3 mb-2">
             <Building2 className="h-10 w-10 text-primary" />
@@ -123,7 +123,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
       <div className="mb-8 flex flex-col items-center">
         <div className="flex items-center gap-3 mb-2">
           <Building2 className="h-10 w-10 text-primary" />
