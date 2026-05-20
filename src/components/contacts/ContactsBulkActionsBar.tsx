@@ -245,7 +245,7 @@ export function ContactsBulkActionsBar({
         </div>
 
         {/* Clear selection */}
-        <Button variant="ghost" size="icon" onClick={onClearSelection}>
+        <Button variant="ghost" size="icon" onClick={onClearSelection} aria-label="Chiudi">
           <X className="h-4 w-4" />
         </Button>
       </div>

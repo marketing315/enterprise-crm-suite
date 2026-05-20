@@ -135,7 +135,7 @@ export default function AppointmentsOpsBoard() {
             size="icon"
             onClick={() => navigate("/appointments")}
             className="rounded-xl"
-          >
+           aria-label="Indietro">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
@@ -181,7 +181,7 @@ export default function AppointmentsOpsBoard() {
             className="rounded-xl"
             onClick={() => refetch()}
             disabled={isFetching}
-          >
+           aria-label="Aggiorna">
             <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
           </Button>
         </div>

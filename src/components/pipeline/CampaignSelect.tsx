@@ -94,7 +94,7 @@ export function CampaignSelect({ value, onChange, disabled }: CampaignSelectProp
           size="icon"
           onClick={() => onChange(null)}
           className="shrink-0"
-        >
+         aria-label="Chiudi">
           <X className="h-4 w-4" />
         </Button>
       )}

@@ -78,7 +78,7 @@ export function TableViewSelector({
                     e.stopPropagation();
                     onEditView(view);
                   }}
-                >
+                 aria-label="Impostazioni">
                   <Settings2 className="h-3 w-3" />
                 </Button>
               </DropdownMenuItem>

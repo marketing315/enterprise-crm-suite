@@ -60,7 +60,7 @@ function EmailListInput({
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
           className="flex-1"
         />
-        <Button type="button" variant="outline" size="icon" onClick={add}>
+        <Button type="button" variant="outline" size="icon" onClick={add} aria-label="Aggiungi">
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -119,7 +119,7 @@ function ScheduleTimesInput({
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
           className="w-40"
         />
-        <Button type="button" variant="outline" size="icon" onClick={add}>
+        <Button type="button" variant="outline" size="icon" onClick={add} aria-label="Aggiungi">
           <Plus className="h-4 w-4" />
         </Button>
       </div>

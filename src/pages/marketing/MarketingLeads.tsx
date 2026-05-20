@@ -103,13 +103,13 @@ export default function MarketingLeads() {
 
       {/* Month Selector */}
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+        <Button variant="outline" size="icon" onClick={handlePrevMonth} aria-label="Indietro">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="min-w-[140px] text-center font-medium">
           {format(selectedMonth, "MMMM yyyy", { locale: it })}
         </span>
-        <Button variant="outline" size="icon" onClick={handleNextMonth}>
+        <Button variant="outline" size="icon" onClick={handleNextMonth} aria-label="Avanti">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

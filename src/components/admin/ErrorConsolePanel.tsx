@@ -144,7 +144,7 @@ export function ErrorConsolePanel() {
         onClick={() => setOpen(true)}
         className="fixed bottom-4 right-4 z-[9999] h-12 w-12 rounded-full shadow-lg border-2 border-destructive/50 bg-background hover:bg-destructive/10"
         title="Console Errori"
-      >
+       aria-label="Segnalazione bug">
         <Bug className="h-5 w-5" />
         {errorCount > 0 && (
           <Badge className="absolute -top-2 -right-2 h-5 min-w-5 px-1 text-xs bg-destructive text-destructive-foreground">
@@ -178,10 +178,10 @@ export function ErrorConsolePanel() {
               {f === "all" ? "Tutti" : f === "error" ? "Errori" : "Warning"}
             </Button>
           ))}
-          <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={() => setLogs([])}>
+          <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={() => setLogs([])} aria-label="Elimina">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setOpen(false)}>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setOpen(false)} aria-label="Chiudi">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>

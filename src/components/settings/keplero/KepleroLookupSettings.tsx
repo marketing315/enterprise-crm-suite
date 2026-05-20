@@ -212,7 +212,7 @@ Risposta:
                       navigator.clipboard.writeText(generatedSecret);
                       toast.success("Secret copiato");
                     }}
-                  >
+                   aria-label="Copia">
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -257,7 +257,7 @@ Risposta:
                     );
                     toast.success("URL copiato");
                   }}
-                >
+                 aria-label="Copia">
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
               </div>

@@ -194,7 +194,7 @@ export function AutomationSettings() {
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => setDuplicatingRule(rule)}
                           title="Duplica"
-                        >
+                         aria-label="Copia">
                           <Copy className="h-3.5 w-3.5" />
                         </Button>
                         <Button
@@ -203,7 +203,7 @@ export function AutomationSettings() {
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => handleDelete(rule)}
                           title="Elimina"
-                        >
+                         aria-label="Elimina">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                         <ChevronRight className="h-4 w-4 text-muted-foreground/40 ml-1" />

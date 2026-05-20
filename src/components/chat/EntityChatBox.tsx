@@ -252,8 +252,7 @@ export function EntityChatBox({ entityType, entityId, className }: EntityChatBox
               size="icon"
               onClick={handleSendMessage}
               disabled={!newMessage.trim() || isSending || !threadId}
-              className="shrink-0"
-            >
+              className="shrink-0" aria-label="Caricamento">
               {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

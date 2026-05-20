@@ -539,7 +539,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                   {/* Actions */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={e => e.stopPropagation()} aria-label="Altre azioni">
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="sr-only">Azioni</span>
                       </Button>
@@ -607,7 +607,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                             <RoleBadge role={role.role} />
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Elimina">
                                   <Trash2 className="h-3.5 w-3.5" />
                                   <span className="sr-only">Rimuovi ruolo</span>
                                 </Button>
@@ -705,7 +705,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                         type="button" variant="ghost" size="icon"
                         className="absolute right-0 top-0 h-full w-9 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword(v => !v)}
-                      >
+                       aria-label="Nascondi">
                         {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
@@ -725,7 +725,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                         type="button" variant="ghost" size="icon"
                         className="absolute right-0 top-0 h-full w-9 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword(v => !v)}
-                      >
+                       aria-label="Nascondi">
                         {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
@@ -810,7 +810,7 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
                           onClick={() => deleteRoleMutation.mutate(role.id)}
                           disabled={deleteRoleMutation.isPending}
-                        >
+                         aria-label="Elimina">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>

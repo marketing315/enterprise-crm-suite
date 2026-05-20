@@ -270,7 +270,7 @@ export default function AdminAIDecisionsDrilldown() {
               variant="ghost"
               disabled={page === 0}
               onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
+             aria-label="Indietro">
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-xs text-muted-foreground tabular-nums">
@@ -279,7 +279,7 @@ export default function AdminAIDecisionsDrilldown() {
             <Button
               size="icon"
               variant="ghost"
-              disabled={page + 1 >= totalPages}
+              disabled={page + 1 aria-label="Avanti">= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
               <ChevronRight className="h-4 w-4" />

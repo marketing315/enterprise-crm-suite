@@ -52,8 +52,7 @@ export function AdminTodoList() {
           <Button
             size="icon"
             onClick={handleAdd}
-            disabled={!newTitle.trim() || addTodo.isPending}
-          >
+            disabled={!newTitle.trim() || addTodo.isPending} aria-label="Caricamento">
             {addTodo.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -104,7 +103,7 @@ export function AdminTodoList() {
                   className="h-7 w-7 text-muted-foreground hover:text-destructive"
                   onClick={() => deleteTodo.mutate(todo.id)}
                   disabled={deleteTodo.isPending}
-                >
+                 aria-label="Elimina">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </li>

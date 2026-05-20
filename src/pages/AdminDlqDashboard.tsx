@@ -403,7 +403,7 @@ function IngestDlqTable() {
                           size="icon"
                           className="h-6 w-6"
                           onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-                        >
+                         aria-label="Espandi">
                           {expandedId === entry.id ? (
                             <ChevronDown className="h-4 w-4" />
                           ) : (
@@ -695,7 +695,7 @@ function OutboundDlqTable() {
                           size="icon"
                           className="h-6 w-6"
                           onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-                        >
+                         aria-label="Espandi">
                           {expandedId === entry.id ? (
                             <ChevronDown className="h-4 w-4" />
                           ) : (

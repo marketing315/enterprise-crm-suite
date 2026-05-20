@@ -250,13 +250,13 @@ export default function CompanyBudget() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
+            <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')} aria-label="Indietro">
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-lg font-semibold min-w-[200px] text-center">
               {format(selectedMonth, 'MMMM yyyy', { locale: it })}
             </div>
-            <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
+            <Button variant="outline" size="icon" onClick={() => navigateMonth('next')} aria-label="Avanti">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -333,14 +333,14 @@ export default function CompanyBudget() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleOpenDialog(budget)}
-                      >
+                       aria-label="Modifica">
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(budget.id)}
-                      >
+                       aria-label="Elimina">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>

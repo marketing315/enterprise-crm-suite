@@ -103,8 +103,7 @@ export function IncomingCallPopup() {
               variant="ghost"
               size="icon"
               className="h-6 w-6"
-              onClick={handleDismiss}
-            >
+              onClick={handleDismiss} aria-label="Chiudi">
               <X className="h-4 w-4" />
             </Button>
           </div>

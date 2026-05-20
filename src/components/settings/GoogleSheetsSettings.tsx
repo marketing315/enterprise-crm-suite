@@ -163,7 +163,7 @@ export function GoogleSheetsSettings() {
                   disabled 
                   className="font-mono text-sm"
                 />
-                <Button variant="outline" size="icon" asChild>
+                <Button variant="outline" size="icon" asChild aria-label="Apri link esterno">
                   <a 
                     href="https://docs.google.com/spreadsheets" 
                     target="_blank" 

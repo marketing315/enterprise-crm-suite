@@ -211,7 +211,7 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
                     <FormControl>
                       <Input {...field} readOnly className="font-mono text-sm" />
                     </FormControl>
-                    <Button type="button" variant="outline" size="icon" onClick={regenerateToken}>
+                    <Button type="button" variant="outline" size="icon" onClick={regenerateToken} aria-label="Aggiorna">
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                     <Button
@@ -219,7 +219,7 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
                       variant="outline"
                       size="icon"
                       onClick={() => copyValue(field.value, "Verify Token")}
-                    >
+                     aria-label="Copia">
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>

@@ -243,7 +243,7 @@ export function SalesOrderDetailSheet({ orderId, open, onOpenChange }: SalesOrde
                                   variant="ghost"
                                   className="h-8 w-8 text-destructive"
                                   onClick={() => deleteItem.mutate({ itemId: item.id, orderId: order.id })}
-                                >
+                                 aria-label="Elimina">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}

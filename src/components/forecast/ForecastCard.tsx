@@ -86,8 +86,7 @@ export function ForecastCard({
                 variant="ghost" 
                 size="icon"
                 onClick={onRefresh}
-                disabled={isRefreshing}
-              >
+                disabled={isRefreshing} aria-label="Aggiorna">
                 <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
               </Button>
             )}

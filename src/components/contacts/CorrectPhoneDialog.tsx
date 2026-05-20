@@ -79,7 +79,7 @@ export function CorrectPhoneDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6">
+        <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Modifica">
           <Pencil className="h-3 w-3" />
           <span className="sr-only">Correggi numero</span>
         </Button>

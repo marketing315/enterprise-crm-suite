@@ -247,7 +247,7 @@ export function PipelineStagesSettings() {
                           className="h-8 w-8"
                           onClick={() => reactivateStage.mutate(stage.id)}
                           disabled={reactivateStage.isPending}
-                        >
+                         aria-label="Aggiorna">
                           <RotateCcw className="h-4 w-4 text-primary" />
                         </Button>
                       </TooltipTrigger>
@@ -261,7 +261,7 @@ export function PipelineStagesSettings() {
                           className="h-8 w-8"
                           onClick={() => setStageToDeletePermanently(stage)}
                           disabled={deleteStage.isPending}
-                        >
+                         aria-label="Elimina">
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </TooltipTrigger>

@@ -249,7 +249,7 @@ export default function Contacts() {
           {isMobile ? (
             <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="relative shrink-0">
+                <Button variant="outline" size="icon" className="relative shrink-0" aria-label="Regolazioni">
                   <SlidersHorizontal className="h-4 w-4" />
                   {activeFiltersCount > 0 && (
                     <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">

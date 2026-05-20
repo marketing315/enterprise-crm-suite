@@ -612,7 +612,7 @@ function InputBar({
             "shrink-0 rounded-xl h-11 w-11 transition-all duration-200",
             input.trim() && !isPending && "shadow-md hover:shadow-lg"
           )}
-        >
+         aria-label="Caricamento">
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>

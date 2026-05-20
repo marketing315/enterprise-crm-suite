@@ -324,7 +324,7 @@ export default function SalespersonDashboard() {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => actSuggestion.mutate(sug.id)}
-                      >
+                       aria-label="Obiettivo">
                         <Target className="h-3.5 w-3.5 text-primary" />
                       </Button>
                       <Button
@@ -332,7 +332,7 @@ export default function SalespersonDashboard() {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => dismissSuggestion.mutate(sug.id)}
-                      >
+                       aria-label="Chiudi">
                         <X className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </div>

@@ -100,8 +100,7 @@ export function SortableFilterableHeader({
               className={cn(
                 "h-6 w-6",
                 hasDateFilter && "text-primary bg-primary/10"
-              )}
-            >
+              )} aria-label="Calendario">
               {hasDateFilter ? (
                 <Calendar className="h-3.5 w-3.5" />
               ) : (
@@ -118,8 +117,7 @@ export function SortableFilterableHeader({
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
-                    onClick={handleClearFilter}
-                  >
+                    onClick={handleClearFilter} aria-label="Chiudi">
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}

@@ -120,7 +120,7 @@ export function LeadScoreBadge({
             onClick={() => calculateScore.mutate({ contactId })}
             disabled={calculateScore.isPending}
             title="Ricalcola score"
-          >
+           aria-label="Caricamento">
             {calculateScore.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
