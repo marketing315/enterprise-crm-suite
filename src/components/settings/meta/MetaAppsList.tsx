@@ -119,8 +119,8 @@ export function MetaAppsList() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() = aria-label="Copia"> copyToClipboard(getWebhookUrl(app.brand_slug), "Webhook URL")}
-                  >
+                    onClick={() => copyToClipboard(getWebhookUrl(app.brand_slug), "Webhook URL")}
+                   aria-label="Copia">
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
@@ -130,26 +130,26 @@ export function MetaAppsList() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() = aria-label="Esegui"> setTestingApp(app)}
+                    onClick={() => setTestingApp(app)}
                     title="Crea Lead Test"
-                  >
+                   aria-label="Esegui">
                     <Zap className="h-4 w-4 text-yellow-500" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() = aria-label="Collega"> handleSubscribePage(app)}
+                    onClick={() => handleSubscribePage(app)}
                     disabled={subscribingId === app.id}
                     title="Sottoscrivi Pagina a Leadgen"
-                  >
+                   aria-label="Collega">
                     <Link className={`h-4 w-4 ${subscribingId === app.id ? 'animate-spin' : ''}`} />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() = aria-label="Cronologia"> setBackfillingApp(app)}
+                    onClick={() => setBackfillingApp(app)}
                     title="Backfill lead storici"
-                  >
+                   aria-label="Cronologia">
                     <History className="h-4 w-4" />
                   </Button>
                   <Button
@@ -164,17 +164,17 @@ export function MetaAppsList() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() = aria-label="Modifica"> setEditingApp(app)}
+                    onClick={() => setEditingApp(app)}
                     title="Modifica"
-                  >
+                   aria-label="Modifica">
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() = aria-label="Elimina"> setDeletingApp(app)}
+                    onClick={() => setDeletingApp(app)}
                     title="Elimina"
-                  >
+                   aria-label="Elimina">
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>

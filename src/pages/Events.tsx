@@ -236,8 +236,8 @@ export default function Events() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() = aria-label="Apri link esterno"> handleOpenContact(event.contact_id)}
-              >
+                onClick={() => handleOpenContact(event.contact_id)}
+               aria-label="Apri link esterno">
                 <ExternalLink className="h-4 w-4" />
               </Button>
             )}
@@ -245,8 +245,8 @@ export default function Events() {
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() = aria-label="Archivia"> handleArchive(event.id, !event.archived)}
-            >
+              onClick={() => handleArchive(event.id, !event.archived)}
+             aria-label="Archivia">
               <Archive className="h-4 w-4" />
             </Button>
           </div>

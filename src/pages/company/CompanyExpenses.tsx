@@ -372,15 +372,15 @@ export default function CompanyExpenses() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() = aria-label="Modifica"> handleOpenDialog(expense)}
-                          >
+                            onClick={() => handleOpenDialog(expense)}
+                           aria-label="Modifica">
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() = aria-label="Elimina"> handleDelete(expense.id)}
-                          >
+                            onClick={() => handleDelete(expense.id)}
+                           aria-label="Elimina">
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>

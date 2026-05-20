@@ -101,9 +101,9 @@ export function AdminTodoList() {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                  onClick={() = aria-label="Elimina"> deleteTodo.mutate(todo.id)}
+                  onClick={() => deleteTodo.mutate(todo.id)}
                   disabled={deleteTodo.isPending}
-                >
+                 aria-label="Elimina">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </li>

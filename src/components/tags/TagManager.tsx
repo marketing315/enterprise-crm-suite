@@ -198,8 +198,8 @@ function TagTreeRow({ tag, depth, onEdit, onDelete }: TagTreeRowProps) {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() = aria-label="Modifica"> onEdit(tag as Tag)}
-          >
+            onClick={() => onEdit(tag as Tag)}
+           aria-label="Modifica">
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           

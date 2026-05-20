@@ -215,18 +215,18 @@ export function AIDecisionServiceTab() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() = aria-label="Copia"> handleDuplicatePrompt(prompt)}
+                          onClick={() => handleDuplicatePrompt(prompt)}
                           title="Duplica e modifica"
-                        >
+                         aria-label="Copia">
                           <Copy className="h-4 w-4" />
                         </Button>
                         {!prompt.is_active && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() = aria-label="Avvia"> activatePrompt.mutate(prompt.id)}
+                            onClick={() => activatePrompt.mutate(prompt.id)}
                             title="Attiva"
-                          >
+                           aria-label="Avvia">
                             <Play className="h-4 w-4" />
                           </Button>
                         )}

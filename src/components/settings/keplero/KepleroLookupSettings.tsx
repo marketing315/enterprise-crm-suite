@@ -208,11 +208,11 @@ Risposta:
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 shrink-0"
-                    onClick={() = aria-label="Copia"> {
+                    onClick={() => {
                       navigator.clipboard.writeText(generatedSecret);
                       toast.success("Secret copiato");
                     }}
-                  >
+                   aria-label="Copia">
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -251,13 +251,13 @@ Risposta:
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 shrink-0"
-                  onClick={() = aria-label="Copia"> {
+                  onClick={() => {
                     navigator.clipboard.writeText(
                       `${endpointUrl}?phone={{waSessionNumber}}&brand_slug=${brandSlug}&secret=<IL_TUO_SECRET>`
                     );
                     toast.success("URL copiato");
                   }}
-                >
+                 aria-label="Copia">
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
               </div>

@@ -74,11 +74,11 @@ export function TableViewSelector({
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) = aria-label="Impostazioni"> {
+                  onClick={(e) => {
                     e.stopPropagation();
                     onEditView(view);
                   }}
-                >
+                 aria-label="Impostazioni">
                   <Settings2 className="h-3 w-3" />
                 </Button>
               </DropdownMenuItem>

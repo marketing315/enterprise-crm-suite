@@ -92,9 +92,9 @@ export function CampaignSelect({ value, onChange, disabled }: CampaignSelectProp
         <Button
           variant="ghost"
           size="icon"
-          onClick={() = aria-label="Chiudi"> onChange(null)}
+          onClick={() => onChange(null)}
           className="shrink-0"
-        >
+         aria-label="Chiudi">
           <X className="h-4 w-4" />
         </Button>
       )}

@@ -218,8 +218,8 @@ export function MetaAppFormDrawer({ open, onOpenChange, editingApp }: MetaAppFor
                       type="button"
                       variant="outline"
                       size="icon"
-                      onClick={() = aria-label="Copia"> copyValue(field.value, "Verify Token")}
-                    >
+                      onClick={() => copyValue(field.value, "Verify Token")}
+                     aria-label="Copia">
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>

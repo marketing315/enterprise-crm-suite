@@ -242,8 +242,8 @@ export function SalesOrderDetailSheet({ orderId, open, onOpenChange }: SalesOrde
                                   size="icon"
                                   variant="ghost"
                                   className="h-8 w-8 text-destructive"
-                                  onClick={() = aria-label="Elimina"> deleteItem.mutate({ itemId: item.id, orderId: order.id })}
-                                >
+                                  onClick={() => deleteItem.mutate({ itemId: item.id, orderId: order.id })}
+                                 aria-label="Elimina">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}

@@ -144,7 +144,7 @@ export function GroupSettingsDrawer({
                   <Button size="icon" variant="ghost" onClick={handleRename} disabled={rename.isPending} aria-label="Caricamento">
                     {rename.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() = aria-label="Chiudi"> { setIsEditing(false); setNewTitle(threadTitle); }}>
+                  <Button size="icon" variant="ghost" onClick={() => { setIsEditing(false); setNewTitle(threadTitle); }} aria-label="Chiudi">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -152,7 +152,7 @@ export function GroupSettingsDrawer({
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{threadTitle}</span>
                   {isOwnerOrMod && (
-                    <Button size="icon" variant="ghost" onClick={() = aria-label="Modifica"> { setNewTitle(threadTitle); setIsEditing(true); }}>
+                    <Button size="icon" variant="ghost" onClick={() => { setNewTitle(threadTitle); setIsEditing(true); }} aria-label="Modifica">
                       <Pencil className="h-4 w-4" />
                     </Button>
                   )}

@@ -270,11 +270,11 @@ export function InboundSourceFormDrawer({
                 <Button 
                   variant="outline" 
                   size="icon" 
-                  onClick={() = aria-label="Copia"> handleCopy(
+                  onClick={() => handleCopy(
                     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}`,
                     "Webhook URL"
                   )}
-                >
+                 aria-label="Copia">
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
@@ -296,8 +296,8 @@ export function InboundSourceFormDrawer({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() = aria-label="Copia"> handleCopy(generatedCredentials.apiKey, "API Key")}
-                  >
+                    onClick={() => handleCopy(generatedCredentials.apiKey, "API Key")}
+                   aria-label="Copia">
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
@@ -314,8 +314,8 @@ export function InboundSourceFormDrawer({
                     variant="ghost" 
                     size="icon" 
                     className="h-5 w-5"
-                    onClick={() = aria-label="Copia"> handleCopy("X-API-Key", "Nome header")}
-                  >
+                    onClick={() => handleCopy("X-API-Key", "Nome header")}
+                   aria-label="Copia">
                     <Copy className="h-3 w-3" />
                   </Button>
                 </p>
@@ -335,11 +335,11 @@ export function InboundSourceFormDrawer({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() = aria-label="Copia"> handleCopy(
+                    onClick={() => handleCopy(
                       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}?api_key=${generatedCredentials.apiKey}`,
                       "URL con chiave"
                     )}
-                  >
+                   aria-label="Copia">
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
@@ -365,8 +365,8 @@ export function InboundSourceFormDrawer({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() = aria-label="Copia"> handleCopy(generatedCredentials.hmacSecret!, "Webhook Secret")}
-                  >
+                    onClick={() => handleCopy(generatedCredentials.hmacSecret!, "Webhook Secret")}
+                   aria-label="Copia">
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>

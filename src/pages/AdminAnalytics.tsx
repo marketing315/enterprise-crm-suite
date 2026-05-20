@@ -110,7 +110,7 @@ export default function AdminAnalytics() {
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="icon" onClick={() = aria-label="Aggiorna"> { refetch(); refetchFunnel(); }}>
+          <Button variant="outline" size="icon" onClick={() => { refetch(); refetchFunnel(); }} aria-label="Aggiorna">
             <RefreshCw className={cn("h-4 w-4", (isLoading || funnelLoading) && "animate-spin")} />
           </Button>
         </div>

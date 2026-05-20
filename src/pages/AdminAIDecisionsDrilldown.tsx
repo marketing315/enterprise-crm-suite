@@ -269,8 +269,8 @@ export default function AdminAIDecisionsDrilldown() {
               size="icon"
               variant="ghost"
               disabled={page === 0}
-              onClick={() = aria-label="Indietro"> setPage((p) => Math.max(0, p - 1))}
-            >
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+             aria-label="Indietro">
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-xs text-muted-foreground tabular-nums">

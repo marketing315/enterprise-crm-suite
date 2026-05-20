@@ -718,16 +718,16 @@ export function ContactsTableWithViews({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() = aria-label="Visualizza"> setSelectedContactId(contact.id)}
-                    >
+                      onClick={() => setSelectedContactId(contact.id)}
+                     aria-label="Visualizza">
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={(e) = aria-label="Elimina"> handleDeleteClick(contact, e)}
+                      onClick={(e) => handleDeleteClick(contact, e)}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
+                     aria-label="Elimina">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

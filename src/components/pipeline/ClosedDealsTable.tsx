@@ -131,8 +131,8 @@ export function ClosedDealsTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() = aria-label="Visualizza"> onDealClick?.(deal.id)}
-                  >
+                    onClick={() => onDealClick?.(deal.id)}
+                   aria-label="Visualizza">
                     <Eye className="h-4 w-4" />
                   </Button>
                 </TableCell>

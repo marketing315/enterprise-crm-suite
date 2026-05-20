@@ -133,9 +133,9 @@ export default function AppointmentsOpsBoard() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() = aria-label="Indietro"> navigate("/appointments")}
+            onClick={() => navigate("/appointments")}
             className="rounded-xl"
-          >
+           aria-label="Indietro">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
@@ -179,9 +179,9 @@ export default function AppointmentsOpsBoard() {
             variant="outline"
             size="icon"
             className="rounded-xl"
-            onClick={() = aria-label="Aggiorna"> refetch()}
+            onClick={() => refetch()}
             disabled={isFetching}
-          >
+           aria-label="Aggiorna">
             <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
           </Button>
         </div>

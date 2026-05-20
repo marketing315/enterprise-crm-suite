@@ -61,7 +61,7 @@ export default function SalesAvailability() {
     <div className="space-y-6 animate-fade-in p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() = aria-label="Indietro"> navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Indietro">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -265,7 +265,7 @@ function SlotsTable({
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5 opacity-0 group-hover:opacity-100"
-                    onClick={() = aria-label="Elimina"> {
+                    onClick={() => {
                       if (confirm("Eliminare questo turno?")) {
                         deleteSlot.mutate(s.id, {
                           onSuccess: () => toast.success("Turno eliminato"),
@@ -273,7 +273,7 @@ function SlotsTable({
                         });
                       }
                     }}
-                  >
+                   aria-label="Elimina">
                     <Trash2 className="h-3 w-3 text-destructive" />
                   </Button>
                 </div>
@@ -337,7 +337,7 @@ function TimeOffTable({
             variant="ghost"
             size="icon"
             className="h-7 w-7 opacity-0 group-hover:opacity-100 shrink-0"
-            onClick={() = aria-label="Elimina"> {
+            onClick={() => {
               if (confirm("Eliminare questo periodo di assenza?")) {
                 deleteTimeOff.mutate(t.id, {
                   onSuccess: () => toast.success("Periodo eliminato"),
@@ -345,7 +345,7 @@ function TimeOffTable({
                 });
               }
             }}
-          >
+           aria-label="Elimina">
             <Trash2 className="h-3.5 w-3.5 text-destructive" />
           </Button>
         </div>

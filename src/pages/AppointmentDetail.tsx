@@ -115,7 +115,7 @@ export default function AppointmentDetail() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() = aria-label="Indietro"> navigate("/appointments")}>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/appointments")} aria-label="Indietro">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="min-w-0 flex-1">

@@ -323,16 +323,16 @@ export default function SalespersonDashboard() {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() = aria-label="Obiettivo"> actSuggestion.mutate(sug.id)}
-                      >
+                        onClick={() => actSuggestion.mutate(sug.id)}
+                       aria-label="Obiettivo">
                         <Target className="h-3.5 w-3.5 text-primary" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() = aria-label="Chiudi"> dismissSuggestion.mutate(sug.id)}
-                      >
+                        onClick={() => dismissSuggestion.mutate(sug.id)}
+                       aria-label="Chiudi">
                         <X className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </div>

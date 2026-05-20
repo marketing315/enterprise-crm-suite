@@ -209,16 +209,16 @@ export function ContactsTableWithSelection({ contacts, isLoading }: ContactsTabl
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() = aria-label="Visualizza"> setSelectedContactId(contact.id)}
-                    >
+                      onClick={() => setSelectedContactId(contact.id)}
+                     aria-label="Visualizza">
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-muted-foreground hover:text-destructive"
-                      onClick={() = aria-label="Elimina"> handleDeleteClick(contact)}
-                    >
+                      onClick={() => handleDeleteClick(contact)}
+                     aria-label="Elimina">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

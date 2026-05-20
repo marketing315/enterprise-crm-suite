@@ -201,7 +201,7 @@ function FieldList({
           </div>
 
           <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() = aria-label="Modifica"> onEdit(field)}>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onEdit(field)} aria-label="Modifica">
               <Pencil className="h-4 w-4" />
             </Button>
             
