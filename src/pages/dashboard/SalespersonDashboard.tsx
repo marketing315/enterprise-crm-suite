@@ -16,6 +16,7 @@ import { untypedClient } from '@/integrations/supabase/untypedClient';
 import { useMyActionSuggestions, useDismissSuggestion, useMarkSuggestionActed } from '@/hooks/useActionSuggestions';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatKpi';
+import { onActivateKey } from "@/lib/a11y";
 
 export default function SalespersonDashboard() {
   const navigate = useNavigate();
@@ -362,8 +363,11 @@ export default function SalespersonDashboard() {
                 {hotDeals.map((deal: any) => (
                   <div
                     key={deal.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => navigate('/pipeline')}
+                    onKeyDown={onActivateKey(() => navigate('/pipeline'))}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
@@ -423,8 +427,11 @@ export default function SalespersonDashboard() {
                 return (
                   <div
                     key={appt.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => navigate(`/appointments/${appt.id}`)}
+                    onKeyDown={onActivateKey(() => navigate(`/appointments/${appt.id}`))}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex flex-col items-center justify-center w-12 shrink-0 text-center">

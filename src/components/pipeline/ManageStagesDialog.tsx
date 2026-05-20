@@ -61,6 +61,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PipelineStage } from "@/types/database";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { onActivateKey } from "@/lib/a11y";
 
 const STAGE_COLORS = [
   "#6366f1", "#3b82f6", "#06b6d4", "#14b8a6", "#22c55e",
@@ -172,8 +173,11 @@ function InactiveStageItem({
           </div>
         ) : (
           <span
-            className="text-sm text-muted-foreground cursor-pointer hover:underline truncate"
+            role="button"
+            tabIndex={0}
+            className="text-sm text-muted-foreground cursor-pointer hover:underline truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+            onKeyDown={onActivateKey(() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); })}
             title="Clicca per modificare"
           >
             {stage.name}
@@ -324,8 +328,11 @@ function SortableStageItem({
           </div>
         ) : (
           <span
-            className="text-sm font-medium cursor-pointer hover:underline truncate"
+            role="button"
+            tabIndex={0}
+            className="text-sm font-medium cursor-pointer hover:underline truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+            onKeyDown={onActivateKey(() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); })}
             title="Clicca per modificare"
           >
             {stage.name}
