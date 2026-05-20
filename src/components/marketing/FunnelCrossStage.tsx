@@ -118,8 +118,9 @@ export function FunnelCrossStage({ stages, isLoading, onStageClick, showCompare 
                   </div>
                 )}
                 <div
-                  className={`flex flex-col items-center gap-1.5 flex-1 min-w-[88px] rounded-lg p-2 -m-2 transition-colors ${onStageClick ? "cursor-pointer hover:bg-muted/40" : ""}`}
+                  className={`flex flex-col items-center gap-1.5 flex-1 min-w-[88px] rounded-lg p-2 -m-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${onStageClick ? "cursor-pointer hover:bg-muted/40" : ""}`}
                   onClick={onStageClick ? () => onStageClick(stage.stage_id, stage.stage_label) : undefined}
+                  onKeyDown={onStageClick ? onActivateKey(() => onStageClick(stage.stage_id, stage.stage_label)) : undefined}
                   role={onStageClick ? "button" : undefined}
                   tabIndex={onStageClick ? 0 : undefined}
                 >

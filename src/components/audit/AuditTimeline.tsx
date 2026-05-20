@@ -71,14 +71,20 @@ export function AuditTimeline({ entityType, entityId }: AuditTimelineProps) {
             const isExpanded = expandedId === event.id;
             const hasDetails = event.changed_fields && event.changed_fields.length > 0;
 
+            const toggle = () => hasDetails && setExpandedId(isExpanded ? null : event.id);
             return (
               <div
                 key={event.id}
+                role={hasDetails ? "button" : undefined}
+                tabIndex={hasDetails ? 0 : undefined}
+                aria-expanded={hasDetails ? isExpanded : undefined}
                 className={cn(
-                  "relative pl-8 py-2 cursor-pointer hover:bg-muted/50 rounded-md transition-colors",
+                  "relative pl-8 py-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  hasDetails && "cursor-pointer hover:bg-muted/50",
                   isExpanded && "bg-muted/30"
                 )}
-                onClick={() => hasDetails && setExpandedId(isExpanded ? null : event.id)}
+                onClick={toggle}
+                onKeyDown={hasDetails ? onActivateKey(toggle) : undefined}
               >
                 {/* Dot */}
                 <div className="absolute left-[9px] top-3.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />

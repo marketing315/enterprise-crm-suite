@@ -507,8 +507,12 @@ export function UserManagementCard({ brands }: UserManagementCardProps) {
               >
                 {/* Main row */}
                 <div
-                  className="flex items-center gap-4 px-4 py-3 cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
+                  className="flex items-center gap-4 px-4 py-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => setExpandedUserId(isExpanded ? null : user.id)}
+                  onKeyDown={onActivateKey(() => setExpandedUserId(isExpanded ? null : user.id))}
                 >
                   <Avatar className="h-9 w-9 shrink-0">
                     <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">

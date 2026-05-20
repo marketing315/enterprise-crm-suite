@@ -62,13 +62,17 @@ export function ChatThreadItem({
 }: ChatThreadItemProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-current={isSelected ? "true" : undefined}
       className={cn(
         "w-full px-3 py-2.5 flex gap-3 cursor-pointer group relative transition-all duration-150",
-        "hover:bg-accent/50 active:bg-accent/70",
+        "hover:bg-accent/50 active:bg-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isSelected && "bg-accent border-l-2 border-l-primary",
         !isSelected && "border-l-2 border-l-transparent"
       )}
       onClick={onClick}
+      onKeyDown={onActivateKey(() => onClick?.())}
     >
       <ChatThreadIcon type={thread.type} size="sm" />
       <div className="flex-1 min-w-0">

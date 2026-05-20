@@ -148,8 +148,11 @@ export function SalespersonTable({ kpis, isLoading, onRowClick }: SalespersonTab
         {kpis.map((kpi) => (
           <div
             key={kpi.user_id}
-            className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
+            role="button"
+            tabIndex={0}
+            className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onRowClick?.(kpi.user_id)}
+            onKeyDown={onActivateKey(() => onRowClick?.(kpi.user_id))}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

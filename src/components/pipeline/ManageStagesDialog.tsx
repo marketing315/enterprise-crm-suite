@@ -172,8 +172,11 @@ function InactiveStageItem({
           </div>
         ) : (
           <span
-            className="text-sm text-muted-foreground cursor-pointer hover:underline truncate"
+            role="button"
+            tabIndex={0}
+            className="text-sm text-muted-foreground cursor-pointer hover:underline truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+            onKeyDown={onActivateKey(() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); })}
             title="Clicca per modificare"
           >
             {stage.name}
@@ -324,8 +327,11 @@ function SortableStageItem({
           </div>
         ) : (
           <span
-            className="text-sm font-medium cursor-pointer hover:underline truncate"
+            role="button"
+            tabIndex={0}
+            className="text-sm font-medium cursor-pointer hover:underline truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             onClick={() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); }}
+            onKeyDown={onActivateKey(() => { setEditName(stage.name); setEditColor(stage.color || "#6366f1"); setIsEditing(true); })}
             title="Clicca per modificare"
           >
             {stage.name}

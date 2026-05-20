@@ -185,8 +185,11 @@ export default function SalesManagerDashboard() {
                   return (
                     <div
                       key={deal.id}
-                      className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => navigate('/pipeline')}
+                      onKeyDown={onActivateKey(() => navigate('/pipeline'))}
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">

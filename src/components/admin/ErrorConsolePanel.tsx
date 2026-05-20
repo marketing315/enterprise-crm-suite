@@ -198,11 +198,15 @@ export function ErrorConsolePanel() {
             {filtered.map(log => (
               <div
                 key={log.id}
+                role="button"
+                tabIndex={0}
+                aria-expanded={expandedId === log.id}
                 className={cn(
-                  "px-3 py-2 text-xs font-mono cursor-pointer hover:bg-muted/30 transition-colors",
+                  "px-3 py-2 text-xs font-mono cursor-pointer hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   log.level === "error" && "bg-destructive/5"
                 )}
                 onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                onKeyDown={onActivateKey(() => setExpandedId(expandedId === log.id ? null : log.id))}
               >
                 <div className="flex items-start gap-2">
                   <Badge className={cn("text-[10px] px-1.5 py-0 shrink-0 mt-0.5", levelColors[log.level])}>
