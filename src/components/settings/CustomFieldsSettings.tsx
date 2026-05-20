@@ -201,13 +201,13 @@ function FieldList({
           </div>
 
           <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onEdit(field)}>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() = aria-label="Modifica"> onEdit(field)}>
               <Pencil className="h-4 w-4" />
             </Button>
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" aria-label="Elimina">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>

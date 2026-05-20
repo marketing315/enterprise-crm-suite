@@ -117,7 +117,7 @@ export function LeadScoreBadge({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => calculateScore.mutate({ contactId })}
+            onClick={() = aria-label="Caricamento"> calculateScore.mutate({ contactId })}
             disabled={calculateScore.isPending}
             title="Ricalcola score"
           >

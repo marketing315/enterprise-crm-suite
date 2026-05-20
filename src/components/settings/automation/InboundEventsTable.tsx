@@ -116,7 +116,7 @@ export function InboundEventsTable({ events }: Props) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setSelectedEvent(event)}
+                    onClick={() = aria-label="Visualizza"> setSelectedEvent(event)}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>

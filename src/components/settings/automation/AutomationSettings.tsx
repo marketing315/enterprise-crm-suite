@@ -192,7 +192,7 @@ export function AutomationSettings() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => setDuplicatingRule(rule)}
+                          onClick={() = aria-label="Copia"> setDuplicatingRule(rule)}
                           title="Duplica"
                         >
                           <Copy className="h-3.5 w-3.5" />
@@ -201,7 +201,7 @@ export function AutomationSettings() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleDelete(rule)}
+                          onClick={() = aria-label="Elimina"> handleDelete(rule)}
                           title="Elimina"
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />

@@ -135,7 +135,7 @@ export function AutomationWizardConditions({ conditions, setConditions }: Props)
                   size="icon"
                   type="button"
                   className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleRemove(index)}
+                  onClick={() = aria-label="Elimina"> handleRemove(index)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

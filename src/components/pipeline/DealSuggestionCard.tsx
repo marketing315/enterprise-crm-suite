@@ -110,10 +110,10 @@ export function DealSuggestionCard({
           <p className="text-sm font-medium truncate">{suggestion.title}</p>
         </div>
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAct}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAct} aria-label="Conferma">
             <Check className="h-4 w-4 text-green-600" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDismiss}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDismiss} aria-label="Chiudi">
             <X className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>

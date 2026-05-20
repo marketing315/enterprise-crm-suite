@@ -606,7 +606,7 @@ function InputBar({
         />
         <Button
           size="icon"
-          onClick={() => onSend(input)}
+          onClick={() = aria-label="Caricamento"> onSend(input)}
           disabled={!input.trim() || isPending}
           className={cn(
             "shrink-0 rounded-xl h-11 w-11 transition-all duration-200",

@@ -208,7 +208,7 @@ Risposta:
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 shrink-0"
-                    onClick={() => {
+                    onClick={() = aria-label="Copia"> {
                       navigator.clipboard.writeText(generatedSecret);
                       toast.success("Secret copiato");
                     }}
@@ -251,7 +251,7 @@ Risposta:
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 shrink-0"
-                  onClick={() => {
+                  onClick={() = aria-label="Copia"> {
                     navigator.clipboard.writeText(
                       `${endpointUrl}?phone={{waSessionNumber}}&brand_slug=${brandSlug}&secret=<IL_TUO_SECRET>`
                     );

@@ -133,7 +133,7 @@ export default function AppointmentsOpsBoard() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/appointments")}
+            onClick={() = aria-label="Indietro"> navigate("/appointments")}
             className="rounded-xl"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -179,7 +179,7 @@ export default function AppointmentsOpsBoard() {
             variant="outline"
             size="icon"
             className="rounded-xl"
-            onClick={() => refetch()}
+            onClick={() = aria-label="Aggiorna"> refetch()}
             disabled={isFetching}
           >
             <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />

@@ -96,8 +96,7 @@ export function RotateSecretDialog({ webhookId, onClose }: Props) {
               variant="outline"
               size="icon"
               onClick={handleCopy}
-              data-testid="copy-new-secret-btn"
-            >
+              data-testid="copy-new-secret-btn" aria-label="Conferma">
               {copied ? (
                 <Check className="h-4 w-4 text-green-500" />
               ) : (
@@ -109,8 +108,7 @@ export function RotateSecretDialog({ webhookId, onClose }: Props) {
                 type="button"
                 variant="outline"
                 size="icon"
-                onClick={handleRegenerate}
-              >
+                onClick={handleRegenerate} aria-label="Aggiorna">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             )}

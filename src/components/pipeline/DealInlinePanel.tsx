@@ -137,7 +137,7 @@ export function DealInlinePanel({ deal, onClose }: DealInlinePanelProps) {
             {statusLabels[deal.status]}
           </Badge>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label="Chiudi">
           <X className="h-4 w-4" />
         </Button>
       </div>

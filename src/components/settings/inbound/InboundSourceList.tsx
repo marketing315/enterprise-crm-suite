@@ -240,7 +240,7 @@ export function InboundSourceList() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleCopyEndpoint(source.id)}
+                      onClick={() = aria-label="Copia"> handleCopyEndpoint(source.id)}
                       title="Copia endpoint"
                     >
                       <Copy className="h-4 w-4" />
@@ -248,7 +248,7 @@ export function InboundSourceList() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleRotateKey(source)}
+                      onClick={() = aria-label="Chiave"> handleRotateKey(source)}
                       title="Ruota API Key"
                     >
                       <Key className="h-4 w-4" />
@@ -256,7 +256,7 @@ export function InboundSourceList() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleEdit(source)}
+                      onClick={() = aria-label="Modifica"> handleEdit(source)}
                       title="Modifica"
                     >
                       <Edit2 className="h-4 w-4" />
@@ -264,7 +264,7 @@ export function InboundSourceList() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(source)}
+                      onClick={() = aria-label="Elimina"> handleDelete(source)}
                       title="Elimina"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />

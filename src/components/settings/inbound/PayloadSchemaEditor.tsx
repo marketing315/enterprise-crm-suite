@@ -237,7 +237,7 @@ function RequiredFieldsSection({
             }
           }}
         />
-        <Button type="button" size="icon" variant="outline" onClick={handleAdd}>
+        <Button type="button" size="icon" variant="outline" onClick={handleAdd} aria-label="Aggiungi">
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -298,7 +298,7 @@ function FieldRulesSection({
             }
           }}
         />
-        <Button type="button" size="icon" variant="outline" onClick={handleAdd}>
+        <Button type="button" size="icon" variant="outline" onClick={handleAdd} aria-label="Aggiungi">
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -340,7 +340,7 @@ function FieldRuleRow({
     <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border bg-muted/20">
       <div className="flex items-center gap-2 p-2">
         <CollapsibleTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Espandi">
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
             />

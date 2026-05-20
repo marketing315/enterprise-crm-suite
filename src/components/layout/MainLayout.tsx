@@ -631,7 +631,7 @@ export function MainLayout() {
               variant="ghost"
               size="icon"
               className="md:hidden"
-              onClick={() => setSearchOpen(true)}
+              onClick={() = aria-label="Cerca"> setSearchOpen(true)}
               aria-label="Cerca"
             >
               <Search className="h-5 w-5" />

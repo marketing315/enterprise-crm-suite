@@ -144,7 +144,7 @@ export function RotateInboundKeyDialog({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleCopyValue(webhookUrl, "Webhook URL")}
+                      onClick={() = aria-label="Copia"> handleCopyValue(webhookUrl, "Webhook URL")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -159,7 +159,7 @@ export function RotateInboundKeyDialog({
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => handleCopyValue(newApiKey, "API Key")}
+                        onClick={() = aria-label="Copia"> handleCopyValue(newApiKey, "API Key")}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -178,7 +178,7 @@ export function RotateInboundKeyDialog({
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => handleCopyValue(newHmacSecret, "Webhook Secret")}
+                        onClick={() = aria-label="Copia"> handleCopyValue(newHmacSecret, "Webhook Secret")}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>

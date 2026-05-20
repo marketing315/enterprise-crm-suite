@@ -138,7 +138,7 @@ export function NotificationBell() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    onClick={() = aria-label="Volume"> setSoundEnabled(!soundEnabled)}
                     aria-label={soundEnabled ? "Disattiva suono" : "Attiva suono"}
                   >
                     {soundEnabled ? (

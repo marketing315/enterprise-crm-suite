@@ -283,8 +283,7 @@ export function WebhookFormDrawer({ open, onOpenChange, webhookId }: Props) {
                       variant="outline"
                       size="icon"
                       onClick={handleCopySecret}
-                      data-testid="copy-secret-btn"
-                    >
+                      data-testid="copy-secret-btn" aria-label="Conferma">
                       {secretCopied ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : (

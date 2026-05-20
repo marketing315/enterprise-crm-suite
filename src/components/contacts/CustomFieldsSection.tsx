@@ -139,10 +139,10 @@ function FieldRow({ field, contactId }: { field: FieldWithValue; contactId: stri
               value={editValue}
               onChange={setEditValue}
             />
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEdit} disabled={upsertMutation.isPending}>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEdit} disabled={upsertMutation.isPending} aria-label="Conferma">
               <Check className="h-3.5 w-3.5 text-primary" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit}>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit} aria-label="Chiudi">
               <X className="h-3.5 w-3.5 text-destructive" />
             </Button>
           </div>
@@ -158,8 +158,7 @@ function FieldRow({ field, contactId }: { field: FieldWithValue; contactId: stri
           size="icon"
           variant="ghost"
           className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={startEdit}
-        >
+          onClick={startEdit} aria-label="Modifica">
           <Pencil className="h-3.5 w-3.5" />
         </Button>
       )}
@@ -198,10 +197,10 @@ function MissingFieldRow({ field, contactId }: { field: FieldWithValue; contactI
         <span className="text-xs text-muted-foreground">{field.label}</span>
         <div className="flex items-center gap-2">
           <FieldInput field={field} value={value} onChange={setValue} />
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={save} disabled={upsertMutation.isPending}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={save} disabled={upsertMutation.isPending} aria-label="Conferma">
             <Check className="h-3.5 w-3.5 text-primary" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancel}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancel} aria-label="Chiudi">
             <X className="h-3.5 w-3.5 text-destructive" />
           </Button>
         </div>

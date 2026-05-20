@@ -156,11 +156,10 @@ export function SortableStageItem({ stage, index, onDelete, canDelete }: Sortabl
             variant="ghost" 
             className="h-8 w-8" 
             onClick={handleSave}
-            disabled={updateStage.isPending}
-          >
+            disabled={updateStage.isPending} aria-label="Conferma">
             <Check className="h-4 w-4 text-primary" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleCancel}>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleCancel} aria-label="Chiudi">
             <X className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>
@@ -174,8 +173,7 @@ export function SortableStageItem({ stage, index, onDelete, canDelete }: Sortabl
               size="icon"
               variant="ghost"
               className="h-8 w-8"
-              onClick={handleStartEdit}
-            >
+              onClick={handleStartEdit} aria-label="Modifica">
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             {canDelete && (
@@ -183,8 +181,7 @@ export function SortableStageItem({ stage, index, onDelete, canDelete }: Sortabl
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={onDelete}
-              >
+                onClick={onDelete} aria-label="Elimina">
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}

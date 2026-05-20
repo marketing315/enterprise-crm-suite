@@ -208,13 +208,13 @@ export function BrandManagementCard({ brands }: BrandManagementCardProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleEditBrand(brand)}
+                      onClick={() = aria-label="Modifica"> handleEditBrand(brand)}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Elimina">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>

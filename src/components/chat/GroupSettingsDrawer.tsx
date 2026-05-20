@@ -141,10 +141,10 @@ export function GroupSettingsDrawer({
                     autoFocus
                     onKeyDown={(e) => e.key === "Enter" && handleRename()}
                   />
-                  <Button size="icon" variant="ghost" onClick={handleRename} disabled={rename.isPending}>
+                  <Button size="icon" variant="ghost" onClick={handleRename} disabled={rename.isPending} aria-label="Caricamento">
                     {rename.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => { setIsEditing(false); setNewTitle(threadTitle); }}>
+                  <Button size="icon" variant="ghost" onClick={() = aria-label="Chiudi"> { setIsEditing(false); setNewTitle(threadTitle); }}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -152,7 +152,7 @@ export function GroupSettingsDrawer({
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{threadTitle}</span>
                   {isOwnerOrMod && (
-                    <Button size="icon" variant="ghost" onClick={() => { setNewTitle(threadTitle); setIsEditing(true); }}>
+                    <Button size="icon" variant="ghost" onClick={() = aria-label="Modifica"> { setNewTitle(threadTitle); setIsEditing(true); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                   )}
@@ -211,7 +211,7 @@ export function GroupSettingsDrawer({
                         {isOwnerOrMod && member.user_id !== user?.id && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button size="icon" variant="ghost" className="h-7 w-7">
+                              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Altre azioni">
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>

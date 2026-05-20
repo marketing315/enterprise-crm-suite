@@ -199,7 +199,7 @@ export function WebhookList() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid="webhook-actions-menu">
+                          <Button variant="ghost" size="icon" data-testid="webhook-actions-menu" aria-label="Altre azioni">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

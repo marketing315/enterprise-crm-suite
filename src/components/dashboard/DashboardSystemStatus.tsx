@@ -69,7 +69,7 @@ export function DashboardSystemStatus() {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["health-check"] })}
+            onClick={() = aria-label="Caricamento"> queryClient.invalidateQueries({ queryKey: ["health-check"] })}
             disabled={isLoading}
           >
             {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}

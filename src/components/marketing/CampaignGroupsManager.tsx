@@ -171,13 +171,13 @@ export function CampaignGroupsManager() {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(g)}>
+                  <Button variant="ghost" size="icon" onClick={() = aria-label="Modifica"> openEdit(g)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(g.id)}
+                    onClick={() = aria-label="Elimina"> handleDelete(g.id)}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>

@@ -209,7 +209,7 @@ export function ContactsTableWithSelection({ contacts, isLoading }: ContactsTabl
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setSelectedContactId(contact.id)}
+                      onClick={() = aria-label="Visualizza"> setSelectedContactId(contact.id)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -217,7 +217,7 @@ export function ContactsTableWithSelection({ contacts, isLoading }: ContactsTabl
                       variant="ghost"
                       size="icon"
                       className="text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteClick(contact)}
+                      onClick={() = aria-label="Elimina"> handleDeleteClick(contact)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -215,7 +215,7 @@ export default function Appointments() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
+          <Button variant="outline" size="icon" className="rounded-xl" onClick={() = aria-label="Indietro"> setWeekStart(subWeeks(weekStart, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
@@ -226,10 +226,10 @@ export default function Appointments() {
           >
             Oggi
           </Button>
-          <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setWeekStart(addWeeks(weekStart, 1))}>
+          <Button variant="outline" size="icon" className="rounded-xl" onClick={() = aria-label="Avanti"> setWeekStart(addWeeks(weekStart, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => refetch()}>
+          <Button variant="ghost" size="icon" className="rounded-xl" onClick={() = aria-label="Aggiorna"> refetch()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button variant="outline" className="rounded-xl" onClick={() => navigate("/appointments/calendar")}>
@@ -467,7 +467,7 @@ export default function Appointments() {
                       <td className="px-2 py-3">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" aria-label="Altre azioni">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>

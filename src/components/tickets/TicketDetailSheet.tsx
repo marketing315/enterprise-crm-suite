@@ -491,8 +491,7 @@ export function TicketDetailSheet({
                     <Button
                       size="icon"
                       onClick={handleAddComment}
-                      disabled={!newComment.trim() || addComment.isPending}
-                    >
+                      disabled={!newComment.trim() || addComment.isPending} aria-label="Invia">
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>

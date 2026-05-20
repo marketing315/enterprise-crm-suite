@@ -245,7 +245,7 @@ export function PipelineStagesSettings() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => reactivateStage.mutate(stage.id)}
+                          onClick={() = aria-label="Aggiorna"> reactivateStage.mutate(stage.id)}
                           disabled={reactivateStage.isPending}
                         >
                           <RotateCcw className="h-4 w-4 text-primary" />
@@ -259,7 +259,7 @@ export function PipelineStagesSettings() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => setStageToDeletePermanently(stage)}
+                          onClick={() = aria-label="Elimina"> setStageToDeletePermanently(stage)}
                           disabled={deleteStage.isPending}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />

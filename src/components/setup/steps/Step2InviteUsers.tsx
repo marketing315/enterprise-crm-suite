@@ -120,7 +120,7 @@ export function Step2InviteUsers({ completed, stepNumber }: { completed: boolean
               </div>
               <div className="flex items-end">
                 {rows.length > 1 && (
-                  <Button variant="ghost" size="icon" onClick={() => removeRow(i)} aria-label="Rimuovi">
+                  <Button variant="ghost" size="icon" onClick={() = aria-label="Elimina"> removeRow(i)} aria-label="Rimuovi">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}

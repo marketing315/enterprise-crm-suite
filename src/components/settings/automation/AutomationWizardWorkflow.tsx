@@ -264,7 +264,7 @@ function WorkflowNodeCard({
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="ghost" size="icon" type="button" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); onRemove(); }} aria-label="Elimina nodo">
+            <Button variant="ghost" size="icon" type="button" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) = aria-label="Elimina"> { e.stopPropagation(); onRemove(); }} aria-label="Elimina nodo">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")} />
@@ -426,7 +426,7 @@ function NestedActionList({ actions, onChange, label, depth = 1 }: { actions: Ac
                   <SelectContent>{ACTION_TYPES.map((at) => <SelectItem key={at.value} value={at.value}>{at.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <Button variant="ghost" size="icon" type="button" className="h-5 w-5" onClick={() => onChange(actions.filter((_, idx) => idx !== i))}>
+              <Button variant="ghost" size="icon" type="button" className="h-5 w-5" onClick={() = aria-label="Elimina"> onChange(actions.filter((_, idx) => idx !== i))}>
                 <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
               </Button>
             </div>
@@ -465,7 +465,7 @@ function IfElseConditionEditor({ conditions, onChange }: { conditions: Condition
           {!["exists", "not_exists"].includes(item.op) && (
             <Input className="flex-1 h-7 text-xs" placeholder="Valore..." value={String(item.value || "")} onChange={(e) => { const u = [...items]; u[i] = { ...u[i], value: e.target.value }; onChange({ ...conditions, all: u }); }} />
           )}
-          <Button variant="ghost" size="icon" type="button" className="h-6 w-6" onClick={() => onChange({ ...conditions, all: items.filter((_, idx) => idx !== i) })}>
+          <Button variant="ghost" size="icon" type="button" className="h-6 w-6" onClick={() = aria-label="Elimina"> onChange({ ...conditions, all: items.filter((_, idx) => idx !== i) })}>
             <Trash2 className="h-3 w-3 text-destructive" />
           </Button>
         </div>
@@ -488,7 +488,7 @@ function HttpHeadersEditor({ headers, onChange }: { headers: Record<string, stri
         <div key={i} className="flex gap-1">
           <Input className="flex-1 h-7 text-xs font-mono" placeholder="Content-Type" value={key} onChange={(e) => { const n = { ...headers }; delete n[key]; n[e.target.value] = value; onChange(n); }} />
           <Input className="flex-1 h-7 text-xs font-mono" placeholder="application/json" value={value} onChange={(e) => onChange({ ...headers, [key]: e.target.value })} />
-          <Button variant="ghost" size="icon" type="button" className="h-7 w-7" onClick={() => { const n = { ...headers }; delete n[key]; onChange(n); }}>
+          <Button variant="ghost" size="icon" type="button" className="h-7 w-7" onClick={() = aria-label="Elimina"> { const n = { ...headers }; delete n[key]; onChange(n); }}>
             <Trash2 className="h-3 w-3 text-destructive" />
           </Button>
         </div>

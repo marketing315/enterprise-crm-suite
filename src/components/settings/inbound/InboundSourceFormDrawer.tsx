@@ -270,7 +270,7 @@ export function InboundSourceFormDrawer({
                 <Button 
                   variant="outline" 
                   size="icon" 
-                  onClick={() => handleCopy(
+                  onClick={() = aria-label="Copia"> handleCopy(
                     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}`,
                     "Webhook URL"
                   )}
@@ -296,7 +296,7 @@ export function InboundSourceFormDrawer({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() => handleCopy(generatedCredentials.apiKey, "API Key")}
+                    onClick={() = aria-label="Copia"> handleCopy(generatedCredentials.apiKey, "API Key")}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -314,7 +314,7 @@ export function InboundSourceFormDrawer({
                     variant="ghost" 
                     size="icon" 
                     className="h-5 w-5"
-                    onClick={() => handleCopy("X-API-Key", "Nome header")}
+                    onClick={() = aria-label="Copia"> handleCopy("X-API-Key", "Nome header")}
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
@@ -335,7 +335,7 @@ export function InboundSourceFormDrawer({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() => handleCopy(
+                    onClick={() = aria-label="Copia"> handleCopy(
                       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-ingest/${generatedCredentials.sourceId}?api_key=${generatedCredentials.apiKey}`,
                       "URL con chiave"
                     )}
@@ -365,7 +365,7 @@ export function InboundSourceFormDrawer({
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() => handleCopy(generatedCredentials.hmacSecret!, "Webhook Secret")}
+                    onClick={() = aria-label="Copia"> handleCopy(generatedCredentials.hmacSecret!, "Webhook Secret")}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
