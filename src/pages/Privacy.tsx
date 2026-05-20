@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
  */
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <div className="mx-auto max-w-3xl px-6 py-12">
         <Button variant="ghost" size="sm" asChild className="mb-6">
           <Link to="/login">

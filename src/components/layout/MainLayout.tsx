@@ -419,7 +419,7 @@ export function MainLayout() {
       <RealtimeStaleBanner />
       <WelcomeModal />
       <AppTour />
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-dvh w-full">
         <Sidebar aria-label="Navigazione principale">
           <SidebarHeader className="border-b border-sidebar-border">
             <div className="flex items-center gap-2 px-4 py-3">
@@ -582,7 +582,7 @@ export function MainLayout() {
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
+        <SidebarInset className="flex flex-col min-h-dvh overflow-hidden">
           <header className="flex h-14 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6 shrink-0" role="banner" aria-label="Intestazione applicazione">
             <SidebarTrigger />
             {currentBrand && (() => {

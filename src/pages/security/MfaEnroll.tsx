@@ -112,14 +112,14 @@ export default function MfaEnroll() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-1">
           <ShieldCheck className="mx-auto h-10 w-10 text-primary mb-2" />
