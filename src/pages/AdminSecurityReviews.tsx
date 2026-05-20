@@ -242,10 +242,10 @@ function FindingsTab({ findings }: { findings: SecurityFinding[] }) {
     <div className="space-y-6">
       {grouped.open.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <XCircle className="h-4 w-4 text-red-500" />
             Aperti ({grouped.open.length})
-          </h3>
+          </h2>
           <div className="space-y-2">
             {grouped.open.map(f => (
               <FindingRow key={f.id} finding={f} />
@@ -256,10 +256,10 @@ function FindingsTab({ findings }: { findings: SecurityFinding[] }) {
 
       {grouped.resolved.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             Risolti ({grouped.resolved.length})
-          </h3>
+          </h2>
           <div className="space-y-2">
             {grouped.resolved.map(f => (
               <FindingRow key={f.id} finding={f} />
