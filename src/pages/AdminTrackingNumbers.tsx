@@ -137,7 +137,7 @@ export default function AdminTrackingNumbers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("marketing_campaigns")
-        .select("id,name,channel_id,is_active")
+        .select("id,name,channel_id")
         .eq("brand_id", brandId!)
         .order("name")
         .limit(500);
