@@ -258,8 +258,9 @@ export default function AdminTrackingNumbers() {
       return;
     }
     setFormErrors({});
-    withFeedback(upsertMutation.mutateAsync(parsed.data), {
-      successMessage: editing ? "Numero aggiornato" : "Numero creato",
+    upsertMutation.mutate(parsed.data, {
+      onSuccess: () => feedback.success(editing ? "Numero aggiornato" : "Numero creato"),
+      onError: feedback.error,
     });
   };
 
