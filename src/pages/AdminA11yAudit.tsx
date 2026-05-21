@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Loader2, Download, FileJson, FileText, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
+import TokenContrastChecker from "@/components/admin/TokenContrastChecker";
 import { toast } from "sonner";
 
 /**
