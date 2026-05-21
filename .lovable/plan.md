@@ -1,67 +1,44 @@
-## Spec Dashboard Performance — Piano di consegna
+# Dashboard Performance — Piano di consegna (vivo)
 
-Lo spec v0.2 (655 righe) descrive 3 moduli grandi (A: Canali & Costi, B: Call Center/VoiSpeed, C: Venditori) su una **dimensione "Fonte" unica condivisa**. Lo spec stesso indica una roadmap a 6 fasi (F0→F5) e lascia **12 domande aperte** che bloccano parti significative dell'implementazione. Non è un singolo loop: sono settimane di lavoro. Procediamo a fasi, ognuna in preview prima del publish.
+> Stato: F0 in corso. Aggiornato 2026-05-21.
 
----
+## Decisioni vincolanti
+Salvate in `mem://features/dashboard-performance/decisions`.
 
-### Roadmap proposta (sequenza dello spec §11)
+| Tema | Decisione |
+|------|-----------|
+| % cons su vend (#16) | Di periodo (consegne/ordini, individuale e totale) |
+| Imponibile (#19) | Scorporo flat 22% (lordo/1,22) |
+| Premi venditori | Base lorda, soglie versionate (`sales_bonus_tiers.valid_from/to`) |
+| Giorni lavorati / lavorativi mese | Auto calendario IT + override manuale per brand |
+| Lifecycle ordine | Multi-attore: CC, Venditore (suoi), Amministrazione, Bot AI |
+| Visibilità costi/CPL/CAC | Solo CEO + Admin + Amministrazione (`has_finance_access`) |
+| Attribuzione | Single-touch first-touch, precedenza Phone>Meta>UTM>Webhook>Group>Manuale>Organico |
+| Naming campagne | Alias interno `marketing_campaigns.name` editabile (ext_id read-only) |
+| Costi TV granularità | Per emittente / giorno + `cost_kind` (media/production/agency/other) |
+| Provider STT | OpenAI Whisper API via Lovable AI Gateway |
+| GDPR registrazione | Decisione rimandata a F3 (campo `consent_status` pronto) |
+| Retention audio/trascrizioni | NESSUN limite hard-coded, configurabile da Impostazioni |
 
-| Fase | Contenuto | Note |
-|------|-----------|------|
-| **F0** | Fondamenta fonte: `tracking_numbers`, `source_groups` generalizzati (`group_kind`, `channel_ids`, `tracking_number_ids`), estensioni `lead_campaign_attribution` (`phone`/`webhook`), `webhook_sources.attribution_mode`, componente `<SourceFilterBar/>` | Sbloccante per tutto il resto |
-| **F1** | Modulo A — Canali & Costi: `marketing_costs` esteso, vista `v_channel_spend_daily`, `v_lead_cost`, RPC `get_channel_performance`, UI `/marketing/performance` (header filtri, KPI cards, tabella canali, CRUD numeri, import CSV costi) | Risponde priorità #1 CEO |
-| **F2** | Modulo B base — VoiSpeed events: edge `voispeed-webhook`, estensioni `call_logs` (`tracking_number_id`, `queue_name`, `wait_seconds`, `talk_seconds`, `booked_appointment_id`), wallboard + tab Telefonia, KPI operatori | Dipende da F0 |
-| **F3** | Trascrizione + Sentiment: `voispeed-recording-fetch`, `call-transcribe` (batch), `call-sentiment` (per-speaker), estensioni `call_transcripts`, UI player+trascrizione | **Bloccato** finché non si decide STT provider + GDPR |
-| **F4** | Modulo C — Venditori: enum `order_lifecycle_status` + campi su `sales_orders`, `sales_bonus_tiers`, RPC `get_salesperson_kpis_v2` + `_aggregate`, UI "vista Foglio" che replica 1:1 il report "ESITO APPUNTAMENTI" | Dipende da F0; parallelizzabile a F2 |
-| **F5** | Rifiniture: viste materializzate, confronti A/B avanzati, alert/anomalie, export Sheets, DPIA |  |
+## Roadmap
 
-Ad ogni fine fase: preview, verifica con te, poi publish (clic tuo su Update).
+| Fase | Stato | Contenuto |
+|------|-------|-----------|
+| **F0** Fondamenta fonte | ✅ Migration applicata · stub `<SourceFilterBar/>` pronto | `tracking_numbers` + estensioni `marketing_campaign_groups`/`lead_campaign_attribution`/`webhook_sources`/`marketing_costs` + componente shared (schema+stub) |
+| **F1** Canali & Costi (Modulo A) | ⏳ Prossimo loop | Vista `v_channel_spend_daily`, `v_lead_cost`, RPC `get_channel_performance`, UI `/marketing/performance` con KPI/tabella/import CSV/CRUD numeri, tree-picker reale in `SourceFilterBar` |
+| **F2** Call Center base (Modulo B) | ⏳ Dopo F1 | Edge `voispeed-webhook`, estensioni `call_logs`, wallboard, tab Telefonia, KPI operatori |
+| **F4** Venditori (Modulo C) | ⏳ Parallelo a F2 | Enum `order_lifecycle_status`, `sales_bonus_tiers`, RPC `get_salesperson_kpis_v2`+`_aggregate`, UI "vista Foglio" 1:1 ESITO APPUNTAMENTI |
+| **F3** Trascrizione + Sentiment | ⏳ Dopo F2 | Whisper API, `call-transcribe`, `call-sentiment`, estensioni `call_transcripts`, UI player+trascrizione, decisione GDPR |
+| **F5** Rifiniture | ⏳ Finale | Viste materializzate, confronti A/B avanzati, alert/anomalie, export Sheets, DPIA |
 
----
+## Convenzioni cross-cutting
+- Tutte le migrations sono additive (rispetta `mem://constraint/appointments-data-safety`).
+- `p_source_filter jsonb` con shape `{ category?, channel_id?, campaign_id?, group_id?, tracking_number_id? }` su ogni RPC dei 3 moduli — validato lato client con `SourceFilterSchema` (Zod).
+- RLS brand-scoped via `has_finance_access(get_user_id(auth.uid()), brand_id)` per dati sensibili (costi/CPL).
+- Ogni fase: preview → review utente → publish manuale.
 
-### Domande aperte da chiarire PRIMA di partire
-
-Lo spec §12 elenca 12 punti. I 5 bloccanti per F0-F1-F4 (le fasi che vorrei iniziare subito) sono:
-
-1. **% cons su vend (Modulo C #16)** — di periodo, di coorte, o entrambe?
-2. **Imponibile (#19)** — scorporo flat 22% (come nel foglio) o calcolo per riga `vat_rate`?
-3. **Premi venditori** — base lorda o imponibile? Versionare scaglioni con `valid_from/valid_to`?
-4. **Stato ordine (`lifecycle_status`)** — chi lo imposta? Amministrazione manuale, workflow, o import da gestionale esterno?
-5. **Visibilità costi/CPL/CAC** — solo CEO/Admin/Amministrazione, o anche Resp. venditori vedono CPL?
-
-I bloccanti per F3 (trascrizione/sentiment, posso iniziarla dopo F2):
-
-6. **Provider STT** italiano + diarizzazione: Whisper self-host o API esterna (es. AssemblyAI/Deepgram)?
-7. **GDPR**: consenso esplicito IVR vs legittimo interesse; retention audio + trascrizioni.
-
-I bloccanti per F2 (call center base):
-
-8. **VoiSpeed**: disponibilità webhook eventi (ring/answer/hangup/recording-ready) e API code/agent status. Da verificare con l'account VoiSpeed.
-
-Senza queste risposte costruisco con assunzioni che probabilmente andranno rifatte.
-
----
-
-### Proposta operativa
-
-**Opzione A (consigliata):** rispondi ai 5 bloccanti F0-F1-F4 (sopra) e parto con **F0 + F1 in un loop** (priorità #1 dello spec). Le altre domande le chiudiamo prima di F2/F3.
-
-**Opzione B:** rispondi a tutte e 12 in blocco, ti consegno un piano dettagliato per ogni fase con stime e dipendenze, e poi parto.
-
-**Opzione C:** parto subito con **solo F0** (fondamenta DB + componente filtro, nessuna UI di moduli) — è puramente strutturale, non dipende da nessuna delle 12 risposte. Mentre lavoro F0, tu rispondi ai bloccanti per F1.
-
----
-
-### Dettagli tecnici (per riferimento)
-
-- **Migrazioni**: tutte additive (nullable+default), zero `DROP`/`TRUNCATE` su tabelle business — rispetto vincolo `mem://constraint/appointments-data-safety`.
-- **RLS**: ogni nuova tabella (`tracking_numbers`, `voispeed_agent_status`, `sales_bonus_tiers`, ecc.) con policy brand-scoped via `get_user_id(auth.uid())` + `has_role`.
-- **RPC**: `SECURITY DEFINER`, `search_path = public`, parametro `p_source_filter jsonb` standardizzato sui 3 moduli.
-- **Edge functions**: `voispeed-webhook`/`call-transcribe`/`call-sentiment` con pattern già consolidato (`Deno.serve`, `corsHeaders`, `INTERNAL_SERVICE_TOKEN`, idempotency, AI quota cap, redact PII).
-- **Realtime**: wallboard centralino via `useGlobalRealtime` (no polling).
-- **UI**: `<SourceFilterBar/>` come componente shared in `src/components/shared/`; "vista Foglio" Modulo C replica 1:1 le 20 colonne del report aziendale.
-- **Gate CI**: ogni fase passa tsc/build/test prima del publish (zero-exception policy).
-
----
-
-**Quale opzione (A / B / C) preferisci?** Se A o B, allega le risposte ai bloccanti; se C, confermo e parto subito con F0.
+## File modificati F0
+- `supabase/migrations/*` — nuova tabella `tracking_numbers` + estensioni 4 tabelle esistenti
+- `src/components/shared/SourceFilterBar.tsx` — componente + Zod schema condiviso
+- `mem://features/dashboard-performance/decisions.md` — decisioni vincolanti
+- `mem://index.md` — riferimento alle decisioni
