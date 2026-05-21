@@ -373,8 +373,9 @@ export default function AdminTrackingNumbers() {
                         <Switch
                           checked={tn.is_active}
                           onCheckedChange={() =>
-                            withFeedback(toggleMutation.mutateAsync(tn), {
-                              successMessage: tn.is_active ? "Numero disattivato" : "Numero attivato",
+                            toggleMutation.mutate(tn, {
+                              onSuccess: () => feedback.success(tn.is_active ? "Numero disattivato" : "Numero attivato"),
+                              onError: feedback.error,
                             })
                           }
                           aria-label={tn.is_active ? "Disattiva" : "Attiva"}
