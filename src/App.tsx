@@ -71,6 +71,7 @@ const AdminSessions = lazy(() => import("@/pages/AdminSessions"));
 const AdminSlowQueries = lazy(() => import("@/pages/AdminSlowQueries"));
 const AdminChangelog = lazy(() => import("@/pages/AdminChangelog"));
 const AdminA11yAudit = lazy(() => import("@/pages/AdminA11yAudit"));
+const AdminTrackingNumbers = lazy(() => import("@/pages/AdminTrackingNumbers"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Team = lazy(() => import("@/pages/Team"));
