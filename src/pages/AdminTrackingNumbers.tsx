@@ -338,11 +338,8 @@ export default function AdminTrackingNumbers() {
                   ? "Modifica i filtri per visualizzare altri numeri."
                   : "Crea il primo numero di tracking per iniziare a mappare le chiamate ai canali."
               }
-              action={
-                rows && rows.length === 0
-                  ? { label: "Nuovo numero", onClick: openCreate }
-                  : undefined
-              }
+              actionLabel={rows && rows.length === 0 ? "Nuovo numero" : undefined}
+              onAction={rows && rows.length === 0 ? openCreate : undefined}
             />
           ) : (
             <div className="overflow-x-auto">
