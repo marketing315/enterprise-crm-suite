@@ -173,11 +173,15 @@ All colors MUST be HSL.
   }
 }
 
-/* Touch targets: enforce min 44x44px on coarse pointers (mobile) for icon-only buttons */
+/* Touch targets: enforce min 44x44px on coarse pointers (mobile) for icon-only
+   buttons, FAB e azioni primarie marcate con data-touch-target="primary".
+   `data-touch-ok` resta come escape hatch quando il design impone target più piccoli
+   (es. micro-azioni dentro celle di tabella). */
 @media (max-width: 768px) and (pointer: coarse) {
   button[aria-label]:not([data-touch-ok]),
   a[aria-label]:not([data-touch-ok]),
-  [role="button"][aria-label]:not([data-touch-ok]) {
+  [role="button"][aria-label]:not([data-touch-ok]),
+  [data-touch-target="primary"]:not([data-touch-ok]) {
     min-width: 44px;
     min-height: 44px;
   }
