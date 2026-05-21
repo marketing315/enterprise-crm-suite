@@ -213,7 +213,7 @@ export default function AdminTrackingNumbers() {
         const { error } = await supabase.from("tracking_numbers").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("tracking_numbers").insert(payload);
+        const { error } = await supabase.from("tracking_numbers").insert([payload]);
         if (error) throw error;
       }
     },
