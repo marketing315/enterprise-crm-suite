@@ -17,10 +17,15 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
+        // H11/Mobile A11y: i target primari raggiungono ≥44px su pointer coarse
+        // (vedi regola CSS in index.css). Le size mobile-first qui sotto
+        // garantiscono 44px anche su desktop senza dipendere dal media query.
+        default: "h-10 px-4 py-2 md:h-10",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        icon: "h-11 w-11 md:h-10 md:w-10",
+        "icon-mobile": "h-11 w-11", // Sempre 44px — usalo per icon-button su mobile/FAB inline
+        fab: "h-14 w-14 rounded-full shadow-lg", // Floating Action Button (56px)
       },
     },
     defaultVariants: {
