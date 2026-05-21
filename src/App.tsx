@@ -70,6 +70,7 @@ const AdminSheetsHealth = lazy(() => import("@/pages/AdminSheetsHealth"));
 const AdminSessions = lazy(() => import("@/pages/AdminSessions"));
 const AdminSlowQueries = lazy(() => import("@/pages/AdminSlowQueries"));
 const AdminChangelog = lazy(() => import("@/pages/AdminChangelog"));
+const AdminA11yAudit = lazy(() => import("@/pages/AdminA11yAudit"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Team = lazy(() => import("@/pages/Team"));
@@ -242,6 +243,8 @@ const App = () => (
                     <Route path="/admin/sessions" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSessions /></RoleGuard>} />
                     <Route path="/admin/slow-queries" element={<RoleGuard allowedRoles={['admin']}><AdminSlowQueries /></RoleGuard>} />
                     <Route path="/admin/changelog" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminChangelog /></RoleGuard>} />
+                    <Route path="/admin/a11y-audit" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminA11yAudit /></RoleGuard>} />
+
                     <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>
                   
