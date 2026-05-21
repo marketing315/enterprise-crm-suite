@@ -22,6 +22,18 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Filter } from "lucide-react";
+import { useActiveMarketingChannels } from "@/hooks/useMarketingChannels";
+import { useMarketingCampaigns } from "@/hooks/useMarketingCampaigns";
+
 
 // ---------------------------------------------------------------------------
 // Schema condiviso `p_source_filter jsonb` (passato a tutte le RPC F1/F2/F4)
