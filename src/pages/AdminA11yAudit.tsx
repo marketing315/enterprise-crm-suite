@@ -242,6 +242,10 @@ export default function AdminA11yAudit() {
         </p>
       </header>
 
+      <TokenContrastChecker />
+
+
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Esegui scan</CardTitle>
