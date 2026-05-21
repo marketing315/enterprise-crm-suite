@@ -223,11 +223,15 @@ export default function AdminA11yAudit() {
     [results],
   );
 
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "Audit Accessibilità — WCAG AA/AAA";
+    return () => { document.title = prev; };
+  }, []);
+
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <Helmet>
-        <title>Audit Accessibilità — WCAG AA/AAA</title>
-      </Helmet>
+
 
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Audit Accessibilità</h1>
