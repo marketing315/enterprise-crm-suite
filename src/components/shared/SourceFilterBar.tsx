@@ -160,12 +160,8 @@ export function SourceFilterBar({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs text-muted-foreground">Fonte</Label>
-        <Button variant="outline" size="sm" disabled title="Tree-picker F1">
-          {summary}
-        </Button>
-      </div>
+      <SourceFilterPicker value={value} onChange={onChange} summary={summary} />
+
 
       {showAsOfDate && (
         <div className="flex flex-col gap-1">
