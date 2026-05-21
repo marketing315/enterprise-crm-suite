@@ -5945,6 +5945,7 @@ export type Database = {
         Row: {
           brand_id: string
           campaign_id: string | null
+          channel_id: string | null
           contact_id: string | null
           created_at: string
           group_id: string | null
@@ -5953,10 +5954,13 @@ export type Database = {
           match_type: string
           matched_at: string
           metadata: Json | null
+          source_category: string | null
+          tracking_number_id: string | null
         }
         Insert: {
           brand_id: string
           campaign_id?: string | null
+          channel_id?: string | null
           contact_id?: string | null
           created_at?: string
           group_id?: string | null
@@ -5965,10 +5969,13 @@ export type Database = {
           match_type: string
           matched_at?: string
           metadata?: Json | null
+          source_category?: string | null
+          tracking_number_id?: string | null
         }
         Update: {
           brand_id?: string
           campaign_id?: string | null
+          channel_id?: string | null
           contact_id?: string | null
           created_at?: string
           group_id?: string | null
@@ -5977,6 +5984,8 @@ export type Database = {
           match_type?: string
           matched_at?: string
           metadata?: Json | null
+          source_category?: string | null
+          tracking_number_id?: string | null
         }
         Relationships: [
           {
@@ -5991,6 +6000,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_channels"
             referencedColumns: ["id"]
           },
           {
@@ -6012,6 +6028,13 @@ export type Database = {
             columns: ["lead_event_id"]
             isOneToOne: false
             referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_tracking_number_id_fkey"
+            columns: ["tracking_number_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_numbers"
             referencedColumns: ["id"]
           },
         ]
@@ -6461,34 +6484,43 @@ export type Database = {
         Row: {
           brand_id: string
           campaign_ids: string[]
+          channel_ids: string[]
           created_at: string
+          group_kind: string
           id: string
           is_active: boolean
           match_rules: Json
           name: string
           priority: number
+          tracking_number_ids: string[]
           updated_at: string
         }
         Insert: {
           brand_id: string
           campaign_ids?: string[]
+          channel_ids?: string[]
           created_at?: string
+          group_kind?: string
           id?: string
           is_active?: boolean
           match_rules?: Json
           name: string
           priority?: number
+          tracking_number_ids?: string[]
           updated_at?: string
         }
         Update: {
           brand_id?: string
           campaign_ids?: string[]
+          channel_ids?: string[]
           created_at?: string
+          group_kind?: string
           id?: string
           is_active?: boolean
           match_rules?: Json
           name?: string
           priority?: number
+          tracking_number_ids?: string[]
           updated_at?: string
         }
         Relationships: [
@@ -6617,34 +6649,46 @@ export type Database = {
           amount: number
           brand_id: string
           campaign_id: string | null
+          channel_id: string | null
           cost_date: string
+          cost_kind: string
           created_at: string
           created_by: string
           id: string
+          import_batch_id: string | null
           notes: string | null
           source: string | null
+          tracking_number_id: string | null
         }
         Insert: {
           amount: number
           brand_id: string
           campaign_id?: string | null
+          channel_id?: string | null
           cost_date: string
+          cost_kind?: string
           created_at?: string
           created_by: string
           id?: string
+          import_batch_id?: string | null
           notes?: string | null
           source?: string | null
+          tracking_number_id?: string | null
         }
         Update: {
           amount?: number
           brand_id?: string
           campaign_id?: string | null
+          channel_id?: string | null
           cost_date?: string
+          cost_kind?: string
           created_at?: string
           created_by?: string
           id?: string
+          import_batch_id?: string | null
           notes?: string | null
           source?: string | null
+          tracking_number_id?: string | null
         }
         Relationships: [
           {
@@ -6662,10 +6706,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "marketing_costs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_channels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "marketing_costs_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_costs_tracking_number_id_fkey"
+            columns: ["tracking_number_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_numbers"
             referencedColumns: ["id"]
           },
         ]
@@ -10576,6 +10634,82 @@ export type Database = {
         }
         Relationships: []
       }
+      tracking_numbers: {
+        Row: {
+          brand_id: string
+          broadcaster: string | null
+          campaign_id: string | null
+          channel_id: string | null
+          created_at: string
+          default_operator_user_id: string | null
+          direction: string
+          id: string
+          is_active: boolean
+          label: string
+          notes: string | null
+          number_type: string
+          phone_e164: string
+          updated_at: string
+          voispeed_did: string | null
+        }
+        Insert: {
+          brand_id: string
+          broadcaster?: string | null
+          campaign_id?: string | null
+          channel_id?: string | null
+          created_at?: string
+          default_operator_user_id?: string | null
+          direction?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          notes?: string | null
+          number_type?: string
+          phone_e164: string
+          updated_at?: string
+          voispeed_did?: string | null
+        }
+        Update: {
+          brand_id?: string
+          broadcaster?: string | null
+          campaign_id?: string | null
+          channel_id?: string | null
+          created_at?: string
+          default_operator_user_id?: string | null
+          direction?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          notes?: string | null
+          number_type?: string
+          phone_e164?: string
+          updated_at?: string
+          voispeed_did?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_numbers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracking_numbers_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracking_numbers_default_operator_user_id_fkey"
+            columns: ["default_operator_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_hidden_columns: {
         Row: {
           brand_id: string
@@ -11047,6 +11181,9 @@ export type Database = {
       webhook_sources: {
         Row: {
           api_key_hash: string
+          attributed_campaign_id: string | null
+          attributed_channel_id: string | null
+          attribution_mode: string
           brand_id: string
           counts_as_new_lead: boolean
           created_at: string
@@ -11068,6 +11205,9 @@ export type Database = {
         }
         Insert: {
           api_key_hash: string
+          attributed_campaign_id?: string | null
+          attributed_channel_id?: string | null
+          attribution_mode?: string
           brand_id: string
           counts_as_new_lead?: boolean
           created_at?: string
@@ -11089,6 +11229,9 @@ export type Database = {
         }
         Update: {
           api_key_hash?: string
+          attributed_campaign_id?: string | null
+          attributed_channel_id?: string | null
+          attribution_mode?: string
           brand_id?: string
           counts_as_new_lead?: boolean
           created_at?: string
@@ -11109,6 +11252,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "webhook_sources_attributed_campaign_id_fkey"
+            columns: ["attributed_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_sources_attributed_channel_id_fkey"
+            columns: ["attributed_channel_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "webhook_sources_brand_id_fkey"
             columns: ["brand_id"]
