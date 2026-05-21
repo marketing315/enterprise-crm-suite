@@ -157,9 +157,9 @@ function DlqTelemetryPanel() {
       <CardContent className="space-y-6">
         {/* Breakdown by reason */}
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide inline-flex items-center">
+          <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide inline-flex items-center">
             Per motivo<FieldHelp text="Causa per cui il lead non è stato processato: payload invalido, sorgente sconosciuta, duplicato, errore parsing AI o eccezione interna." />
-          </h4>
+          </h3>
           <div className="flex flex-wrap gap-2">
             {data.byReason.map(({ reason, count }) => (
               <div
@@ -176,9 +176,9 @@ function DlqTelemetryPanel() {
         {/* Top failing sources */}
         {topSources.length > 0 && (
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+            <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
               Top sorgenti in errore
-            </h4>
+            </h3>
             <div className="space-y-2">
               {topSources.map((row) => (
                 <div
@@ -441,7 +441,7 @@ function IngestDlqTable() {
                       <TableCell colSpan={7} className="p-4">
                         <div className="grid gap-4 md:grid-cols-2">
                           <div>
-                            <h4 className="font-medium mb-2">Payload</h4>
+                            <h3 className="font-medium mb-2">Payload</h3>
                             <ScrollArea className="h-[200px] rounded-md border bg-background p-3">
                               <pre className="text-xs whitespace-pre-wrap">
                                 {entry.raw_body_text ||
@@ -450,7 +450,7 @@ function IngestDlqTable() {
                             </ScrollArea>
                           </div>
                           <div>
-                            <h4 className="font-medium mb-2">Dettagli</h4>
+                            <h3 className="font-medium mb-2">Dettagli</h3>
                             <dl className="space-y-1 text-sm">
                               <div className="flex gap-2">
                                 <dt className="text-muted-foreground">ID:</dt>
@@ -740,7 +740,7 @@ function OutboundDlqTable() {
                       <TableCell colSpan={7} className="p-4">
                         <div className="grid gap-4 md:grid-cols-2">
                           <div>
-                            <h4 className="font-medium mb-2">Payload</h4>
+                            <h3 className="font-medium mb-2">Payload</h3>
                             <ScrollArea className="h-[200px] rounded-md border bg-background p-3">
                               <pre className="text-xs whitespace-pre-wrap">
                                 {JSON.stringify(entry.payload, null, 2)}
@@ -748,7 +748,7 @@ function OutboundDlqTable() {
                             </ScrollArea>
                           </div>
                           <div>
-                            <h4 className="font-medium mb-2">Dettagli</h4>
+                            <h3 className="font-medium mb-2">Dettagli</h3>
                             <dl className="space-y-1 text-sm">
                               <div className="flex gap-2">
                                 <dt className="text-muted-foreground">ID:</dt>

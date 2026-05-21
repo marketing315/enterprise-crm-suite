@@ -46,7 +46,7 @@ export default function AdminAIMetrics() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <Building2 className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground mb-4" />
-        <h2 className="text-xl md:text-2xl font-bold mb-2">Seleziona un Brand</h2>
+        <h1 className="text-xl md:text-2xl font-bold mb-2">Seleziona un Brand</h1>
         <p className="text-sm text-muted-foreground max-w-md">
           Utilizza il selettore nella sidebar per scegliere il brand.
         </p>

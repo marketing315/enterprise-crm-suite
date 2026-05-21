@@ -99,7 +99,7 @@ function SoC2Tab() {
 
           {selectedId && items.length > 0 && (
             <div className="mt-6 border-t pt-4">
-              <h4 className="font-semibold mb-3">Utenti da revisionare ({items.length})</h4>
+              <h2 className="font-semibold mb-3">Utenti da revisionare ({items.length})</h2>
               <div className="max-h-96 overflow-y-auto">
                 <Table>
                   <TableHeader>

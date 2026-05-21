@@ -34,7 +34,7 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Seleziona un Brand</h2>
+        <h1 className="text-2xl font-bold mb-2">Seleziona un Brand</h1>
         <p className="text-muted-foreground max-w-md">
           Utilizza il selettore nella sidebar per scegliere il brand con cui vuoi lavorare.
         </p>
