@@ -568,10 +568,13 @@ export default function AdminTrackingNumbers() {
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                toDelete &&
-                withFeedback(deleteMutation.mutateAsync(toDelete.id), { successMessage: "Numero eliminato" })
-              }
+              onClick={() => {
+                if (!toDelete) return;
+                deleteMutation.mutate(toDelete.id, {
+                  onSuccess: () => feedback.success("Numero eliminato"),
+                  onError: feedback.error,
+                });
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Elimina
