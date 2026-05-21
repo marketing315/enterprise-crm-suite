@@ -203,3 +203,117 @@ export function SourceFilterBar({
 }
 
 export default SourceFilterBar;
+
+// ---------------------------------------------------------------------------
+// Tree-picker fonte (F1) — Popover con categoria / canale / campagna
+// ---------------------------------------------------------------------------
+
+const CATEGORIES: { value: SourceCategory; label: string }[] = [
+  { value: "tv", label: "TV" },
+  { value: "web", label: "Web" },
+  { value: "google", label: "Google" },
+  { value: "meta", label: "Meta" },
+  { value: "organic", label: "Organico" },
+  { value: "referral", label: "Referral" },
+  { value: "other", label: "Altro" },
+];
+
+function SourceFilterPicker({
+  value,
+  onChange,
+  summary,
+}: {
+  value: SourceFilter;
+  onChange: (next: SourceFilter) => void;
+  summary: string;
+}) {
+  const { data: channels } = useActiveMarketingChannels();
+  const { data: campaigns } = useMarketingCampaigns();
+
+  const filteredCampaigns = useMemo(() => {
+    const list = campaigns ?? [];
+    if (!value.channel_id) return list;
+    return list.filter((c) => c.channel_id === value.channel_id);
+  }, [campaigns, value.channel_id]);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-xs text-muted-foreground">Fonte</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="min-w-[180px] justify-start">
+            <Filter className="w-3.5 h-3.5 mr-2" />
+            {summary}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-4 space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Categoria</Label>
+            <Select
+              value={value.category ?? "__all__"}
+              onValueChange={(v) =>
+                onChange({ ...value, category: v === "__all__" ? undefined : (v as SourceCategory) })
+              }
+            >
+              <SelectTrigger><SelectValue placeholder="Tutte" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Tutte</SelectItem>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Canale</Label>
+            <Select
+              value={value.channel_id ?? "__all__"}
+              onValueChange={(v) =>
+                onChange({
+                  ...value,
+                  channel_id: v === "__all__" ? undefined : v,
+                  campaign_id: undefined, // reset campagna su cambio canale
+                })
+              }
+            >
+              <SelectTrigger><SelectValue placeholder="Tutti i canali" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Tutti i canali</SelectItem>
+                {(channels ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} <span className="text-muted-foreground text-xs">({c.type})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Campagna</Label>
+            <Select
+              value={value.campaign_id ?? "__all__"}
+              onValueChange={(v) =>
+                onChange({ ...value, campaign_id: v === "__all__" ? undefined : v })
+              }
+            >
+              <SelectTrigger><SelectValue placeholder="Tutte le campagne" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Tutte le campagne</SelectItem>
+                {filteredCampaigns.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button variant="ghost" size="sm" onClick={() => onChange({})}>
+              Pulisci filtri
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
