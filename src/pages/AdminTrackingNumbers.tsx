@@ -210,10 +210,10 @@ export default function AdminTrackingNumbers() {
         default_operator_user_id: values.default_operator_user_id || null,
       };
       if (editing) {
-        const { error } = await supabase.from("tracking_numbers").update(payload).eq("id", editing.id);
+        const { error } = await supabase.from("tracking_numbers").update(payload as any).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("tracking_numbers").insert([payload]);
+        const { error } = await supabase.from("tracking_numbers").insert(payload as any);
         if (error) throw error;
       }
     },
