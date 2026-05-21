@@ -87,6 +87,8 @@ const MarketingCampaigns = lazy(() => import("@/pages/marketing/MarketingCampaig
 const MarketingCosts = lazy(() => import("@/pages/marketing/MarketingCosts"));
 const MarketingReports = lazy(() => import("@/pages/marketing/MarketingReports"));
 const MarketingLeads = lazy(() => import("@/pages/marketing/MarketingLeads"));
+const MarketingPerformance = lazy(() => import("@/pages/marketing/MarketingPerformance"));
+
 const CeoDashboard = lazy(() => import("@/pages/CeoDashboard"));
 const Install = lazy(() => import("@/pages/Install"));
 const AdminDashboard = lazy(() => import("@/pages/dashboard/AdminDashboard"));
