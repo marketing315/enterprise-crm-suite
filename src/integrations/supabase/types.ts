@@ -11597,6 +11597,41 @@ export type Database = {
           },
         ]
       }
+      v_channel_spend_daily: {
+        Row: {
+          amount: number | null
+          brand_id: string | null
+          broadcaster: string | null
+          campaign_id: string | null
+          channel_id: string | null
+          cost_date: string | null
+          cost_kind: string | null
+          tracking_number_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_costs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_costs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_costs_tracking_number_id_fkey"
+            columns: ["tracking_number_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_numbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_db_growth_alerts: {
         Row: {
           daily_growth: string | null
@@ -11623,6 +11658,58 @@ export type Database = {
           total_writes: number | null
         }
         Relationships: []
+      }
+      v_lead_cost: {
+        Row: {
+          brand_id: string | null
+          campaign_id: string | null
+          channel_day_leads: number | null
+          channel_day_spend: number | null
+          channel_id: string | null
+          contact_id: string | null
+          estimated_lead_cost: number | null
+          lead_date: string | null
+          lead_event_id: string | null
+          match_type: string | null
+          source_category: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_campaign_attribution_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_attribution_lead_event_id_fkey"
+            columns: ["lead_event_id"]
+            isOneToOne: false
+            referencedRelation: "lead_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_sources_safe: {
         Row: {
@@ -12960,6 +13047,28 @@ export type Database = {
           p_to?: string
         }
         Returns: Json
+      }
+      get_channel_performance: {
+        Args: {
+          p_brand_id: string
+          p_from: string
+          p_source_filter?: Json
+          p_to: string
+        }
+        Returns: {
+          cac: number
+          category: string
+          channel_id: string
+          channel_name: string
+          channel_type: string
+          cpl: number
+          deals_count: number
+          deals_won: number
+          leads_count: number
+          revenue: number
+          roi: number
+          spend: number
+        }[]
       }
       get_compliance_report: { Args: { p_report_id: string }; Returns: Json }
       get_contact_field_definitions: {

@@ -24,8 +24,9 @@ Salvate in `mem://features/dashboard-performance/decisions`.
 
 | Fase | Stato | Contenuto |
 |------|-------|-----------|
-| **F0** Fondamenta fonte | ✅ Migration applicata · stub `<SourceFilterBar/>` pronto | `tracking_numbers` + estensioni `marketing_campaign_groups`/`lead_campaign_attribution`/`webhook_sources`/`marketing_costs` + componente shared (schema+stub) |
-| **F1** Canali & Costi (Modulo A) | ⏳ Prossimo loop | Vista `v_channel_spend_daily`, `v_lead_cost`, RPC `get_channel_performance`, UI `/marketing/performance` con KPI/tabella/import CSV/CRUD numeri, tree-picker reale in `SourceFilterBar` |
+| **F0** Fondamenta fonte | ✅ Migration applicata + pagina `/admin/tracking-numbers` live | `tracking_numbers` + estensioni `marketing_campaign_groups`/`lead_campaign_attribution`/`webhook_sources`/`marketing_costs` + CRUD numeri |
+| **F1** Canali & Costi (Modulo A) | ✅ Consegnato | Viste `v_channel_spend_daily` + `v_lead_cost`, RPC `get_channel_performance` (RLS via `has_finance_access`), pagina `/marketing/performance` con KPI roll-up + tabella canale + tree-picker (categoria/canale/campagna) + import CSV costi (granularità giorno × cost_kind × emittente) |
+
 | **F2** Call Center base (Modulo B) | ⏳ Dopo F1 | Edge `voispeed-webhook`, estensioni `call_logs`, wallboard, tab Telefonia, KPI operatori |
 | **F4** Venditori (Modulo C) | ⏳ Parallelo a F2 | Enum `order_lifecycle_status`, `sales_bonus_tiers`, RPC `get_salesperson_kpis_v2`+`_aggregate`, UI "vista Foglio" 1:1 ESITO APPUNTAMENTI |
 | **F3** Trascrizione + Sentiment | ⏳ Dopo F2 | Whisper API, `call-transcribe`, `call-sentiment`, estensioni `call_transcripts`, UI player+trascrizione, decisione GDPR |
