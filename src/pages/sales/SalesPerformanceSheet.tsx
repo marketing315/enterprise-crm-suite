@@ -26,6 +26,7 @@ import { useSalespersonKpisV2, useSalespersonKpisAggregate } from "@/hooks/useSa
 import { SalesBonusTiersDialog } from "@/components/sales/SalesBonusTiersDialog";
 import { SalesPerformanceBySourceSection } from "@/components/sales/SalesPerformanceBySourceSection";
 import { MvFreshnessBadge } from "@/components/shared/MvFreshnessBadge";
+import { PerfSheetExportDialog } from "@/components/sales/PerfSheetExportDialog";
 
 type Period = "this_month" | "last_month" | "last_30d" | "ytd";
 
