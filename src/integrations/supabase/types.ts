@@ -8874,6 +8874,66 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_bonus_tiers: {
+        Row: {
+          bonus_amount: number | null
+          bonus_percent: number | null
+          brand_id: string
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          label: string
+          notes: string | null
+          threshold_gross: number
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          bonus_amount?: number | null
+          bonus_percent?: number | null
+          brand_id: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          label: string
+          notes?: string | null
+          threshold_gross: number
+          updated_at?: string
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          bonus_amount?: number | null
+          bonus_percent?: number | null
+          brand_id?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          label?: string
+          notes?: string | null
+          threshold_gross?: number
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_bonus_tiers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_bonus_tiers_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_commissions: {
         Row: {
           approved_at: string | null
@@ -9059,6 +9119,73 @@ export type Database = {
           },
         ]
       }
+      sales_order_lifecycle_events: {
+        Row: {
+          actor_role: Database["public"]["Enums"]["order_lifecycle_actor"]
+          actor_user_id: string | null
+          brand_id: string
+          created_at: string
+          from_status:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          id: string
+          notes: string | null
+          occurred_at: string
+          order_id: string
+          to_status: Database["public"]["Enums"]["order_lifecycle_status"]
+        }
+        Insert: {
+          actor_role: Database["public"]["Enums"]["order_lifecycle_actor"]
+          actor_user_id?: string | null
+          brand_id: string
+          created_at?: string
+          from_status?:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          id?: string
+          notes?: string | null
+          occurred_at?: string
+          order_id: string
+          to_status: Database["public"]["Enums"]["order_lifecycle_status"]
+        }
+        Update: {
+          actor_role?: Database["public"]["Enums"]["order_lifecycle_actor"]
+          actor_user_id?: string | null
+          brand_id?: string
+          created_at?: string
+          from_status?:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          id?: string
+          notes?: string | null
+          occurred_at?: string
+          order_id?: string
+          to_status?: Database["public"]["Enums"]["order_lifecycle_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_lifecycle_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_lifecycle_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_lifecycle_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_orders: {
         Row: {
           assigned_user_id: string | null
@@ -9068,13 +9195,22 @@ export type Database = {
           contact_id: string
           created_at: string
           deal_id: string | null
+          delivered_at: string | null
           discount_amount: number
           discount_percent: number | null
           id: string
+          lifecycle_actor_role:
+            | Database["public"]["Enums"]["order_lifecycle_actor"]
+            | null
+          lifecycle_status:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          lifecycle_updated_at: string | null
           notes: string | null
           order_number: string
           paid_amount: number
           paid_at: string | null
+          signed_at: string | null
           status: Database["public"]["Enums"]["sales_order_status"]
           subtotal: number
           tax_amount: number
@@ -9089,13 +9225,22 @@ export type Database = {
           contact_id: string
           created_at?: string
           deal_id?: string | null
+          delivered_at?: string | null
           discount_amount?: number
           discount_percent?: number | null
           id?: string
+          lifecycle_actor_role?:
+            | Database["public"]["Enums"]["order_lifecycle_actor"]
+            | null
+          lifecycle_status?:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          lifecycle_updated_at?: string | null
           notes?: string | null
           order_number: string
           paid_amount?: number
           paid_at?: string | null
+          signed_at?: string | null
           status?: Database["public"]["Enums"]["sales_order_status"]
           subtotal?: number
           tax_amount?: number
@@ -9110,13 +9255,22 @@ export type Database = {
           contact_id?: string
           created_at?: string
           deal_id?: string | null
+          delivered_at?: string | null
           discount_amount?: number
           discount_percent?: number | null
           id?: string
+          lifecycle_actor_role?:
+            | Database["public"]["Enums"]["order_lifecycle_actor"]
+            | null
+          lifecycle_status?:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          lifecycle_updated_at?: string | null
           notes?: string | null
           order_number?: string
           paid_amount?: number
           paid_at?: string | null
+          signed_at?: string | null
           status?: Database["public"]["Enums"]["sales_order_status"]
           subtotal?: number
           tax_amount?: number
@@ -12340,6 +12494,10 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: number
       }
+      compute_bonus_for_amount: {
+        Args: { p_amount: number; p_at?: string; p_brand_id: string }
+        Returns: Json
+      }
       compute_data_quality: { Args: never; Returns: number }
       consume_ai_quota: {
         Args: {
@@ -13569,6 +13727,19 @@ export type Database = {
       }
       get_salesperson_kpis: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      get_salesperson_kpis_aggregate: {
+        Args: { p_brand_id: string; p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      get_salesperson_kpis_v2: {
+        Args: {
+          p_brand_id: string
+          p_from?: string
+          p_to?: string
+          p_user_ids?: string[]
+        }
         Returns: Json
       }
       get_slow_queries: {
@@ -15154,6 +15325,23 @@ export type Database = {
         | "ticket_escalated"
         | "payment_overdue"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
+      order_lifecycle_actor:
+        | "callcenter"
+        | "venditore"
+        | "amministrazione"
+        | "ai_bot"
+        | "system"
+      order_lifecycle_status:
+        | "lead"
+        | "contacted"
+        | "appointment_set"
+        | "appointment_done"
+        | "quoted"
+        | "sold"
+        | "contract_signed"
+        | "paid"
+        | "delivered"
+        | "cancelled"
       override_reason_category:
         | "wrong_priority"
         | "wrong_lead_type"
@@ -15526,6 +15714,25 @@ export const Constants = {
         "payment_overdue",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
+      order_lifecycle_actor: [
+        "callcenter",
+        "venditore",
+        "amministrazione",
+        "ai_bot",
+        "system",
+      ],
+      order_lifecycle_status: [
+        "lead",
+        "contacted",
+        "appointment_set",
+        "appointment_done",
+        "quoted",
+        "sold",
+        "contract_signed",
+        "paid",
+        "delivered",
+        "cancelled",
+      ],
       override_reason_category: [
         "wrong_priority",
         "wrong_lead_type",

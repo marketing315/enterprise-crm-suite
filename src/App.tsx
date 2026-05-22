@@ -78,6 +78,7 @@ const Chat = lazy(() => import("@/pages/Chat"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Team = lazy(() => import("@/pages/Team"));
 const SalespersonKpi = lazy(() => import("@/pages/SalespersonKpi"));
+const SalesPerformanceSheet = lazy(() => import("@/pages/sales/SalesPerformanceSheet"));
 const Sales = lazy(() => import("@/pages/Sales"));
 const Products = lazy(() => import("@/pages/Products"));
 const CompanyOverview = lazy(() => import("@/pages/company/CompanyOverview"));
@@ -223,6 +224,7 @@ const App = () => (
                     <Route path="/settings/security" element={<SettingsSecurity />} />
                     <Route path="/team" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'responsabile_callcenter']}><Team /></RoleGuard>} />
                     <Route path="/team/salespersons" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SalespersonKpi /></RoleGuard>} />
+                    <Route path="/sales/performance-sheet" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'amministrazione']}><SalesPerformanceSheet /></RoleGuard>} />
                     <Route path="/admin/ai" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminAI /></RoleGuard>} />
                     <Route path="/admin/ai-metrics" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminAIMetrics /></RoleGuard>} />
                     <Route path="/admin/ai-decisions" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori', 'responsabile_callcenter']}><AdminAIDecisionsDrilldown /></RoleGuard>} />
