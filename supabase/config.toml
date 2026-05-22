@@ -1,6 +1,8 @@
 project_id = "qmqcjtmcxfqahhubpaea"
 
 [functions]
+  [functions.call-transcribe]
+    verify_jwt = false
   [functions.admin-create-user]
     verify_jwt = false
   [functions.admin-manage-team]
