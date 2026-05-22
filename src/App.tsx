@@ -253,6 +253,7 @@ const App = () => (
                     <Route path="/admin/a11y-audit" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminA11yAudit /></RoleGuard>} />
                     <Route path="/admin/tracking-numbers" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><AdminTrackingNumbers /></RoleGuard>} />
                     <Route path="/callcenter/wallboard" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter']}><CallcenterWallboard /></RoleGuard>} />
+                    <Route path="/callcenter/transcripts" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter', 'operatore_callcenter', 'amministrazione']}><CallcenterTranscripts /></RoleGuard>} />
 
                     <Route path="/ceo-dashboard" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedCeoDashboard /></RoleGuard>} />
                   </Route>
