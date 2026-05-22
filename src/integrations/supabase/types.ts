@@ -3037,13 +3037,32 @@ export type Database = {
           ai_error: string | null
           ai_model: string | null
           ai_status: string
+          analyzed_at: string | null
           brand_id: string
           call_log_id: string
+          call_outcome: string | null
+          call_quality: string | null
+          channel: string | null
+          client_intent: string | null
+          clinical_interest: string | null
+          confidence: number | null
+          consent_status: string
           contact_id: string
           created_at: string
+          decision_status: string | null
           full_text: string | null
           id: string
+          keywords: string[] | null
           latency_ms: number | null
+          notes: string | null
+          objection_type: string | null
+          recording_url: string | null
+          sentiment: string | null
+          sentiment_score: number | null
+          stt_duration_seconds: number | null
+          stt_error: string | null
+          stt_provider: string | null
+          stt_status: string
           summary: string | null
           tokens_used: number | null
           updated_at: string
@@ -3052,13 +3071,32 @@ export type Database = {
           ai_error?: string | null
           ai_model?: string | null
           ai_status?: string
+          analyzed_at?: string | null
           brand_id: string
           call_log_id: string
+          call_outcome?: string | null
+          call_quality?: string | null
+          channel?: string | null
+          client_intent?: string | null
+          clinical_interest?: string | null
+          confidence?: number | null
+          consent_status?: string
           contact_id: string
           created_at?: string
+          decision_status?: string | null
           full_text?: string | null
           id?: string
+          keywords?: string[] | null
           latency_ms?: number | null
+          notes?: string | null
+          objection_type?: string | null
+          recording_url?: string | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          stt_duration_seconds?: number | null
+          stt_error?: string | null
+          stt_provider?: string | null
+          stt_status?: string
           summary?: string | null
           tokens_used?: number | null
           updated_at?: string
@@ -3067,13 +3105,32 @@ export type Database = {
           ai_error?: string | null
           ai_model?: string | null
           ai_status?: string
+          analyzed_at?: string | null
           brand_id?: string
           call_log_id?: string
+          call_outcome?: string | null
+          call_quality?: string | null
+          channel?: string | null
+          client_intent?: string | null
+          clinical_interest?: string | null
+          confidence?: number | null
+          consent_status?: string
           contact_id?: string
           created_at?: string
+          decision_status?: string | null
           full_text?: string | null
           id?: string
+          keywords?: string[] | null
           latency_ms?: number | null
+          notes?: string | null
+          objection_type?: string | null
+          recording_url?: string | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          stt_duration_seconds?: number | null
+          stt_error?: string | null
+          stt_provider?: string | null
+          stt_status?: string
           summary?: string | null
           tokens_used?: number | null
           updated_at?: string
@@ -12590,6 +12647,10 @@ export type Database = {
         Returns: Json
       }
       e2e_revenue_snapshot: { Args: { p_phone: string }; Returns: Json }
+      enqueue_call_transcript: {
+        Args: { p_call_log_id: string }
+        Returns: string
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -13815,6 +13876,51 @@ export type Database = {
           storage_path: string
           storage_uploaded_at: string
           total_rows: number
+        }[]
+      }
+      list_call_transcripts: {
+        Args: {
+          p_brand_id: string
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_outcome?: string
+          p_search?: string
+          p_sentiment?: string
+          p_to?: string
+          p_user_id?: string
+        }
+        Returns: {
+          ai_status: string
+          analyzed_at: string
+          brand_id: string
+          call_duration_seconds: number
+          call_log_id: string
+          call_outcome: string
+          call_phone_number: string
+          call_quality: string
+          call_started_at: string
+          call_user_id: string
+          channel: string
+          client_intent: string
+          clinical_interest: string
+          consent_status: string
+          contact_first_name: string
+          contact_id: string
+          contact_last_name: string
+          created_at: string
+          decision_status: string
+          full_text: string
+          id: string
+          keywords: string[]
+          notes: string
+          objection_type: string
+          sentiment: string
+          sentiment_score: number
+          stt_status: string
+          summary: string
+          total_count: number
+          user_full_name: string
         }[]
       }
       list_capi_events: {
