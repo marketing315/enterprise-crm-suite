@@ -8502,6 +8502,36 @@ export type Database = {
           },
         ]
       }
+      performance_mv_refresh_log: {
+        Row: {
+          duration_ms: number | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          mv_name: string
+          rows_after: number | null
+          started_at: string
+        }
+        Insert: {
+          duration_ms?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          mv_name: string
+          rows_after?: number | null
+          started_at?: string
+        }
+        Update: {
+          duration_ms?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          mv_name?: string
+          rows_after?: number | null
+          started_at?: string
+        }
+        Relationships: []
+      }
       pipeline_stages: {
         Row: {
           brand_id: string | null
@@ -11570,6 +11600,35 @@ export type Database = {
         }
         Relationships: []
       }
+      mv_channel_perf_daily: {
+        Row: {
+          brand_id: string | null
+          channel_id: string | null
+          contacts_count: number | null
+          d: string | null
+          deals_won: number | null
+          leads_count: number | null
+          revenue: number | null
+          source_category: string | null
+          spend: number | null
+        }
+        Relationships: []
+      }
+      mv_salesperson_perf_daily: {
+        Row: {
+          brand_id: string | null
+          cancellati: number | null
+          consegnati: number | null
+          d: string | null
+          eseguiti: number | null
+          lordo: number | null
+          no_show: number | null
+          ordini_venduti: number | null
+          programmati: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       notification_webhook_dlq: {
         Row: {
           attempts: number | null
@@ -13662,6 +13721,17 @@ export type Database = {
           webhook_secret: string
         }[]
       }
+      get_performance_mv_freshness: {
+        Args: never
+        Returns: {
+          age_seconds: number
+          last_duration_ms: number
+          last_error: string
+          last_refreshed_at: string
+          last_rows: number
+          mv_name: string
+        }[]
+      }
       get_pipeline_funnel_analytics: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: Json
@@ -13708,6 +13778,22 @@ export type Database = {
         }
         Returns: Json
       }
+      get_sales_performance_by_source: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          appts_eseguiti: number
+          channel_id: string
+          channel_name: string
+          consegnati: number
+          leads_count: number
+          lordo: number
+          ordini_venduti: number
+          perc_consegne: number
+          perc_vendita: number
+          prezzo_medio: number
+          source_category: string
+        }[]
+      }
       get_sales_route_aggregate: {
         Args: { p_brand_id: string; p_date: string }
         Returns: Json
@@ -13724,6 +13810,15 @@ export type Database = {
           full_name: string
           user_id: string
         }[]
+      }
+      get_salesperson_funnel: {
+        Args: {
+          p_brand_id: string
+          p_from: string
+          p_to: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       get_salesperson_kpis: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
@@ -14563,6 +14658,7 @@ export type Database = {
       }
       record_slo_snapshot: { Args: never; Returns: number }
       refresh_anomaly_baselines: { Args: never; Returns: Json }
+      refresh_performance_mvs: { Args: never; Returns: Json }
       register_mfa_trusted_device: {
         Args: {
           _days?: number
