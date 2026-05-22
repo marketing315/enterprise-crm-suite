@@ -154,6 +154,24 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { event_name, ext, number, usercallid, datetime, extid, duration } = params;
+    const dnisE164 = toE164IT(params.called || params.did || params.to || null);
+
+    // F2: resolve tracking_number from DID dialed (inbound only is meaningful,
+    // but we resolve unconditionally and let the call_type filter decide).
+    let trackingNumberId: string | null = null;
+    let trackingBrandId: string | null = null;
+    if (dnisE164) {
+      const { data: tn } = await supabase
+        .from("tracking_numbers")
+        .select("id, brand_id")
+        .or(`phone_e164.eq.${dnisE164},voispeed_did.eq.${dnisE164}`)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (tn) {
+        trackingNumberId = tn.id as string;
+        trackingBrandId = tn.brand_id as string;
+      }
+    }
 
     if (!event_name) {
       return new Response("Missing event_name", { status: 400 });
