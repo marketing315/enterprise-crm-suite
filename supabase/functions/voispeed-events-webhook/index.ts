@@ -207,8 +207,8 @@ Deno.serve(async (req: Request) => {
       console.warn("[VOIspeed] No contact found for phone:", { phone: `***${(normalizedNumber||"").slice(-4)}`, event: event_name });
     }
 
-    // Get brand_id from contact or user
-    let brandId: string | null = contactPhone?.brand_id || null;
+    // Get brand_id from contact, tracking number, or user
+    let brandId: string | null = contactPhone?.brand_id || trackingBrandId || null;
     if (!brandId && user?.brand_id && Array.isArray(user.brand_id) && user.brand_id.length > 0) {
       brandId = (user.brand_id[0] as { brand_id: string }).brand_id;
     }
