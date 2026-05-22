@@ -139,6 +139,23 @@ export function CallTranscriptsSection({ contactId }: CallTranscriptsSectionProp
                       <span>Telefono: {call?.phone_number || "-"}</span>
                     </div>
 
+                    {/* Sentiment + outcome (F3) */}
+                    {(t.sentiment || t.call_outcome) && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {t.sentiment && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            Sentiment: {t.sentiment}
+                            {typeof t.sentiment_score === "number" && ` (${t.sentiment_score.toFixed(2)})`}
+                          </Badge>
+                        )}
+                        {t.call_outcome && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            Esito: {t.call_outcome}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
                     {/* Summary */}
                     {t.summary && (
                       <div className="space-y-1">
