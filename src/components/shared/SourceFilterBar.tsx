@@ -98,8 +98,8 @@ export interface PeriodValue {
 export interface SourceFilterBarProps {
   value: SourceFilter;
   onChange: (next: SourceFilter) => void;
-  period: PeriodValue;
-  onPeriodChange: (next: PeriodValue) => void;
+  period?: PeriodValue;
+  onPeriodChange?: (next: PeriodValue) => void;
   /** Confronta A vs B (default off) */
   compareEnabled?: boolean;
   onCompareToggle?: (enabled: boolean) => void;
@@ -107,6 +107,9 @@ export interface SourceFilterBarProps {
   showAsOfDate?: boolean;
   asOfDate?: string;
   onAsOfDateChange?: (iso: string) => void;
+  /** F5.2: nasconde periodo / toggle A/B (modalità "solo filtro fonte") */
+  hidePeriod?: boolean;
+  hideCompareToggle?: boolean;
   className?: string;
 }
 
@@ -124,6 +127,8 @@ export function SourceFilterBar({
   showAsOfDate = false,
   asOfDate,
   onAsOfDateChange,
+  hidePeriod = false,
+  hideCompareToggle = false,
   className = "",
 }: SourceFilterBarProps) {
   const [localCompare, setLocalCompare] = useState(compareEnabled);
@@ -144,21 +149,23 @@ export function SourceFilterBar({
       role="region"
       aria-label="Filtri sorgente dashboard"
     >
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs text-muted-foreground">Periodo</Label>
-        <div className="flex gap-1">
-          {(["last_7", "last_30", "mtd", "ytd"] as const).map((p) => (
-            <Button
-              key={p}
-              size="sm"
-              variant={period.preset === p ? "default" : "outline"}
-              onClick={() => onPeriodChange({ preset: p })}
-            >
-              {p.replace("_", " ")}
-            </Button>
-          ))}
+      {!hidePeriod && period && onPeriodChange && (
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Periodo</Label>
+          <div className="flex gap-1">
+            {(["last_7", "last_30", "mtd", "ytd"] as const).map((p) => (
+              <Button
+                key={p}
+                size="sm"
+                variant={period.preset === p ? "default" : "outline"}
+                onClick={() => onPeriodChange({ preset: p })}
+              >
+                {p.replace("_", " ")}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <SourceFilterPicker value={value} onChange={onChange} summary={summary} />
 
@@ -175,19 +182,21 @@ export function SourceFilterBar({
         </div>
       )}
 
-      <div className="ml-auto flex items-center gap-2">
-        <Switch
-          id="source-filter-compare"
-          checked={localCompare}
-          onCheckedChange={(v) => {
-            setLocalCompare(v);
-            onCompareToggle?.(v);
-          }}
-        />
-        <Label htmlFor="source-filter-compare" className="text-sm">
-          Confronta A/B
-        </Label>
-      </div>
+      {!hideCompareToggle && (
+        <div className="ml-auto flex items-center gap-2">
+          <Switch
+            id="source-filter-compare"
+            checked={localCompare}
+            onCheckedChange={(v) => {
+              setLocalCompare(v);
+              onCompareToggle?.(v);
+            }}
+          />
+          <Label htmlFor="source-filter-compare" className="text-sm">
+            Confronta A/B
+          </Label>
+        </div>
+      )}
 
       {/* Reset */}
       <Button

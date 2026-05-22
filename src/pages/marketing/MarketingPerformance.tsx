@@ -46,6 +46,8 @@ import {
 } from "@/components/shared/SourceFilterBar";
 import { CostCsvImportDialog } from "@/components/marketing/CostCsvImportDialog";
 import { TrackingNumberPerformanceTable } from "@/components/marketing/TrackingNumberPerformanceTable";
+import { MarketingABCompare } from "@/components/marketing/MarketingABCompare";
+import { MvFreshnessBadge } from "@/components/shared/MvFreshnessBadge";
 
 function fmtEur(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -154,8 +156,9 @@ export default function MarketingPerformance() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Performance canali</h1>
-            <p className="text-muted-foreground mt-1">
-              Brand <strong>{currentBrand?.name}</strong> · {range.from} → {range.to}
+            <p className="text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+              <span>Brand <strong>{currentBrand?.name}</strong> · {range.from} → {range.to}</span>
+              <MvFreshnessBadge mvName="mv_channel_perf_daily" />
             </p>
           </div>
           <div className="flex gap-2">
@@ -269,6 +272,8 @@ export default function MarketingPerformance() {
             )}
           </CardContent>
         </Card>
+
+        <MarketingABCompare range={range} />
 
         <TrackingNumberPerformanceTable from={range.from} to={range.to} />
 
