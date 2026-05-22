@@ -16,6 +16,9 @@ interface VOIspeedEvent {
   event_name: string;
   ext: string;
   number: string;
+  called?: string;       // F2: DID dialed (our tracking number on inbound)
+  did?: string;          // F2: alias accepted by some VOIspeed versions
+  to?: string;           // F2: generic alias
   usercallid?: string;
   datetime?: string;
   extid?: string;
@@ -24,6 +27,18 @@ interface VOIspeedEvent {
   request_id?: string;
   error_code?: string;
   error_msg?: string;
+}
+
+// Normalize a phone number to E.164 (e.g. "+39800123456"). Returns null when
+// the value is implausible. Used to match tracking_numbers.phone_e164.
+function toE164IT(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  let d = String(raw).replace(/\D/g, "");
+  if (!d) return null;
+  if (d.startsWith("00")) d = d.substring(2);
+  if (d.startsWith("39")) return `+${d}`;
+  if (d.length >= 8 && d.length <= 11) return `+39${d}`;
+  return d.length >= 8 ? `+${d}` : null;
 }
 
 // Normalize phone number: strip non-digits and country code prefix
