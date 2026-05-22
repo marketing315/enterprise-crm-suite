@@ -98,8 +98,8 @@ export interface PeriodValue {
 export interface SourceFilterBarProps {
   value: SourceFilter;
   onChange: (next: SourceFilter) => void;
-  period: PeriodValue;
-  onPeriodChange: (next: PeriodValue) => void;
+  period?: PeriodValue;
+  onPeriodChange?: (next: PeriodValue) => void;
   /** Confronta A vs B (default off) */
   compareEnabled?: boolean;
   onCompareToggle?: (enabled: boolean) => void;
@@ -107,6 +107,9 @@ export interface SourceFilterBarProps {
   showAsOfDate?: boolean;
   asOfDate?: string;
   onAsOfDateChange?: (iso: string) => void;
+  /** F5.2: nasconde periodo / toggle A/B (modalità "solo filtro fonte") */
+  hidePeriod?: boolean;
+  hideCompareToggle?: boolean;
   className?: string;
 }
 
@@ -124,6 +127,8 @@ export function SourceFilterBar({
   showAsOfDate = false,
   asOfDate,
   onAsOfDateChange,
+  hidePeriod = false,
+  hideCompareToggle = false,
   className = "",
 }: SourceFilterBarProps) {
   const [localCompare, setLocalCompare] = useState(compareEnabled);
