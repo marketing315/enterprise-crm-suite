@@ -97,8 +97,8 @@ export function useUpsertAlertRule() {
       if (!currentBrand?.id) throw new Error("Nessun brand selezionato");
       const payload = { ...rule, brand_id: currentBrand.id };
       const query = rule.id
-        ? supabase.from("performance_alert_rules" as never).update(payload).eq("id", rule.id)
-        : supabase.from("performance_alert_rules" as never).insert(payload);
+        ? untypedClient.from("performance_alert_rules").update(payload).eq("id", rule.id)
+        : untypedClient.from("performance_alert_rules").insert(payload);
       const { error } = await query;
       if (error) throw error;
     },
