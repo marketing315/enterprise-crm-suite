@@ -17,6 +17,14 @@ export interface CallTranscript {
   latency_ms: number | null;
   created_at: string;
   updated_at: string;
+  // F3 extensions
+  sentiment?: string | null;
+  sentiment_score?: number | null;
+  call_outcome?: string | null;
+  notes?: string | null;
+  keywords?: string[] | null;
+  consent_status?: string;
+  stt_status?: string;
 }
 
 export interface TelephonyKpis {
