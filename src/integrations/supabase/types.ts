@@ -2753,6 +2753,65 @@ export type Database = {
           },
         ]
       }
+      brand_perf_sheet_config: {
+        Row: {
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          cron_enabled: boolean
+          id: string
+          last_error: string | null
+          last_export_at: string | null
+          last_rows_exported: number | null
+          last_status: string | null
+          period_mode: string
+          spreadsheet_id: string
+          spreadsheet_url: string
+          tab_name: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          cron_enabled?: boolean
+          id?: string
+          last_error?: string | null
+          last_export_at?: string | null
+          last_rows_exported?: number | null
+          last_status?: string | null
+          period_mode?: string
+          spreadsheet_id: string
+          spreadsheet_url: string
+          tab_name?: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          cron_enabled?: boolean
+          id?: string
+          last_error?: string | null
+          last_export_at?: string | null
+          last_rows_exported?: number | null
+          last_status?: string | null
+          period_mode?: string
+          spreadsheet_id?: string
+          spreadsheet_url?: string
+          tab_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_perf_sheet_config_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_tax_settings: {
         Row: {
           brand_id: string
