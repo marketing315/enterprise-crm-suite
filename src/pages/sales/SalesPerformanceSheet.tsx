@@ -10,6 +10,7 @@
  * Footer: aggregato brand. Toolbar: periodo + admin tiers + export CSV.
  */
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,12 +18,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, AlertCircle, TrendingUp } from "lucide-react";
+import { Download, AlertCircle, TrendingUp, ChevronRight } from "lucide-react";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSalespersonKpisV2, useSalespersonKpisAggregate } from "@/hooks/useSalespersonKpisV2";
 import { SalesBonusTiersDialog } from "@/components/sales/SalesBonusTiersDialog";
+import { SalesPerformanceBySourceSection } from "@/components/sales/SalesPerformanceBySourceSection";
+import { MvFreshnessBadge } from "@/components/shared/MvFreshnessBadge";
 
 type Period = "this_month" | "last_month" | "last_30d" | "ytd";
 
@@ -100,7 +103,10 @@ export default function SalesPerformanceSheet() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Foglio venditori</h1>
-          <p className="text-sm text-muted-foreground">Vista 1:1 ESITO APPUNTAMENTI · imponibile = lordo / 1,22 (scorporo IVA flat) · {kpisQ.data?.calc_version ?? "v2.0"}</p>
+          <p className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+            <span>Vista 1:1 ESITO APPUNTAMENTI · imponibile = lordo / 1,22 · {kpisQ.data?.calc_version ?? "v2.0"}</span>
+            <MvFreshnessBadge mvName="mv_salesperson_perf_daily" />
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
@@ -158,10 +164,15 @@ export default function SalesPerformanceSheet() {
                 </TableHeader>
                 <TableBody>
                   {rows.map((r) => (
-                    <TableRow key={r.user_id}>
+                    <TableRow key={r.user_id} className="hover:bg-muted/50">
                       <TableCell>
-                        <div className="font-medium">{r.full_name ?? r.email ?? "—"}</div>
-                        {r.full_name && <div className="text-xs text-muted-foreground">{r.email}</div>}
+                        <Link to={`/sales/performance-sheet/${r.user_id}`} className="group inline-flex items-center gap-1 hover:underline">
+                          <div>
+                            <div className="font-medium">{r.full_name ?? r.email ?? "—"}</div>
+                            {r.full_name && <div className="text-xs text-muted-foreground">{r.email}</div>}
+                          </div>
+                          <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{fmtNum(r.appuntamenti_programmati)}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtNum(r.appuntamenti_eseguiti)}</TableCell>
