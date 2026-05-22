@@ -8502,6 +8502,119 @@ export type Database = {
           },
         ]
       }
+      performance_alert_events: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          brand_id: string
+          comparator: string
+          details: Json
+          fired_at: string
+          id: string
+          metric: string
+          observed_value: number
+          rule_id: string
+          severity: string
+          threshold: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          brand_id: string
+          comparator: string
+          details?: Json
+          fired_at?: string
+          id?: string
+          metric: string
+          observed_value: number
+          rule_id: string
+          severity: string
+          threshold: number
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          brand_id?: string
+          comparator?: string
+          details?: Json
+          fired_at?: string
+          id?: string
+          metric?: string
+          observed_value?: number
+          rule_id?: string
+          severity?: string
+          threshold?: number
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_alert_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "performance_alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_alert_rules: {
+        Row: {
+          brand_id: string
+          comparator: string
+          cooldown_minutes: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          metric: string
+          name: string
+          notes: string | null
+          severity: string
+          source_filter: Json
+          threshold: number
+          updated_at: string
+          window_days: number
+        }
+        Insert: {
+          brand_id: string
+          comparator?: string
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          metric: string
+          name: string
+          notes?: string | null
+          severity?: string
+          source_filter?: Json
+          threshold: number
+          updated_at?: string
+          window_days?: number
+        }
+        Update: {
+          brand_id?: string
+          comparator?: string
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          metric?: string
+          name?: string
+          notes?: string | null
+          severity?: string
+          source_filter?: Json
+          threshold?: number
+          updated_at?: string
+          window_days?: number
+        }
+        Relationships: []
+      }
       performance_mv_refresh_log: {
         Row: {
           duration_ms: number | null
@@ -12894,6 +13007,18 @@ export type Database = {
       }
       escalate_all_brands_breached_tickets: { Args: never; Returns: Json }
       escalate_breached_tickets: { Args: { p_brand_id: string }; Returns: Json }
+      evaluate_performance_alerts: {
+        Args: { p_brand_id: string }
+        Returns: {
+          event_id: string
+          metric: string
+          observed_value: number
+          rule_id: string
+          rule_name: string
+          severity: string
+          threshold: number
+        }[]
+      }
       find_duplicate_contacts: {
         Args: { p_brand_id: string; p_limit?: number; p_strategy?: string }
         Returns: {

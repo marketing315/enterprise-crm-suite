@@ -52,6 +52,7 @@ const AdminDlqDashboard = lazy(() => import("@/pages/AdminDlqDashboard"));
 const AdminAnalytics = lazy(() => import("@/pages/AdminAnalytics"));
 const AdminCapiMonitor = lazy(() => import("@/pages/AdminCapiMonitor"));
 const AdminSloBoard = lazy(() => import("@/pages/AdminSloBoard"));
+const AdminPerformanceAlerts = lazy(() => import("@/pages/AdminPerformanceAlerts"));
 const AdminSecurityReviews = lazy(() => import("@/pages/AdminSecurityReviews"));
 const AdminAudit = lazy(() => import("@/pages/AdminAudit"));
 const AdminTicketEscalationAudit = lazy(() => import("@/pages/AdminTicketEscalationAudit"));
@@ -239,6 +240,8 @@ const App = () => (
                     <Route path="/admin/analytics" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminAnalytics /></RoleGuard>} />
                     <Route path="/admin/capi" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminCapiMonitor /></RoleGuard>} />
                     <Route path="/admin/slo-board" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSloBoard /></RoleGuard>} />
+                    <Route path="/admin/performance-alerts" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><AdminPerformanceAlerts /></RoleGuard>} />
+
                     <Route path="/admin/security-reviews" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSecurityReviews /></RoleGuard>} />
                     <Route path="/admin/audit" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><AdminAudit /></RoleGuard>} />
                     <Route path="/admin/ticket-escalations" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter']}><AdminTicketEscalationAudit /></RoleGuard>} />
