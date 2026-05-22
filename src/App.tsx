@@ -240,6 +240,8 @@ const App = () => (
                     <Route path="/admin/analytics" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminAnalytics /></RoleGuard>} />
                     <Route path="/admin/capi" element={<RoleGuard allowedRoles={['admin', 'ceo']}><GuardedAdminCapiMonitor /></RoleGuard>} />
                     <Route path="/admin/slo-board" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSloBoard /></RoleGuard>} />
+                    <Route path="/admin/performance-alerts" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><AdminPerformanceAlerts /></RoleGuard>} />
+
                     <Route path="/admin/security-reviews" element={<RoleGuard allowedRoles={['admin', 'ceo']}><AdminSecurityReviews /></RoleGuard>} />
                     <Route path="/admin/audit" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><AdminAudit /></RoleGuard>} />
                     <Route path="/admin/ticket-escalations" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_callcenter']}><AdminTicketEscalationAudit /></RoleGuard>} />
