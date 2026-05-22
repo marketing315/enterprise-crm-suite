@@ -27,7 +27,7 @@ Salvate in `mem://features/dashboard-performance/decisions`.
 | **F0** Fondamenta fonte | ✅ Migration applicata + pagina `/admin/tracking-numbers` live | `tracking_numbers` + estensioni `marketing_campaign_groups`/`lead_campaign_attribution`/`webhook_sources`/`marketing_costs` + CRUD numeri |
 | **F1** Canali & Costi (Modulo A) | ✅ Consegnato | Viste `v_channel_spend_daily` + `v_lead_cost`, RPC `get_channel_performance` (RLS via `has_finance_access`), pagina `/marketing/performance` con KPI roll-up + tabella canale + tree-picker (categoria/canale/campagna) + import CSV costi (granularità giorno × cost_kind × emittente) |
 
-| **F2** Call Center base (Modulo B) | ⏳ Dopo F1 | Edge `voispeed-webhook`, estensioni `call_logs`, wallboard, tab Telefonia, KPI operatori |
+| **F2** Call Center base (Modulo B) | ✅ Consegnato | `call_logs.dnis+tracking_number_id`, RPC `get_operator_kpis` + `get_tracking_number_performance`, `voispeed-events-webhook` DID enrichment, pagina `/callcenter/wallboard` (poll 30s), sezione "Performance per numero verde" su `/marketing/performance` |
 | **F4** Venditori (Modulo C) | ⏳ Parallelo a F2 | Enum `order_lifecycle_status`, `sales_bonus_tiers`, RPC `get_salesperson_kpis_v2`+`_aggregate`, UI "vista Foglio" 1:1 ESITO APPUNTAMENTI |
 | **F3** Trascrizione + Sentiment | ⏳ Dopo F2 | Whisper API, `call-transcribe`, `call-sentiment`, estensioni `call_transcripts`, UI player+trascrizione, decisione GDPR |
 | **F5** Rifiniture | ⏳ Finale | Viste materializzate, confronti A/B avanzati, alert/anomalie, export Sheets, DPIA |

@@ -45,6 +45,7 @@ import {
   type PeriodValue,
 } from "@/components/shared/SourceFilterBar";
 import { CostCsvImportDialog } from "@/components/marketing/CostCsvImportDialog";
+import { TrackingNumberPerformanceTable } from "@/components/marketing/TrackingNumberPerformanceTable";
 
 function fmtEur(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -268,6 +269,8 @@ export default function MarketingPerformance() {
             )}
           </CardContent>
         </Card>
+
+        <TrackingNumberPerformanceTable from={range.from} to={range.to} />
 
         <CostCsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
       </div>

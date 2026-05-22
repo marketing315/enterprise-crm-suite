@@ -16,6 +16,9 @@ interface VOIspeedEvent {
   event_name: string;
   ext: string;
   number: string;
+  called?: string;       // F2: DID dialed (our tracking number on inbound)
+  did?: string;          // F2: alias accepted by some VOIspeed versions
+  to?: string;           // F2: generic alias
   usercallid?: string;
   datetime?: string;
   extid?: string;
@@ -24,6 +27,18 @@ interface VOIspeedEvent {
   request_id?: string;
   error_code?: string;
   error_msg?: string;
+}
+
+// Normalize a phone number to E.164 (e.g. "+39800123456"). Returns null when
+// the value is implausible. Used to match tracking_numbers.phone_e164.
+function toE164IT(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  let d = String(raw).replace(/\D/g, "");
+  if (!d) return null;
+  if (d.startsWith("00")) d = d.substring(2);
+  if (d.startsWith("39")) return `+${d}`;
+  if (d.length >= 8 && d.length <= 11) return `+39${d}`;
+  return d.length >= 8 ? `+${d}` : null;
 }
 
 // Normalize phone number: strip non-digits and country code prefix
@@ -139,6 +154,24 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { event_name, ext, number, usercallid, datetime, extid, duration } = params;
+    const dnisE164 = toE164IT(params.called || params.did || params.to || null);
+
+    // F2: resolve tracking_number from DID dialed (inbound only is meaningful,
+    // but we resolve unconditionally and let the call_type filter decide).
+    let trackingNumberId: string | null = null;
+    let trackingBrandId: string | null = null;
+    if (dnisE164) {
+      const { data: tn } = await supabase
+        .from("tracking_numbers")
+        .select("id, brand_id")
+        .or(`phone_e164.eq.${dnisE164},voispeed_did.eq.${dnisE164}`)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (tn) {
+        trackingNumberId = tn.id as string;
+        trackingBrandId = tn.brand_id as string;
+      }
+    }
 
     if (!event_name) {
       return new Response("Missing event_name", { status: 400 });
@@ -174,8 +207,8 @@ Deno.serve(async (req: Request) => {
       console.warn("[VOIspeed] No contact found for phone:", { phone: `***${(normalizedNumber||"").slice(-4)}`, event: event_name });
     }
 
-    // Get brand_id from contact or user
-    let brandId: string | null = contactPhone?.brand_id || null;
+    // Get brand_id from contact, tracking number, or user
+    let brandId: string | null = contactPhone?.brand_id || trackingBrandId || null;
     if (!brandId && user?.brand_id && Array.isArray(user.brand_id) && user.brand_id.length > 0) {
       brandId = (user.brand_id[0] as { brand_id: string }).brand_id;
     }
@@ -197,6 +230,8 @@ Deno.serve(async (req: Request) => {
               provider: "voispeed",
               provider_call_id: usercallid,
               started_at: eventTime,
+              dnis: dnisE164,
+              tracking_number_id: trackingNumberId,
             })
             .select("id")
             .single();
@@ -386,6 +421,8 @@ Deno.serve(async (req: Request) => {
               provider: "voispeed",
               started_at: eventTime,
               ended_at: eventTime,
+              dnis: dnisE164,
+              tracking_number_id: trackingNumberId,
             });
 
           if (insertError) {
