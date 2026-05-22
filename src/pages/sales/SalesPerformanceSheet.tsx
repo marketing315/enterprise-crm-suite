@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, AlertCircle, TrendingUp } from "lucide-react";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { useBrand } from "@/contexts/BrandContext";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSalespersonKpisV2, useSalespersonKpisAggregate } from "@/hooks/useSalespersonKpisV2";
 import { SalesBonusTiersDialog } from "@/components/sales/SalesBonusTiersDialog";
 
@@ -51,9 +51,10 @@ function resolveRange(p: Period): { from: Date; to: Date } {
 }
 
 export default function SalesPerformanceSheet() {
-  const { activeBrandId } = useBrand();
-  const { role } = useUserRole();
-  const canManageTiers = ["admin", "ceo", "responsabile_venditori"].includes(role || "");
+  const { currentBrand } = useBrand();
+  const activeBrandId = currentBrand?.id ?? null;
+  const { isAdmin, isCeo, hasRole } = useAuth();
+  const canManageTiers = isAdmin || isCeo || (!!activeBrandId && hasRole("responsabile_venditori", activeBrandId));
 
   const [period, setPeriod] = useState<Period>("this_month");
   const { from, to } = useMemo(() => resolveRange(period), [period]);
