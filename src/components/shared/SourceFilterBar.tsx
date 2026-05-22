@@ -149,21 +149,23 @@ export function SourceFilterBar({
       role="region"
       aria-label="Filtri sorgente dashboard"
     >
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs text-muted-foreground">Periodo</Label>
-        <div className="flex gap-1">
-          {(["last_7", "last_30", "mtd", "ytd"] as const).map((p) => (
-            <Button
-              key={p}
-              size="sm"
-              variant={period.preset === p ? "default" : "outline"}
-              onClick={() => onPeriodChange({ preset: p })}
-            >
-              {p.replace("_", " ")}
-            </Button>
-          ))}
+      {!hidePeriod && period && onPeriodChange && (
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Periodo</Label>
+          <div className="flex gap-1">
+            {(["last_7", "last_30", "mtd", "ytd"] as const).map((p) => (
+              <Button
+                key={p}
+                size="sm"
+                variant={period.preset === p ? "default" : "outline"}
+                onClick={() => onPeriodChange({ preset: p })}
+              >
+                {p.replace("_", " ")}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <SourceFilterPicker value={value} onChange={onChange} summary={summary} />
 
@@ -180,19 +182,21 @@ export function SourceFilterBar({
         </div>
       )}
 
-      <div className="ml-auto flex items-center gap-2">
-        <Switch
-          id="source-filter-compare"
-          checked={localCompare}
-          onCheckedChange={(v) => {
-            setLocalCompare(v);
-            onCompareToggle?.(v);
-          }}
-        />
-        <Label htmlFor="source-filter-compare" className="text-sm">
-          Confronta A/B
-        </Label>
-      </div>
+      {!hideCompareToggle && (
+        <div className="ml-auto flex items-center gap-2">
+          <Switch
+            id="source-filter-compare"
+            checked={localCompare}
+            onCheckedChange={(v) => {
+              setLocalCompare(v);
+              onCompareToggle?.(v);
+            }}
+          />
+          <Label htmlFor="source-filter-compare" className="text-sm">
+            Confronta A/B
+          </Label>
+        </div>
+      )}
 
       {/* Reset */}
       <Button
