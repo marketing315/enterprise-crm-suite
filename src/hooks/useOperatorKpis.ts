@@ -19,12 +19,12 @@ export interface OperatorKpi {
   avg_response_seconds: number | null;
 }
 
-export function useOperatorKpis(fromIso: string, toIso: string) {
+export function useOperatorKpis(fromIso: string, toIso: string, refetchMs: number | false = 30_000) {
   const { currentBrand, hasBrandSelected, isAllBrandsSelected } = useBrand();
   return useQuery({
     queryKey: ["operator-kpis", currentBrand?.id, fromIso, toIso],
     enabled: hasBrandSelected && !isAllBrandsSelected && !!currentBrand?.id,
-    refetchInterval: 30_000,
+    refetchInterval: refetchMs,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_operator_kpis", {
         p_brand_id: currentBrand!.id,
