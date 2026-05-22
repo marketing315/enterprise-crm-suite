@@ -3,6 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { untypedClient } from "@/integrations/supabase/untypedClient";
 import { useBrand } from "@/contexts/BrandContext";
 
 export type AlertMetric =
