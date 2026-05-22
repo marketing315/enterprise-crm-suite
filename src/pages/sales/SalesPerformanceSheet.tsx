@@ -120,6 +120,7 @@ export default function SalesPerformanceSheet() {
             </SelectContent>
           </Select>
           {canManageTiers && <SalesBonusTiersDialog brandId={activeBrandId} />}
+          <PerfSheetExportDialog brandId={activeBrandId} canEdit={isAdmin || (!!activeBrandId && hasRole("admin", activeBrandId))} />
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={!rows.length} className="gap-2">
             <Download className="h-4 w-4" /> Export CSV
           </Button>
