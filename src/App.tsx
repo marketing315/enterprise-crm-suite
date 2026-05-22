@@ -52,6 +52,7 @@ const AdminDlqDashboard = lazy(() => import("@/pages/AdminDlqDashboard"));
 const AdminAnalytics = lazy(() => import("@/pages/AdminAnalytics"));
 const AdminCapiMonitor = lazy(() => import("@/pages/AdminCapiMonitor"));
 const AdminSloBoard = lazy(() => import("@/pages/AdminSloBoard"));
+const AdminPerformanceAlerts = lazy(() => import("@/pages/AdminPerformanceAlerts"));
 const AdminSecurityReviews = lazy(() => import("@/pages/AdminSecurityReviews"));
 const AdminAudit = lazy(() => import("@/pages/AdminAudit"));
 const AdminTicketEscalationAudit = lazy(() => import("@/pages/AdminTicketEscalationAudit"));
