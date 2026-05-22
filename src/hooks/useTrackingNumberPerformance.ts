@@ -22,11 +22,12 @@ export interface TrackingNumberPerf {
   est_cpl: number | null;
 }
 
-export function useTrackingNumberPerformance(from: string, to: string) {
+export function useTrackingNumberPerformance(from: string, to: string, refetchMs: number | false = false) {
   const { currentBrand, hasBrandSelected, isAllBrandsSelected } = useBrand();
   return useQuery({
     queryKey: ["tracking-number-performance", currentBrand?.id, from, to],
     enabled: hasBrandSelected && !isAllBrandsSelected && !!currentBrand?.id,
+    refetchInterval: refetchMs,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_tracking_number_performance", {
         p_brand_id: currentBrand!.id,
