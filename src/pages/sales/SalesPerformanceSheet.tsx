@@ -217,6 +217,8 @@ export default function SalesPerformanceSheet() {
           )}
         </CardContent>
       </Card>
+
+      <SalesPerformanceBySourceSection brandId={activeBrandId} from={from} to={to} />
     </div>
   );
 }
