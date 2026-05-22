@@ -421,6 +421,8 @@ Deno.serve(async (req: Request) => {
               provider: "voispeed",
               started_at: eventTime,
               ended_at: eventTime,
+              dnis: dnisE164,
+              tracking_number_id: trackingNumberId,
             });
 
           if (insertError) {
