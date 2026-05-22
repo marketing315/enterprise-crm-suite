@@ -125,8 +125,8 @@ export function useAcknowledgeAlertEvent() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase
-        .from("performance_alert_events" as never)
+      const { error } = await untypedClient
+        .from("performance_alert_events")
         .update({ acknowledged_at: new Date().toISOString(), acknowledged_by: user?.id })
         .eq("id", id);
       if (error) throw error;
