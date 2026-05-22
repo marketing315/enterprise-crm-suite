@@ -150,3 +150,35 @@ Manca la configurazione in Impostazioni → VoIP.
 1. Verificare configurazione webhook su VOIspeed
 2. Controllare che il numero sia normalizzato correttamente
 3. Verificare subscription realtime attiva
+
+---
+
+## F2 — Enrichment DID → tracking_number_id
+
+Per i moduli Dashboard Performance (Marketing/Call Center), ogni `incoming_call`
+deve essere arricchito col `tracking_number_id` del DID chiamato.
+
+### Pipeline
+
+1. Webhook estrae il DID dal querystring: `called` > `did` > `to` (alias accettati).
+2. `toE164IT()` normalizza in `+39…` (passa attraverso anche DID esteri ≥8 cifre).
+3. Lookup su `tracking_numbers` con: `(phone_e164.eq.DNIS OR voispeed_did.eq.DNIS) AND is_active = true`.
+4. `call_logs` viene inserito con `dnis` (E.164) e `tracking_number_id` (può essere `null` se nessun match attivo).
+5. Fallback `brand_id`: `contact_phones.brand_id` → `tracking_number.brand_id` → primo brand dell'utente.
+
+### Test E2E
+
+- **Unit**: `supabase/functions/voispeed-events-webhook/did-enrichment_test.ts`
+  (`supabase functions test voispeed-events-webhook`). Copre normalizzazione +
+  forma esatta della clausola `.or()` PostgREST.
+- **SQL contract**: probe in CTE che simulano il match (vedi runbook §F2 E2E).
+  Verificano: match `phone_e164`, match `voispeed_did`, `is_active=false` esclude,
+  numero sconosciuto → null.
+
+### Troubleshooting
+
+| Sintomo | Causa probabile | Fix |
+|---|---|---|
+| `tracking_number_id` sempre `null` su inbound | DID non normalizzato o non presente | Controllare colonna `phone_e164`/`voispeed_did` in `tracking_numbers` |
+| KPI canale errati su `/marketing/performance` | DID attivo su più tracking rows | Vincolo `is_active=true` su una sola riga per DID |
+| `brand_id` errato sull'inbound | Contact con brand diverso dal tracking | Priorità: contact > tracking > user — review intenzionale |

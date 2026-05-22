@@ -76,3 +76,36 @@ Guida operativa rapida per amministratori della piattaforma. Per dettagli archit
 
 - On-call rotation: vedi `.github/CODEOWNERS`.
 - Escalation: tech lead → CEO. Tutti gli incidenti P1 generano automaticamente entry su `/admin/incidents`.
+
+---
+
+## 8. F2 — DID enrichment voispeed (E2E)
+
+**Owner**: piattaforma marketing/call-center. **Criticità**: media (KPI canale dipendono).
+
+### Cosa verifica
+- Normalizzazione DID dialato in E.164 italiano (helper `toE164IT`).
+- Match `tracking_numbers` via OR `phone_e164`/`voispeed_did` con vincolo `is_active=true`.
+- Branding fallback su `call_logs` (contact > tracking > user).
+
+### Come eseguire (locale / CI)
+
+```bash
+# Unit + contract (Deno)
+supabase functions test voispeed-events-webhook
+
+# E2E SQL (probe in-CTE, no scritture su prod)
+psql -f docs/dr/f2-did-enrichment-probe.sql
+```
+
+Il file `docs/dr/f2-did-enrichment-probe.sql` contiene 4 probe attesi `PASS`:
+match `phone_e164`, match `voispeed_did`, `is_active=false` esclude, DNIS sconosciuto → `null`.
+
+### Quando rieseguire
+- Modifica a `supabase/functions/voispeed-events-webhook/index.ts` (logica DID/branding).
+- Modifica struttura `tracking_numbers` (rename colonne, nuovi alias DID).
+- Nuove sorgenti/tipo numero (mobile non IT, virtuali) — aggiungere caso al test.
+
+### Failure mode
+- Probe SQL `FAIL` → la clausola `.or(...)` nel webhook è disallineata dal contratto.
+- Unit `FAIL` su `toE164IT` → rigenerare in test la copia mantenuta in sincrono col file webhook.
