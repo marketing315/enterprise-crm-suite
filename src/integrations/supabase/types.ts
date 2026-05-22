@@ -2923,6 +2923,7 @@ export type Database = {
           contact_id: string
           created_at: string
           deal_id: string | null
+          dnis: string | null
           duration_seconds: number | null
           ended_at: string | null
           event_version: number | null
@@ -2938,6 +2939,7 @@ export type Database = {
           response_time_seconds: number | null
           started_at: string
           status: string
+          tracking_number_id: string | null
           user_id: string
         }
         Insert: {
@@ -2947,6 +2949,7 @@ export type Database = {
           contact_id: string
           created_at?: string
           deal_id?: string | null
+          dnis?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           event_version?: number | null
@@ -2962,6 +2965,7 @@ export type Database = {
           response_time_seconds?: number | null
           started_at?: string
           status?: string
+          tracking_number_id?: string | null
           user_id: string
         }
         Update: {
@@ -2971,6 +2975,7 @@ export type Database = {
           contact_id?: string
           created_at?: string
           deal_id?: string | null
+          dnis?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           event_version?: number | null
@@ -2986,6 +2991,7 @@ export type Database = {
           response_time_seconds?: number | null
           started_at?: string
           status?: string
+          tracking_number_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -3008,6 +3014,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_tracking_number_id_fkey"
+            columns: ["tracking_number_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_numbers"
             referencedColumns: ["id"]
           },
           {
@@ -13334,6 +13347,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_operator_kpis: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          avg_response_seconds: number
+          avg_talk_seconds: number
+          calls_answered: number
+          calls_inbound: number
+          calls_missed: number
+          calls_outbound: number
+          calls_total: number
+          full_name: string
+          talk_time_seconds: number
+          user_id: string
+        }[]
+      }
       get_or_create_ai_config: {
         Args: { p_brand_id: string }
         Returns: {
@@ -13607,6 +13635,23 @@ export type Database = {
       get_ticket_trend_dashboard: {
         Args: { p_brand_id: string; p_from: string; p_to: string }
         Returns: Json
+      }
+      get_tracking_number_performance: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          broadcaster: string
+          calls_answered: number
+          calls_in: number
+          campaign_name: string
+          channel_name: string
+          est_cpl: number
+          label: string
+          phone_e164: string
+          spend: number
+          talk_time_seconds: number
+          tracking_number_id: string
+          unique_contacts: number
+        }[]
       }
       get_unified_customer_timeline: {
         Args: { p_contact_id: string; p_limit?: number }
