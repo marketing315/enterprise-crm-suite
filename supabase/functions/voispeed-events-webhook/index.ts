@@ -230,6 +230,8 @@ Deno.serve(async (req: Request) => {
               provider: "voispeed",
               provider_call_id: usercallid,
               started_at: eventTime,
+              dnis: dnisE164,
+              tracking_number_id: trackingNumberId,
             })
             .select("id")
             .single();
