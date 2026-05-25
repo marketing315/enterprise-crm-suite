@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useBrand } from "@/contexts/BrandContext";
 import { useOperatorKpis } from "@/hooks/useOperatorKpis";
 import { useTrackingNumberPerformance } from "@/hooks/useTrackingNumberPerformance";
+import { LiveAgentsPanel } from "@/components/callcenter/LiveAgentsPanel";
 
 function fmtDuration(seconds: number | null | undefined) {
   if (!seconds) return "—";
@@ -226,6 +227,11 @@ export default function CallcenterWallboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* F6 — Live agenti & code VoiSpeed (Realtime) */}
+      {currentBrand?.id && <LiveAgentsPanel brandId={currentBrand.id} />}
+
+
 
       {/* KPI globali */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

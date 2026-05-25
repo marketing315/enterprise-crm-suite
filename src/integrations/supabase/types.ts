@@ -2753,6 +2753,51 @@ export type Database = {
           },
         ]
       }
+      brand_call_consent_config: {
+        Row: {
+          brand_id: string
+          ivr_announcement_audio_url: string | null
+          ivr_consent_required: boolean
+          policy_version: string
+          recording_legal_basis: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          brand_id: string
+          ivr_announcement_audio_url?: string | null
+          ivr_consent_required?: boolean
+          policy_version?: string
+          recording_legal_basis?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          brand_id?: string
+          ivr_announcement_audio_url?: string | null
+          ivr_consent_required?: boolean
+          policy_version?: string
+          recording_legal_basis?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_call_consent_config_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_call_consent_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_data_retention_config: {
         Row: {
           alert_events_retention_days: number | null
@@ -3024,6 +3069,83 @@ export type Database = {
           },
         ]
       }
+      call_consent_events: {
+        Row: {
+          brand_id: string
+          call_log_id: string | null
+          consent_action: string
+          contact_id: string | null
+          dtmf_input: string | null
+          evidence_url: string | null
+          id: string
+          legal_basis: string | null
+          metadata: Json | null
+          policy_version: string | null
+          recorded_at: string
+          recorded_by_user_id: string | null
+          source: string
+        }
+        Insert: {
+          brand_id: string
+          call_log_id?: string | null
+          consent_action: string
+          contact_id?: string | null
+          dtmf_input?: string | null
+          evidence_url?: string | null
+          id?: string
+          legal_basis?: string | null
+          metadata?: Json | null
+          policy_version?: string | null
+          recorded_at?: string
+          recorded_by_user_id?: string | null
+          source: string
+        }
+        Update: {
+          brand_id?: string
+          call_log_id?: string | null
+          consent_action?: string
+          contact_id?: string | null
+          dtmf_input?: string | null
+          evidence_url?: string | null
+          id?: string
+          legal_basis?: string | null
+          metadata?: Json | null
+          policy_version?: string | null
+          recorded_at?: string
+          recorded_by_user_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_consent_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_consent_events_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_consent_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_consent_events_recorded_by_user_id_fkey"
+            columns: ["recorded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_logs: {
         Row: {
           answered_at: string | null
@@ -3037,6 +3159,7 @@ export type Database = {
           ended_at: string | null
           event_version: number | null
           id: string
+          ivr_path: string | null
           last_error: string | null
           notes: string | null
           outcome: string | null
@@ -3044,12 +3167,15 @@ export type Database = {
           provider: string | null
           provider_call_id: string | null
           provider_ext_id: string | null
+          queue_name: string | null
           recording_url: string | null
           response_time_seconds: number | null
           started_at: string
           status: string
+          talk_seconds: number | null
           tracking_number_id: string | null
           user_id: string
+          wait_seconds: number | null
         }
         Insert: {
           answered_at?: string | null
@@ -3063,6 +3189,7 @@ export type Database = {
           ended_at?: string | null
           event_version?: number | null
           id?: string
+          ivr_path?: string | null
           last_error?: string | null
           notes?: string | null
           outcome?: string | null
@@ -3070,12 +3197,15 @@ export type Database = {
           provider?: string | null
           provider_call_id?: string | null
           provider_ext_id?: string | null
+          queue_name?: string | null
           recording_url?: string | null
           response_time_seconds?: number | null
           started_at?: string
           status?: string
+          talk_seconds?: number | null
           tracking_number_id?: string | null
           user_id: string
+          wait_seconds?: number | null
         }
         Update: {
           answered_at?: string | null
@@ -3089,6 +3219,7 @@ export type Database = {
           ended_at?: string | null
           event_version?: number | null
           id?: string
+          ivr_path?: string | null
           last_error?: string | null
           notes?: string | null
           outcome?: string | null
@@ -3096,12 +3227,15 @@ export type Database = {
           provider?: string | null
           provider_call_id?: string | null
           provider_ext_id?: string | null
+          queue_name?: string | null
           recording_url?: string | null
           response_time_seconds?: number | null
           started_at?: string
           status?: string
+          talk_seconds?: number | null
           tracking_number_id?: string | null
           user_id?: string
+          wait_seconds?: number | null
         }
         Relationships: [
           {
@@ -6174,6 +6308,89 @@ export type Database = {
           },
         ]
       }
+      lead_attribution_touches: {
+        Row: {
+          attribution_model: string
+          brand_id: string
+          campaign_id: string | null
+          channel_id: string | null
+          contact_id: string | null
+          created_at: string
+          id: string
+          lead_event_id: string
+          metadata: Json | null
+          source_category: string | null
+          touch_index: number
+          touch_type: string
+          touch_weight: number
+          touched_at: string
+          tracking_number_id: string | null
+        }
+        Insert: {
+          attribution_model?: string
+          brand_id: string
+          campaign_id?: string | null
+          channel_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          lead_event_id: string
+          metadata?: Json | null
+          source_category?: string | null
+          touch_index?: number
+          touch_type?: string
+          touch_weight?: number
+          touched_at?: string
+          tracking_number_id?: string | null
+        }
+        Update: {
+          attribution_model?: string
+          brand_id?: string
+          campaign_id?: string | null
+          channel_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          lead_event_id?: string
+          metadata?: Json | null
+          source_category?: string | null
+          touch_index?: number
+          touch_type?: string
+          touch_weight?: number
+          touched_at?: string
+          tracking_number_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_attribution_touches_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attribution_touches_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attribution_touches_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attribution_touches_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_campaign_attribution: {
         Row: {
           brand_id: string
@@ -8657,6 +8874,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_orders_taxable"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payments_recorded_by_user_id_fkey"
             columns: ["recorded_by_user_id"]
             isOneToOne: false
@@ -9309,6 +9533,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_commissions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_orders_taxable"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_commissions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -9363,6 +9594,13 @@ export type Database = {
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sales_order_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_orders_taxable"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sales_order_items: {
@@ -9414,6 +9652,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_orders_taxable"
             referencedColumns: ["id"]
           },
           {
@@ -9488,6 +9733,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_lifecycle_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_orders_taxable"
             referencedColumns: ["id"]
           },
         ]
@@ -11548,6 +11800,54 @@ export type Database = {
           },
         ]
       }
+      voispeed_agent_status: {
+        Row: {
+          brand_id: string
+          id: string
+          queue_name: string | null
+          since: string
+          status: string
+          updated_at: string
+          user_id: string | null
+          voispeed_ext: string
+        }
+        Insert: {
+          brand_id: string
+          id?: string
+          queue_name?: string | null
+          since?: string
+          status: string
+          updated_at?: string
+          user_id?: string | null
+          voispeed_ext: string
+        }
+        Update: {
+          brand_id?: string
+          id?: string
+          queue_name?: string | null
+          since?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          voispeed_ext?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voispeed_agent_status_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voispeed_agent_status_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voispeed_configs: {
         Row: {
           base_url: string
@@ -11595,6 +11895,101 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voispeed_ivr_nodes: {
+        Row: {
+          brand_id: string
+          id: string
+          name: string
+          parent_id: string | null
+          routes_to_ext: string | null
+          routes_to_queue: string | null
+          synced_at: string | null
+          voispeed_ivr_id: string
+        }
+        Insert: {
+          brand_id: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          routes_to_ext?: string | null
+          routes_to_queue?: string | null
+          synced_at?: string | null
+          voispeed_ivr_id: string
+        }
+        Update: {
+          brand_id?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          routes_to_ext?: string | null
+          routes_to_queue?: string | null
+          synced_at?: string | null
+          voispeed_ivr_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voispeed_ivr_nodes_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voispeed_ivr_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "voispeed_ivr_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voispeed_queue_stats: {
+        Row: {
+          abandoned_15m: number | null
+          agents_available: number | null
+          agents_busy: number | null
+          brand_id: string
+          calls_waiting: number | null
+          id: string
+          longest_wait_seconds: number | null
+          queue_name: string
+          service_level_pct: number | null
+          stat_ts: string
+        }
+        Insert: {
+          abandoned_15m?: number | null
+          agents_available?: number | null
+          agents_busy?: number | null
+          brand_id: string
+          calls_waiting?: number | null
+          id?: string
+          longest_wait_seconds?: number | null
+          queue_name: string
+          service_level_pct?: number | null
+          stat_ts?: string
+        }
+        Update: {
+          abandoned_15m?: number | null
+          agents_available?: number | null
+          agents_busy?: number | null
+          brand_id?: string
+          calls_waiting?: number | null
+          id?: string
+          longest_wait_seconds?: number | null
+          queue_name?: string
+          service_level_pct?: number | null
+          stat_ts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voispeed_queue_stats_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
             referencedColumns: ["id"]
           },
         ]
@@ -12270,6 +12665,72 @@ export type Database = {
           },
         ]
       }
+      v_sales_orders_taxable: {
+        Row: {
+          assigned_user_id: string | null
+          brand_id: string | null
+          confirmed_at: string | null
+          delivered_at: string | null
+          id: string | null
+          lifecycle_status:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          signed_at: string | null
+          taxable_amount_effective: number | null
+          taxable_amount_flat: number | null
+          taxable_amount_itemized: number | null
+          taxable_basis: string | null
+          total_amount: number | null
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          brand_id?: string | null
+          confirmed_at?: string | null
+          delivered_at?: string | null
+          id?: string | null
+          lifecycle_status?:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          signed_at?: string | null
+          taxable_amount_effective?: never
+          taxable_amount_flat?: never
+          taxable_amount_itemized?: never
+          taxable_basis?: never
+          total_amount?: number | null
+        }
+        Update: {
+          assigned_user_id?: string | null
+          brand_id?: string | null
+          confirmed_at?: string | null
+          delivered_at?: string | null
+          id?: string | null
+          lifecycle_status?:
+            | Database["public"]["Enums"]["order_lifecycle_status"]
+            | null
+          signed_at?: string | null
+          taxable_amount_effective?: never
+          taxable_amount_flat?: never
+          taxable_amount_itemized?: never
+          taxable_basis?: never
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_sources_safe: {
         Row: {
           brand_id: string | null
@@ -12802,6 +13263,7 @@ export type Database = {
       cleanup_system_log_tables:
         | { Args: never; Returns: Json }
         | { Args: { p_batch_size?: number }; Returns: Json }
+      cleanup_voispeed_queue_stats: { Args: never; Returns: number }
       cleanup_webhook_dedup: { Args: never; Returns: number }
       complete_ai_tag_job: {
         Args: { p_error?: string; p_job_id: string }
@@ -14125,6 +14587,17 @@ export type Database = {
         }
         Returns: Json
       }
+      get_salesperson_kpis_v2_ext: {
+        Args: {
+          p_as_of_date?: string
+          p_brand_id: string
+          p_from?: string
+          p_taxable_mode?: string
+          p_to?: string
+          p_user_ids?: string[]
+        }
+        Returns: Json
+      }
       get_slow_queries: {
         Args: { p_limit?: number }
         Returns: {
@@ -14636,6 +15109,18 @@ export type Database = {
           p_metadata?: Json
           p_new_value?: Json
           p_old_value?: Json
+          p_source?: string
+        }
+        Returns: string
+      }
+      log_call_consent: {
+        Args: {
+          p_brand_id: string
+          p_call_log_id: string
+          p_consent_action: string
+          p_contact_id: string
+          p_legal_basis?: string
+          p_metadata?: Json
           p_source?: string
         }
         Returns: string
