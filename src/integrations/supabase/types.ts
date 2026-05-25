@@ -3159,6 +3159,7 @@ export type Database = {
           contact_id: string
           created_at: string
           decision_status: string | null
+          diarization_status: string | null
           full_text: string | null
           id: string
           keywords: string[] | null
@@ -3167,7 +3168,12 @@ export type Database = {
           objection_type: string | null
           recording_url: string | null
           sentiment: string | null
+          sentiment_customer: string | null
+          sentiment_customer_score: number | null
+          sentiment_operator: string | null
+          sentiment_operator_score: number | null
           sentiment_score: number | null
+          speaker_turns: Json | null
           stt_duration_seconds: number | null
           stt_error: string | null
           stt_provider: string | null
@@ -3193,6 +3199,7 @@ export type Database = {
           contact_id: string
           created_at?: string
           decision_status?: string | null
+          diarization_status?: string | null
           full_text?: string | null
           id?: string
           keywords?: string[] | null
@@ -3201,7 +3208,12 @@ export type Database = {
           objection_type?: string | null
           recording_url?: string | null
           sentiment?: string | null
+          sentiment_customer?: string | null
+          sentiment_customer_score?: number | null
+          sentiment_operator?: string | null
+          sentiment_operator_score?: number | null
           sentiment_score?: number | null
+          speaker_turns?: Json | null
           stt_duration_seconds?: number | null
           stt_error?: string | null
           stt_provider?: string | null
@@ -3227,6 +3239,7 @@ export type Database = {
           contact_id?: string
           created_at?: string
           decision_status?: string | null
+          diarization_status?: string | null
           full_text?: string | null
           id?: string
           keywords?: string[] | null
@@ -3235,7 +3248,12 @@ export type Database = {
           objection_type?: string | null
           recording_url?: string | null
           sentiment?: string | null
+          sentiment_customer?: string | null
+          sentiment_customer_score?: number | null
+          sentiment_operator?: string | null
+          sentiment_operator_score?: number | null
           sentiment_score?: number | null
+          speaker_turns?: Json | null
           stt_duration_seconds?: number | null
           stt_error?: string | null
           stt_provider?: string | null
