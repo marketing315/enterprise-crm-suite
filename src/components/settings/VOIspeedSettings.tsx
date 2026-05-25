@@ -62,6 +62,7 @@ export function VOIspeedSettings() {
     enable_realtime_poll: false,
     poll_agents_service: "agents_status",
     poll_queues_service: "queues_stats",
+    poll_ivr_service: "ivr_tree",
   });
 
   useEffect(() => {
