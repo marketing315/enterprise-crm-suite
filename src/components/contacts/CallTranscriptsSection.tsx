@@ -140,12 +140,24 @@ export function CallTranscriptsSection({ contactId }: CallTranscriptsSectionProp
                     </div>
 
                     {/* Sentiment + outcome (F3) */}
-                    {(t.sentiment || t.call_outcome) && (
+                    {(t.sentiment || t.call_outcome || t.sentiment_customer || t.sentiment_operator) && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {t.sentiment && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            Sentiment: {t.sentiment}
+                            Globale: {t.sentiment}
                             {typeof t.sentiment_score === "number" && ` (${t.sentiment_score.toFixed(2)})`}
+                          </Badge>
+                        )}
+                        {t.sentiment_customer && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            Cliente: {t.sentiment_customer}
+                            {typeof t.sentiment_customer_score === "number" && ` (${t.sentiment_customer_score.toFixed(2)})`}
+                          </Badge>
+                        )}
+                        {t.sentiment_operator && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            Operatore: {t.sentiment_operator}
+                            {typeof t.sentiment_operator_score === "number" && ` (${t.sentiment_operator_score.toFixed(2)})`}
                           </Badge>
                         )}
                         {t.call_outcome && (
@@ -166,6 +178,32 @@ export function CallTranscriptsSection({ contactId }: CallTranscriptsSectionProp
                       </div>
                     )}
 
+                    {/* Diarization (speaker turns) */}
+                    {Array.isArray(t.speaker_turns) && t.speaker_turns.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Conversazione per turni ({t.speaker_turns.length})
+                        </span>
+                        <div className="space-y-1 max-h-[260px] overflow-y-auto rounded-md bg-background p-2">
+                          {t.speaker_turns.map((turn, i) => (
+                            <div
+                              key={i}
+                              className={`text-xs rounded px-2 py-1 ${
+                                turn.speaker === "customer"
+                                  ? "bg-blue-500/10 border-l-2 border-blue-500"
+                                  : "bg-emerald-500/10 border-l-2 border-emerald-500"
+                              }`}
+                            >
+                              <span className="font-semibold mr-1">
+                                {turn.speaker === "customer" ? "Cliente" : "Operatore"}:
+                              </span>
+                              <span className="whitespace-pre-wrap">{turn.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Full transcript */}
                     {t.full_text && (
                       <div className="space-y-1">
@@ -175,6 +213,7 @@ export function CallTranscriptsSection({ contactId }: CallTranscriptsSectionProp
                         </p>
                       </div>
                     )}
+
 
                     {/* AI error */}
                     {t.ai_status === "failed" && t.ai_error && (
