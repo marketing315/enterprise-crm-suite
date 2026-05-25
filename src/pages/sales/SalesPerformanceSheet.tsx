@@ -190,7 +190,16 @@ export default function SalesPerformanceSheet() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {rows.map((r) => {
+                    const ext = extByUser.get(r.user_id);
+                    const imponibile = ext?.imponibile ?? r.imponibile;
+                    const deliveredCount = deliveriesMode === "cohort"
+                      ? (ext?.delivered_count_cohort ?? 0)
+                      : (ext?.delivered_count_period ?? r.consegnati_periodo);
+                    const deliveredPct = deliveriesMode === "cohort"
+                      ? ext?.perc_delivered_on_sold_cohort
+                      : (ext?.perc_delivered_on_sold_period ?? r.perc_consegne_periodo);
+                    return (
                     <TableRow key={r.user_id} className="hover:bg-muted/50">
                       <TableCell>
                         <Link to={`/sales/performance-sheet/${r.user_id}`} className="group inline-flex items-center gap-1 hover:underline">
@@ -209,15 +218,18 @@ export default function SalesPerformanceSheet() {
                       <TableCell className="text-right tabular-nums font-medium">{fmtNum(r.ordini_venduti)}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtPct(r.perc_vendita)}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtEur(r.lordo)}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{fmtEur(r.imponibile)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fmtNum(r.consegnati_periodo)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fmtPct(r.perc_consegne_periodo)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground" title={ext?.taxable_basis ?? undefined}>
+                        {fmtEur(imponibile)}
+                        {ext?.taxable_basis === "mixed" && <span className="ml-1 text-[10px] text-amber-600">mix</span>}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{fmtNum(deliveredCount)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmtPct(deliveredPct ?? null)}</TableCell>
                       <TableCell>
                         {r.bonus?.tier_label ? <Badge variant="secondary">{r.bonus.tier_label}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-medium">{fmtEur(r.bonus?.bonus_amount ?? 0)}</TableCell>
                     </TableRow>
-                  ))}
+                  );})}
                 </TableBody>
                 {aggQ.data && (
                   <TableFooter>
