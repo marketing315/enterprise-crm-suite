@@ -2757,7 +2757,10 @@ export type Database = {
         Row: {
           brand_id: string
           ivr_announcement_audio_url: string | null
+          ivr_consent_node_id: string | null
           ivr_consent_required: boolean
+          ivr_dtmf_consent_denied: string
+          ivr_dtmf_consent_given: string
           policy_version: string
           recording_legal_basis: string
           updated_at: string
@@ -2766,7 +2769,10 @@ export type Database = {
         Insert: {
           brand_id: string
           ivr_announcement_audio_url?: string | null
+          ivr_consent_node_id?: string | null
           ivr_consent_required?: boolean
+          ivr_dtmf_consent_denied?: string
+          ivr_dtmf_consent_given?: string
           policy_version?: string
           recording_legal_basis?: string
           updated_at?: string
@@ -2775,7 +2781,10 @@ export type Database = {
         Update: {
           brand_id?: string
           ivr_announcement_audio_url?: string | null
+          ivr_consent_node_id?: string | null
           ivr_consent_required?: boolean
+          ivr_dtmf_consent_denied?: string
+          ivr_dtmf_consent_given?: string
           policy_version?: string
           recording_legal_basis?: string
           updated_at?: string
