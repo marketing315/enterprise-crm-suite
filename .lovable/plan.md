@@ -242,3 +242,28 @@ CREATE INDEX ON public.call_consent_events (call_log_id);
 2. **WS-B**: l'account VoiSpeed supporta webhook real-time per `agent_state_changed`/`queue_stats`, oppure devo procedere direttamente con il **polling adapter** 10s come fallback unico?
 3. **WS-D**: avviare già il modello multi-touch o tenerlo come scheletro DB + RPC senza UI (solo prep)?
 4. **WS-E**: legal basis preferita di default — **consent esplicito DTMF** (più tutelante, può ridurre il pool registrato) o **legittimo interesse** con avviso (registra tutto, opt-out su richiesta)?
+---
+
+## ✅ AVANZAMENTO 25/05/2026 — WS-A · WS-B · WS-C · WS-D · WS-E
+
+**Migrazione DB (additiva, no breaking):**
+- `v_sales_orders_taxable` (flat / itemized / effective + basis), trigger `signed_at` backfill, backfill one-shot.
+- `get_salesperson_kpis_v2_ext(p_brand_id, p_from, p_to, p_user_ids, p_as_of_date, p_taxable_mode)` con metriche `delivered_*_cohort` e `delivered_*_period`, `taxable_basis`.
+- `voispeed_agent_status` + `voispeed_queue_stats` (Realtime ON), `voispeed_ivr_nodes`, colonne `queue_name/wait_seconds/talk_seconds/ivr_path` su `call_logs`.
+- `lead_attribution_touches` (multi-touch foundation, models: first/last/linear/u_shape/time_decay).
+- `brand_call_consent_config` + `call_consent_events` + RPC `log_call_consent`.
+
+**Frontend:**
+- `useSalespersonKpisV2Ext` + toggle Foglio venditori: **Consegne Periodo/Coorte** · **IVA Effettiva/Per-riga/Flat 22%**.
+- `useVoispeedLive` + `LiveAgentsPanel` integrato in `/callcenter/wallboard` (Realtime subscribe).
+- `useBrandCallConsent` + `/admin/call-consent` (config base giuridica + log eventi).
+
+**Conferme adottate (default):**
+1. IVA: `effective` (per-riga con fallback flat 22%).
+2. Multi-touch: solo foundation DB; UI Q3 2026.
+3. Legal basis default: `legitimate_interest` con audio IVR opzionale; consenso DTMF abilitabile per brand.
+
+**Aperto (richiede esecuzione esterna):**
+- Adapter VoiSpeed → scrittura su `voispeed_agent_status` / `voispeed_queue_stats` (webhook o polling 10s).
+- Sync IVR (`voispeed_ivr_nodes`) e popolamento colonne `call_logs.ivr_path/queue_name`.
+- Edge function di calcolo `lead_attribution_touches` per i modelli weighted.
