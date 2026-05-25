@@ -458,9 +458,111 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
+      case "ivr_announcement":
+      case "ivr_dtmf":
+      case "consent_granted":
+      case "consent_denied":
+      case "consent_withdrawn": {
+        // F6 step #3 — GDPR consent capture from IVR / VoiSpeed events.
+        // We only persist when we can attribute to a brand (via tracking number,
+        // contact, or operator). brand_call_consent_config drives DTMF mapping.
+        if (!brandId) {
+          console.warn("[VOIspeed] consent event without brand_id, skipping", { event_name });
+          break;
+        }
+
+        // Look up brand consent policy
+        const { data: cfg } = await supabase
+          .from("brand_call_consent_config")
+          .select("policy_version, recording_legal_basis, ivr_dtmf_consent_given, ivr_dtmf_consent_denied, ivr_consent_node_id")
+          .eq("brand_id", brandId)
+          .maybeSingle();
+
+        // Resolve linked call_log_id (best-effort) from usercallid
+        let consentCallLogId: string | null = null;
+        if (usercallid) {
+          const { data: cl } = await supabase
+            .from("call_logs")
+            .select("id")
+            .eq("provider_call_id", usercallid)
+            .maybeSingle();
+          consentCallLogId = cl?.id ?? null;
+        }
+
+        // Decide consent_action
+        let consentAction: string | null = null;
+        if (event_name === "ivr_announcement") {
+          consentAction = "ivr_announcement_played";
+        } else if (event_name === "consent_granted") {
+          consentAction = "ivr_consent_given";
+        } else if (event_name === "consent_denied") {
+          consentAction = "ivr_consent_denied";
+        } else if (event_name === "consent_withdrawn") {
+          consentAction = "consent_withdrawn";
+        } else if (event_name === "ivr_dtmf") {
+          // Filter by configured consent node (if any) — ignore DTMF from other IVR menus
+          if (cfg?.ivr_consent_node_id && params.ivr_node && params.ivr_node !== cfg.ivr_consent_node_id) {
+            console.log("[VOIspeed] DTMF outside consent node, ignoring", { ivr_node: params.ivr_node });
+            break;
+          }
+          const givenKey = cfg?.ivr_dtmf_consent_given ?? "1";
+          const deniedKey = cfg?.ivr_dtmf_consent_denied ?? "2";
+          if (params.dtmf === givenKey) consentAction = "ivr_consent_given";
+          else if (params.dtmf === deniedKey) consentAction = "ivr_consent_denied";
+          else {
+            console.log("[VOIspeed] DTMF not mapped to consent, ignoring", { dtmf: params.dtmf });
+            break;
+          }
+        }
+
+        if (!consentAction) break;
+
+        const { error: consentErr } = await supabase
+          .from("call_consent_events")
+          .insert({
+            brand_id: brandId,
+            call_log_id: consentCallLogId,
+            contact_id: contactPhone?.contact_id ?? null,
+            consent_action: consentAction,
+            source: "ivr",
+            legal_basis: cfg?.recording_legal_basis ?? "consent",
+            policy_version: cfg?.policy_version ?? "v1",
+            dtmf_input: params.dtmf ?? null,
+            recorded_by_user_id: user?.id ?? null,
+            metadata: {
+              event_name,
+              ivr_node: params.ivr_node ?? null,
+              announcement_id: params.announcement_id ?? null,
+              usercallid: usercallid ?? null,
+              ext,
+            },
+          });
+
+        if (consentErr) {
+          console.error("[VOIspeed] Failed to insert call_consent_events:", {
+            error: consentErr.message, event_name, brand_id: brandId,
+          });
+        } else {
+          console.log("[VOIspeed] Consent event logged:", { consentAction, brand_id: brandId });
+
+          // If consent was denied/withdrawn, mark call_logs.recording_url disabled.
+          if (
+            (consentAction === "ivr_consent_denied" || consentAction === "consent_withdrawn") &&
+            consentCallLogId
+          ) {
+            await supabase
+              .from("call_logs")
+              .update({ recording_url: null })
+              .eq("id", consentCallLogId);
+          }
+        }
+        break;
+      }
+
       default:
         console.log(`[VOIspeed] Unhandled event: ${event_name}`);
     }
+
 
     return new Response("OK", { status: 200 });
 
