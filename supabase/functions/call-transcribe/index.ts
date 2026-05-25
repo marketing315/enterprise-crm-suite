@@ -161,7 +161,14 @@ async function whisperTranscribe(blob: Blob, filename: string): Promise<{ text: 
   return { text: String(json.text ?? "").trim(), durationSec: json.duration ? Math.round(json.duration) : undefined };
 }
 
-async function analyzeWithGemini(transcript: string): Promise<AnalysisResult> {
+async function analyzeWithGemini(transcript: string, callType?: string | null): Promise<AnalysisResult> {
+  const direction =
+    callType === "inbound"
+      ? "La chiamata è INBOUND: il primo a parlare è quasi sempre l'operatore (saluto aziendale), poi il cliente."
+      : callType === "outbound"
+        ? "La chiamata è OUTBOUND: il primo a parlare è quasi sempre il cliente (pronto?), poi l'operatore si presenta."
+        : "Direzione della chiamata sconosciuta: usa i contenuti per dedurre chi è cliente e chi operatore.";
+
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -174,7 +181,11 @@ async function analyzeWithGemini(transcript: string): Promise<AnalysisResult> {
         {
           role: "system",
           content:
-            "Sei un analista di chiamate commerciali nel settore medicale. Classifica la trascrizione lungo le dimensioni richieste. Sii conservativo: se mancano segnali espliciti, usa valori 'undetermined'/'none'/'interrupted'. Rispondi sempre invocando lo strumento.",
+            "Sei un analista di chiamate commerciali nel settore medicale. " +
+            "Ricostruisci i turni di parola assegnando ogni frase a 'customer' o 'operator' (diarizzazione semantica) " +
+            "e calcola sentiment separato per ciascuno. " +
+            direction + " " +
+            "Sii conservativo: se i segnali sono ambigui usa 'undetermined'/'none'/'interrupted'. Rispondi sempre invocando lo strumento.",
         },
         { role: "user", content: `Analizza questa trascrizione:\n\n${transcript.slice(0, 12000)}` },
       ],
@@ -196,6 +207,7 @@ async function analyzeWithGemini(transcript: string): Promise<AnalysisResult> {
   const parsed = JSON.parse(tc.function.arguments) as AnalysisResult;
   return parsed;
 }
+
 
 async function processOne(supabase: ReturnType<typeof createClient>, transcriptId: string): Promise<void> {
   // Claim row (pending → processing)
