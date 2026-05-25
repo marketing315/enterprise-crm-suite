@@ -147,6 +147,39 @@ export default function AdminCallConsent() {
                 <Input value={policyVersion} onChange={(e) => setPolicyVersion(e.target.value)} />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-border/40">
+                <div className="space-y-1">
+                  <Label>DTMF "acconsento"</Label>
+                  <Input
+                    value={dtmfGiven}
+                    onChange={(e) => setDtmfGiven(e.target.value)}
+                    placeholder="1"
+                    maxLength={2}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Tasto premuto dal chiamante per accettare la registrazione.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>DTMF "nego"</Label>
+                  <Input
+                    value={dtmfDenied}
+                    onChange={(e) => setDtmfDenied(e.target.value)}
+                    placeholder="2"
+                    maxLength={2}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Tasto premuto per negare; se premuto la registrazione viene disattivata.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Nodo IVR consenso (opzionale)</Label>
+                  <Input
+                    value={ivrNodeId}
+                    onChange={(e) => setIvrNodeId(e.target.value)}
+                    placeholder="es. consent_menu"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Se impostato, gli eventi DTMF da altri nodi IVR vengono ignorati.</p>
+                </div>
+              </div>
+
+
               <div className="flex items-center justify-between pt-2">
                 <Badge variant="secondary">Ultimo salvataggio: {cfgQ.data ? format(new Date(cfgQ.data.updated_at), "Pp", { locale: it }) : "mai"}</Badge>
                 <Button onClick={onSave} disabled={upsert.isPending} className="gap-2">
