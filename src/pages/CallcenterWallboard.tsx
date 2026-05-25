@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useBrand } from "@/contexts/BrandContext";
 import { useOperatorKpis } from "@/hooks/useOperatorKpis";
 import { useTrackingNumberPerformance } from "@/hooks/useTrackingNumberPerformance";
+import { LiveAgentsPanel } from "@/components/callcenter/LiveAgentsPanel";
 
 function fmtDuration(seconds: number | null | undefined) {
   if (!seconds) return "—";
