@@ -29,10 +29,18 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // Whisper hard limit
 const SWEEP_LIMIT_DEFAULT = 5;
 
+type SentimentLabel = "very_negative" | "negative" | "neutral" | "positive" | "very_positive" | "undetermined";
+type SpeakerTurn = { speaker: "customer" | "operator"; text: string; sentiment?: SentimentLabel };
+
 type AnalysisResult = {
   summary: string;
-  sentiment: "very_negative" | "negative" | "neutral" | "positive" | "very_positive" | "undetermined";
+  sentiment: SentimentLabel;
   sentiment_score: number;
+  sentiment_customer: SentimentLabel;
+  sentiment_customer_score: number;
+  sentiment_operator: SentimentLabel;
+  sentiment_operator_score: number;
+  speaker_turns: SpeakerTurn[];
   call_outcome: string;
   client_intent: string;
   decision_status: string;
@@ -45,20 +53,37 @@ type AnalysisResult = {
   confidence: number;
 };
 
+const SENTIMENT_ENUM = ["very_negative", "negative", "neutral", "positive", "very_positive", "undetermined"];
+
 const ANALYSIS_TOOL = {
   type: "function" as const,
   function: {
     name: "analyze_call",
-    description: "Classifica una trascrizione di chiamata su più dimensioni.",
+    description: "Classifica una trascrizione di chiamata, attribuendo ogni turno a cliente o operatore.",
     parameters: {
       type: "object",
       properties: {
         summary: { type: "string", description: "Riassunto breve (max 400 caratteri)" },
-        sentiment: {
-          type: "string",
-          enum: ["very_negative", "negative", "neutral", "positive", "very_positive", "undetermined"],
-        },
+        sentiment: { type: "string", enum: SENTIMENT_ENUM, description: "Sentiment complessivo" },
         sentiment_score: { type: "number", description: "-1 (molto negativo) … +1 (molto positivo)" },
+        sentiment_customer: { type: "string", enum: SENTIMENT_ENUM, description: "Sentiment del cliente" },
+        sentiment_customer_score: { type: "number", description: "-1..+1 cliente" },
+        sentiment_operator: { type: "string", enum: SENTIMENT_ENUM, description: "Sentiment dell'operatore" },
+        sentiment_operator_score: { type: "number", description: "-1..+1 operatore" },
+        speaker_turns: {
+          type: "array",
+          description: "Sequenza ordinata di turni; etichetta speaker per ciascuno.",
+          items: {
+            type: "object",
+            properties: {
+              speaker: { type: "string", enum: ["customer", "operator"] },
+              text: { type: "string" },
+              sentiment: { type: "string", enum: SENTIMENT_ENUM },
+            },
+            required: ["speaker", "text"],
+            additionalProperties: false,
+          },
+        },
         call_outcome: {
           type: "string",
           enum: ["confirmed", "to_callback", "appointment_cancelled", "appointment_rescheduled", "rejection", "interrupted"],
@@ -86,7 +111,11 @@ const ANALYSIS_TOOL = {
         confidence: { type: "number", description: "0..1" },
       },
       required: [
-        "summary", "sentiment", "sentiment_score", "call_outcome", "client_intent",
+        "summary", "sentiment", "sentiment_score",
+        "sentiment_customer", "sentiment_customer_score",
+        "sentiment_operator", "sentiment_operator_score",
+        "speaker_turns",
+        "call_outcome", "client_intent",
         "decision_status", "objection_type", "clinical_interest", "call_quality",
         "notes", "keywords", "channel", "confidence",
       ],
@@ -94,6 +123,7 @@ const ANALYSIS_TOOL = {
     },
   },
 };
+
 
 async function downloadAudio(url: string): Promise<{ blob: Blob; filename: string }> {
   if (!/^https:\/\//i.test(url)) throw new Error("recording_url must be https");
