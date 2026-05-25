@@ -2753,6 +2753,56 @@ export type Database = {
           },
         ]
       }
+      brand_data_retention_config: {
+        Row: {
+          alert_events_retention_days: number | null
+          brand_id: string
+          call_audio_retention_days: number | null
+          call_transcript_retention_days: number | null
+          created_at: string
+          dpia_acknowledged_at: string | null
+          dpia_acknowledged_by: string | null
+          dpia_version: string | null
+          notes: string | null
+          sheets_export_logs_retention_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          alert_events_retention_days?: number | null
+          brand_id: string
+          call_audio_retention_days?: number | null
+          call_transcript_retention_days?: number | null
+          created_at?: string
+          dpia_acknowledged_at?: string | null
+          dpia_acknowledged_by?: string | null
+          dpia_version?: string | null
+          notes?: string | null
+          sheets_export_logs_retention_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          alert_events_retention_days?: number | null
+          brand_id?: string
+          call_audio_retention_days?: number | null
+          call_transcript_retention_days?: number | null
+          created_at?: string
+          dpia_acknowledged_at?: string | null
+          dpia_acknowledged_by?: string | null
+          dpia_version?: string | null
+          notes?: string | null
+          sheets_export_logs_retention_days?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_data_retention_config_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_perf_sheet_config: {
         Row: {
           brand_id: string
@@ -4575,6 +4625,42 @@ export type Database = {
           metric?: string
           total?: number
           value?: number
+        }
+        Relationships: []
+      }
+      data_retention_runs: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          dry_run: boolean
+          error: string | null
+          id: number
+          results: Json
+          total_affected: number
+          triggered_by: string | null
+          triggered_via: string
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          dry_run: boolean
+          error?: string | null
+          id?: number
+          results?: Json
+          total_affected?: number
+          triggered_by?: string | null
+          triggered_via?: string
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          dry_run?: boolean
+          error?: string | null
+          id?: number
+          results?: Json
+          total_affected?: number
+          triggered_by?: string | null
+          triggered_via?: string
         }
         Relationships: []
       }
@@ -14948,6 +15034,14 @@ export type Database = {
         Args: { p_brand_id?: string; p_dry_run?: boolean }
         Returns: Json
       }
+      run_data_retention_cleanup: {
+        Args: {
+          p_brand_id?: string
+          p_dry_run?: boolean
+          p_triggered_via?: string
+        }
+        Returns: Json
+      }
       search_appointments: {
         Args: {
           p_brand_id: string
@@ -15301,6 +15395,37 @@ export type Database = {
           p_scope: string
         }
         Returns: string
+      }
+      upsert_brand_retention_config: {
+        Args: {
+          p_alert_events_retention_days: number
+          p_brand_id: string
+          p_call_audio_retention_days: number
+          p_call_transcript_retention_days: number
+          p_dpia_acknowledge?: boolean
+          p_dpia_version?: string
+          p_notes?: string
+          p_sheets_export_logs_retention_days: number
+        }
+        Returns: {
+          alert_events_retention_days: number | null
+          brand_id: string
+          call_audio_retention_days: number | null
+          call_transcript_retention_days: number | null
+          created_at: string
+          dpia_acknowledged_at: string | null
+          dpia_acknowledged_by: string | null
+          dpia_version: string | null
+          notes: string | null
+          sheets_export_logs_retention_days: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "brand_data_retention_config"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       upsert_clinical_topics_from_strings: {
         Args: {
