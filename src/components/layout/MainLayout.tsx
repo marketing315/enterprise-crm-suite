@@ -198,6 +198,7 @@ const NAV_SECTIONS: NavSectionDef[] = [
     items: [
       { icon: BarChart3, label: 'Analytics', path: '/admin/analytics', audience: 'weekly', adminOnly: true },
       { icon: LineChart, label: 'Dashboard CEO', path: '/ceo-dashboard', audience: 'weekly', requiresRole: ['admin', 'ceo'] },
+      { icon: TrendingUp, label: 'Performance Hub', path: '/performance', audience: 'weekly', requiresRole: ['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter'], description: 'Suite completa Dashboard Performance: canali, call center, venditori' },
       { icon: TrendingUp, label: 'Performance venditori', path: '/team/salespersons', audience: 'weekly', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
       { icon: Headphones, label: 'Performance call center', path: '/admin/callcenter-kpi', audience: 'weekly', adminOnly: true },
       { icon: TrendingUp, label: 'Andamento ticket', path: '/admin/ticket-trend', audience: 'weekly', adminOnly: true },

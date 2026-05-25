@@ -94,6 +94,7 @@ const MarketingCosts = lazy(() => import("@/pages/marketing/MarketingCosts"));
 const MarketingReports = lazy(() => import("@/pages/marketing/MarketingReports"));
 const MarketingLeads = lazy(() => import("@/pages/marketing/MarketingLeads"));
 const MarketingPerformance = lazy(() => import("@/pages/marketing/MarketingPerformance"));
+const PerformanceHub = lazy(() => import("@/pages/PerformanceHub"));
 
 const CeoDashboard = lazy(() => import("@/pages/CeoDashboard"));
 const Install = lazy(() => import("@/pages/Install"));
@@ -221,6 +222,7 @@ const App = () => (
                     <Route path="/marketing/report" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingReports /></RoleGuard>} />
                     <Route path="/marketing/leads" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><MarketingLeads /></RoleGuard>} />
                     <Route path="/marketing/performance" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione']}><MarketingPerformance /></RoleGuard>} />
+                    <Route path="/performance" element={<RoleGuard allowedRoles={['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter']}><PerformanceHub /></RoleGuard>} />
 
                     <Route path="/settings" element={<RoleGuard allowedRoles={['admin', 'ceo']}><Settings /></RoleGuard>} />
                     <Route path="/settings/sales-route" element={<RoleGuard allowedRoles={['admin', 'ceo', 'responsabile_venditori']}><SettingsSalesRoute /></RoleGuard>} />
