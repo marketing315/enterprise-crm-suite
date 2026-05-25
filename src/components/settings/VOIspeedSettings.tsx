@@ -118,6 +118,7 @@ export function VOIspeedSettings() {
             enable_realtime_poll: !!newConfig.enable_realtime_poll,
             poll_agents_service: newConfig.poll_agents_service || "agents_status",
             poll_queues_service: newConfig.poll_queues_service || "queues_stats",
+            poll_ivr_service: newConfig.poll_ivr_service || "ivr_tree",
           });
         if (error) throw error;
       }
