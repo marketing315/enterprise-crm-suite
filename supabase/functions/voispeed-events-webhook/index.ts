@@ -27,6 +27,10 @@ interface VOIspeedEvent {
   request_id?: string;
   error_code?: string;
   error_msg?: string;
+  // F6 step #3 — GDPR consent capture via IVR
+  ivr_node?: string;     // voispeed_ivr_id of the node that fired the event
+  dtmf?: string;         // DTMF digit pressed by the caller
+  announcement_id?: string; // audio prompt id (when event_name='ivr_announcement')
 }
 
 // Normalize a phone number to E.164 (e.g. "+39800123456"). Returns null when
