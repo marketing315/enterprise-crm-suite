@@ -228,6 +228,11 @@ export default function CallcenterWallboard() {
         </CardContent>
       </Card>
 
+      {/* F6 — Live agenti & code VoiSpeed (Realtime) */}
+      {currentBrand?.id && <LiveAgentsPanel brandId={currentBrand.id} />}
+
+
+
       {/* KPI globali */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiTile icon={<PhoneCall className="w-4 h-4" />} label="Chiamate" value={fmtNum(totals.total)} />
