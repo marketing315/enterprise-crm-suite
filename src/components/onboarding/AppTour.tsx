@@ -64,47 +64,82 @@ export function AppTour() {
           return;
         }
 
+        const hasInsightAccess =
+          isAdmin ||
+          isCeo ||
+          hasRole?.('amministrazione') ||
+          hasRole?.('responsabile_venditori') ||
+          hasRole?.('responsabile_callcenter');
+
+        const steps: DriveStep[] = [
+          {
+            popover: {
+              title: '👋 Benvenuto nel CRM Gruppo Benessere',
+              description:
+                'Ti guido in 60 secondi tra le sezioni principali. Puoi rivedere il tour quando vuoi dal menu utente in basso a sinistra.',
+            },
+          },
+          {
+            element: '[data-tour="brand-selector"]',
+            popover: {
+              title: '1 · Selettore brand',
+              description:
+                'Scegli su quale brand operare. <b>Tutte le viste, KPI e notifiche</b> vengono filtrate sul brand attivo. Gli amministratori vedono anche il brand di sistema (vista aggregata).',
+            },
+          },
+          {
+            element: '[data-tour="nav-daily"]',
+            popover: {
+              title: '2 · Operatività quotidiana',
+              description:
+                '<b>Dashboard, Contatti, Pipeline, Appuntamenti, Ticket e Chat</b>: tutto ciò che usi ogni giorno per gestire lead e clienti, con realtime e ricerca globale (⌘K).',
+            },
+          },
+          {
+            element: '[data-tour="notifications"]',
+            popover: {
+              title: '3 · Centro notifiche',
+              description:
+                'Nuovi lead, escalation ticket, SLA in scadenza e alert performance compaiono qui in tempo reale. Clicca la campanella per gestire le sottoscrizioni push.',
+            },
+          },
+          ...(hasInsightAccess
+            ? [
+                {
+                  element: '[data-tour="nav-insight"]',
+                  popover: {
+                    title: '4 · Performance Hub & Insight',
+                    description:
+                      'Accedi al nuovo <b>Performance Hub</b> con marketing, call center wallboard, foglio venditori, trascrizioni AI, alert configurabili e retention. Una suite C-Level per pilotare il business.',
+                  },
+                } satisfies DriveStep,
+              ]
+            : []),
+          {
+            element: '[data-tour="new-contact"]',
+            popover: {
+              title: hasInsightAccess ? '5 · Crea il primo contatto' : '4 · Crea il primo contatto',
+              description:
+                'Quando sei pronto, parti da qui per inserire un contatto. Telefono ed email vengono deduplicati in automatico per evitare doppioni.',
+            },
+          },
+          {
+            popover: {
+              title: '🎉 Sei pronto a partire',
+              description:
+                'Tip: puoi <b>rivedere questo tour</b> in qualsiasi momento dal menu utente. Per aiuto rapido, premi <kbd>⌘K</kbd> (Mac) o <kbd>Ctrl+K</kbd> (Windows).',
+            },
+          },
+        ];
+
         const d = driver({
           showProgress: true,
           allowClose: true,
           nextBtnText: 'Avanti',
           prevBtnText: 'Indietro',
-          doneBtnText: 'Fine',
+          doneBtnText: 'Inizia',
           progressText: '{{current}} di {{total}}',
-          steps: [
-            {
-              element: '[data-tour="brand-selector"]',
-              popover: {
-                title: 'Selettore brand',
-                description:
-                  'Da qui scegli su quale brand stai lavorando. Tutte le viste sono filtrate sul brand attivo.',
-              },
-            },
-            {
-              element: '[data-tour="nav-daily"]',
-              popover: {
-                title: 'Le tue attività quotidiane',
-                description:
-                  'Dashboard, Contatti, Pipeline, Appuntamenti, Ticket e Chat: tutto ciò che usi ogni giorno.',
-              },
-            },
-            {
-              element: '[data-tour="notifications"]',
-              popover: {
-                title: 'Notifiche',
-                description:
-                  'Nuovi lead, ticket urgenti e avvisi importanti compaiono qui in tempo reale.',
-              },
-            },
-            {
-              element: '[data-tour="new-contact"]',
-              popover: {
-                title: 'Crea il tuo primo contatto',
-                description:
-                  'Quando sei pronto, parti da qui per inserire il primo contatto nel CRM.',
-              },
-            },
-          ],
+          steps,
           onDestroyed: async () => {
             if (markComplete) {
               try {
@@ -120,7 +155,7 @@ export function AppTour() {
         d.drive();
       }, 400);
     },
-    [isAuthenticated, hasBrandSelected, location.pathname, navigate, completeTour, refetch],
+    [isAuthenticated, hasBrandSelected, location.pathname, navigate, completeTour, refetch, isAdmin, isCeo, hasRole],
   );
 
   // Auto-start quando tutte le condizioni sono soddisfatte
