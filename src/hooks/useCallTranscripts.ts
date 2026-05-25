@@ -20,6 +20,13 @@ export interface CallTranscript {
   // F3 extensions
   sentiment?: string | null;
   sentiment_score?: number | null;
+  // F3-bis: diarization & per-speaker sentiment
+  sentiment_customer?: string | null;
+  sentiment_customer_score?: number | null;
+  sentiment_operator?: string | null;
+  sentiment_operator_score?: number | null;
+  speaker_turns?: Array<{ speaker: "customer" | "operator"; text: string; sentiment?: string }> | null;
+  diarization_status?: string | null;
   call_outcome?: string | null;
   notes?: string | null;
   keywords?: string[] | null;

@@ -29,10 +29,18 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // Whisper hard limit
 const SWEEP_LIMIT_DEFAULT = 5;
 
+type SentimentLabel = "very_negative" | "negative" | "neutral" | "positive" | "very_positive" | "undetermined";
+type SpeakerTurn = { speaker: "customer" | "operator"; text: string; sentiment?: SentimentLabel };
+
 type AnalysisResult = {
   summary: string;
-  sentiment: "very_negative" | "negative" | "neutral" | "positive" | "very_positive" | "undetermined";
+  sentiment: SentimentLabel;
   sentiment_score: number;
+  sentiment_customer: SentimentLabel;
+  sentiment_customer_score: number;
+  sentiment_operator: SentimentLabel;
+  sentiment_operator_score: number;
+  speaker_turns: SpeakerTurn[];
   call_outcome: string;
   client_intent: string;
   decision_status: string;
@@ -45,20 +53,37 @@ type AnalysisResult = {
   confidence: number;
 };
 
+const SENTIMENT_ENUM = ["very_negative", "negative", "neutral", "positive", "very_positive", "undetermined"];
+
 const ANALYSIS_TOOL = {
   type: "function" as const,
   function: {
     name: "analyze_call",
-    description: "Classifica una trascrizione di chiamata su più dimensioni.",
+    description: "Classifica una trascrizione di chiamata, attribuendo ogni turno a cliente o operatore.",
     parameters: {
       type: "object",
       properties: {
         summary: { type: "string", description: "Riassunto breve (max 400 caratteri)" },
-        sentiment: {
-          type: "string",
-          enum: ["very_negative", "negative", "neutral", "positive", "very_positive", "undetermined"],
-        },
+        sentiment: { type: "string", enum: SENTIMENT_ENUM, description: "Sentiment complessivo" },
         sentiment_score: { type: "number", description: "-1 (molto negativo) … +1 (molto positivo)" },
+        sentiment_customer: { type: "string", enum: SENTIMENT_ENUM, description: "Sentiment del cliente" },
+        sentiment_customer_score: { type: "number", description: "-1..+1 cliente" },
+        sentiment_operator: { type: "string", enum: SENTIMENT_ENUM, description: "Sentiment dell'operatore" },
+        sentiment_operator_score: { type: "number", description: "-1..+1 operatore" },
+        speaker_turns: {
+          type: "array",
+          description: "Sequenza ordinata di turni; etichetta speaker per ciascuno.",
+          items: {
+            type: "object",
+            properties: {
+              speaker: { type: "string", enum: ["customer", "operator"] },
+              text: { type: "string" },
+              sentiment: { type: "string", enum: SENTIMENT_ENUM },
+            },
+            required: ["speaker", "text"],
+            additionalProperties: false,
+          },
+        },
         call_outcome: {
           type: "string",
           enum: ["confirmed", "to_callback", "appointment_cancelled", "appointment_rescheduled", "rejection", "interrupted"],
@@ -86,7 +111,11 @@ const ANALYSIS_TOOL = {
         confidence: { type: "number", description: "0..1" },
       },
       required: [
-        "summary", "sentiment", "sentiment_score", "call_outcome", "client_intent",
+        "summary", "sentiment", "sentiment_score",
+        "sentiment_customer", "sentiment_customer_score",
+        "sentiment_operator", "sentiment_operator_score",
+        "speaker_turns",
+        "call_outcome", "client_intent",
         "decision_status", "objection_type", "clinical_interest", "call_quality",
         "notes", "keywords", "channel", "confidence",
       ],
@@ -94,6 +123,7 @@ const ANALYSIS_TOOL = {
     },
   },
 };
+
 
 async function downloadAudio(url: string): Promise<{ blob: Blob; filename: string }> {
   if (!/^https:\/\//i.test(url)) throw new Error("recording_url must be https");
@@ -131,7 +161,14 @@ async function whisperTranscribe(blob: Blob, filename: string): Promise<{ text: 
   return { text: String(json.text ?? "").trim(), durationSec: json.duration ? Math.round(json.duration) : undefined };
 }
 
-async function analyzeWithGemini(transcript: string): Promise<AnalysisResult> {
+async function analyzeWithGemini(transcript: string, callType?: string | null): Promise<AnalysisResult> {
+  const direction =
+    callType === "inbound"
+      ? "La chiamata è INBOUND: il primo a parlare è quasi sempre l'operatore (saluto aziendale), poi il cliente."
+      : callType === "outbound"
+        ? "La chiamata è OUTBOUND: il primo a parlare è quasi sempre il cliente (pronto?), poi l'operatore si presenta."
+        : "Direzione della chiamata sconosciuta: usa i contenuti per dedurre chi è cliente e chi operatore.";
+
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -144,7 +181,11 @@ async function analyzeWithGemini(transcript: string): Promise<AnalysisResult> {
         {
           role: "system",
           content:
-            "Sei un analista di chiamate commerciali nel settore medicale. Classifica la trascrizione lungo le dimensioni richieste. Sii conservativo: se mancano segnali espliciti, usa valori 'undetermined'/'none'/'interrupted'. Rispondi sempre invocando lo strumento.",
+            "Sei un analista di chiamate commerciali nel settore medicale. " +
+            "Ricostruisci i turni di parola assegnando ogni frase a 'customer' o 'operator' (diarizzazione semantica) " +
+            "e calcola sentiment separato per ciascuno. " +
+            direction + " " +
+            "Sii conservativo: se i segnali sono ambigui usa 'undetermined'/'none'/'interrupted'. Rispondi sempre invocando lo strumento.",
         },
         { role: "user", content: `Analizza questa trascrizione:\n\n${transcript.slice(0, 12000)}` },
       ],
@@ -167,6 +208,7 @@ async function analyzeWithGemini(transcript: string): Promise<AnalysisResult> {
   return parsed;
 }
 
+
 async function processOne(supabase: ReturnType<typeof createClient>, transcriptId: string): Promise<void> {
   // Claim row (pending → processing)
   const { data: claimed, error: claimErr } = await supabase
@@ -174,13 +216,24 @@ async function processOne(supabase: ReturnType<typeof createClient>, transcriptI
     .update({ stt_status: "processing", ai_status: "processing", updated_at: new Date().toISOString() })
     .eq("id", transcriptId)
     .eq("stt_status", "pending")
-    .select("id, recording_url, full_text")
+    .select("id, recording_url, full_text, call_log_id")
     .maybeSingle();
 
   if (claimErr) throw claimErr;
   if (!claimed) {
     console.log(`[call-transcribe] ${transcriptId} not pending, skipping`);
     return;
+  }
+
+  // Lookup call direction for diarization hint
+  let callType: string | null = null;
+  if (claimed.call_log_id) {
+    const { data: cl } = await supabase
+      .from("call_logs")
+      .select("call_type")
+      .eq("id", claimed.call_log_id as string)
+      .maybeSingle();
+    callType = (cl?.call_type as string | null) ?? null;
   }
 
   const t0 = Date.now();
@@ -213,14 +266,21 @@ async function processOne(supabase: ReturnType<typeof createClient>, transcriptI
       updated_at: new Date().toISOString(),
     }).eq("id", transcriptId);
 
-    // Analysis
-    const analysis = await analyzeWithGemini(text);
+    // Analysis (with diarization)
+    const analysis = await analyzeWithGemini(text, callType);
+    const diarizationOk = Array.isArray(analysis.speaker_turns) && analysis.speaker_turns.length > 0;
     await supabase.from("call_transcripts").update({
       ai_status: "completed",
       ai_model: "google/gemini-3-flash-preview",
       summary: analysis.summary,
       sentiment: analysis.sentiment,
       sentiment_score: analysis.sentiment_score,
+      sentiment_customer: analysis.sentiment_customer ?? null,
+      sentiment_customer_score: analysis.sentiment_customer_score ?? null,
+      sentiment_operator: analysis.sentiment_operator ?? null,
+      sentiment_operator_score: analysis.sentiment_operator_score ?? null,
+      speaker_turns: diarizationOk ? analysis.speaker_turns : null,
+      diarization_status: diarizationOk ? "completed" : "failed",
       call_outcome: analysis.call_outcome,
       client_intent: analysis.client_intent,
       decision_status: analysis.decision_status,
@@ -246,6 +306,7 @@ async function processOne(supabase: ReturnType<typeof createClient>, transcriptI
     }).eq("id", transcriptId);
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
