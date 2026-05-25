@@ -216,13 +216,24 @@ async function processOne(supabase: ReturnType<typeof createClient>, transcriptI
     .update({ stt_status: "processing", ai_status: "processing", updated_at: new Date().toISOString() })
     .eq("id", transcriptId)
     .eq("stt_status", "pending")
-    .select("id, recording_url, full_text")
+    .select("id, recording_url, full_text, call_log_id")
     .maybeSingle();
 
   if (claimErr) throw claimErr;
   if (!claimed) {
     console.log(`[call-transcribe] ${transcriptId} not pending, skipping`);
     return;
+  }
+
+  // Lookup call direction for diarization hint
+  let callType: string | null = null;
+  if (claimed.call_log_id) {
+    const { data: cl } = await supabase
+      .from("call_logs")
+      .select("call_type")
+      .eq("id", claimed.call_log_id as string)
+      .maybeSingle();
+    callType = (cl?.call_type as string | null) ?? null;
   }
 
   const t0 = Date.now();
@@ -255,14 +266,21 @@ async function processOne(supabase: ReturnType<typeof createClient>, transcriptI
       updated_at: new Date().toISOString(),
     }).eq("id", transcriptId);
 
-    // Analysis
-    const analysis = await analyzeWithGemini(text);
+    // Analysis (with diarization)
+    const analysis = await analyzeWithGemini(text, callType);
+    const diarizationOk = Array.isArray(analysis.speaker_turns) && analysis.speaker_turns.length > 0;
     await supabase.from("call_transcripts").update({
       ai_status: "completed",
       ai_model: "google/gemini-3-flash-preview",
       summary: analysis.summary,
       sentiment: analysis.sentiment,
       sentiment_score: analysis.sentiment_score,
+      sentiment_customer: analysis.sentiment_customer ?? null,
+      sentiment_customer_score: analysis.sentiment_customer_score ?? null,
+      sentiment_operator: analysis.sentiment_operator ?? null,
+      sentiment_operator_score: analysis.sentiment_operator_score ?? null,
+      speaker_turns: diarizationOk ? analysis.speaker_turns : null,
+      diarization_status: diarizationOk ? "completed" : "failed",
       call_outcome: analysis.call_outcome,
       client_intent: analysis.client_intent,
       decision_status: analysis.decision_status,
@@ -288,6 +306,7 @@ async function processOne(supabase: ReturnType<typeof createClient>, transcriptI
     }).eq("id", transcriptId);
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
