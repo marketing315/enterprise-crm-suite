@@ -19,6 +19,11 @@ interface VOIspeedConfig {
   token: string;
   domain: string;
   enabled: boolean;
+  enable_realtime_poll?: boolean;
+  poll_agents_service?: string;
+  poll_queues_service?: string;
+  last_poll_at?: string | null;
+  last_poll_error?: string | null;
 }
 
 export function VOIspeedSettings() {
