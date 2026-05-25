@@ -38,6 +38,9 @@ export default function AdminCallConsent() {
   const [audioUrl, setAudioUrl] = useState("");
   const [ivrRequired, setIvrRequired] = useState(false);
   const [policyVersion, setPolicyVersion] = useState("v1");
+  const [dtmfGiven, setDtmfGiven] = useState("1");
+  const [dtmfDenied, setDtmfDenied] = useState("2");
+  const [ivrNodeId, setIvrNodeId] = useState("");
 
   useEffect(() => {
     if (cfgQ.data) {
@@ -45,6 +48,9 @@ export default function AdminCallConsent() {
       setAudioUrl(cfgQ.data.ivr_announcement_audio_url ?? "");
       setIvrRequired(cfgQ.data.ivr_consent_required);
       setPolicyVersion(cfgQ.data.policy_version);
+      setDtmfGiven(cfgQ.data.ivr_dtmf_consent_given ?? "1");
+      setDtmfDenied(cfgQ.data.ivr_dtmf_consent_denied ?? "2");
+      setIvrNodeId(cfgQ.data.ivr_consent_node_id ?? "");
     }
   }, [cfgQ.data]);
 
@@ -64,6 +70,9 @@ export default function AdminCallConsent() {
         ivr_announcement_audio_url: audioUrl.trim() || null,
         ivr_consent_required: ivrRequired,
         policy_version: policyVersion.trim() || "v1",
+        ivr_dtmf_consent_given: dtmfGiven.trim() || "1",
+        ivr_dtmf_consent_denied: dtmfDenied.trim() || "2",
+        ivr_consent_node_id: ivrNodeId.trim() || null,
       });
       toast.success("Configurazione consenso salvata");
     } catch (e) {
@@ -137,6 +146,39 @@ export default function AdminCallConsent() {
                 <Label>Versione policy</Label>
                 <Input value={policyVersion} onChange={(e) => setPolicyVersion(e.target.value)} />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-border/40">
+                <div className="space-y-1">
+                  <Label>DTMF "acconsento"</Label>
+                  <Input
+                    value={dtmfGiven}
+                    onChange={(e) => setDtmfGiven(e.target.value)}
+                    placeholder="1"
+                    maxLength={2}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Tasto premuto dal chiamante per accettare la registrazione.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>DTMF "nego"</Label>
+                  <Input
+                    value={dtmfDenied}
+                    onChange={(e) => setDtmfDenied(e.target.value)}
+                    placeholder="2"
+                    maxLength={2}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Tasto premuto per negare; se premuto la registrazione viene disattivata.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Nodo IVR consenso (opzionale)</Label>
+                  <Input
+                    value={ivrNodeId}
+                    onChange={(e) => setIvrNodeId(e.target.value)}
+                    placeholder="es. consent_menu"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Se impostato, gli eventi DTMF da altri nodi IVR vengono ignorati.</p>
+                </div>
+              </div>
+
 
               <div className="flex items-center justify-between pt-2">
                 <Badge variant="secondary">Ultimo salvataggio: {cfgQ.data ? format(new Date(cfgQ.data.updated_at), "Pp", { locale: it }) : "mai"}</Badge>

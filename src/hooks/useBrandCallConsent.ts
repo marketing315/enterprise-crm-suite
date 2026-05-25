@@ -12,6 +12,9 @@ export interface BrandCallConsentConfig {
   ivr_announcement_audio_url: string | null;
   ivr_consent_required: boolean;
   policy_version: string;
+  ivr_dtmf_consent_given: string;
+  ivr_dtmf_consent_denied: string;
+  ivr_consent_node_id: string | null;
   updated_at: string;
 }
 
