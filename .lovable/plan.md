@@ -1,45 +1,56 @@
-# Dashboard Performance — Piano di consegna (vivo)
+## Obiettivo
+Aggiornare i pulsanti guida ("?" PageHelpButton in alto a destra su ogni pagina) per riflettere TUTTO ciò che è stato sviluppato nelle ultime fasi (F2-F5, Performance Hub, Meta CAPI, Onboarding, ecc.), così che ogni sezione abbia istruzioni chiare, aggiornate e C-Level.
 
-> Stato: F0 in corso. Aggiornato 2026-05-21.
+## Stato attuale
+Il file `src/components/layout/PageHelpButton.tsx` contiene un dizionario `pageHelpContent` con voci per ~22 route. Mancano o sono obsolete molte sezioni nuove introdotte di recente.
 
-## Decisioni vincolanti
-Salvate in `mem://features/dashboard-performance/decisions`.
+## Cosa aggiornare
 
-| Tema | Decisione |
-|------|-----------|
-| % cons su vend (#16) | Di periodo (consegne/ordini, individuale e totale) |
-| Imponibile (#19) | Scorporo flat 22% (lordo/1,22) |
-| Premi venditori | Base lorda, soglie versionate (`sales_bonus_tiers.valid_from/to`) |
-| Giorni lavorati / lavorativi mese | Auto calendario IT + override manuale per brand |
-| Lifecycle ordine | Multi-attore: CC, Venditore (suoi), Amministrazione, Bot AI |
-| Visibilità costi/CPL/CAC | Solo CEO + Admin + Amministrazione (`has_finance_access`) |
-| Attribuzione | Single-touch first-touch, precedenza Phone>Meta>UTM>Webhook>Group>Manuale>Organico |
-| Naming campagne | Alias interno `marketing_campaigns.name` editabile (ext_id read-only) |
-| Costi TV granularità | Per emittente / giorno + `cost_kind` (media/production/agency/other) |
-| Provider STT | OpenAI Whisper API via Lovable AI Gateway |
-| GDPR registrazione | Decisione rimandata a F3 (campo `consent_status` pronto) |
-| Retention audio/trascrizioni | NESSUN limite hard-coded, configurabile da Impostazioni |
+### A. Nuove voci da aggiungere (route oggi senza guida)
+1. `/performance` — Performance Hub (panoramica F0-F5, navigazione alle suite)
+2. `/sales/performance-sheet` — Foglio ESITO APPUNTAMENTI, bonus tier, export Sheet, IVA 22%
+3. `/sales/performance-sheet/:userId` — Drill-down venditore (funnel + trend 12m)
+4. `/callcenter/wallboard` — KPI live, filtri data, refresh configurabile, canale inbound
+5. `/callcenter/transcripts` — Trascrizioni Whisper, sentiment cliente/operatore, diarizzazione, filtri
+6. `/marketing/performance` — MV freshness, confronto A/B sorgenti, CPL, import costi CSV
+7. `/admin/performance-alerts` — Regole CPL/AnswerRate/Delivery/Sentiment, cooldown, eventi
+8. `/admin/data-retention` — DPIA, retention audio/transcripts/alert, dry-run cleanup
+9. `/admin/sheets-health` — SLO export Sheets, reconciliation, trigger critici
+10. `/admin/cron-jobs` — Registry cron, drift detection
+11. `/admin/incidents` — Error boundary report, retry budget
+12. `/admin/slo-board`, `/admin/observability`, `/admin/siem-export`, `/admin/sessions`, `/admin/quick-backup`, `/admin/contacts-dedup`, `/admin/data-quality`, `/admin/changelog`, `/admin/audit`, `/admin/capi-monitor`, `/admin/ai-decisions-drilldown`, `/admin/notification-webhooks`, `/admin/ticket-escalation-audit`, `/admin/setup`, `/admin/slow-queries`
+13. `/settings/security` — MFA, sessioni, idle timeout, password policy
 
-## Roadmap
+### B. Voci esistenti da aggiornare (contenuto obsoleto)
+- `/contacts` — aggiungere dedup admin, soft-delete, tag, quiz
+- `/pipeline` — aggiungere stale-deal (optimistic concurrency), AI tagging
+- `/appointments` — aggiungere risk score, sales availability, audit timeline, saved filters, bulk reassign (già citato, ma espandere)
+- `/tickets` — aggiungere auto-escalation, simulator, hierarchy
+- `/marketing` — sostituire con riferimento a `/marketing/performance` + Meta Lead Ads + CAPI
+- `/settings` — aggiungere VOIspeed, Meta OAuth, Google Sheets, Keplero, webhook sources, CAPI setup
+- `/dashboard` — aggiungere ruolo-aware (CEO/Admin/Sales/CallCenter)
+- `/azienda` — aggiungere CEO governance M13 (budget, ROI, spese)
+- `/team` — aggiungere RBAC, hierarchy, MFA enforcement
+- `/admin/ai`, `/admin/ai-metrics`, `/admin/dlq`, `/admin/webhooks` — refresh sintetico
 
-| Fase | Stato | Contenuto |
-|------|-------|-----------|
-| **F0** Fondamenta fonte | ✅ Migration applicata + pagina `/admin/tracking-numbers` live | `tracking_numbers` + estensioni `marketing_campaign_groups`/`lead_campaign_attribution`/`webhook_sources`/`marketing_costs` + CRUD numeri |
-| **F1** Canali & Costi (Modulo A) | ✅ Consegnato | Viste `v_channel_spend_daily` + `v_lead_cost`, RPC `get_channel_performance` (RLS via `has_finance_access`), pagina `/marketing/performance` con KPI roll-up + tabella canale + tree-picker (categoria/canale/campagna) + import CSV costi (granularità giorno × cost_kind × emittente) |
+### C. Struttura coerente per ogni voce
+Mantenere il pattern attuale:
+- `title` + `description` (1 frase C-level)
+- `quickActions` (massimo 3, ognuna con 3 step concreti)
+- `tips` (2-4 bullet)
+- `docsPath` quando esiste documentazione in `docs/`
 
-| **F2** Call Center base (Modulo B) | ✅ Consegnato | `call_logs.dnis+tracking_number_id`, RPC `get_operator_kpis` + `get_tracking_number_performance`, `voispeed-events-webhook` DID enrichment, pagina `/callcenter/wallboard` (poll 30s), sezione "Performance per numero verde" su `/marketing/performance` |
-| **F3** Trascrizione + Sentiment | ✅ Consegnato | `call_transcripts` esteso (sentiment/outcome/intent/decision/objection/clinical_interest/quality/keywords/consent/stt_status), edge `call-transcribe` (Whisper API + Gemini tool-call), RPC `list_call_transcripts` + `enqueue_call_transcript`, cron sweeper ogni 5min, pagina `/callcenter/transcripts` con filtri (sentiment/esito/periodo/full-text italiano) + sheet di dettaglio, sezione contatto arricchita con badge sentiment/esito. Consenso: flag `granted/denied/unknown` (processa sempre). Retention configurabile. |
-| **F4** Venditori (Modulo C) | ✅ Consegnato | Enum `order_lifecycle_status` (multi-attore CC/Venditore/Amministrazione/Bot AI), `sales_orders` esteso (`lifecycle_status`/`lifecycle_actor_role`/`signed_at`/`delivered_at`), tabella append-only `sales_order_lifecycle_events`, `sales_bonus_tiers` versionati (valid_from/to) brand-scoped, helper `compute_bonus_for_amount`, RPC `get_salesperson_kpis_v2`+`get_salesperson_kpis_aggregate` (vista Foglio: programmati/eseguiti/no-show/cancellati/% esecuzione/ordini/% vendita/lordo/imponibile lordo÷1,22/% consegne/bonus tier). Pagina `/sales/performance-sheet` con tabella 1:1 ESITO APPUNTAMENTI, footer aggregato brand, dialog admin tiers, export CSV. |
-| **F5** Rifiniture | 🟡 In corso | ✅ 1-4 (MV channel/salesperson daily + cron 15min, badge freshness, A/B compare marketing, per-fonte sales, drill-down venditore con funnel+trend). ✅ 5 alert performance (regole soglie CPL/answer-rate/deliveries/sentiment + RPC `evaluate_performance_alerts` + edge `performance-alerts-evaluator` cron 30min + mirror su `mcp_slo_alerts` + UI `/admin/performance-alerts`). ✅ 6 export Sheets (`brand_perf_sheet_config` + edge `sheets-export-performance` + cron 05:00 UTC + dialog su sheet vendite). ✅ 7 DPIA/retention (`brand_data_retention_config` + RPC `upsert_brand_retention_config`/`run_data_retention_cleanup` con dry-run + cron 03:30 IT + UI `/admin/data-retention` + `docs/dpia-call-recordings.md`). ⏳ 8 cohort delivery |
+### D. Matching route migliorato
+La logica attuale di fallback a parent path funziona, ma servono entry esplicite per i sotto-percorsi più visitati (`/sales/*`, `/callcenter/*`, `/marketing/*`, `/admin/*`).
 
-## Convenzioni cross-cutting
-- Tutte le migrations sono additive (rispetta `mem://constraint/appointments-data-safety`).
-- `p_source_filter jsonb` con shape `{ category?, channel_id?, campaign_id?, group_id?, tracking_number_id? }` su ogni RPC dei 3 moduli — validato lato client con `SourceFilterSchema` (Zod).
-- RLS brand-scoped via `has_finance_access(get_user_id(auth.uid()), brand_id)` per dati sensibili (costi/CPL).
-- Ogni fase: preview → review utente → publish manuale.
+## File coinvolti
+- `src/components/layout/PageHelpButton.tsx` — unica modifica (espansione del dizionario `pageHelpContent`).
+- Nessun cambio a logica, routing, design system o componenti UI: aggiornamento puramente di contenuti testuali.
 
-## File modificati F0
-- `supabase/migrations/*` — nuova tabella `tracking_numbers` + estensioni 4 tabelle esistenti
-- `src/components/shared/SourceFilterBar.tsx` — componente + Zod schema condiviso
-- `mem://features/dashboard-performance/decisions.md` — decisioni vincolanti
-- `mem://index.md` — riferimento alle decisioni
+## Non incluso
+- Nessuna modifica al tour onboarding (`AppTour.tsx`) — già aggiornato in iterazione precedente.
+- Nessun nuovo componente o route.
+- Nessun cambio a `docs/` (i link puntano a file già esistenti).
+
+## Conferma richiesta
+Confermi di voler aggiornare/aggiungere **tutte** le ~35 voci elencate sopra in `PageHelpButton.tsx`, oppure preferisci limitarti a un sottoinsieme (es. solo nuove F2-F5 + Performance Hub)?
