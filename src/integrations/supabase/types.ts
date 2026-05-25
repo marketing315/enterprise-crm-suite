@@ -11855,8 +11855,13 @@ export type Database = {
           created_at: string
           created_by: string | null
           domain: string | null
+          enable_realtime_poll: boolean
           enabled: boolean
           id: string
+          last_poll_at: string | null
+          last_poll_error: string | null
+          poll_agents_service: string
+          poll_queues_service: string
           token: string
           updated_at: string
         }
@@ -11866,8 +11871,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           domain?: string | null
+          enable_realtime_poll?: boolean
           enabled?: boolean
           id?: string
+          last_poll_at?: string | null
+          last_poll_error?: string | null
+          poll_agents_service?: string
+          poll_queues_service?: string
           token: string
           updated_at?: string
         }
@@ -11877,8 +11887,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           domain?: string | null
+          enable_realtime_poll?: boolean
           enabled?: boolean
           id?: string
+          last_poll_at?: string | null
+          last_poll_error?: string | null
+          poll_agents_service?: string
+          poll_queues_service?: string
           token?: string
           updated_at?: string
         }
