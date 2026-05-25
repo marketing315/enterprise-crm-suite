@@ -19,6 +19,11 @@ interface VOIspeedConfig {
   token: string;
   domain: string;
   enabled: boolean;
+  enable_realtime_poll?: boolean;
+  poll_agents_service?: string;
+  poll_queues_service?: string;
+  last_poll_at?: string | null;
+  last_poll_error?: string | null;
 }
 
 export function VOIspeedSettings() {
@@ -51,6 +56,9 @@ export function VOIspeedSettings() {
     token: "",
     domain: "",
     enabled: false,
+    enable_realtime_poll: false,
+    poll_agents_service: "agents_status",
+    poll_queues_service: "queues_stats",
   });
 
   useEffect(() => {
@@ -61,6 +69,11 @@ export function VOIspeedSettings() {
         token: config.token || "",
         domain: config.domain || "",
         enabled: config.enabled,
+        enable_realtime_poll: config.enable_realtime_poll ?? false,
+        poll_agents_service: config.poll_agents_service || "agents_status",
+        poll_queues_service: config.poll_queues_service || "queues_stats",
+        last_poll_at: config.last_poll_at ?? null,
+        last_poll_error: config.last_poll_error ?? null,
       });
     }
   }, [config]);
@@ -78,6 +91,9 @@ export function VOIspeedSettings() {
             token: newConfig.token,
             domain: newConfig.domain || null,
             enabled: newConfig.enabled,
+            enable_realtime_poll: !!newConfig.enable_realtime_poll,
+            poll_agents_service: newConfig.poll_agents_service || "agents_status",
+            poll_queues_service: newConfig.poll_queues_service || "queues_stats",
           })
           .eq("id", config.id);
         if (error) throw error;
@@ -91,6 +107,9 @@ export function VOIspeedSettings() {
             token: newConfig.token,
             domain: newConfig.domain || null,
             enabled: newConfig.enabled,
+            enable_realtime_poll: !!newConfig.enable_realtime_poll,
+            poll_agents_service: newConfig.poll_agents_service || "agents_status",
+            poll_queues_service: newConfig.poll_queues_service || "queues_stats",
           });
         if (error) throw error;
       }
@@ -235,6 +254,61 @@ export function VOIspeedSettings() {
             </code>
           </AlertDescription>
         </Alert>
+
+        {/* Wallboard live polling (F6) */}
+        <div className="rounded-lg border border-border bg-card/50 p-4 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="voispeed-realtime" className="text-base font-medium">
+                Wallboard live (polling SERI ogni 60s)
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Aggiorna in tempo reale stato operatori e statistiche code sul wallboard.
+                Richiede che i service <code>agents_status</code> e <code>queues_stats</code> siano abilitati lato VOIspeed.
+              </p>
+            </div>
+            <Switch
+              id="voispeed-realtime"
+              checked={!!formData.enable_realtime_poll}
+              onCheckedChange={(v) => setFormData((p) => ({ ...p, enable_realtime_poll: v }))}
+            />
+          </div>
+
+          {formData.enable_realtime_poll && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              <div className="space-y-1">
+                <Label htmlFor="poll-agents">Service operatori</Label>
+                <Input
+                  id="poll-agents"
+                  value={formData.poll_agents_service ?? ""}
+                  onChange={(e) => setFormData((p) => ({ ...p, poll_agents_service: e.target.value }))}
+                  placeholder="agents_status"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="poll-queues">Service code</Label>
+                <Input
+                  id="poll-queues"
+                  value={formData.poll_queues_service ?? ""}
+                  onChange={(e) => setFormData((p) => ({ ...p, poll_queues_service: e.target.value }))}
+                  placeholder="queues_stats"
+                />
+              </div>
+            </div>
+          )}
+
+          {formData.last_poll_at && (
+            <p className="text-xs text-muted-foreground">
+              Ultimo polling: {new Date(formData.last_poll_at).toLocaleString("it-IT")}
+              {formData.last_poll_error ? (
+                <span className="text-destructive"> — errore: {formData.last_poll_error}</span>
+              ) : (
+                <span className="text-emerald-600 dark:text-emerald-400"> — OK</span>
+              )}
+            </p>
+          )}
+        </div>
+
 
         {/* Documentation link */}
         <Button variant="outline" size="sm" asChild>
