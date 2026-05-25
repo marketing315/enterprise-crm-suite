@@ -507,7 +507,9 @@ export function MainLayout() {
             )}
 
             {/* Sezione Insight (collapsible, default chiuso salvo route attiva) */}
-            {visibleSections.filter(s => s.id === 'insight').map(renderSection)}
+            <div data-tour="nav-insight">
+              {visibleSections.filter(s => s.id === 'insight').map(renderSection)}
+            </div>
 
             {/* Sezione Configurazione */}
             {visibleSections.filter(s => s.id === 'config').map(renderSection)}
