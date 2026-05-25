@@ -76,8 +76,11 @@ export function VOIspeedSettings() {
         enable_realtime_poll: config.enable_realtime_poll ?? false,
         poll_agents_service: config.poll_agents_service || "agents_status",
         poll_queues_service: config.poll_queues_service || "queues_stats",
+        poll_ivr_service: config.poll_ivr_service || "ivr_tree",
         last_poll_at: config.last_poll_at ?? null,
         last_poll_error: config.last_poll_error ?? null,
+        last_ivr_sync_at: config.last_ivr_sync_at ?? null,
+        last_ivr_sync_error: config.last_ivr_sync_error ?? null,
       });
     }
   }, [config]);
