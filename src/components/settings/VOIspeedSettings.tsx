@@ -56,6 +56,9 @@ export function VOIspeedSettings() {
     token: "",
     domain: "",
     enabled: false,
+    enable_realtime_poll: false,
+    poll_agents_service: "agents_status",
+    poll_queues_service: "queues_stats",
   });
 
   useEffect(() => {
@@ -66,6 +69,11 @@ export function VOIspeedSettings() {
         token: config.token || "",
         domain: config.domain || "",
         enabled: config.enabled,
+        enable_realtime_poll: config.enable_realtime_poll ?? false,
+        poll_agents_service: config.poll_agents_service || "agents_status",
+        poll_queues_service: config.poll_queues_service || "queues_stats",
+        last_poll_at: config.last_poll_at ?? null,
+        last_poll_error: config.last_poll_error ?? null,
       });
     }
   }, [config]);
