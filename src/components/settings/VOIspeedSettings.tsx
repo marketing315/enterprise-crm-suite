@@ -306,6 +306,36 @@ export function VOIspeedSettings() {
             </div>
           )}
 
+          {/* IVR sync (daily) — independent from realtime polling */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/40">
+            <div className="space-y-1">
+              <Label htmlFor="poll-ivr">Service IVR tree (sync giornaliero)</Label>
+              <Input
+                id="poll-ivr"
+                value={formData.poll_ivr_service ?? ""}
+                onChange={(e) => setFormData((p) => ({ ...p, poll_ivr_service: e.target.value }))}
+                placeholder="ivr_tree"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Nome del servizio SERI che restituisce la struttura IVR (nodi + routing).
+              </p>
+            </div>
+            <div className="space-y-1 flex flex-col justify-end">
+              {formData.last_ivr_sync_at ? (
+                <p className="text-xs text-muted-foreground">
+                  Ultimo sync IVR: {new Date(formData.last_ivr_sync_at).toLocaleString("it-IT")}
+                  {formData.last_ivr_sync_error ? (
+                    <span className="text-destructive"> — errore: {formData.last_ivr_sync_error}</span>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400"> — OK</span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Sync IVR non ancora eseguito.</p>
+              )}
+            </div>
+          </div>
+
           {formData.last_poll_at && (
             <p className="text-xs text-muted-foreground">
               Ultimo polling: {new Date(formData.last_poll_at).toLocaleString("it-IT")}
