@@ -91,6 +91,9 @@ export function VOIspeedSettings() {
             token: newConfig.token,
             domain: newConfig.domain || null,
             enabled: newConfig.enabled,
+            enable_realtime_poll: !!newConfig.enable_realtime_poll,
+            poll_agents_service: newConfig.poll_agents_service || "agents_status",
+            poll_queues_service: newConfig.poll_queues_service || "queues_stats",
           })
           .eq("id", config.id);
         if (error) throw error;
@@ -104,6 +107,9 @@ export function VOIspeedSettings() {
             token: newConfig.token,
             domain: newConfig.domain || null,
             enabled: newConfig.enabled,
+            enable_realtime_poll: !!newConfig.enable_realtime_poll,
+            poll_agents_service: newConfig.poll_agents_service || "agents_status",
+            poll_queues_service: newConfig.poll_queues_service || "queues_stats",
           });
         if (error) throw error;
       }
