@@ -31,7 +31,7 @@ export function AppTour() {
   const { needsTour, refetch } = useOnboardingStatus();
   const completeTour = useCompleteTour();
   const { hasBrandSelected } = useBrand();
-  const { session, isLoading: authLoading } = useAuth();
+  const { session, isLoading: authLoading, isAdmin, isCeo, hasRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const driverRef = useRef<Driver | null>(null);
