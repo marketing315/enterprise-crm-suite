@@ -11858,9 +11858,12 @@ export type Database = {
           enable_realtime_poll: boolean
           enabled: boolean
           id: string
+          last_ivr_sync_at: string | null
+          last_ivr_sync_error: string | null
           last_poll_at: string | null
           last_poll_error: string | null
           poll_agents_service: string
+          poll_ivr_service: string
           poll_queues_service: string
           token: string
           updated_at: string
@@ -11874,9 +11877,12 @@ export type Database = {
           enable_realtime_poll?: boolean
           enabled?: boolean
           id?: string
+          last_ivr_sync_at?: string | null
+          last_ivr_sync_error?: string | null
           last_poll_at?: string | null
           last_poll_error?: string | null
           poll_agents_service?: string
+          poll_ivr_service?: string
           poll_queues_service?: string
           token: string
           updated_at?: string
@@ -11890,9 +11896,12 @@ export type Database = {
           enable_realtime_poll?: boolean
           enabled?: boolean
           id?: string
+          last_ivr_sync_at?: string | null
+          last_ivr_sync_error?: string | null
           last_poll_at?: string | null
           last_poll_error?: string | null
           poll_agents_service?: string
+          poll_ivr_service?: string
           poll_queues_service?: string
           token?: string
           updated_at?: string

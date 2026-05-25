@@ -22,8 +22,11 @@ interface VOIspeedConfig {
   enable_realtime_poll?: boolean;
   poll_agents_service?: string;
   poll_queues_service?: string;
+  poll_ivr_service?: string;
   last_poll_at?: string | null;
   last_poll_error?: string | null;
+  last_ivr_sync_at?: string | null;
+  last_ivr_sync_error?: string | null;
 }
 
 export function VOIspeedSettings() {
@@ -59,6 +62,7 @@ export function VOIspeedSettings() {
     enable_realtime_poll: false,
     poll_agents_service: "agents_status",
     poll_queues_service: "queues_stats",
+    poll_ivr_service: "ivr_tree",
   });
 
   useEffect(() => {
@@ -72,8 +76,11 @@ export function VOIspeedSettings() {
         enable_realtime_poll: config.enable_realtime_poll ?? false,
         poll_agents_service: config.poll_agents_service || "agents_status",
         poll_queues_service: config.poll_queues_service || "queues_stats",
+        poll_ivr_service: config.poll_ivr_service || "ivr_tree",
         last_poll_at: config.last_poll_at ?? null,
         last_poll_error: config.last_poll_error ?? null,
+        last_ivr_sync_at: config.last_ivr_sync_at ?? null,
+        last_ivr_sync_error: config.last_ivr_sync_error ?? null,
       });
     }
   }, [config]);
@@ -94,6 +101,7 @@ export function VOIspeedSettings() {
             enable_realtime_poll: !!newConfig.enable_realtime_poll,
             poll_agents_service: newConfig.poll_agents_service || "agents_status",
             poll_queues_service: newConfig.poll_queues_service || "queues_stats",
+            poll_ivr_service: newConfig.poll_ivr_service || "ivr_tree",
           })
           .eq("id", config.id);
         if (error) throw error;
@@ -110,6 +118,7 @@ export function VOIspeedSettings() {
             enable_realtime_poll: !!newConfig.enable_realtime_poll,
             poll_agents_service: newConfig.poll_agents_service || "agents_status",
             poll_queues_service: newConfig.poll_queues_service || "queues_stats",
+            poll_ivr_service: newConfig.poll_ivr_service || "ivr_tree",
           });
         if (error) throw error;
       }
@@ -296,6 +305,36 @@ export function VOIspeedSettings() {
               </div>
             </div>
           )}
+
+          {/* IVR sync (daily) — independent from realtime polling */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/40">
+            <div className="space-y-1">
+              <Label htmlFor="poll-ivr">Service IVR tree (sync giornaliero)</Label>
+              <Input
+                id="poll-ivr"
+                value={formData.poll_ivr_service ?? ""}
+                onChange={(e) => setFormData((p) => ({ ...p, poll_ivr_service: e.target.value }))}
+                placeholder="ivr_tree"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Nome del servizio SERI che restituisce la struttura IVR (nodi + routing).
+              </p>
+            </div>
+            <div className="space-y-1 flex flex-col justify-end">
+              {formData.last_ivr_sync_at ? (
+                <p className="text-xs text-muted-foreground">
+                  Ultimo sync IVR: {new Date(formData.last_ivr_sync_at).toLocaleString("it-IT")}
+                  {formData.last_ivr_sync_error ? (
+                    <span className="text-destructive"> — errore: {formData.last_ivr_sync_error}</span>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400"> — OK</span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Sync IVR non ancora eseguito.</p>
+              )}
+            </div>
+          </div>
 
           {formData.last_poll_at && (
             <p className="text-xs text-muted-foreground">
