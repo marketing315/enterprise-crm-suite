@@ -5,6 +5,7 @@ import 'driver.js/dist/driver.css';
 import { useOnboardingStatus, useCompleteTour } from '@/hooks/useOnboardingStatus';
 import { useBrand } from '@/contexts/BrandContext';
 import { useAuth } from '@/contexts/AuthContext';
+import type { DriveStep } from 'driver.js';
 
 /**
  * Tour interattivo 4-step. Si avvia una volta sola dopo welcome,
