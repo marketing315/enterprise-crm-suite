@@ -101,7 +101,7 @@ export function useLogCallConsent() {
         p_consent_action: args.consent_action,
         p_source: args.source ?? "operator",
         p_legal_basis: args.legal_basis ?? "consent",
-        p_metadata: args.metadata ?? null,
+        p_metadata: (args.metadata ?? null) as never,
       });
       if (error) throw error;
       return data as string;
