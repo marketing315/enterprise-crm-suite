@@ -22,8 +22,11 @@ interface VOIspeedConfig {
   enable_realtime_poll?: boolean;
   poll_agents_service?: string;
   poll_queues_service?: string;
+  poll_ivr_service?: string;
   last_poll_at?: string | null;
   last_poll_error?: string | null;
+  last_ivr_sync_at?: string | null;
+  last_ivr_sync_error?: string | null;
 }
 
 export function VOIspeedSettings() {
