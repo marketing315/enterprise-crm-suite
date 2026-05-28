@@ -37,6 +37,7 @@ import { NotificationPreferencesSettings } from "@/components/settings/Notificat
 import { WebPushSettings } from "@/components/settings/WebPushSettings";
 import { VoIPSettings } from "@/components/settings/VoIPSettings";
 import { VOIspeedSettings } from "@/components/settings/VOIspeedSettings";
+import { VoispeedIvrTree } from "@/components/settings/VoispeedIvrTree";
 import { AutomationSettings } from "@/components/settings/automation/AutomationSettings";
 import { ModuleGovernanceSettings } from "@/components/settings/ModuleGovernanceSettings";
 import { LeadDigestSettings } from "@/components/settings/digest/LeadDigestSettings";
@@ -146,6 +147,7 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
         <div className="space-y-6">
           <VoIPSettings />
           <VOIspeedSettings />
+          <VoispeedIvrTree />
         </div>
       );
     case "sheets":
