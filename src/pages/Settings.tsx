@@ -146,6 +146,7 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
         <div className="space-y-6">
           <VoIPSettings />
           <VOIspeedSettings />
+          <VoispeedIvrTree />
         </div>
       );
     case "sheets":
