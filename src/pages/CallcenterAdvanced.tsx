@@ -9,7 +9,7 @@
  *
  * Tutti i dati sono read-only e realtime via `voispeed-status-poll` + `voispeed-ivr-sync`.
  */
-import { Helmet } from "react-helmet-async";
+import { useEffect } from "react";
 import { Radio } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,12 +19,15 @@ import { VoispeedIvrTree } from "@/components/settings/VoispeedIvrTree";
 export default function CallcenterAdvanced() {
   const { currentBrand } = useBrand();
 
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "Centralino avanzato · VoiSpeed";
+    return () => { document.title = prev; };
+  }, []);
+
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <Helmet>
-        <title>Centralino avanzato · VoiSpeed</title>
-        <meta name="description" content="Wallboard live VoiSpeed: agenti, code, IVR e instradamento in tempo reale." />
-      </Helmet>
+
 
       <header className="flex items-start justify-between gap-4">
         <div>
