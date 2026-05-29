@@ -80,6 +80,7 @@ import {
   Globe,
   ArrowLeftRight,
   Search,
+  Bell,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { GlobalSearchDialog } from '@/components/search/GlobalSearchDialog';
