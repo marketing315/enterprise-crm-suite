@@ -11980,6 +11980,122 @@ export type Database = {
           },
         ]
       }
+      voispeed_queue_alert_events: {
+        Row: {
+          brand_id: string
+          comparator: string
+          fired_at: string
+          id: string
+          metric: string
+          observed_value: number
+          queue_name: string
+          rule_id: string
+          severity: string
+          snapshot_ts: string | null
+          threshold: number
+        }
+        Insert: {
+          brand_id: string
+          comparator: string
+          fired_at?: string
+          id?: string
+          metric: string
+          observed_value: number
+          queue_name: string
+          rule_id: string
+          severity: string
+          snapshot_ts?: string | null
+          threshold: number
+        }
+        Update: {
+          brand_id?: string
+          comparator?: string
+          fired_at?: string
+          id?: string
+          metric?: string
+          observed_value?: number
+          queue_name?: string
+          rule_id?: string
+          severity?: string
+          snapshot_ts?: string | null
+          threshold?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voispeed_queue_alert_events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voispeed_queue_alert_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "voispeed_queue_alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voispeed_queue_alert_rules: {
+        Row: {
+          brand_id: string
+          comparator: string
+          cooldown_minutes: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          metric: string
+          name: string
+          notes: string | null
+          queue_name: string | null
+          severity: string
+          threshold: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          comparator?: string
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          metric: string
+          name: string
+          notes?: string | null
+          queue_name?: string | null
+          severity?: string
+          threshold: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          comparator?: string
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          metric?: string
+          name?: string
+          notes?: string | null
+          queue_name?: string | null
+          severity?: string
+          threshold?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voispeed_queue_alert_rules_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voispeed_queue_stats: {
         Row: {
           abandoned_15m: number | null
@@ -13671,6 +13787,19 @@ export type Database = {
           event_id: string
           metric: string
           observed_value: number
+          rule_id: string
+          rule_name: string
+          severity: string
+          threshold: number
+        }[]
+      }
+      evaluate_voispeed_queue_alerts: {
+        Args: { p_brand_id: string }
+        Returns: {
+          event_id: string
+          metric: string
+          observed_value: number
+          queue_name: string
           rule_id: string
           rule_name: string
           severity: string
