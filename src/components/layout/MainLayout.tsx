@@ -80,6 +80,7 @@ import {
   Globe,
   ArrowLeftRight,
   Search,
+  Bell,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { GlobalSearchDialog } from '@/components/search/GlobalSearchDialog';
@@ -201,6 +202,7 @@ const NAV_SECTIONS: NavSectionDef[] = [
       { icon: TrendingUp, label: 'Performance Hub', path: '/performance', audience: 'weekly', requiresRole: ['admin', 'ceo', 'amministrazione', 'responsabile_venditori', 'responsabile_callcenter'], description: 'Suite completa Dashboard Performance: canali, call center, venditori' },
       { icon: TrendingUp, label: 'Performance venditori', path: '/team/salespersons', audience: 'weekly', requiresRole: ['admin', 'ceo', 'responsabile_venditori'] },
       { icon: Headphones, label: 'Performance call center', path: '/admin/callcenter-kpi', audience: 'weekly', adminOnly: true },
+      { icon: Bell, label: 'Alert code VoiSpeed', path: '/admin/voispeed-queue-alerts', audience: 'rare', requiresRole: ['admin', 'ceo', 'responsabile_callcenter'], description: 'Soglie automatiche per attese, abbandoni e service level' },
       { icon: TrendingUp, label: 'Andamento ticket', path: '/admin/ticket-trend', audience: 'weekly', adminOnly: true },
       { icon: BarChart3, label: 'Statistiche AI', path: '/admin/ai-metrics', audience: 'weekly', adminOnly: true, description: "Quanto e come l'AI viene usata nel CRM" },
     ],

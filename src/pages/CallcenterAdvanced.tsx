@@ -10,14 +10,17 @@
  * Tutti i dati sono read-only e realtime via `voispeed-status-poll` + `voispeed-ivr-sync`.
  */
 import { useEffect } from "react";
-import { Radio } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Radio, Bell } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { VoispeedQueueRouting } from "@/components/settings/VoispeedQueueRouting";
 import { VoispeedIvrTree } from "@/components/settings/VoispeedIvrTree";
 
 export default function CallcenterAdvanced() {
   const { currentBrand } = useBrand();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const prev = document.title;
@@ -40,6 +43,10 @@ export default function CallcenterAdvanced() {
             {currentBrand ? <strong>{currentBrand.name}</strong> : "selezionato"}.
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={() => navigate('/admin/voispeed-queue-alerts')}>
+          <Bell className="h-4 w-4 mr-1" />
+          Regole alert code
+        </Button>
       </header>
 
       {!currentBrand ? (
