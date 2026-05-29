@@ -20,6 +20,7 @@ import { VoispeedIvrTree } from "@/components/settings/VoispeedIvrTree";
 
 export default function CallcenterAdvanced() {
   const { currentBrand } = useBrand();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const prev = document.title;
@@ -42,6 +43,10 @@ export default function CallcenterAdvanced() {
             {currentBrand ? <strong>{currentBrand.name}</strong> : "selezionato"}.
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={() => navigate('/admin/voispeed-queue-alerts')}>
+          <Bell className="h-4 w-4 mr-1" />
+          Regole alert code
+        </Button>
       </header>
 
       {!currentBrand ? (
