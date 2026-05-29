@@ -114,6 +114,15 @@ async function deliver(job: ClaimedJob): Promise<{ ok: boolean; error?: string }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  if (!isAuthorized(req)) {
+    return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+
+
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
