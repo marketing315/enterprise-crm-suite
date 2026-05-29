@@ -38,6 +38,7 @@ import { WebPushSettings } from "@/components/settings/WebPushSettings";
 import { VoIPSettings } from "@/components/settings/VoIPSettings";
 import { VOIspeedSettings } from "@/components/settings/VOIspeedSettings";
 import { VoispeedIvrTree } from "@/components/settings/VoispeedIvrTree";
+import { VoispeedQueueRouting } from "@/components/settings/VoispeedQueueRouting";
 import { AutomationSettings } from "@/components/settings/automation/AutomationSettings";
 import { ModuleGovernanceSettings } from "@/components/settings/ModuleGovernanceSettings";
 import { LeadDigestSettings } from "@/components/settings/digest/LeadDigestSettings";
