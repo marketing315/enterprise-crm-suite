@@ -39,7 +39,7 @@ export function useAlertChannels() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("audit_alert_channels")
-        .select("*")
+        .select("id, brand_id, name, channel_type, destination, min_severity, anomaly_types, is_active, mask_pii, created_at, updated_at")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
