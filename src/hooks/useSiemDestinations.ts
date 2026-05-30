@@ -8,7 +8,7 @@ export interface SiemDestination {
   brand_id: string;
   name: string;
   endpoint_url: string;
-  hmac_secret: string;
+  hmac_secret?: string; // write-only: SELECT revoked from authenticated
   is_active: boolean;
   entity_types_filter: string[] | null;
   actions_filter: string[] | null;
