@@ -8,7 +8,7 @@ export interface SiemDestination {
   brand_id: string;
   name: string;
   endpoint_url: string;
-  hmac_secret: string;
+  hmac_secret?: string; // write-only: SELECT revoked from authenticated
   is_active: boolean;
   entity_types_filter: string[] | null;
   actions_filter: string[] | null;
@@ -44,7 +44,7 @@ export function useSiemDestinations() {
       if (!currentBrand) return [];
       const { data, error } = await supabase
         .from("siem_destinations")
-        .select("*")
+        .select("id, brand_id, name, endpoint_url, is_active, entity_types_filter, actions_filter, mask_pii, batch_size, last_exported_at, last_success_at, last_error, consecutive_failures, created_at, updated_at")
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -81,26 +81,33 @@ export function useSaveSiemDestination() {
     mutationFn: async (input: Partial<SiemDestination> & { id?: string }) => {
       if (!currentBrand) throw new Error("No brand selected");
       if (input.id) {
+        const updatePayload: Record<string, unknown> = {
+          name: input.name,
+          endpoint_url: input.endpoint_url,
+          is_active: input.is_active,
+          entity_types_filter: input.entity_types_filter,
+          actions_filter: input.actions_filter,
+          mask_pii: input.mask_pii,
+          batch_size: input.batch_size,
+        };
+        // Only write the secret if the user actually provided a new value.
+        if (input.hmac_secret && input.hmac_secret.trim() !== "") {
+          updatePayload.hmac_secret = input.hmac_secret;
+        }
         const { error } = await supabase
           .from("siem_destinations")
-          .update({
-            name: input.name,
-            endpoint_url: input.endpoint_url,
-            hmac_secret: input.hmac_secret,
-            is_active: input.is_active,
-            entity_types_filter: input.entity_types_filter,
-            actions_filter: input.actions_filter,
-            mask_pii: input.mask_pii,
-            batch_size: input.batch_size,
-          })
+          .update(updatePayload as never)
           .eq("id", input.id);
         if (error) throw error;
       } else {
+        if (!input.hmac_secret || input.hmac_secret.trim() === "") {
+          throw new Error("hmac_secret è obbligatorio in creazione");
+        }
         const { error } = await supabase.from("siem_destinations").insert({
           brand_id: currentBrand.id,
           name: input.name!,
           endpoint_url: input.endpoint_url!,
-          hmac_secret: input.hmac_secret!,
+          hmac_secret: input.hmac_secret,
           is_active: input.is_active ?? true,
           entity_types_filter: input.entity_types_filter ?? null,
           actions_filter: input.actions_filter ?? null,

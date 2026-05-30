@@ -7,10 +7,11 @@ export interface MetaApp {
   id: string;
   brand_id: string;
   brand_slug: string;
-  verify_token: string;
-  app_secret: string;
+  // Secret columns: write-only (SELECT revoked from authenticated). Always undefined client-side.
+  verify_token?: string;
+  app_secret?: string;
+  access_token?: string;
   page_id: string | null;
-  access_token: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -33,9 +34,11 @@ export function useMetaApps() {
   const { data: metaApps = [], isLoading, error } = useQuery({
     queryKey: ["meta-apps", currentBrand?.id, isAllBrandsSelected],
     queryFn: async () => {
+      // Secret columns (verify_token, app_secret, access_token) have SELECT revoked from authenticated.
+      // Only Edge Functions (service_role) can read them. List the safe columns explicitly.
       let query = supabase
         .from("meta_apps")
-        .select("*")
+        .select("id, brand_id, brand_slug, page_id, is_active, created_at, updated_at")
         .order("created_at", { ascending: false });
 
       if (isAllBrandsSelected && allBrandIds.length > 0) {
@@ -46,7 +49,7 @@ export function useMetaApps() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as MetaApp[];
+      return (data ?? []) as MetaApp[];
     },
     enabled: !!currentBrand || (isAllBrandsSelected && allBrandIds.length > 0),
   });
@@ -59,7 +62,7 @@ export function useMetaApps() {
           ...formData,
           is_active: formData.is_active ?? true,
         })
-        .select()
+        .select("id, brand_id, brand_slug, page_id, is_active, created_at, updated_at")
         .single();
       if (error) throw error;
       return data;
@@ -76,11 +79,20 @@ export function useMetaApps() {
 
   const updateMetaApp = useMutation({
     mutationFn: async ({ id, ...formData }: Partial<MetaApp> & { id: string }) => {
+      // Strip empty secret fields so we don't overwrite stored secrets with blanks
+      // when the form simply didn't pre-load them (SELECT is revoked).
+      const cleaned: Record<string, unknown> = { ...formData };
+      for (const k of ["verify_token", "app_secret", "access_token"] as const) {
+        const v = cleaned[k];
+        if (v === undefined || v === null || (typeof v === "string" && v.trim() === "")) {
+          delete cleaned[k];
+        }
+      }
       const { data, error } = await supabase
         .from("meta_apps")
-        .update(formData)
+        .update(cleaned as never)
         .eq("id", id)
-        .select()
+        .select("id, brand_id, brand_slug, page_id, is_active, created_at, updated_at")
         .single();
       if (error) throw error;
       return data;

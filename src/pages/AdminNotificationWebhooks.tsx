@@ -73,7 +73,7 @@ export default function AdminNotificationWebhooks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("notification_webhook_destinations")
-        .select("*")
+        .select("id, brand_id, name, endpoint_url, preset, notification_types, is_active, created_at, updated_at")
         .eq("brand_id", brandId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
