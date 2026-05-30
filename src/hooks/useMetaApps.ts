@@ -49,7 +49,7 @@ export function useMetaApps() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as Array<Omit<MetaApp, "verify_token" | "app_secret" | "access_token">>;
+      return (data ?? []) as MetaApp[];
     },
     enabled: !!currentBrand || (isAllBrandsSelected && allBrandIds.length > 0),
   });
