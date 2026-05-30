@@ -44,7 +44,7 @@ export function useSiemDestinations() {
       if (!currentBrand) return [];
       const { data, error } = await supabase
         .from("siem_destinations")
-        .select("*")
+        .select("id, brand_id, name, endpoint_url, is_active, entity_types_filter, actions_filter, mask_pii, batch_size, last_exported_at, last_success_at, last_error, consecutive_failures, created_at, updated_at")
         .eq("brand_id", currentBrand.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
