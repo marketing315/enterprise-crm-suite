@@ -69,17 +69,25 @@ export function useUpsertAlertChannel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (channel: Partial<AlertChannel> & { name: string; channel_type: AlertChannelType; destination: string }) => {
-      const payload = {
+      // Note: webhook_secret is write-only (column SELECT revoked). Omit from payload when empty
+      // to preserve the existing secret on edits where the user didn't change it.
+      const basePayload = {
         name: channel.name,
         channel_type: channel.channel_type,
         destination: channel.destination,
-        webhook_secret: channel.webhook_secret ?? null,
         min_severity: channel.min_severity ?? "high",
         anomaly_types: channel.anomaly_types ?? [],
         is_active: channel.is_active ?? true,
         mask_pii: channel.mask_pii ?? true,
         brand_id: channel.brand_id ?? "00000000-0000-0000-0000-000000000000",
       };
+      const payload: Record<string, unknown> = { ...basePayload };
+      if (channel.webhook_secret && channel.webhook_secret.trim() !== "") {
+        payload.webhook_secret = channel.webhook_secret;
+      } else if (!channel.id) {
+        // Insert path: keep explicit null if not provided.
+        payload.webhook_secret = null;
+      }
       if (channel.id) {
         const { error } = await supabase
           .from("audit_alert_channels")
@@ -89,7 +97,7 @@ export function useUpsertAlertChannel() {
       } else {
         const { error } = await supabase
           .from("audit_alert_channels")
-          .insert(payload);
+          .insert(payload as never);
         if (error) throw error;
       }
     },
