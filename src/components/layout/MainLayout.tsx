@@ -679,6 +679,7 @@ export function MainLayout() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </header>
           <AppBreadcrumbs />
           <RealtimeStatusBanner />
