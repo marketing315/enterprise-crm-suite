@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: false,
+      devOptions: { enabled: false },
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
         name: "CRM Gruppo Benessere",
@@ -57,6 +59,17 @@ export default defineConfig(({ mode }) => ({
         // from /storage/v1/object/public/*).
         navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//, /^\/auth\//],
         runtimeCaching: [
+          {
+            // HTML navigations: NetworkFirst so users always get the latest
+            // app shell after a deploy. Cache-first on HTML locks devices to
+            // a stale shell that no future deploy can dislodge.
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html",
+              networkTimeoutSeconds: 3,
+            },
+          },
           {
             // F7: SVG never cached (XSS vector via crafted SVG with inline scripts).
             urlPattern: ({ url }) =>
