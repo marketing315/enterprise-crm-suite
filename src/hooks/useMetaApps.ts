@@ -33,9 +33,11 @@ export function useMetaApps() {
   const { data: metaApps = [], isLoading, error } = useQuery({
     queryKey: ["meta-apps", currentBrand?.id, isAllBrandsSelected],
     queryFn: async () => {
+      // Secret columns (verify_token, app_secret, access_token) have SELECT revoked from authenticated.
+      // Only Edge Functions (service_role) can read them. List the safe columns explicitly.
       let query = supabase
         .from("meta_apps")
-        .select("*")
+        .select("id, brand_id, brand_slug, page_id, is_active, created_at, updated_at")
         .order("created_at", { ascending: false });
 
       if (isAllBrandsSelected && allBrandIds.length > 0) {
