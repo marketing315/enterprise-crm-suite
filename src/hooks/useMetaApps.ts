@@ -7,10 +7,11 @@ export interface MetaApp {
   id: string;
   brand_id: string;
   brand_slug: string;
-  verify_token: string;
-  app_secret: string;
+  // Secret columns: write-only (SELECT revoked from authenticated). Always undefined client-side.
+  verify_token?: string;
+  app_secret?: string;
+  access_token?: string;
   page_id: string | null;
-  access_token: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
