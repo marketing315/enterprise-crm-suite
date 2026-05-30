@@ -79,11 +79,20 @@ export function useMetaApps() {
 
   const updateMetaApp = useMutation({
     mutationFn: async ({ id, ...formData }: Partial<MetaApp> & { id: string }) => {
+      // Strip empty secret fields so we don't overwrite stored secrets with blanks
+      // when the form simply didn't pre-load them (SELECT is revoked).
+      const cleaned: Record<string, unknown> = { ...formData };
+      for (const k of ["verify_token", "app_secret", "access_token"] as const) {
+        const v = cleaned[k];
+        if (v === undefined || v === null || (typeof v === "string" && v.trim() === "")) {
+          delete cleaned[k];
+        }
+      }
       const { data, error } = await supabase
         .from("meta_apps")
-        .update(formData)
+        .update(cleaned as never)
         .eq("id", id)
-        .select()
+        .select("id, brand_id, brand_slug, page_id, is_active, created_at, updated_at")
         .single();
       if (error) throw error;
       return data;
