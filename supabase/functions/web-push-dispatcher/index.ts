@@ -30,9 +30,25 @@ interface NotificationRow {
   user_id: string;
   type: string;
   title: string | null;
-  message: string | null;
-  data: Record<string, unknown> | null;
-  link: string | null;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+}
+
+function buildLink(n: NotificationRow): string {
+  if (n.entity_type === "chat_thread" && n.entity_id) {
+    return `/chat?thread=${n.entity_id}`;
+  }
+  if (n.entity_type === "ticket" && n.entity_id) {
+    return `/tickets/${n.entity_id}`;
+  }
+  if (n.entity_type === "deal" && n.entity_id) {
+    return `/pipeline?deal=${n.entity_id}`;
+  }
+  if (n.entity_type === "appointment" && n.entity_id) {
+    return `/appointments/${n.entity_id}`;
+  }
+  return "/notifications";
 }
 
 Deno.serve(async (req) => {
@@ -50,7 +66,7 @@ Deno.serve(async (req) => {
     // 1) Load notification
     const { data: notif, error: nErr } = await admin
       .from("notifications")
-      .select("id, user_id, type, title, message, data, link")
+      .select("id, user_id, type, title, body, entity_type, entity_id")
       .eq("id", notificationId)
       .maybeSingle();
 
@@ -84,10 +100,9 @@ Deno.serve(async (req) => {
 
     const payload = JSON.stringify({
       title: n.title ?? "Notifica",
-      body: n.message ?? "",
-      url: n.link ?? "/notifications",
+      body: n.body ?? "",
+      url: buildLink(n),
       type: n.type,
-      data: n.data ?? {},
       tag: `${n.type}-${n.id}`,
     });
 

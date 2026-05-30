@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.trg_chat_message_notify() FROM PUBLIC, anon, authenticated;
