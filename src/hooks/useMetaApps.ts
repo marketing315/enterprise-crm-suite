@@ -62,7 +62,7 @@ export function useMetaApps() {
           ...formData,
           is_active: formData.is_active ?? true,
         })
-        .select()
+        .select("id, brand_id, brand_slug, page_id, is_active, created_at, updated_at")
         .single();
       if (error) throw error;
       return data;
