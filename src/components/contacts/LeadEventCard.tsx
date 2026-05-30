@@ -162,11 +162,25 @@ export function LeadEventCard({ event }: LeadEventCardProps) {
         </p>
       )}
 
-      <LeadEventCampaignSelector
-        eventId={event.id}
-        currentCampaignId={event.marketing_campaign_id ?? null}
-        currentCampaignName={event.marketing_campaigns?.name ?? null}
-      />
+      {(() => {
+        const p = (event.raw_payload && typeof event.raw_payload === 'object')
+          ? { ...(event.raw_payload as any).fetched_payload, ...(event.raw_payload as any) }
+          : {};
+        return (
+          <LeadEventCampaignSelector
+            eventId={event.id}
+            currentCampaignId={event.marketing_campaign_id ?? null}
+            currentCampaignName={event.marketing_campaigns?.name ?? null}
+            hints={{
+              source: event.source,
+              externalCampaignId: p.meta_campaign_id ?? p.campaign_id ?? null,
+              campaignName: p.meta_campaign_name ?? p.campaign_name ?? null,
+              utmCampaign: p.utm_campaign ?? null,
+            }}
+          />
+        );
+      })()}
+
 
       {event.raw_payload && typeof event.raw_payload === 'object' && (event.raw_payload as any).source_url && (() => {
         const safe = sanitizeUrl((event.raw_payload as any).source_url);
