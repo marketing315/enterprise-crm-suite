@@ -18,6 +18,8 @@ import { CeoAlertsPanel } from '@/components/ceo/CeoAlertsPanel';
 import { BudgetBaselineCard } from '@/components/ceo/BudgetBaselineCard';
 import { CeoCostBreakdown } from '@/components/ceo/CeoCostBreakdown';
 import { CeoCalcVersionBanner } from '@/components/ceo/CeoCalcVersionBanner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileCeoDashboard } from '@/components/ceo/mobile/MobileCeoDashboard';
 
 export default function CeoDashboardView() {
   const { isAdmin, isCeo } = useAuth();
