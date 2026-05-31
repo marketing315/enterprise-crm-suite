@@ -18,12 +18,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getIdleTimeoutEnabled, IDLE_TIMEOUT_PREF_EVENT } from "@/lib/idle-timeout-pref";
+import { isDeviceTrusted } from "@/lib/mfa-trusted-device";
 
 const WARNING_SECONDS = 60;
 
 export function IdleTimeoutWatcher() {
-  const { session, isAdmin, isCeo, signOut } = useAuth();
+  const { session, isAdmin, isCeo, supabaseUser, signOut } = useAuth();
   const [prefEnabled, setPrefEnabled] = useState<boolean>(() => getIdleTimeoutEnabled());
+  const [deviceTrusted, setDeviceTrusted] = useState<boolean>(false);
 
   useEffect(() => {
     const onPref = (ev: Event) => {
@@ -41,8 +43,28 @@ export function IdleTimeoutWatcher() {
     };
   }, []);
 
-  // Admin/CEO non possono disattivarlo (compliance audit F): forziamo enabled=true.
-  const canDisable = !(isAdmin || isCeo);
+  // Verifica se questo browser è registrato come "trusted device" per l'utente.
+  // Se sì, anche admin/CEO possono disattivare l'idle timeout (parità con la
+  // scelta consapevole fatta in MfaChallenge: "fidati di questo dispositivo per 30gg").
+  useEffect(() => {
+    let cancelled = false;
+    const uid = supabaseUser?.id;
+    if (!uid) {
+      setDeviceTrusted(false);
+      return;
+    }
+    void isDeviceTrusted(uid).then((ok) => {
+      if (!cancelled) setDeviceTrusted(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabaseUser?.id]);
+
+  // Admin/CEO non possono disattivarlo (compliance audit F) — TRANNE se il
+  // dispositivo è stato esplicitamente registrato come trusted (MFA 30gg).
+  const canDisable = !(isAdmin || isCeo) || deviceTrusted;
+
   const enabled = !!session && (canDisable ? prefEnabled : true);
   const idleMinutes = 60;
 
