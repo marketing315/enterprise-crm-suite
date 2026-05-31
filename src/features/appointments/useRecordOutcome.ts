@@ -38,6 +38,9 @@ export function useRecordOutcome() {
       qc.invalidateQueries({ queryKey: ["appointment-detail", variables.appointmentId] });
       qc.invalidateQueries({ queryKey: ["appointments"] });
       qc.invalidateQueries({ queryKey: ["appointment-outcomes", variables.appointmentId] });
+      qc.invalidateQueries({ queryKey: ["salesperson-appointments-day"] });
+      qc.invalidateQueries({ queryKey: ["salesperson-upcoming-appts"] });
+      qc.invalidateQueries({ queryKey: ["salesperson-appointments-today"] });
     },
     onError: (err: any) => {
       const msg = err?.message || "Errore nella registrazione dell'esito";

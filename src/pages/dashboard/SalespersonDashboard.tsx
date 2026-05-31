@@ -5,6 +5,7 @@ import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { DashboardKpiGrid, KpiItem } from '@/components/dashboard/DashboardKpiGrid';
 import { Target, Kanban, Flame, Calendar, Euro, Lightbulb, X, CalendarClock, AlertTriangle, TrendingDown } from 'lucide-react';
 import { RiskScoreBadge } from '@/features/appointments/RiskScoreBadge';
+import { TodayAppointmentsBoard } from '@/features/appointments/TodayAppointmentsBoard';
 import { getStatusMeta } from '@/features/appointments/taxonomy';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -272,11 +273,15 @@ export default function SalespersonDashboard() {
         ['salesperson-my-deals'],
         ['salesperson-sales-month'],
         ['salesperson-appointments-today'],
+        ['salesperson-appointments-day'],
         ['salesperson-appt-stats'],
         ['salesperson-upcoming-appts'],
         ['my-action-suggestions'],
       ]}
     >
+      {/* Agenda di oggi con esitazione rapida */}
+      <TodayAppointmentsBoard />
+
       {/* KPI Cards */}
       <DashboardKpiGrid items={kpis} isLoading={isLoading} />
 
