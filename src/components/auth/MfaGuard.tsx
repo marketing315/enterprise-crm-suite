@@ -11,27 +11,34 @@ import { isDeviceTrusted } from "@/lib/mfa-trusted-device";
  *     UNLESS this browser is registered as "trusted device" for the user.
  */
 export function MfaGuard({ children }: { children: React.ReactNode }) {
-  const { isAdmin, isCeo, isLoading, user } = useAuth();
+  const { isAdmin, isCeo, isLoading, supabaseUser } = useAuth();
   const { loading, enrolled, needsChallenge } = useMfaStatus();
   const location = useLocation();
 
   // null = ancora da verificare, true/false = esito
   const [trusted, setTrusted] = useState<boolean | null>(null);
 
+  // BUGFIX: usiamo supabaseUser.id (auth.users.id) — non user.id (public.users.id).
+  // MfaChallenge registra il trusted device con l'auth uid via
+  // sessionData.session.user.id; usare l'internal user id qui causava un mismatch
+  // della chiave localStorage e il check ritornava sempre false, costringendo
+  // l'utente a ri-verificare MFA a ogni login.
+  const authUid = supabaseUser?.id ?? null;
+
   useEffect(() => {
     let cancelled = false;
-    if (!needsChallenge || !user?.id) {
+    if (!needsChallenge || !authUid) {
       setTrusted(null);
       return;
     }
     setTrusted(null);
-    void isDeviceTrusted(user.id).then((ok) => {
+    void isDeviceTrusted(authUid).then((ok) => {
       if (!cancelled) setTrusted(ok);
     });
     return () => {
       cancelled = true;
     };
-  }, [needsChallenge, user?.id]);
+  }, [needsChallenge, authUid]);
 
   // Allow MFA flow pages themselves through
   if (location.pathname.startsWith("/security/mfa-")) {
