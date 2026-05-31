@@ -19,16 +19,16 @@ export interface RateLimitResult {
 
 const RATE_LIMIT_TIMEOUT_MS = 2500;
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error("auth rate-limit timeout")), ms);
+    const timer = globalThis.setTimeout(() => reject(new Error("auth rate-limit timeout")), ms);
     promise.then(
       (value) => {
-        window.clearTimeout(timer);
+        globalThis.clearTimeout(timer);
         resolve(value);
       },
       (error) => {
-        window.clearTimeout(timer);
+        globalThis.clearTimeout(timer);
         reject(error);
       },
     );
