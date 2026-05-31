@@ -249,7 +249,8 @@ const ADVANCED_PREF_KEY = 'sidebar.showAdvanced';
 
 export function MainLayout() {
   const { user, signOut, isAdmin, isCeo, hasRole } = useAuth();
-  const { currentBrand, hasBrandSelected, brands, systemBrand, isAllBrandsSelected } = useBrand();
+  const { currentBrand, hasBrandSelected, brands, systemBrand, isAllBrandsSelected, setCurrentBrand } = useBrand();
+  const canSeeAllBrands = isAdmin || isCeo || (currentBrand ? hasRole('amministrazione', currentBrand.id) : false);
   const hasMarketingAccess = useHasMarketingAccess();
   const canSeeMarketingSubmenu = useCanSeeMarketingSubmenu();
   const navigate = useNavigate();
