@@ -17,6 +17,24 @@ export interface RateLimitResult {
   error?: string;
 }
 
+const RATE_LIMIT_TIMEOUT_MS = 2500;
+
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = globalThis.setTimeout(() => reject(new Error("auth rate-limit timeout")), ms);
+    promise.then(
+      (value) => {
+        globalThis.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        globalThis.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 async function sha256Hex(input: string): Promise<string> {
   const buf = new TextEncoder().encode(input);
   const hashBuf = await crypto.subtle.digest("SHA-256", buf);
@@ -36,10 +54,13 @@ export async function consumeAuthRateLimit(
 ): Promise<RateLimitResult> {
   try {
     const hash = await buildIdentityHash(email, scope);
-    const { data, error } = await supabase.rpc("consume_auth_rate_limit", {
-      p_identity_hash: hash,
-      p_scope: scope,
-    });
+    const { data, error } = await withTimeout(
+      supabase.rpc("consume_auth_rate_limit", {
+        p_identity_hash: hash,
+        p_scope: scope,
+      }),
+      RATE_LIMIT_TIMEOUT_MS,
+    );
     if (error) {
       // fail-open: non bloccare il login se il backend RPC è giù.
       console.warn("auth rate-limit RPC error, failing open", error);
@@ -55,10 +76,13 @@ export async function consumeAuthRateLimit(
 export async function resetAuthRateLimit(email: string, scope: RateLimitScope): Promise<void> {
   try {
     const hash = await buildIdentityHash(email, scope);
-    await supabase.rpc("reset_auth_rate_limit", {
-      p_identity_hash: hash,
-      p_scope: scope,
-    });
+    await withTimeout(
+      supabase.rpc("reset_auth_rate_limit", {
+        p_identity_hash: hash,
+        p_scope: scope,
+      }),
+      RATE_LIMIT_TIMEOUT_MS,
+    );
   } catch {
     // best-effort
   }

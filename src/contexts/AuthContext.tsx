@@ -288,6 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) {
+      // Best-effort only: never block navigation/login UI on audit/rate-limit cleanup.
       void resetAuthRateLimit(email, "signin");
     }
     return { error: error as Error | null };

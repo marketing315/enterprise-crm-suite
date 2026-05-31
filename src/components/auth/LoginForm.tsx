@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,8 +17,27 @@ interface LoginFormProps {
 }
 
 const SUPPORT_EMAIL = 'marketing@gruppobenessere.it';
+const LOGIN_TIMEOUT_MS = 12000;
 
 type LoginErrorKind = 'invalid_credentials' | 'email_not_confirmed' | 'rate_limited' | 'generic';
+
+async function resolveLoginWithTimeout(
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>,
+  email: string,
+  password: string,
+): Promise<{ error: Error | null; timedOut?: boolean }> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      signIn(email, password),
+      new Promise<{ error: Error | null; timedOut: boolean }>((resolve) => {
+        timer = setTimeout(() => resolve({ error: null, timedOut: true }), LOGIN_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function classifyError(message: string | undefined): { kind: LoginErrorKind; text: string } {
   const m = (message || '').toLowerCase();
@@ -81,12 +101,20 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
     setLoginError(null);
 
     try {
-      const { error } = await signIn(email, password);
+      const { error, timedOut } = await resolveLoginWithTimeout(signIn, email, password);
       if (error) {
         const classified = classifyError(error.message);
         setLoginError(classified);
         if (classified.kind === 'generic') {
           toast.error(classified.text);
+        }
+      } else if (timedOut) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          toast.success('Accesso riuscito');
+          navigate('/select-brand');
+        } else {
+          setLoginError({ kind: 'generic', text: 'Accesso in ritardo. Riprova tra qualche secondo.' });
         }
       } else {
         toast.success('Accesso riuscito');
