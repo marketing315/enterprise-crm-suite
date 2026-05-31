@@ -616,9 +616,31 @@ export function MainLayout() {
                       {pillContent}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="w-[280px] p-3">
-                    <p className="text-xs text-muted-foreground mb-2">Cambia brand di lavoro</p>
-                    <BrandSelector compact />
+                  <PopoverContent align="start" className="w-[260px] p-2">
+                    <p className="px-2 pt-1 pb-2 text-[11px] uppercase tracking-wider text-muted-foreground">Cambia brand</p>
+                    <div className="flex flex-col gap-0.5 max-h-[60vh] overflow-y-auto">
+                      {canSeeAllBrands && systemBrand && (
+                        <button
+                          type="button"
+                          onClick={() => setCurrentBrand(systemBrand)}
+                          className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm text-left transition-colors hover:bg-accent ${currentBrand?.id === systemBrand.id ? 'bg-accent font-medium' : ''}`}
+                        >
+                          <Globe className="h-4 w-4 text-primary shrink-0" />
+                          <span className="truncate">{systemBrand.name}</span>
+                        </button>
+                      )}
+                      {brands.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setCurrentBrand(b)}
+                          className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm text-left transition-colors hover:bg-accent ${currentBrand?.id === b.id ? 'bg-accent font-medium' : ''}`}
+                        >
+                          <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="truncate">{b.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </PopoverContent>
                 </Popover>
               );
