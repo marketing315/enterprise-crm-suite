@@ -51,8 +51,8 @@ export function WebhookDeliveriesCompact() {
     <>
       <Card data-testid="webhooks-dashboard-latest-deliveries">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
                 Ultime Deliveries
@@ -66,9 +66,10 @@ export function WebhookDeliveriesCompact() {
               size="sm"
               onClick={() => refetch()}
               disabled={isFetching}
+              className="shrink-0"
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-              Aggiorna
+              <span className="hidden sm:inline">Aggiorna</span>
             </Button>
           </div>
         </CardHeader>
