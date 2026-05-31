@@ -32,7 +32,7 @@ interface MobileKpiRow {
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
   confidence?: number;
-  factors?: string[];
+  factors?: ConfidenceFactor[];
   tone?: 'pos' | 'neg' | 'warn' | 'neutral';
 }
 
