@@ -261,16 +261,16 @@ export function ActionGuide({
         {/* Primary CTA with urgency subtitle */}
         <div className="space-y-1">
           <Button 
-            className="w-full justify-between group"
+            className="w-full h-auto min-h-12 py-3 px-4 group"
             variant={primaryCta.variant}
             size="lg"
             onClick={() => navigate(primaryCta.path)}
           >
-            <span className="flex items-center gap-2">
-              <primaryCta.icon className="h-5 w-5" />
-              {primaryCta.label}
+            <span className="flex items-center justify-center gap-2 w-full text-center">
+              <primaryCta.icon className="h-5 w-5 shrink-0" />
+              <span className="whitespace-normal leading-tight">{primaryCta.label}</span>
+              <ArrowRight className="h-4 w-4 shrink-0 group-hover:translate-x-1 transition-transform" />
             </span>
-            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
           </Button>
           <p className="text-xs text-muted-foreground text-center italic">
             {primaryCta.urgency}
