@@ -589,16 +589,16 @@ export function MainLayout() {
 
         <SidebarInset className="flex flex-col min-h-dvh overflow-hidden">
           <header className="border-b bg-background shrink-0 sticky top-0 z-30 pt-[env(safe-area-inset-top)]" role="banner" aria-label="Intestazione applicazione">
-            <div className="flex min-h-14 items-center gap-2 md:gap-4 px-3 md:px-6">
+            <div className="flex min-h-14 items-center gap-0.5 md:gap-3 px-2 md:px-6">
             <SidebarTrigger />
             {currentBrand && (() => {
               const canSwitch = brands.length > 1 || (systemBrand && brands.length >= 1);
               const Icon = isAllBrandsSelected ? Globe : Building2;
               const pillContent = (
-                <span className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border border-primary/20 bg-primary/10 px-2.5 md:px-3 py-1 text-xs md:text-sm font-medium text-primary transition-colors hover:bg-primary/15 max-w-[180px] md:max-w-none">
+                <span className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border border-primary/20 bg-gradient-to-r from-primary/15 to-primary/5 px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium text-primary transition-all hover:from-primary/20 hover:to-primary/10 active:scale-[0.97] max-w-[200px] md:max-w-none shadow-sm">
                   <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate max-w-[100px] md:max-w-[220px]">{currentBrand.name}</span>
-                  {canSwitch && <ArrowLeftRight className="hidden md:inline-block h-3.5 w-3.5 shrink-0 opacity-70" />}
+                  <span className="truncate max-w-[120px] md:max-w-[220px]">{currentBrand.name}</span>
+                  {canSwitch && <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" />}
                 </span>
               );
               if (!canSwitch) return pillContent;
@@ -614,7 +614,7 @@ export function MainLayout() {
                       {pillContent}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="w-[260px] p-3">
+                  <PopoverContent align="start" className="w-[280px] p-3">
                     <p className="text-xs text-muted-foreground mb-2">Cambia brand di lavoro</p>
                     <BrandSelector compact />
                   </PopoverContent>
