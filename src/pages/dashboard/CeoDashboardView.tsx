@@ -55,6 +55,12 @@ export default function CeoDashboardView() {
     );
   }
 
+  if (isMobile) {
+    return <MobileCeoDashboard />;
+  }
+
+
+
   return (
     <DashboardShell
       title="CEO Dashboard"
