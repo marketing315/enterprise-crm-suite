@@ -18,10 +18,13 @@ import { CeoAlertsPanel } from '@/components/ceo/CeoAlertsPanel';
 import { BudgetBaselineCard } from '@/components/ceo/BudgetBaselineCard';
 import { CeoCostBreakdown } from '@/components/ceo/CeoCostBreakdown';
 import { CeoCalcVersionBanner } from '@/components/ceo/CeoCalcVersionBanner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileCeoDashboard } from '@/components/ceo/mobile/MobileCeoDashboard';
 
 export default function CeoDashboardView() {
   const { isAdmin, isCeo } = useAuth();
   const { hasBrandSelected } = useBrand();
+  const isMobile = useIsMobile();
 
   const [from, setFrom] = useState(() => startOfMonth(new Date()));
   const [to, setTo] = useState(() => endOfMonth(new Date()));
@@ -51,6 +54,12 @@ export default function CeoDashboardView() {
       </div>
     );
   }
+
+  if (isMobile) {
+    return <MobileCeoDashboard />;
+  }
+
+
 
   return (
     <DashboardShell

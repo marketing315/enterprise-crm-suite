@@ -200,3 +200,7 @@ All colors MUST be HSL.
 [data-density="compact"] [data-row-density] {
   min-height: 32px;
 }
+
+/* Mobile horizontal scroll utility */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
