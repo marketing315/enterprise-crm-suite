@@ -51,8 +51,8 @@ export function WebhookDeliveriesCompact() {
     <>
       <Card data-testid="webhooks-dashboard-latest-deliveries">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
                 Ultime Deliveries
@@ -66,9 +66,10 @@ export function WebhookDeliveriesCompact() {
               size="sm"
               onClick={() => refetch()}
               disabled={isFetching}
+              className="shrink-0"
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-              Aggiorna
+              <span className="hidden sm:inline">Aggiorna</span>
             </Button>
           </div>
         </CardHeader>
@@ -85,61 +86,111 @@ export function WebhookDeliveriesCompact() {
               <p>Nessuna delivery trovata</p>
             </div>
           ) : (
-            <div className="max-h-[400px] overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Webhook</TableHead>
-                    <TableHead>Evento</TableHead>
-                    <TableHead>Stato</TableHead>
-                    <TableHead>Resp</TableHead>
-                    <TableHead>Data</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data?.deliveries?.map((delivery) => (
-                    <TableRow
-                      key={delivery.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedDeliveryId(delivery.id)}
-                      data-testid="compact-delivery-row"
-                    >
-                      <TableCell className="font-medium text-sm">
-                        {delivery.webhook_name}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs text-muted-foreground">
+            <>
+              {/* Mobile: card list */}
+              <div className="md:hidden max-h-[400px] overflow-y-auto space-y-2 -mx-2 px-2">
+                {data?.deliveries?.map((delivery) => (
+                  <button
+                    key={delivery.id}
+                    type="button"
+                    onClick={() => setSelectedDeliveryId(delivery.id)}
+                    data-testid="compact-delivery-row"
+                    className="w-full text-left rounded-xl border border-border/60 bg-card p-3 hover:bg-muted/40 active:scale-[0.99] transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">
+                          {delivery.webhook_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
                           {getEventLabel(delivery.event_type)}
-                        </span>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                      <TableCell>
-                        {delivery.response_status ? (
-                          <Badge
-                            variant={
-                              delivery.response_status >= 200 &&
-                              delivery.response_status < 300
-                                ? "secondary"
-                                : "destructive"
-                            }
-                            className="text-xs"
-                          >
-                            {delivery.response_status}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {format(new Date(delivery.created_at), "HH:mm:ss", {
+                        </p>
+                      </div>
+                      <div className="shrink-0">{getStatusBadge(delivery.status)}</div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      {delivery.response_status ? (
+                        <Badge
+                          variant={
+                            delivery.response_status >= 200 &&
+                            delivery.response_status < 300
+                              ? "secondary"
+                              : "destructive"
+                          }
+                          className="text-xs"
+                        >
+                          {delivery.response_status}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                      <span className="text-muted-foreground tabular-nums">
+                        {format(new Date(delivery.created_at), "dd/MM HH:mm:ss", {
                           locale: it,
                         })}
-                      </TableCell>
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Desktop: tabella tradizionale */}
+              <div className="hidden md:block max-h-[400px] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Webhook</TableHead>
+                      <TableHead>Evento</TableHead>
+                      <TableHead>Stato</TableHead>
+                      <TableHead>Resp</TableHead>
+                      <TableHead>Data</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {data?.deliveries?.map((delivery) => (
+                      <TableRow
+                        key={delivery.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedDeliveryId(delivery.id)}
+                        data-testid="compact-delivery-row"
+                      >
+                        <TableCell className="font-medium text-sm">
+                          {delivery.webhook_name}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs text-muted-foreground">
+                            {getEventLabel(delivery.event_type)}
+                          </span>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(delivery.status)}</TableCell>
+                        <TableCell>
+                          {delivery.response_status ? (
+                            <Badge
+                              variant={
+                                delivery.response_status >= 200 &&
+                                delivery.response_status < 300
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                              className="text-xs"
+                            >
+                              {delivery.response_status}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {format(new Date(delivery.created_at), "HH:mm:ss", {
+                            locale: it,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

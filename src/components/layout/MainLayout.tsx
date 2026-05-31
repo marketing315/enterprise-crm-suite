@@ -595,10 +595,10 @@ export function MainLayout() {
               const canSwitch = brands.length > 1 || (systemBrand && brands.length >= 1);
               const Icon = isAllBrandsSelected ? Globe : Building2;
               const pillContent = (
-                <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs md:text-sm font-medium text-primary transition-colors hover:bg-primary/15">
+                <span className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border border-primary/20 bg-primary/10 px-2.5 md:px-3 py-1 text-xs md:text-sm font-medium text-primary transition-colors hover:bg-primary/15 max-w-[180px] md:max-w-none">
                   <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate max-w-[140px] md:max-w-[220px]">{currentBrand.name}</span>
-                  {canSwitch && <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 opacity-70" />}
+                  <span className="truncate max-w-[100px] md:max-w-[220px]">{currentBrand.name}</span>
+                  {canSwitch && <ArrowLeftRight className="hidden md:inline-block h-3.5 w-3.5 shrink-0 opacity-70" />}
                 </span>
               );
               if (!canSwitch) return pillContent;
