@@ -15,7 +15,7 @@ import {
 import { formatCurrency, formatPercent, formatNumber } from '@/lib/formatKpi';
 import { ConfidenceBadge } from '@/components/ceo/ConfidenceBadge';
 import { cn } from '@/lib/utils';
-import type { CeoKpi } from '@/types/company';
+import type { CeoKpi, ConfidenceFactor } from '@/types/company';
 import type { CeoOperationalData } from '@/hooks/useCeoOperationalKpis';
 
 interface Props {
