@@ -24,6 +24,7 @@ import { MobileCeoDashboard } from '@/components/ceo/mobile/MobileCeoDashboard';
 export default function CeoDashboardView() {
   const { isAdmin, isCeo } = useAuth();
   const { hasBrandSelected } = useBrand();
+  const isMobile = useIsMobile();
 
   const [from, setFrom] = useState(() => startOfMonth(new Date()));
   const [to, setTo] = useState(() => endOfMonth(new Date()));
