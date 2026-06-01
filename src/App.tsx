@@ -64,6 +64,7 @@ const AdminNotificationWebhooks = lazy(() => import("@/pages/AdminNotificationWe
 const AdminAIDecisionsDrilldown = lazy(() => import("@/pages/AdminAIDecisionsDrilldown"));
 const AdminContactsDedup = lazy(() => import("@/pages/AdminContactsDedup"));
 const AdminDataQuality = lazy(() => import("@/pages/AdminDataQuality"));
+const AdminPendingUsers = lazy(() => import("@/pages/AdminPendingUsers"));
 const AdminCompliance = lazy(() => import("@/pages/AdminCompliance"));
 const AdminObservability = lazy(() => import("@/pages/AdminObservability"));
 const AdminMcpDashboard = lazy(() => import("@/pages/AdminMcpDashboard"));
