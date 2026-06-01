@@ -105,8 +105,8 @@ export function PasskeyDevicesCard() {
           Le tue passkey
         </CardTitle>
         <CardDescription>
-          Registra una passkey su ogni dispositivo che usi (Mac, iPhone, Android, Windows).
-          Da quel dispositivo potrai accedere con un tocco, senza email e password.
+          Crea una passkey: verrà archiviata su questo dispositivo.
+          Se usi iCloud Keychain o Google Password Manager, sarà disponibile anche sugli altri tuoi dispositivi collegati allo stesso account.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
