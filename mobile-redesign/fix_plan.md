@@ -23,11 +23,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 - **AC:** `AUDIT.md` elenca per ogni schermo SPEC il file pagina, gli hook dati, e i componenti da riusare. Nessun codice app modificato.
 - *Note:* Creato `mobile-redesign/AUDIT.md` (87 route censite, 6 file con `useIsMobile`, 3 componenti in `ceo/mobile/*`, 5 tabelle→liste, hook dati mappati per SPEC §6, mappa IA per ruolo pronta per F0.4). Nessun file di `src/` toccato.
 
-### F0.2 — Token semantici in `index.css` + `tailwind.config.ts` `[ ]`
+### F0.2 — Token semantici in `index.css` + `tailwind.config.ts` `[x]`
 - **dep:** nessuna
 - Aggiungi token HSL `--success/--warning/--danger/--info/--surface/--surface-2` (light + dark) e mappali in `tailwind.config.ts`. Non modificare i token esistenti.
 - **AC:** classi `bg-success`, `text-warning`, `bg-surface` ecc. funzionano; build verde; desktop invariato.
-- *Note:*
+- *Note:* Aggiunti in `src/index.css` (sezioni `:root` e `.dark`, blocchi additivi marcati F0.2) i token `--success/--warning/--danger/--info/--surface/--surface-2` + relativi `*-foreground` (HSL, light+dark con contrasto AA). Mappati in `tailwind.config.ts` come `success/warning/danger/info/surface` (con `surface.2` e `surface.2-foreground`). Nessun token esistente modificato; nessun componente toccato → desktop invariato. Disponibili classi `bg-success`, `text-warning`, `bg-surface`, `bg-surface-2`, ecc.
 
 ### F0.3 — Utility safe-area + ombre + motion `[ ]`
 - **dep:** F0.2

@@ -53,6 +53,21 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Mobile redesign (F0.2) — semantic surfaces & status tokens.
+       Additive: nessun token esistente viene modificato. */
+    --success: 142 71% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222.2 47.4% 11.2%;
+    --danger: 0 84% 55%;
+    --danger-foreground: 0 0% 100%;
+    --info: 217 91% 55%;
+    --info-foreground: 0 0% 100%;
+    --surface: 0 0% 100%;
+    --surface-foreground: 222.2 84% 4.9%;
+    --surface-2: 210 40% 97.5%;
+    --surface-2-foreground: 222.2 84% 4.9%;
   }
 
   .dark {
@@ -91,6 +106,20 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Mobile redesign (F0.2) — dark mode equivalents. */
+    --success: 142 64% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 222.2 47.4% 11.2%;
+    --danger: 0 72% 55%;
+    --danger-foreground: 0 0% 100%;
+    --info: 217 91% 62%;
+    --info-foreground: 222.2 47.4% 11.2%;
+    --surface: 222.2 47% 8%;
+    --surface-foreground: 210 40% 98%;
+    --surface-2: 217.2 32.6% 14%;
+    --surface-2-foreground: 210 40% 98%;
   }
 }
 
