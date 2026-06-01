@@ -159,6 +159,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
               required
               disabled={isLoading}
               autoComplete="email"
+              className="h-11 md:h-10"
             />
           </div>
 
