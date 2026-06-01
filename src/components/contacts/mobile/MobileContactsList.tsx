@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Phone, UserPlus, Users, Search, AlertCircle } from 'lucide-react';
+import { Phone, UserPlus, Users, Search, AlertCircle, SlidersHorizontal, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { useBrand } from '@/contexts/BrandContext';
 import { usePaginatedContactSearch } from '@/hooks/usePaginatedContactSearch';
 import { useContactsRealtime } from '@/hooks/useContactsRealtime';
@@ -26,6 +42,8 @@ import {
 import { ContactDetailSheet } from '@/components/contacts/ContactDetailSheet';
 import { NewContactDialog } from '@/components/contacts/NewContactDialog';
 import { ContactStatusBadge } from '@/components/contacts/ContactStatusBadge';
+import { TagFilter } from '@/components/tags/TagFilter';
+import { DateRangeFilter } from '@/components/contacts/DateRangeFilter';
 
 type StatusValue = ContactStatus | 'all';
 
