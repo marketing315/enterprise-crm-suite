@@ -23,6 +23,10 @@ export function PasskeyLoginButton() {
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
+    if (!isWebAuthnAvailable()) {
+      toast.error("Questo browser non supporta le passkey. Usa email e password.");
+      return;
+    }
     setBusy(true);
     try {
       // 1) challenge
