@@ -5,3 +5,5 @@ export { MobileScreen, type MobileScreenProps } from './MobileScreen';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { MobileFab, type MobileFabProps } from './MobileFab';
 export { Segmented, ChipGroup, type SegmentedProps, type ChipOption } from './Segmented';
+export { HeroMetricCard, type HeroMetricCardProps, type HeroVariant } from './HeroMetricCard';
+export { MetricRow, KpiList, type MetricRowProps, type KpiListProps, type MetricTone } from './MetricRow';
