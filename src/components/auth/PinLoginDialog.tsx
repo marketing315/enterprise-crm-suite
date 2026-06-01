@@ -34,13 +34,27 @@ import {
 
 interface Props {
   triggerLabel?: string;
+  /** Se passato, il dialog è controllato dall'esterno e il trigger non viene mostrato quando triggerLabel è vuoto. */
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
 }
 
 type Step = "email" | "pin";
 
-export function PinLoginDialog({ triggerLabel = "Accedi con PIN" }: Props) {
+export function PinLoginDialog({
+  triggerLabel = "Accedi con PIN",
+  controlledOpen,
+  onControlledOpenChange,
+}: Props) {
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen! : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onControlledOpenChange?.(v);
+    else setInternalOpen(v);
+  };
+  const showTrigger = !isControlled && triggerLabel.length > 0;
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
