@@ -9044,6 +9044,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pin_login_challenges: {
+        Row: {
+          attempts: number
+          auth_user_id: string | null
+          consumed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          session_token_expires_at: string | null
+          session_token_hash: string | null
+          user_agent: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          auth_user_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          session_token_expires_at?: string | null
+          session_token_hash?: string | null
+          user_agent?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          auth_user_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          session_token_expires_at?: string | null
+          session_token_hash?: string | null
+          user_agent?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       pipeline_stages: {
         Row: {
           brand_id: string | null
@@ -11506,9 +11551,12 @@ export type Database = {
       }
       user_biometric_credentials: {
         Row: {
+          backup_eligible: boolean | null
+          backup_state: boolean | null
           created_at: string
           disabled_at: string | null
           id: string
+          is_synced: boolean
           label: string | null
           last_used_at: string | null
           locked_until: string | null
@@ -11517,9 +11565,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          backup_eligible?: boolean | null
+          backup_state?: boolean | null
           created_at?: string
           disabled_at?: string | null
           id?: string
+          is_synced?: boolean
           label?: string | null
           last_used_at?: string | null
           locked_until?: string | null
@@ -11528,9 +11579,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          backup_eligible?: boolean | null
+          backup_state?: boolean | null
           created_at?: string
           disabled_at?: string | null
           id?: string
+          is_synced?: boolean
           label?: string | null
           last_used_at?: string | null
           locked_until?: string | null
@@ -13521,6 +13575,10 @@ export type Database = {
           redirect_uri: string
           user_id: string
         }[]
+      }
+      consume_pin_login_token: {
+        Args: { _session_token: string }
+        Returns: Json
       }
       consume_rate_limit_token: {
         Args: { p_source_id: string }
@@ -15962,6 +16020,10 @@ export type Database = {
         }
         Returns: Json
       }
+      start_pin_login: {
+        Args: { _email: string; _ip?: string; _user_agent?: string }
+        Returns: Json
+      }
       test_webhook: { Args: { p_webhook_id: string }; Returns: string }
       try_lock_cron_job: {
         Args: { p_brand_id?: string; p_job_name: string }
@@ -16255,6 +16317,10 @@ export type Database = {
           table_name: string
           trigger_name: string
         }[]
+      }
+      verify_pin_login: {
+        Args: { _challenge_id: string; _pin_client_hash: string }
+        Returns: Json
       }
       webhook_metrics_24h: { Args: { p_brand_id: string }; Returns: Json }
       webhook_timeseries_24h: {

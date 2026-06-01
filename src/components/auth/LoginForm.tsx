@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff, AlertCircle, ArrowUpToLine, MailWarning } from 'lucide-react';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
+import { PinLoginDialog } from './PinLoginDialog';
 
 interface LoginFormProps {
   showForgotPassword?: boolean;
@@ -219,6 +220,10 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
             )}
           </Button>
 
+          <div className="flex items-center justify-center w-full">
+            <PinLoginDialog triggerLabel="Accedi con PIN biometrico" />
+          </div>
+
           <p className="text-xs text-center text-muted-foreground leading-relaxed">
             Hai bisogno di aiuto? Contatta il tuo amministratore all'indirizzo{' '}
             <a
@@ -228,6 +233,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
               {SUPPORT_EMAIL}
             </a>
           </p>
+
         </CardFooter>
       </form>
     </Card>
