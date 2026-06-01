@@ -246,7 +246,7 @@ export function BiometricSettingsCard() {
             </p>
             <Button
               onClick={() => setDialog("enroll")}
-              disabled={!support?.platformAuthenticator}
+              disabled={!support?.platformAuthenticator || inEmbeddedPreview}
             >
               <Fingerprint className="mr-2 h-4 w-4" />
               Attiva su questo dispositivo
