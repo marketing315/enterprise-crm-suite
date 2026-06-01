@@ -220,6 +220,10 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
             )}
           </Button>
 
+          <div className="flex items-center justify-center w-full">
+            <PinLoginDialog triggerLabel="Accedi con PIN biometrico" />
+          </div>
+
           <p className="text-xs text-center text-muted-foreground leading-relaxed">
             Hai bisogno di aiuto? Contatta il tuo amministratore all'indirizzo{' '}
             <a
@@ -229,6 +233,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
               {SUPPORT_EMAIL}
             </a>
           </p>
+
         </CardFooter>
       </form>
     </Card>
