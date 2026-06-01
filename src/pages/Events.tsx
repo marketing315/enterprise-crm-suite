@@ -34,7 +34,15 @@ import { TagFilter } from "@/components/tags/TagFilter";
 import { TagBadge } from "@/components/tags/TagBadge";
 import { supabase } from "@/integrations/supabase/client";
 
+import { MobileLeadsInbox } from "@/components/leads/mobile/MobileLeadsInbox";
+
 export default function Events() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileLeadsInbox />;
+  return <EventsDesktop />;
+}
+
+function EventsDesktop() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const { isAdmin, isCeo } = useAuth();
   const queryClient = useQueryClient();
