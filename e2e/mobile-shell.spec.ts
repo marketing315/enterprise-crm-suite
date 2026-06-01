@@ -12,7 +12,7 @@
  */
 import { test, expect, devices, type ConsoleMessage } from "@playwright/test";
 
-test.use({ ...devices["iPhone 12"] });
+test.use({ ...devices["Pixel 5"] });
 
 /** Errori console accettabili: rumore noto del preview (favicon, sourcemap, sw). */
 const IGNORED_CONSOLE = [
