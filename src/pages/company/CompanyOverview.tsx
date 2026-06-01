@@ -32,7 +32,16 @@ import {
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileCompanyOverview } from "@/components/company/mobile/MobileCompanyOverview";
+
 export default function CompanyOverview() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileCompanyOverview />;
+  return <CompanyOverviewDesktop />;
+}
+
+function CompanyOverviewDesktop() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const hasAccess = useHasFinanceAccess();
   
