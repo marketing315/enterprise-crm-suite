@@ -124,7 +124,10 @@ export const handler = async (req: Request): Promise<Response> => {
     // 3) Verifica firma WebAuthn
     let verification;
     try {
+      // @ts-expect-error simplewebauthn v10 runtime accetta `credential`;
+      // i tipi npm locali divergono dal runtime Lovable.
       verification = await verifyAuthenticationResponse({
+
         response: {
           id: body.credentialId,
           rawId: body.credentialId,
