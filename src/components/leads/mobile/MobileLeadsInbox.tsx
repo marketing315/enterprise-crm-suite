@@ -350,7 +350,7 @@ export function MobileLeadsInbox() {
                               id: "discard",
                               label: "Scarta",
                               icon: <Archive className="h-4 w-4" />,
-                              variant: "danger" as const,
+                              variant: "destructive" as const,
                               confirm: {
                                 title: "Scartare questo lead?",
                                 description: `${name} — ${sourceLabel(e)}`,
