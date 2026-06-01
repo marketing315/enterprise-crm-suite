@@ -5,6 +5,7 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { PasskeyLoginButton } from '@/components/auth/PasskeyLoginButton';
 import { PinLoginDialog } from '@/components/auth/PinLoginDialog';
+import { SignupDialog } from '@/components/auth/SignupDialog';
 import logo from '@/assets/logo.svg';
 
 export default function Login() {
