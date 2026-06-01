@@ -49,7 +49,7 @@ function b64urlToBytes(s: string): Uint8Array {
   return out;
 }
 
-Deno.serve(async (req) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -197,7 +197,10 @@ Deno.serve(async (req) => {
     console.error("[passkey-verify] uncaught", e);
     return json({ error: "internal" }, 500);
   }
-});
+};
+
+Deno.serve(handler);
+
 
 async function lookupCredential(
   admin: SupabaseClient,
