@@ -152,8 +152,27 @@ export function BiometricSettingsCard() {
     }
   };
 
+  const inEmbeddedPreview = useMemo(() => {
+    try {
+      return typeof window !== "undefined" && window.top !== window.self;
+    } catch {
+      return true;
+    }
+  }, []);
+
   const stateBadge = useMemo(() => {
     if (loading) return null;
+    if (inEmbeddedPreview) {
+      return (
+        <Alert variant="default">
+          <AlertDescription>
+            La biometria richiede di aprire il CRM nel suo dominio diretto
+            (es. <span className="font-mono">crm.gruppobenessere.it</span>).
+            Non funziona dentro l'anteprima embedded.
+          </AlertDescription>
+        </Alert>
+      );
+    }
     if (!support?.webauthn) {
       return (
         <Alert variant="default">
@@ -173,7 +192,7 @@ export function BiometricSettingsCard() {
       );
     }
     return null;
-  }, [support, loading]);
+  }, [support, loading, inEmbeddedPreview]);
 
   return (
     <Card>
@@ -227,7 +246,7 @@ export function BiometricSettingsCard() {
             </p>
             <Button
               onClick={() => setDialog("enroll")}
-              disabled={!support?.platformAuthenticator}
+              disabled={!support?.platformAuthenticator || inEmbeddedPreview}
             >
               <Fingerprint className="mr-2 h-4 w-4" />
               Attiva su questo dispositivo
