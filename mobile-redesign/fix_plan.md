@@ -201,11 +201,12 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 
 
-### F4.6 — Chat mobile `[ ]`
+### F4.6 — Chat mobile `[x]`
 - **dep:** F2.4
 - Lista conversazioni → thread full-screen, input sopra safe-area.
 - **AC:** SPEC §6.8; tastiera non copre input.
-- *Note:*
+- *Note:* Creato `src/components/chat/mobile/MobileChatView.tsx`: tab `Segmented<TabKey>` Conversazioni/Agente AI (badge unread totale), URL state via `?thread=<id>` + `?tab=agent` per back-button friendly. **List mode**: header sticky con totale conversazioni + unread, search filter locale su `titleMap`, lista `ThreadRow` con avatar (Bot per executive, iniziali altrimenti), badge `Gruppo`/`AI`, timestamp relativo (`formatDistanceToNow it`), pillola unread `tabular-nums` (99+ cap). **Thread mode**: header sticky con back arrow → `closeThread()`, avatar+titolo+sottotipo (Gruppo/Collegata/AI/Diretta), area messaggi `overflow-y-auto overscroll-contain` con auto-scroll su nuovo messaggio, `ChatMessageBubble` riusato (showSenderName solo in gruppi su cambio sender). **Composer sticky bottom-0** con `pb-safe + backdrop-blur-xl` → resta sopra home indicator iOS e tab bar mobile; Enter invia (Shift+Enter newline); rollback ottimistico su errore. Realtime: `useChatRealtime(selectedThreadId)` + `useMarkThreadRead` al cambio thread. `PullToRefresh` su lista invalida `chat-threads`/`chat-unread-counts`. Tab `agent` riusa `AgentChatPanel` esistente (input proprio). `Chat.tsx` ora delega via `useIsMobile()` early-return; desktop estratto in `ChatDesktop()` (zero modifiche funzionali). Test: 234/237 (1 fail `auth-context` pre-esistente Sprint 3 + 2 flake timeout passano standalone).
+
 
 ---
 
