@@ -1,4 +1,4 @@
-import { useMemo, Suspense, lazy } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
