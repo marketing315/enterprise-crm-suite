@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
       return json({ error: "internal" }, 500);
     }
 
-    return json({ challenge: challengeB64, rpId, timeout: 60_000 });
+    // TTL: timeout client e finestra server allineati a 3 min (verify usa 3 min)
+    return json({ challenge: challengeB64, rpId, timeout: 180_000 });
   } catch (e) {
     console.error("[passkey-begin] uncaught", e);
     return json({ error: "internal" }, 500);
