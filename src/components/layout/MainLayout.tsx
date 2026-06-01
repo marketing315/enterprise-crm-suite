@@ -708,7 +708,13 @@ export function MainLayout() {
           <AppBreadcrumbs />
           <RealtimeStatusBanner />
           {isAdmin && <SetupReminderBanner />}
-          <main id="main-content" tabIndex={-1} className="flex-1 overflow-hidden p-3 md:p-6" aria-label="Contenuto principale">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            data-admin-page={location.pathname.startsWith('/admin') ? 'true' : undefined}
+            className="flex-1 overflow-hidden p-3 md:p-6"
+            aria-label="Contenuto principale"
+          >
             <ErrorBoundary label="Pagina">
               <Outlet />
             </ErrorBoundary>
