@@ -70,7 +70,7 @@ export const MetricRow = React.forwardRef<HTMLElement, MetricRowProps>(
           <span className={cn('text-[24px] leading-none font-semibold tracking-tight tabular-nums', toneClasses[tone])}>
             {value}
           </span>
-          {delta !== undefined && delta !== null && <TrendBadge value={delta} invert={invertTrend} compact />}
+          {delta !== undefined && delta !== null && <TrendBadge deltaPct={delta} intent={invertTrend ? 'inverse' : 'default'} compact />}
         </div>
 
         {subtitle && <p className="mt-1.5 text-[12px] text-muted-foreground">{subtitle}</p>}
