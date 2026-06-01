@@ -38,8 +38,16 @@ import { ChatThreadList } from "@/components/chat/ChatThreadList";
 import { ChatMessagePanel } from "@/components/chat/ChatMessagePanel";
 import { useAIAgentChat, useCreateNewExecutiveThread } from "@/hooks/useAIAgent";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileChatView } from "@/components/chat/mobile/MobileChatView";
 
 export default function Chat() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileChatView />;
+  return <ChatDesktop />;
+}
+
+function ChatDesktop() {
   const { user } = useAuth();
   const { currentBrand } = useBrand();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
