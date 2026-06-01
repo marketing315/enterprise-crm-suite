@@ -18,11 +18,15 @@ import { useMyActionSuggestions, useDismissSuggestion, useMarkSuggestionActed } 
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatKpi';
 import { onActivateKey } from "@/lib/a11y";
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileSalespersonDashboard } from '@/components/sales/mobile/MobileSalespersonDashboard';
 
 export default function SalespersonDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
+  const isMobile = useIsMobile();
+  if (isMobile) return <MobileSalespersonDashboard />;
 
   const today = new Date();
   const todayStart = startOfDay(today).toISOString();
