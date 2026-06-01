@@ -137,12 +137,14 @@ export function PinLoginDialog({
         if (!v) reset();
       }}
     >
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-xs">
-          <KeyRound className="mr-1.5 h-3.5 w-3.5" />
-          {triggerLabel}
-        </Button>
-      </DialogTrigger>
+      {showTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm" className="text-xs">
+            <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+            {triggerLabel}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
