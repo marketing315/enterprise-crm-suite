@@ -312,3 +312,96 @@ export async function syncVaultWithCurrentSession(): Promise<void> {
   // dopo unlockBiometric(). Qui no-op se non c'è vault.
   void b64urlEncode; // mantengo import per side-effect tree-shake
 }
+
+// =========================================================================
+// PIN LOGIN UNIVERSALE (Email + PIN da qualunque device, senza vault locale)
+// =========================================================================
+
+export interface StartPinLoginResult {
+  ok: boolean;
+  challengeId?: string;
+  reason?: string;
+}
+
+export async function startPinLogin(email: string): Promise<StartPinLoginResult> {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 200) : null;
+  const { data, error } = await supabase.rpc("start_pin_login", {
+    _email: email,
+    _ip: null,
+    _user_agent: ua,
+  });
+  if (error) {
+    console.warn("[pin-login] start failed", error.message);
+    return { ok: false, reason: "network" };
+  }
+  const r = data as { ok?: boolean; challenge_id?: string; reason?: string };
+  if (!r?.ok || !r.challenge_id) return { ok: false, reason: r?.reason };
+  return { ok: true, challengeId: r.challenge_id };
+}
+
+export interface VerifyPinLoginResult {
+  ok: boolean;
+  reason?: string;
+  remainingAttempts?: number;
+  lockedUntil?: string;
+  sessionToken?: string;
+}
+
+export async function verifyPinLogin(
+  challengeId: string,
+  pin: string,
+): Promise<VerifyPinLoginResult> {
+  const hash = await hashPinForServer(pin);
+  const { data, error } = await supabase.rpc("verify_pin_login", {
+    _challenge_id: challengeId,
+    _pin_client_hash: hash,
+  });
+  if (error) {
+    console.warn("[pin-login] verify failed", error.message);
+    return { ok: false, reason: "network" };
+  }
+  const r = data as {
+    ok?: boolean;
+    reason?: string;
+    remaining_attempts?: number;
+    locked_until?: string;
+    session_token?: string;
+  };
+  return {
+    ok: !!r?.ok,
+    reason: r?.reason,
+    remainingAttempts: r?.remaining_attempts,
+    lockedUntil: r?.locked_until,
+    sessionToken: r?.session_token,
+  };
+}
+
+/**
+ * Riscatta il token one-shot sull'edge function e applica la sessione
+ * Supabase risultante. Dopo questo, l'utente è loggato.
+ *
+ * NB: per admin/CEO, MfaGuard intercetterà richiedendo TOTP se il device
+ *     non è ancora trusted (= "PIN + TOTP solo prima volta").
+ */
+export async function redeemPinLoginSession(sessionToken: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("biometric-pin-login", {
+    body: { session_token: sessionToken },
+  });
+  if (error) {
+    throw new Error(error.message || "Sessione non disponibile");
+  }
+  const r = data as {
+    access_token?: string;
+    refresh_token?: string;
+    error?: string;
+  };
+  if (r?.error || !r?.access_token || !r?.refresh_token) {
+    throw new Error(r?.error || "Sessione non disponibile");
+  }
+  const { error: setErr } = await supabase.auth.setSession({
+    access_token: r.access_token,
+    refresh_token: r.refresh_token,
+  });
+  if (setErr) throw setErr;
+}
+
