@@ -19,17 +19,18 @@ export async function tryConditionalPasskeyLogin(
   signal: AbortSignal,
 ): Promise<{ ok: boolean; reason?: string }> {
   try {
-    if (
-      typeof window === "undefined" ||
-      typeof window.PublicKeyCredential === "undefined" ||
-      // @ts-expect-error - feature detection
-      typeof PublicKeyCredential.isConditionalMediationAvailable !== "function"
-    ) {
+    if (typeof window === "undefined" || typeof window.PublicKeyCredential === "undefined") {
       return { ok: false, reason: "unsupported" };
     }
-    // @ts-expect-error - feature detection
-    const cma: boolean = await PublicKeyCredential.isConditionalMediationAvailable();
+    const PKC = window.PublicKeyCredential as unknown as {
+      isConditionalMediationAvailable?: () => Promise<boolean>;
+    };
+    if (typeof PKC.isConditionalMediationAvailable !== "function") {
+      return { ok: false, reason: "unsupported" };
+    }
+    const cma: boolean = await PKC.isConditionalMediationAvailable();
     if (!cma) return { ok: false, reason: "unsupported" };
+
 
     const rpId = window.location.hostname;
     const { data: beginData, error: beginErr } = await supabase.functions.invoke(
