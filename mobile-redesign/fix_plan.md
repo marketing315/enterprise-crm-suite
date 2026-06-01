@@ -264,11 +264,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 ## FASE 7 — Rifinitura & gate QA
 
-### F7.1 — Pass motion & micro-interazioni `[ ]`
+### F7.1 — Pass motion & micro-interazioni `[x]`
 - **dep:** Fase 3–6 completate
 - Uniforma durate/easing/press-state/transizioni schermo su tutta la shell; verifica reduced-motion.
 - **AC:** coerenza SPEC §2.4; nessun jank percepito.
-- *Note:*
+- *Note:* Audit conferma sistema già coerente: `tailwind.config.ts` espone token `duration-{micro:150ms,screen:250ms}` + `ease-out-soft` (cubic-bezier(0.2,0.8,0.2,1)) usati uniformemente; tutti i componenti mobile (`MobileTabBar`, `MobileFab`, `MobileMoreSheet`, `Segmented`, `MobileHeader`, `MobileListItem`, `MobileSettings`, `MobileSearch`) usano `press-scale` (150ms ease-out-soft) per il tap-state e `transition-colors` per hover (zero `transition-all` gratuiti, zero `cubic-bezier` hard-coded). Spinner/skeleton già wrappati con `motion-safe:animate-spin`/`motion-safe:animate-pulse`. Hardening reduced-motion: (1) `MobileScreen` ora wrappa l'animazione d'ingresso con `motion-safe:animate-slide-up-fade` (oltre alla regola `main { animation: none !important }` già presente); (2) il container `MobileScreen` espone `data-mobile-screen=""` e in `index.css` aggiunta regola `@media (prefers-reduced-motion: reduce) { [data-mobile-screen], [data-mobile-screen] * { transition-duration: 0.001ms !important; transition-delay: 0ms !important; } }` che azzera tutte le transition (slide MobileListItem, hover, press) lasciando intatte le animazioni di stato `motion-safe:` che vengono già auto-disabilitate dal prefix Tailwind. Test esistente `MobileScreen.MobileHeader.test.tsx:68` (match `/animate-slide-up-fade/`) continua a passare (`motion-safe:animate-slide-up-fade` contiene la sottostringa). Desktop invariato (le regole sono scope-localizzate a `[data-mobile-screen]`, presente solo sotto `useIsMobile()`). Follow-up: F7.2 (Pass accessibilità AA).
 
 ### F7.2 — Pass accessibilità (AA) `[ ]`
 - **dep:** Fase 3–6 completate
