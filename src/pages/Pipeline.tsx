@@ -3,8 +3,10 @@ import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 import { DealInlinePanel } from "@/components/pipeline/DealInlinePanel";
 import { TagFilter } from "@/components/tags/TagFilter";
 import { ManageStagesDialog } from "@/components/pipeline/ManageStagesDialog";
+import { MobilePipelineView } from "@/components/pipeline/mobile/MobilePipelineView";
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { useDeals } from "@/hooks/usePipeline";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AlertCircle, Globe, Trophy, XCircle, Archive, Settings2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +14,14 @@ import { ClosedDealsTable } from "@/components/pipeline/ClosedDealsTable";
 import { Button } from "@/components/ui/button";
 
 export default function Pipeline() {
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return <MobilePipelineView />;
+  }
+  return <PipelineDesktop />;
+}
+
+function PipelineDesktop() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
