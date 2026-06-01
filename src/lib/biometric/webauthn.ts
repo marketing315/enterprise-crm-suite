@@ -79,11 +79,31 @@ interface PrfExtResult {
 /**
  * Crea una credenziale platform e tenta di estrarre il secret PRF.
  */
+function isInsecureContext(): boolean {
+  return typeof window !== "undefined" && !window.isSecureContext;
+}
+
+function isCrossOriginIframe(): boolean {
+  try {
+    return typeof window !== "undefined" && window.top !== window.self;
+  } catch {
+    return true; // accessing window.top threw → cross-origin frame
+  }
+}
+
 export async function createPlatformCredential(
   authUserId: string,
   userLabel: string,
 ): Promise<CreatedCredential> {
-  if (!isWebAuthnAvailable()) throw new Error("WebAuthn non disponibile");
+  if (!isWebAuthnAvailable()) throw new Error("WebAuthn non disponibile su questo browser.");
+  if (isInsecureContext()) {
+    throw new Error("Serve una connessione HTTPS sicura per attivare la biometria.");
+  }
+  if (isCrossOriginIframe()) {
+    throw new Error(
+      "Apri il CRM nel suo dominio (crm.gruppobenessere.it) — la biometria non funziona nell'anteprima embedded.",
+    );
+  }
 
   const challenge = randomBytes(32);
   const userId = enc.encode(authUserId);
@@ -113,7 +133,28 @@ export async function createPlatformCredential(
     },
   };
 
-  const cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
+  let cred: PublicKeyCredential | null;
+  try {
+    cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
+  } catch (err) {
+    const e = err as DOMException & { message?: string };
+    const name = e?.name ?? "Error";
+    const msg = e?.message ?? String(err);
+    console.error("[biometric] WebAuthn create failed", name, msg, err);
+    if (name === "NotAllowedError") {
+      throw new Error("Permesso negato o operazione annullata. Riprova e conferma con Face ID/impronta.");
+    }
+    if (name === "SecurityError") {
+      throw new Error(`Errore di sicurezza WebAuthn (${msg}). Verifica di essere sul dominio corretto.`);
+    }
+    if (name === "NotSupportedError") {
+      throw new Error("Questo dispositivo/browser non supporta la biometria platform.");
+    }
+    if (name === "InvalidStateError") {
+      throw new Error("Credenziale biometrica già esistente su questo dispositivo.");
+    }
+    throw new Error(`WebAuthn: ${name} — ${msg}`);
+  }
   if (!cred) throw new Error("Creazione credenziale annullata");
 
   const rawId = new Uint8Array(cred.rawId);
