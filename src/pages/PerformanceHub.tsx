@@ -285,12 +285,22 @@ function SectionBlock({ section, index }: { section: Section; index: number }) {
   );
 }
 
+import { Suspense, lazy } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MobilePerformanceHub } from "@/components/performance/mobile/MobilePerformanceHub";
+const MobilePerformanceHub = lazy(() =>
+  import("@/components/performance/mobile/MobilePerformanceHub").then((m) => ({
+    default: m.MobilePerformanceHub,
+  })),
+);
 
 export default function PerformanceHub() {
   const isMobileViewport = useIsMobile();
-  if (isMobileViewport) return <MobilePerformanceHub />;
+  if (isMobileViewport)
+    return (
+      <Suspense fallback={<div className="min-h-[100dvh] bg-background" />}>
+        <MobilePerformanceHub />
+      </Suspense>
+    );
   return <PerformanceHubDesktop />;
 }
 
