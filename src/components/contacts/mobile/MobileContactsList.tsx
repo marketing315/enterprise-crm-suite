@@ -85,7 +85,7 @@ function getDisplayName(first: string | null, last: string | null, email: string
  *  - Stati skeleton/empty/error gestiti; pull-to-refresh invalida `contact-search`.
  */
 export function MobileContactsList() {
-  const { isAllBrandsSelected } = useBrand();
+  const { isAllBrandsSelected, brands } = useBrand();
   useContactsRealtime();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -94,6 +94,12 @@ export function MobileContactsList() {
   const [localSearch, setLocalSearch] = useState('');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [createdFromDate, setCreatedFromDate] = useState<Date | undefined>();
+  const [createdToDate, setCreatedToDate] = useState<Date | undefined>();
+  const [brandFilter, setBrandFilter] = useState<string>('all');
 
   const { data: sourceNames = [] } = useLeadSourceNames();
 
@@ -115,6 +121,13 @@ export function MobileContactsList() {
     }
   }, [searchParams, setSearchParams]);
 
+  const activeFiltersCount =
+    (statusFilter !== 'all' ? 1 : 0) +
+    (selectedTagIds.length > 0 ? 1 : 0) +
+    (sourceFilter !== 'all' ? 1 : 0) +
+    (createdFromDate || createdToDate ? 1 : 0) +
+    (isAllBrandsSelected && brandFilter !== 'all' ? 1 : 0);
+
   const {
     contacts,
     isLoading,
@@ -128,6 +141,10 @@ export function MobileContactsList() {
     refetch,
   } = usePaginatedContactSearch(searchQuery, {
     status: statusFilter === 'all' ? undefined : statusFilter,
+    tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+    sourceName: sourceFilter === 'all' ? undefined : sourceFilter,
+    createdFrom: createdFromDate,
+    createdTo: createdToDate,
   });
 
   // Infinite scroll sentinel
