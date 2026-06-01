@@ -45,37 +45,42 @@ export function Segmented<V extends string = string>({
 }: SegmentedProps<V>) {
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const focusIndex = React.useCallback(
-    (idx: number) => {
-      const container = containerRef.current;
-      if (!container) return;
-      const buttons = container.querySelectorAll<HTMLButtonElement>('button[data-chip="1"]:not([disabled])');
-      const list = Array.from(buttons);
-      if (list.length === 0) return;
-      const safe = (idx + list.length) % list.length;
-      list[safe]?.focus();
-    },
-    [],
-  );
+  const focusByValue = React.useCallback((val: string) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const btn = container.querySelector<HTMLButtonElement>(`button[data-value="${val}"]`);
+    btn?.focus();
+  }, []);
 
   const handleKey = (e: React.KeyboardEvent, currentIdx: number) => {
+    const findNextEnabled = (start: number, dir: 1 | -1) => {
+      const n = options.length;
+      for (let step = 1; step <= n; step++) {
+        const i = ((start + dir * step) % n + n) % n;
+        if (!options[i].disabled) return i;
+      }
+      return -1;
+    };
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault();
-      const next = options.findIndex((_, i) => i > currentIdx && !options[i].disabled);
-      focusIndex(next === -1 ? 0 : next);
+      const next = findNextEnabled(currentIdx, 1);
+      if (next >= 0) focusByValue(options[next].value);
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault();
-      const prev = [...options]
-        .map((o, i) => ({ o, i }))
-        .reverse()
-        .find((x) => x.i < currentIdx && !x.o.disabled);
-      focusIndex(prev ? prev.i : options.length - 1);
+      const prev = findNextEnabled(currentIdx, -1);
+      if (prev >= 0) focusByValue(options[prev].value);
     } else if (e.key === 'Home') {
       e.preventDefault();
-      focusIndex(0);
+      const first = options.findIndex((o) => !o.disabled);
+      if (first >= 0) focusByValue(options[first].value);
     } else if (e.key === 'End') {
       e.preventDefault();
-      focusIndex(options.length - 1);
+      for (let i = options.length - 1; i >= 0; i--) {
+        if (!options[i].disabled) {
+          focusByValue(options[i].value);
+          break;
+        }
+      }
     }
   };
 
