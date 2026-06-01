@@ -1,8 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
-  TrendingDown,
-  ChevronRight,
   Euro,
   Percent,
   Target,
@@ -14,9 +12,9 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatPercent, formatNumber } from '@/lib/formatKpi';
 import { ConfidenceBadge } from '@/components/ceo/ConfidenceBadge';
-import { cn } from '@/lib/utils';
 import type { CeoKpi, ConfidenceFactor } from '@/types/company';
 import type { CeoOperationalData } from '@/hooks/useCeoOperationalKpis';
+import { KpiList, MetricRow, type MetricTone } from '@/components/mobile/MetricRow';
 
 interface Props {
   financial?: CeoKpi;
@@ -33,80 +31,11 @@ interface MobileKpiRow {
   href?: string;
   confidence?: number;
   factors?: ConfidenceFactor[];
-  tone?: 'pos' | 'neg' | 'warn' | 'neutral';
-}
-
-function Trend({ value, invert }: { value: number; invert?: boolean }) {
-  const good = invert ? value <= 0 : value >= 0;
-  const Icon = good ? TrendingUp : TrendingDown;
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-0.5 text-[11px] font-medium',
-        good ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-      )}
-    >
-      <Icon className="h-3 w-3" />
-      {value >= 0 ? '+' : ''}
-      {value.toFixed(1)}%
-    </span>
-  );
-}
-
-function KpiRow({ kpi }: { kpi: MobileKpiRow }) {
-  const navigate = useNavigate();
-  const Clickable = kpi.href ? 'button' : 'div';
-  const toneClass =
-    kpi.tone === 'pos'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : kpi.tone === 'neg'
-        ? 'text-rose-600 dark:text-rose-400'
-        : kpi.tone === 'warn'
-          ? 'text-amber-600 dark:text-amber-400'
-          : '';
-
-  return (
-    <Clickable
-      onClick={kpi.href ? () => navigate(kpi.href!) : undefined}
-      className={cn(
-        'w-full text-left rounded-2xl p-4 bg-card border border-border/60',
-        'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
-        'transition-all active:scale-[0.98]',
-        kpi.href && 'hover:border-border hover:shadow-md'
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="h-8 w-8 rounded-xl bg-muted/70 flex items-center justify-center shrink-0">
-            <kpi.icon className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <p className="text-[13px] font-medium text-muted-foreground truncate">{kpi.title}</p>
-        </div>
-        {kpi.href && <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />}
-      </div>
-
-      <div className="mt-3 flex items-baseline gap-2 flex-wrap">
-        <span className={cn('text-[28px] leading-none font-semibold tracking-tight', toneClass)}>
-          {kpi.value}
-        </span>
-        {kpi.confidence !== undefined && (
-          <ConfidenceBadge value={kpi.confidence} factors={kpi.factors} />
-        )}
-      </div>
-
-      {(kpi.subtitle || kpi.trend !== undefined) && (
-        <div className="mt-2 flex items-center gap-2 flex-wrap">
-          {kpi.trend !== undefined && <Trend value={kpi.trend} invert={kpi.invertTrend} />}
-          {kpi.subtitle && (
-            <span className="text-[11px] text-muted-foreground">{kpi.subtitle}</span>
-          )}
-        </div>
-      )}
-    </Clickable>
-  );
+  tone?: MetricTone;
 }
 
 export function MobileCeoKpiList({ financial, operational }: Props) {
+  const navigate = useNavigate();
   const rows: MobileKpiRow[] = [];
 
   if (financial) {
@@ -117,7 +46,7 @@ export function MobileCeoKpiList({ financial, operational }: Props) {
         subtitle: formatCurrency(financial.gross_margin),
         icon: Percent,
         confidence: financial.confidence.overall,
-        tone: financial.gross_margin_percent >= 20 ? 'pos' : 'warn',
+        tone: financial.gross_margin_percent >= 20 ? 'positive' : 'warning',
       },
       {
         title: 'ROI Marketing',
@@ -125,7 +54,7 @@ export function MobileCeoKpiList({ financial, operational }: Props) {
         subtitle: `Spesa: ${formatCurrency(financial.marketing_spend)}`,
         icon: Target,
         confidence: financial.confidence.marketing_roi,
-        tone: financial.marketing_roi >= 100 ? 'pos' : 'neg',
+        tone: financial.marketing_roi >= 100 ? 'positive' : 'negative',
       },
       {
         title: 'Fatturato',
@@ -148,7 +77,7 @@ export function MobileCeoKpiList({ financial, operational }: Props) {
         subtitle: `${formatPercent(financial.budget_baseline.variance_percent)} del budget`,
         icon: Euro,
         href: '/azienda/budget',
-        tone: financial.budget_baseline.variance >= 0 ? 'pos' : 'neg',
+        tone: financial.budget_baseline.variance >= 0 ? 'positive' : 'negative',
       },
     );
   }
@@ -187,10 +116,33 @@ export function MobileCeoKpiList({ financial, operational }: Props) {
   }
 
   return (
-    <div className="space-y-2.5">
-      {rows.map((r, i) => (
-        <KpiRow kpi={r} key={i} />
-      ))}
-    </div>
+    <KpiList>
+      {rows.map((r, i) => {
+        const Icon = r.icon;
+        const valueNode =
+          r.confidence !== undefined ? (
+            <span className="inline-flex items-baseline gap-2">
+              <span>{r.value}</span>
+              <ConfidenceBadge value={r.confidence} factors={r.factors} />
+            </span>
+          ) : (
+            r.value
+          );
+        return (
+          <MetricRow
+            key={i}
+            title={r.title}
+            value={valueNode}
+            subtitle={r.subtitle}
+            delta={r.trend}
+            invertTrend={r.invertTrend}
+            icon={<Icon className="h-4 w-4" />}
+            tone={r.tone}
+            onClick={r.href ? () => navigate(r.href!) : undefined}
+            ariaLabel={r.href ? `${r.title}: ${r.value}` : undefined}
+          />
+        );
+      })}
+    </KpiList>
   );
 }
