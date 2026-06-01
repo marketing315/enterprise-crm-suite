@@ -12,6 +12,7 @@ export default function Login() {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   useEffect(() => {
     if (!isLoading && session) {
