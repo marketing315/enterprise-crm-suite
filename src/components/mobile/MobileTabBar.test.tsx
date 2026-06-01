@@ -13,7 +13,7 @@ const sampleTabs: MobileTab[] = [
   { id: 'menu', label: 'Menu', icon: Menu, action: 'menu' },
 ];
 
-function renderAt(path: string, props: Parameters<typeof MobileTabBar>[0] = {}) {
+function renderAt(path: string, props: Partial<Parameters<typeof MobileTabBar>[0]> = {}) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <MobileTabBar tabs={sampleTabs} {...props} />

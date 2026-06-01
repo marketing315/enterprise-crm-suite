@@ -113,3 +113,14 @@ export function MobileTabBar({ tabs, onAction, className }: MobileTabBarProps) {
     </nav>
   );
 }
+
+/**
+ * Variante "connected" che legge le tab dal ruolo via `useRoleMobileTabs`.
+ * Usare nel `MobileLayout`; per i test/storybook usare direttamente `MobileTabBar`.
+ */
+export function MobileTabBarConnected(
+  props: Omit<MobileTabBarProps, 'tabs'> & { tabs?: MobileTab[] },
+) {
+  const fallback = useRoleMobileTabs();
+  return <MobileTabBar {...props} tabs={props.tabs ?? fallback} />;
+}
