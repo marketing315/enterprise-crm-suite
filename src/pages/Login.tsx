@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { BiometricUnlockPanel } from '@/components/auth/BiometricUnlockPanel';
 import logo from '@/assets/logo.svg';
 
 export default function Login() {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [hidePanel, setHidePanel] = useState(false);
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -24,7 +26,14 @@ export default function Login() {
         <p className="text-muted-foreground">Il cuore digitale di Gruppo Benessere</p>
       </div>
 
+      {!hidePanel && (
+        <div className="mb-4 w-full max-w-md">
+          <BiometricUnlockPanel onFallbackToPassword={() => setHidePanel(true)} />
+        </div>
+      )}
+
       <LoginForm />
+
 
       <footer className="mt-8 text-center text-xs text-muted-foreground">
         <Link to="/privacy" className="hover:text-foreground hover:underline">
