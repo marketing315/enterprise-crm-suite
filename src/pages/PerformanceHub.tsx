@@ -285,7 +285,6 @@ function SectionBlock({ section, index }: { section: Section; index: number }) {
   );
 }
 
-import { Suspense, lazy } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 const MobilePerformanceHub = lazy(() =>
   import("@/components/performance/mobile/MobilePerformanceHub").then((m) => ({
