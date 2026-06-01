@@ -17,11 +17,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 ## FASE 0 — Fondamenta (token, utility, audit)
 
-### F0.1 — Audit & inventario mobile `[ ]`
+### F0.1 — Audit & inventario mobile `[x]`
 - **dep:** nessuna
 - Esegui un censimento (in `mobile-redesign/AUDIT.md`) di: route in `App.tsx`, pagine in `src/pages`, punti che già usano `useIsMobile`, componenti `ceo/mobile/*`, tabelle che diventeranno liste, hook dati per ogni schermo della SPEC §6.
 - **AC:** `AUDIT.md` elenca per ogni schermo SPEC il file pagina, gli hook dati, e i componenti da riusare. Nessun codice app modificato.
-- *Note:*
+- *Note:* Creato `mobile-redesign/AUDIT.md` (87 route censite, 6 file con `useIsMobile`, 3 componenti in `ceo/mobile/*`, 5 tabelle→liste, hook dati mappati per SPEC §6, mappa IA per ruolo pronta per F0.4). Nessun file di `src/` toccato.
 
 ### F0.2 — Token semantici in `index.css` + `tailwind.config.ts` `[ ]`
 - **dep:** nessuna
