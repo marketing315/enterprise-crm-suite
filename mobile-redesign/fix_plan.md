@@ -35,11 +35,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 - **AC:** utility disponibili e usate da un esempio; reduced-motion rispettato; build verde.
 - *Note:* Aggiunti in `src/index.css` (blocco F0.3 sotto `@layer utilities`): `.pt-safe/.pb-safe/.pl-safe/.pr-safe/.px-safe` con `env(safe-area-inset-*)`; `.press-scale` con `transition` e `active:scale-[0.98]` (ridotta a `none` sotto `prefers-reduced-motion`). In `tailwind.config.ts` (extend): `boxShadow.card` (neutra soffusa), `boxShadow.hero` (colorata tenue con `hsl(var(--primary) / 0.15)`); `transitionDuration.micro` (150ms) / `screen` (250ms); `transitionTimingFunction.ease-out-soft` (`cubic-bezier(0.2, 0.8, 0.2, 1)`); keyframe `slide-up-fade` + animazione `slide-up-fade` (250ms). Build verde; desktop invariato (nessun componente toccato).
 
-### F0.4 — Hook `useRoleMobileTabs` (config tab per ruolo) `[ ]`
+### F0.4 — Hook `useRoleMobileTabs` (config tab per ruolo) `[x]`
 - **dep:** F0.1
 - Crea `src/hooks/useRoleMobileTabs.ts` che, dato il ruolo/brand correnti (riusa `useAuth`/`useRoleDashboard`/`useBrand`), ritorna le ≤5 tab della SPEC §5 come dato (`{icon,label,path|action}`). La visibilità deve combaciare con `MainLayout`.
 - **AC:** unit test che per ogni ruolo ritorna ≤5 tab coerenti; nessuna modifica a RBAC.
-- *Note:*
+- *Note:* Creato `src/hooks/useRoleMobileTabs.ts` con tipo `MobileTab` (path XOR action, `isPrimaryAction` per FAB-in-bar) + mappatura ruolo→tab da SPEC §5 (CEO/Admin, Amministrazione, Resp. Venditori, Resp. CC, Venditore/Sales, Operatore CC/Callcenter, fallback). Riusa `useRoleDashboard().primaryPath` per "Home" → coerente con `MainLayout`. Test in `src/hooks/useRoleMobileTabs.test.ts`: 10 test verdi (9 ruoli + fallback) — assertion ≤5 tab, Home/Menu agli estremi, esattamente 1 primary action, path XOR action, id univoci. Nessun file `src/` esistente toccato; desktop intatto.
 
 ---
 
