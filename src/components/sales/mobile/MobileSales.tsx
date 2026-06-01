@@ -240,7 +240,11 @@ function MobileSales() {
                 icon={ShoppingCart}
                 title="Nessuna vendita"
                 description="Cambia periodo o filtro stato, oppure crea una vendita rapida."
-                action={{ label: "Vendita rapida", onClick: () => setQuickSaleOpen(true) }}
+                action={
+                  <Button size="sm" onClick={() => setQuickSaleOpen(true)} className="gap-1">
+                    <Plus className="h-4 w-4" /> Vendita rapida
+                  </Button>
+                }
               />
             ) : (
               <ul className="flex flex-col gap-2" aria-label={`${filtered.length} ordini`}>

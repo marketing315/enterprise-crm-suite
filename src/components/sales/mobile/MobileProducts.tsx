@@ -197,13 +197,18 @@ function MobileProducts() {
                 icon={Package}
                 title="Nessun prodotto"
                 description="Aggiungi il primo prodotto al catalogo."
-                action={{
-                  label: "Nuovo prodotto",
-                  onClick: () => {
-                    resetForm();
-                    setDialogOpen(true);
-                  },
-                }}
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      resetForm();
+                      setDialogOpen(true);
+                    }}
+                    className="gap-1"
+                  >
+                    <Plus className="h-4 w-4" /> Nuovo prodotto
+                  </Button>
+                }
               />
             ) : (
               <ul className="flex flex-col gap-2" aria-label={`${filtered.length} prodotti`}>
