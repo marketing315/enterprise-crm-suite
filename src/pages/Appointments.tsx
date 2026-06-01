@@ -87,7 +87,18 @@ const APPOINTMENT_TYPE_CONFIG: Record<AppointmentType, { label: string; classNam
 type SortField = "date" | "contact" | "status" | "city" | "sales";
 type SortDir = "asc" | "desc";
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileAppointmentsView } from "@/components/appointments/mobile/MobileAppointmentsView";
+
 export default function Appointments() {
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return <MobileAppointmentsView />;
+  }
+  return <AppointmentsDesktop />;
+}
+
+function AppointmentsDesktop() {
   const navigate = useNavigate();
   const { currentBrand, hasBrandSelected, isAllBrandsSelected, brands } = useBrand();
   const [weekStart, setWeekStart] = useState(() =>
