@@ -54,6 +54,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileSettings from "@/components/settings/mobile/MobileSettings";
 
 interface SettingsNavItem {
   id: string;
