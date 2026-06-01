@@ -165,7 +165,6 @@ export const MobileListItem = React.forwardRef<HTMLDivElement, MobileListItemPro
         {safeActions.length > 0 && (
           <div
             className="absolute inset-y-0 right-0 flex items-stretch"
-            aria-hidden={!open && dx === 0 ? 'true' : 'false'}
             style={{ width: actionsWidth }}
           >
             {safeActions.map((a) => (
