@@ -51,7 +51,6 @@ const ROLE_OPTIONS: { value: AppRole; label: string }[] = [
   { value: 'responsabile_callcenter', label: 'Responsabile Call Center' },
   { value: 'venditore', label: 'Venditore' },
   { value: 'operatore_callcenter', label: 'Operatore Call Center' },
-  { value: 'marketing', label: 'Marketing' },
 ];
 
 const PROVIDER_LABELS: Record<string, string> = {
