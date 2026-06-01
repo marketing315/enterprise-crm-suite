@@ -118,12 +118,16 @@ export const MobileListItem = React.forwardRef<HTMLDivElement, MobileListItemPro
       setDx(next);
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (e: React.PointerEvent) => {
       if (!safeActions.length) {
         setDragging(false);
         return;
       }
-      const shouldOpen = Math.abs(dx) > actionsWidth * OPEN_RATIO;
+      // Fallback: misura delta anche se pointerMove non è stato emesso (es. jsdom)
+      const totalDelta = startX.current != null ? e.clientX - startX.current : 0;
+      if (Math.abs(totalDelta) > SWIPE_THRESHOLD) movedRef.current = true;
+      const effectiveDx = Math.abs(dx) > 0 ? dx : (open ? -actionsWidth + totalDelta : totalDelta);
+      const shouldOpen = Math.abs(effectiveDx) > actionsWidth * OPEN_RATIO;
       setOpen(shouldOpen);
       setDx(shouldOpen ? -actionsWidth : 0);
       setDragging(false);
