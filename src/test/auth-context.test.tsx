@@ -128,4 +128,76 @@ describe("AuthContext", () => {
     expect(result.current.session).toBeNull();
     expect(result.current.user).toBeNull();
   });
+
+  // Fase 3 — RBAC Open + Pending: il context propaga `users.status`
+  // (pending/suspended/active). Le route guard in ProtectedRoute leggono
+  // questo campo per mostrare PendingApprovalScreen / SuspendedScreen.
+  function mockFetchUserOnce(userRow: Record<string, unknown> | null) {
+    let call = 0;
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === "users") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: userRow, error: null }),
+            }),
+          }),
+        } as never;
+      }
+      // user_roles fetch
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+      } as never;
+    });
+    return () => call;
+  }
+
+  function fakeSession() {
+    return {
+      access_token: "fake",
+      refresh_token: "fake",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      token_type: "bearer",
+      user: { id: "auth-uid-1", email: "t@example.com" },
+    } as unknown as never;
+  }
+
+  it("propaga user.status='pending' (gate Fase 3)", async () => {
+    mockSupabase.auth.getSession.mockResolvedValueOnce({
+      data: { session: fakeSession() },
+      error: null,
+    });
+    mockFetchUserOnce({
+      id: "u1",
+      supabase_auth_id: "auth-uid-1",
+      email: "t@example.com",
+      status: "pending",
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.user).not.toBeNull());
+    expect((result.current.user as { status?: string } | null)?.status).toBe("pending");
+  });
+
+  it("propaga user.status='suspended' (gate Fase 3)", async () => {
+    mockSupabase.auth.getSession.mockResolvedValueOnce({
+      data: { session: fakeSession() },
+      error: null,
+    });
+    mockFetchUserOnce({
+      id: "u2",
+      supabase_auth_id: "auth-uid-1",
+      email: "s@example.com",
+      status: "suspended",
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.user).not.toBeNull());
+    expect((result.current.user as { status?: string } | null)?.status).toBe("suspended");
+  });
 });
+

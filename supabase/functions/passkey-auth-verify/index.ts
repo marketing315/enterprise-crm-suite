@@ -13,9 +13,17 @@
 // - sessione emessa via helper condiviso _shared/issue-session.ts
 
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { verifyAuthenticationResponse } from "npm:@simplewebauthn/server@10.0.1";
 import { issueSessionForEmail } from "../_shared/issue-session.ts";
+
+// Inline CORS — evita la subpath npm:@supabase/supabase-js@2/cors che non risolve
+// nei test Deno (vedi index_test.ts).
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 
 const CHALLENGE_TTL_MS = 3 * 60_000;
 
@@ -49,7 +57,7 @@ function b64urlToBytes(s: string): Uint8Array {
   return out;
 }
 
-Deno.serve(async (req) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -116,7 +124,13 @@ Deno.serve(async (req) => {
     // 3) Verifica firma WebAuthn
     let verification;
     try {
-      verification = await verifyAuthenticationResponse({
+      // simplewebauthn v10 runtime accetta `credential`; i tipi locali divergono.
+      // Cast a `unknown` per evitare conflitto di tipi senza modificare il runtime.
+      verification = await (verifyAuthenticationResponse as unknown as (
+        opts: unknown,
+      ) => Promise<{ verified: boolean; authenticationInfo: { newCounter: number } }>)({
+
+
         response: {
           id: body.credentialId,
           rawId: body.credentialId,
@@ -197,7 +211,10 @@ Deno.serve(async (req) => {
     console.error("[passkey-verify] uncaught", e);
     return json({ error: "internal" }, 500);
   }
-});
+};
+
+Deno.serve(handler);
+
 
 async function lookupCredential(
   admin: SupabaseClient,
