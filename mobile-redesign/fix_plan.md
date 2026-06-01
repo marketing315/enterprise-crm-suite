@@ -153,11 +153,13 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 - **AC:** dati da `CallcenterManagerDashboard`/`CallcenterOperatorDashboard`; SPEC §6.1.
 - *Note:* Creati `src/components/callcenter/mobile/MobileCallcenterManagerDashboard.tsx` (hero "Backlog ticket" con variant `negative` se >20, KpiList 7 metriche: ticket creati/risolti, backlog, non assegnati, tempi medi assegnazione/risoluzione formattati min↔h, appuntamenti oggi; top 5 operatori per ticket risolti drill `/admin/callcenter-kpi`, badge backlog rosso se >5; tone `invertTrend` su backlog/tempi/non-assegnati; usa `useCallcenterKpisOverview`/`useCallcenterKpisByOperator`/`useDashboardData` con stesse queryKeys del desktop) e `src/components/callcenter/mobile/MobileCallcenterOperatorDashboard.tsx` (hero "Ticket assegnati" drill `/tickets`, KpiList 4: chiamate oggi, ticket assegnati, appt oggi, ricontatti 60min; lista ricontatti con orario, badge minuti urgent ≤10min, tap → contatto). Wired in `CallcenterManagerDashboard.tsx` e `CallcenterOperatorDashboard.tsx` con guard `useIsMobile()` (desktop intoccato). Solo token semantici (`bg-danger/10`/`text-danger`, `bg-warning/10`/`text-warning`, `text-primary`, `bg-card`); `PullToRefresh` invalida le queryKeys condivise → cache react-query riusata, zero fetch extra, RPC/RLS invariati. Mobile suite 124/124 verde. Follow-up: F3.5 (Mobile Dashboard Amministrazione).
 
-### F3.5 — Mobile Dashboard Amministrazione `[ ]`
+### F3.5 — Mobile Dashboard Amministrazione `[x]`
 - **dep:** F2.4, F1.5, F1.7
 - Hero (KPI economico chiave) + KpiList + alert.
 - **AC:** dati da `AdminDashboard`/overview; SPEC §6.1.
-- *Note:*
+- *Note:* Creato `src/components/admin/mobile/MobileAdminDashboard.tsx`: hero "Ticket aperti" con variant `negative` se SLA breach > 0 / `primary` se backlog > 20 / `positive` altrimenti (drill `/tickets`); banner `Alert variant=destructive` condizionale per SLA breach + webhook KO con % fail rate; KpiList 6 metriche (contatti totali + lead 7gg in subtitle, lead 7gg standalone, deal aperti, ticket aperti con `invertTrend`+tone basato su SLA breach, webhook 24h con tone basato su fail rate >5%/>1%, appuntamenti oggi); lista 8 azioni rapide come card uniforme con icona/label/badge (Webhook+badge KO se >0, Ticket+badge SLA se breach, Team, AI, SLO, Slow Queries, Changelog, Settings). Riusa gli stessi queryKeys del desktop (`useDashboardData`, `useWebhookMetrics24h`) → cache react-query condivisa, zero fetch extra, RPC/RLS invariati. `PullToRefresh` invalida tutte le chiavi. Solo token semantici (`bg-danger/10`/`text-danger`/`bg-warning/10`/`text-warning`/`bg-card`/`bg-muted`). Wired in `src/pages/dashboard/AdminDashboard.tsx` con guard `if (isMobile) return <MobileAdminDashboard />;` (desktop intoccato; copre anche ruolo `amministrazione` che punta a `/dashboard/admin`). Mobile suite 124/124 verde. Follow-up: F4.1 (Contatti mobile).
+
+
 
 ---
 
