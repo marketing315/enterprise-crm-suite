@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
-import { TrendingUp, AlertCircle, ChevronDown, ChevronUp, Sparkles, LayoutGrid } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, Sparkles, LayoutGrid } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +30,9 @@ import { CeoCostBreakdown } from '@/components/ceo/CeoCostBreakdown';
 import { BudgetBaselineCard } from '@/components/ceo/BudgetBaselineCard';
 
 import { SectionLabel } from '@/components/mobile/SectionLabel';
+import { HeroMetricCard } from '@/components/mobile/HeroMetricCard';
+import { HeroMetricSkeleton, KpiListSkeleton } from '@/components/mobile/MobileSkeletons';
+
 
 
 
@@ -103,7 +105,6 @@ export function MobileCeoDashboard() {
   }
 
   const profit = finData?.estimated_net_profit ?? 0;
-  const profitPositive = profit >= 0;
   const trend = finData?.revenue_change_percent ?? 0;
 
   return (
@@ -180,37 +181,15 @@ export function MobileCeoDashboard() {
       <div className="px-4 pt-5 space-y-5">
         {/* Hero card: Utile netto */}
         {isLoading ? (
-          <Skeleton className="h-[148px] w-full rounded-3xl" />
+          <HeroMetricSkeleton />
         ) : finData ? (
-          <div
-            className={cn(
-              'relative overflow-hidden rounded-3xl p-5 text-primary-foreground',
-              'bg-gradient-to-br from-primary via-primary to-primary/80',
-              'shadow-lg shadow-primary/20'
-            )}
-          >
-            <div className="absolute -top-12 -right-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-            <div className="relative">
-              <p className="text-[11px] uppercase tracking-[0.14em] opacity-80 font-semibold">
-                Utile Netto Stimato
-              </p>
-              <p
-                className={cn(
-                  'mt-2 text-[40px] leading-none font-bold tracking-tight tabular-nums',
-                  !profitPositive && 'text-rose-100'
-                )}
-              >
-                {formatCurrency(profit)}
-              </p>
-              <div className="mt-3 flex items-center gap-2 text-[12px] opacity-90">
-                <TrendingUp className="h-3.5 w-3.5" />
-                <span>
-                  Fatturato {trend >= 0 ? '+' : ''}
-                  {trend.toFixed(1)}% vs periodo prec.
-                </span>
-              </div>
-            </div>
-          </div>
+          <HeroMetricCard
+            label="Utile Netto Stimato"
+            value={formatCurrency(profit)}
+            variant="primary"
+            delta={trend}
+            caption={`Fatturato vs periodo prec.`}
+          />
         ) : null}
 
         <CeoCalcVersionBanner calcVersion={finData?.calc_version} />
@@ -226,15 +205,12 @@ export function MobileCeoDashboard() {
         <section>
           <SectionLabel>Indicatori chiave</SectionLabel>
           {isLoading ? (
-            <div className="space-y-2.5">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-[88px] w-full rounded-2xl" />
-              ))}
-            </div>
+            <KpiListSkeleton count={6} />
           ) : (
             <MobileCeoKpiList financial={finData} operational={opsData} />
           )}
         </section>
+
 
         {/* Pipeline */}
         {opsData && (
