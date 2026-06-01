@@ -196,20 +196,120 @@ export function MobileContactsList() {
           </p>
         </div>
 
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            inputMode="search"
-            placeholder="Cerca per nome, telefono o email…"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            className="pl-9 h-10 rounded-xl"
-            aria-label="Cerca contatti"
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              inputMode="search"
+              placeholder="Cerca per nome, telefono o email…"
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="pl-9 h-10 rounded-xl"
+              aria-label="Cerca contatti"
+            />
+          </div>
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative h-10 w-10 shrink-0 rounded-xl"
+                aria-label="Filtri"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-[65vh] px-4 pb-6">
+              <SheetHeader>
+                <SheetTitle>Filtri</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 space-y-5 overflow-y-auto pb-4">
+                {isAllBrandsSelected && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Brand</label>
+                    <Select value={brandFilter} onValueChange={setBrandFilter}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filtra per brand" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti i brand</SelectItem>
+                        {brands.map((brand) => (
+                          <SelectItem key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Stato</label>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(v) => setStatusFilter(v as StatusValue)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filtra per stato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tag</label>
+                  <TagFilter
+                    selectedTagIds={selectedTagIds}
+                    onTagsChange={setSelectedTagIds}
+                    scope="contact"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Fonte lead</label>
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filtra per fonte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutte le fonti</SelectItem>
+                      {sourceNames.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Data creazione</label>
+                  <DateRangeFilter
+                    fromDate={createdFromDate}
+                    toDate={createdToDate}
+                    onFromDateChange={setCreatedFromDate}
+                    onToDateChange={setCreatedToDate}
+                    label=""
+                  />
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
         <Segmented<StatusValue>
