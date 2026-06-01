@@ -148,7 +148,8 @@ export function MobileSalespersonDashboard() {
       if (!user?.id) return null;
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return null;
-      const baseFilter = (q: ReturnType<typeof supabase.from>) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseFilter = (q: any) =>
         brandIds.length === 1 ? q.eq('brand_id', brandIds[0]) : q.in('brand_id', brandIds);
 
       const weekQ = baseFilter(
