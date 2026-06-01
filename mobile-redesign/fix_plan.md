@@ -47,11 +47,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 > Costruire i mattoni **prima** degli schermi. Ogni componente: tipizzato, `className` passabile, solo token, JSDoc breve, niente fetch dati dentro.
 
-### F1.1 — `SectionLabel` + `TrendBadge` `[ ]`
+### F1.1 — `SectionLabel` + `TrendBadge` `[x]`
 - **dep:** F0.2
 - Estrai `SectionLabel` da `MobileCeoDashboard`; crea `TrendBadge` (delta %, freccia, colore semantico, `tabular-nums`).
 - **AC:** entrambi renderizzano in tutte le varianti; storybook/esempio non richiesto; test di render base.
-- *Note:*
+- *Note:* Creati `src/components/mobile/SectionLabel.tsx` (con slot `trailing`, override `as`) e `src/components/mobile/TrendBadge.tsx` (delta % con `intent="default"|"inverse"`, segno tipografico `−`, `tabular-nums`, `role=status` + `aria-label`, varianti pill/compact, colori `success/danger/muted-foreground` da token F0.2). Refactor `MobileCeoDashboard.tsx`: rimossa duplicazione locale, ora importa `SectionLabel` dalla libreria condivisa. Test `SectionLabel.TrendBadge.test.tsx`: 13 test verdi (positivo/negativo/null/zero/inverse/suffix/aria-label/compact/segno tipografico/tabular-nums). Barrel export in `src/components/mobile/index.ts`. Nessun colore hard-coded, accessibilità AA (segno = freccia + colore + label).
 
 ### F1.2 — `MobileScreen` + `MobileHeader` `[ ]`
 - **dep:** F0.3

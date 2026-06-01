@@ -30,13 +30,9 @@ import { CeoBudgetPanel } from '@/components/ceo/CeoBudgetPanel';
 import { CeoCostBreakdown } from '@/components/ceo/CeoCostBreakdown';
 import { BudgetBaselineCard } from '@/components/ceo/BudgetBaselineCard';
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80 px-1 mb-2.5 mt-1">
-      {children}
-    </h2>
-  );
-}
+import { SectionLabel } from '@/components/mobile/SectionLabel';
+
+
 
 function Collapsible({
   title,
