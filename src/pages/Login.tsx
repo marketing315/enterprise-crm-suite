@@ -6,7 +6,10 @@ import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { PasskeyLoginButton } from '@/components/auth/PasskeyLoginButton';
 import { PinLoginDialog } from '@/components/auth/PinLoginDialog';
 import { SignupDialog } from '@/components/auth/SignupDialog';
+import { tryConditionalPasskeyLogin } from '@/lib/biometric/conditional-ui';
+import { toast } from 'sonner';
 import logo from '@/assets/logo.svg';
+
 
 export default function Login() {
   const { session, isLoading } = useAuth();
@@ -19,6 +22,20 @@ export default function Login() {
       navigate('/select-brand');
     }
   }, [session, isLoading, navigate]);
+
+  // §5.4 Conditional UI: passkey nel popup autofill dell'email.
+  useEffect(() => {
+    if (session) return;
+    const ac = new AbortController();
+    void tryConditionalPasskeyLogin(ac.signal).then((res) => {
+      if (res.ok) {
+        toast.success('Accesso con passkey riuscito');
+        navigate('/select-brand');
+      }
+    });
+    return () => ac.abort();
+  }, [session, navigate]);
+
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-background p-4 sm:p-6">
