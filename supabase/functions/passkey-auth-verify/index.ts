@@ -13,9 +13,17 @@
 // - sessione emessa via helper condiviso _shared/issue-session.ts
 
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { verifyAuthenticationResponse } from "npm:@simplewebauthn/server@10.0.1";
 import { issueSessionForEmail } from "../_shared/issue-session.ts";
+
+// Inline CORS — evita la subpath npm:@supabase/supabase-js@2/cors che non risolve
+// nei test Deno (vedi index_test.ts).
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 
 const CHALLENGE_TTL_MS = 3 * 60_000;
 
