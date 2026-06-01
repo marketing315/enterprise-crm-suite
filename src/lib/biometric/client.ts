@@ -95,6 +95,25 @@ export async function enableBiometric(opts: {
     credentialHandle: created.rawId,
     prfSecret: created.prfSecret,
   });
+
+  // 4) Registra la public key lato server per abilitare il login passkey
+  //    da nuovi dispositivi (best-effort: se fallisce, lo sblocco locale
+  //    funziona comunque).
+  try {
+    await supabase.functions.invoke("passkey-register", {
+      body: {
+        challenge: created.challengeB64,
+        rpId: created.rpId,
+        origin: created.origin,
+        attestationObject: created.attestationObjectB64,
+        clientDataJSON: created.clientDataJSONB64,
+        credentialId: created.credentialIdB64,
+        transports: created.transports,
+      },
+    });
+  } catch (e) {
+    console.warn("[biometric] passkey-register failed (sblocco locale resta attivo)", e);
+  }
 }
 
 export async function disableBiometric(): Promise<void> {
