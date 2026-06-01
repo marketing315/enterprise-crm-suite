@@ -21,3 +21,4 @@ export {
   type ListSkeletonProps,
 } from './MobileSkeletons';
 export { PullToRefresh, type PullToRefreshProps } from './PullToRefresh';
+export { MobileTabBar, MobileTabBarConnected, type MobileTabBarProps } from './MobileTabBar';

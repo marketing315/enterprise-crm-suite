@@ -99,11 +99,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 ## FASE 2 — App shell mobile
 
-### F2.1 — `MobileTabBar` `[ ]`
+### F2.1 — `MobileTabBar` `[x]`
 - **dep:** F0.4, F1.2
 - Bottom navigation ≤5 voci da `useRoleMobileTabs`, FAB centrale opzionale, stato attivo, blur, `pb-safe`.
 - **AC:** naviga alle route corrette; voce attiva evidenziata; thumb-zone; ≥44px.
-- *Note:*
+- *Note:* Creato `src/components/mobile/MobileTabBar.tsx` con due esport: **(a)** `MobileTabBar` "puro" che riceve `tabs: MobileTab[]` + `onAction` (zero hook esterni → facile da testare/storybook) e **(b)** `MobileTabBarConnected` wrapper che inietta `useRoleMobileTabs()` (usato nel `MobileLayout`). La separazione evita la dipendenza implicita da `AuthProvider` in test e rispetta le regole degli hook (no condizionali). Layout: `<nav role="navigation" aria-label="Navigazione principale mobile">` sticky in basso, `bg-background/85 backdrop-blur-xl border-t border-border/40 pb-safe` (glassmorphism + safe-area iOS), `<ul>` con celle equidistribuite. Ogni cella standard: `min-h-[56px]` (≥44px target), icona 20px con dot indicatore `bg-primary` sopra quando attiva, label 10px truncata 68px max, `press-scale` + `focus-visible:ring-2`. Cella con `isPrimaryAction=true` rende un FAB rialzato (`-mt-5`, `h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-hero`) — un solo FAB per la tab definita come primary dal hook (Cerca per CEO/Admin, Nuovo per venditori, Chiamata per callcenter, Wallboard per responsabile_cc, ecc.). Stato attivo via `useLocation` con match esatto OR prefix (`/pipeline/123` → Pipeline attiva), `aria-current="page"` sul bottone attivo, `text-primary` sull'icona + dot accent. Click su tab con `path` → `navigate()`, click su tab con `action` → `onAction(action)` (lo shell intercetta `search/menu/notifications/new-contact/new-call/new-appointment/new-ticket`). Token-only, niente colori hard-coded. Test in `MobileTabBar.test.tsx`: 10/10 verdi (render 5 bottoni, nav aria-label, aria-current match esatto, match come prefisso `/pipeline/123`, navigate su tab path, onAction su tab action, FAB con bg-primary+shadow-hero+rounded-full, cella standard `min-h-[56px]`, nav `pb-safe`+`backdrop-blur-xl`+`sticky`, tab senza path/action non rompe). Barrel `src/components/mobile/index.ts` esporta entrambi. `rg "MobileTabBar"` fuori da `components/mobile/` = 0 → desktop intatto, useremo `MobileTabBarConnected` nel `MobileLayout` (F2.4).
 
 ### F2.2 — `MobileMoreSheet` (navigazione completa) `[ ]`
 - **dep:** F1.3, F0.4
