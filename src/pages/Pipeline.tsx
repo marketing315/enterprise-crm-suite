@@ -15,10 +15,14 @@ import { Button } from "@/components/ui/button";
 
 export default function Pipeline() {
   const isMobile = useIsMobile();
-  const { currentBrand, hasBrandSelected } = useBrand();
   if (isMobile) {
     return <MobilePipelineView />;
   }
+  return <PipelineDesktop />;
+}
+
+function PipelineDesktop() {
+  const { currentBrand, hasBrandSelected } = useBrand();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"open" | "won" | "lost" | "closed">("open");
