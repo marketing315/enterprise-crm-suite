@@ -24,6 +24,7 @@ export { PullToRefresh, type PullToRefreshProps } from './PullToRefresh';
 export { MobileTabBar, MobileTabBarConnected, type MobileTabBarProps } from './MobileTabBar';
 export { MobileMoreSheet, type MobileMoreSheetProps } from './MobileMoreSheet';
 export { MobileSearch, type MobileSearchProps } from './MobileSearch';
+export { MobileLayout } from './MobileLayout';
 export {
   MOBILE_NAV_SECTIONS,
   MOBILE_MARKETING_ITEMS,
