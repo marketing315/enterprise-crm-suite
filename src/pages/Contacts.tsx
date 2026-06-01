@@ -46,6 +46,9 @@ export default function Contacts() {
   const { currentBrand, isAllBrandsSelected, brands } = useBrand();
   useContactsRealtime();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  if (isMobile) return <MobileContactsList />;
+
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
