@@ -165,11 +165,12 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 ## FASE 4 — Schermate quotidiane (liste)
 
-### F4.1 — Contatti mobile `[ ]`
+### F4.1 — Contatti mobile `[x]`
 - **dep:** F1.6, F1.7, F2.4
 - Ricerca + chip filtri + lista `MobileListItem`; FAB nuovo contatto; swipe Chiama/Assegna; tap→dettaglio. Sostituisce `ContactsTable` su mobile.
 - **AC:** SPEC §6.3; infinite scroll/paginazione via hook esistente; stati gestiti; desktop tabella invariata.
-- *Note:*
+- *Note:* Creato `src/components/contacts/mobile/MobileContactsList.tsx`: header sticky con titolo + counter `totalLoaded/totalCount`, `Input type=search` debounced 300ms, `Segmented<StatusValue>` 6 stati (Tutti/Nuovi/Attivi/Qualificati/Non qualif./Archiviati). Lista `MobileListItem` con avatar iniziali (40px chip muted), nome, subtitle `ContactStatusBadge` + telefono `tabular-nums`, trailing "ultima attività" (`formatDistanceToNow` locale it, max 80px truncate). Swipe action `Chiama` (variant primary) condizionale quando `primary_phone` presente, usa `tel:` link. Tap → `ContactDetailSheet` esistente (riusa flusso desktop, gestisce deep-link `?open=<id>`). Infinite scroll via `IntersectionObserver` con `rootMargin: '200px'` sul sentinel `<li>`, mostra `ListItemSkeleton` x2 durante `isLoadingMore`. Stati: `MobileListSkeleton count=8` su loading, `EmptyState` (icon Users, messaggio diverso se ricerca attiva), `ErrorState` con retry. Banner `Alert` informativo in modalità all-brands. `PullToRefresh` invalida `contact-search`+`contact-count`. **FAB "Nuovo contatto"** via `NewContactDialog` esteso con nuova prop opzionale `trigger?: React.ReactNode` (additiva, default invariato per il desktop), passa un `MobileFab` (icona UserPlus, `label="Nuovo contatto"`, `position="bottom-right"` sopra tab bar+safe-area). Wired in `src/pages/Contacts.tsx` con `if (isMobile) return <MobileContactsList />` (desktop `ContactsTableWithViews` intoccato). Stessi queryKey desktop (`contact-search`, `contact-count`) → cache react-query condivisa, zero fetch extra, RLS invariata. Solo token semantici. Mobile suite 124/124 verde. Follow-up: F4.2 (Pipeline mobile).
+
 
 ### F4.2 — Pipeline mobile `[ ]`
 - **dep:** F1.4, F1.6, F2.4

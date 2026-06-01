@@ -55,9 +55,11 @@ interface DuplicateInfo {
 interface NewContactDialogProps {
   onContactCreated?: (contactId: string) => void;
   onDuplicateFound?: (contactId: string) => void;
+  /** Trigger custom (es. MobileFab). Se omesso, usa il pulsante "Nuovo contatto" standard. */
+  trigger?: React.ReactNode;
 }
 
-export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewContactDialogProps) {
+export function NewContactDialog({ onContactCreated, onDuplicateFound, trigger }: NewContactDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // H8: synchronous re-entrancy guard against double-click submit races.
@@ -216,10 +218,12 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewCont
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={isGlobalView} title={isGlobalView ? "Seleziona un brand specifico per creare contatti" : undefined}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuovo contatto
-        </Button>
+        {trigger ?? (
+          <Button disabled={isGlobalView} title={isGlobalView ? "Seleziona un brand specifico per creare contatti" : undefined}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo contatto
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>

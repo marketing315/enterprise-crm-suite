@@ -27,6 +27,7 @@ import { usePaginatedContactSearch } from '@/hooks/usePaginatedContactSearch';
 import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { useBrand } from '@/contexts/BrandContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileContactsList } from '@/components/contacts/mobile/MobileContactsList';
 import { useContactsRealtime } from '@/hooks/useContactsRealtime';
 import type { ContactStatus } from '@/types/database';
 import type { SortField, SortDir } from '@/hooks/useContactSearch';
@@ -45,6 +46,9 @@ export default function Contacts() {
   const { currentBrand, isAllBrandsSelected, brands } = useBrand();
   useContactsRealtime();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  if (isMobile) return <MobileContactsList />;
+
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
