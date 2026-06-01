@@ -118,23 +118,22 @@ test.describe("@mobile Mobile shell smoke", () => {
     expect(fatalErrors, `console:\n${fatalErrors.join("\n")}`).toEqual([]);
   });
 
-  test.fixme(
-    "M4: input form login hanno altezza ≥ 44px (tap-target a11y)",
-    async ({ page }) => {
-      // FINDING (eseguito 2026-06-01): gli `<input>` e il `<button submit>`
-      // della pagina /login renderizzano a 40px su Pixel 5 (h-10 default di
-      // shadcn). La pagina /login non è in scope del redesign mobile F1-F7
-      // — l'intera app autenticata sta dietro `MobileLayout` / `MobileScreen`
-      // che rispettano il vincolo 44px (vedi `MobileFab`, `MobileTabBar`,
-      // back/close buttons aggiornati in F7.2). Follow-up tracciato in
-      // `mobile-redesign/fix_plan.md` Backlog: bump dei controlli login a
-      // h-11 per allinearli al resto della shell mobile.
-      await page.goto("/login");
-      for (const sel of ['input[type="email"]', 'input[type="password"]']) {
-        const box = await page.locator(sel).first().boundingBox();
-        expect(box).not.toBeNull();
-        expect(box!.height).toBeGreaterThanOrEqual(44);
-      }
-    },
-  );
+  test("M4: input e submit della login hanno altezza ≥ 44px (tap-target a11y)", async ({
+    page,
+  }) => {
+    // Allineato al resto della shell mobile (F7.2): i controlli primari
+    // raggiungono il vincolo WCAG 2.5.5 (44×44) su viewport < md.
+    await page.goto("/login");
+    await page.waitForSelector('input[type="email"]', { timeout: 10_000 });
+    const targets = [
+      'input[type="email"]',
+      'input[type="password"]',
+      'button[type="submit"]',
+    ];
+    for (const sel of targets) {
+      const box = await page.locator(sel).first().boundingBox();
+      expect(box, `bounding box mancante per ${sel}`).not.toBeNull();
+      expect(box!.height, `${sel} height`).toBeGreaterThanOrEqual(44);
+    }
+  });
 });
