@@ -149,7 +149,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
           onChange={(e) => setEmail(e.target.value)}
           required
           disabled={isLoading}
-          autoComplete="email"
+          autoComplete="username webauthn"
           className="h-12 bg-background/40 border-border/60 focus:border-primary/60 transition-colors"
         />
       </div>

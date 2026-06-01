@@ -100,6 +100,7 @@ export async function enableBiometric(opts: {
   //    da nuovi dispositivi (best-effort: se fallisce, lo sblocco locale
   //    funziona comunque).
   try {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 200) : null;
     await supabase.functions.invoke("passkey-register", {
       body: {
         challenge: created.challengeB64,
@@ -109,6 +110,8 @@ export async function enableBiometric(opts: {
         clientDataJSON: created.clientDataJSONB64,
         credentialId: created.credentialIdB64,
         transports: created.transports,
+        label: opts.label ?? null,
+        userAgent: ua,
       },
     });
   } catch (e) {
