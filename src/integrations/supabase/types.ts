@@ -11946,6 +11946,7 @@ export type Database = {
           preferred_brand_id: string | null
           preferred_name: string | null
           primary_role_hint: string | null
+          status: Database["public"]["Enums"]["user_status"]
           supabase_auth_id: string
           tour_completed_at: string | null
           updated_at: string
@@ -11961,6 +11962,7 @@ export type Database = {
           preferred_brand_id?: string | null
           preferred_name?: string | null
           primary_role_hint?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
           supabase_auth_id: string
           tour_completed_at?: string | null
           updated_at?: string
@@ -11976,6 +11978,7 @@ export type Database = {
           preferred_brand_id?: string | null
           preferred_name?: string | null
           primary_role_hint?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
           supabase_auth_id?: string
           tour_completed_at?: string | null
           updated_at?: string
@@ -13197,6 +13200,15 @@ export type Database = {
       }
       apply_ai_fallback: {
         Args: { p_lead_event_id: string }
+        Returns: undefined
+      }
+      approve_pending_user: {
+        Args: {
+          p_brand_id: string
+          p_can_access_children?: boolean
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
         Returns: undefined
       }
       archive_contact: {
@@ -15381,6 +15393,18 @@ export type Database = {
           url: string
         }[]
       }
+      list_pending_users: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          provider: string
+          supabase_auth_id: string
+        }[]
+      }
       list_sales_route_dispatches: {
         Args: { p_brand_id: string; p_from?: string; p_to?: string }
         Returns: {
@@ -15814,6 +15838,10 @@ export type Database = {
           _user_agent?: string
         }
         Returns: string
+      }
+      reject_pending_user: {
+        Args: { p_reason?: string; p_user_id: string }
+        Returns: undefined
       }
       release_cron_lease: {
         Args: { p_brand_id: string; p_job_name: string; p_token: string }
@@ -16627,6 +16655,7 @@ export type Database = {
         | "slo_alert"
         | "ticket_escalated"
         | "payment_overdue"
+        | "user_pending_approval"
       objection_type: "prezzo" | "tempo" | "fiducia" | "altro"
       order_lifecycle_actor:
         | "callcenter"
@@ -16691,6 +16720,7 @@ export type Database = {
       ticket_creator: "ai" | "user" | "rule"
       ticket_status: "open" | "in_progress" | "resolved" | "closed" | "reopened"
       topic_created_by: "ai" | "user"
+      user_status: "pending" | "active" | "suspended"
       webhook_delivery_status:
         | "pending"
         | "sending"
@@ -17015,6 +17045,7 @@ export const Constants = {
         "slo_alert",
         "ticket_escalated",
         "payment_overdue",
+        "user_pending_approval",
       ],
       objection_type: ["prezzo", "tempo", "fiducia", "altro"],
       order_lifecycle_actor: [
@@ -17080,6 +17111,7 @@ export const Constants = {
       ticket_creator: ["ai", "user", "rule"],
       ticket_status: ["open", "in_progress", "resolved", "closed", "reopened"],
       topic_created_by: ["ai", "user"],
+      user_status: ["pending", "active", "suspended"],
       webhook_delivery_status: [
         "pending",
         "sending",
