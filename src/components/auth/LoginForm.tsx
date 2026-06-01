@@ -159,6 +159,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
               required
               disabled={isLoading}
               autoComplete="email"
+              className="h-11 md:h-10"
             />
           </div>
 
@@ -184,7 +185,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
                 required
                 disabled={isLoading}
                 autoComplete="current-password"
-                className="pr-10"
+                className="h-11 md:h-10 pr-11 md:pr-10"
               />
               <button
                 type="button"
@@ -192,7 +193,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
                 disabled={isLoading}
                 aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
                 tabIndex={-1}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -207,7 +208,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full h-11 md:h-10" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
