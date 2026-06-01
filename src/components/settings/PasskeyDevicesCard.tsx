@@ -198,7 +198,7 @@ export function PasskeyDevicesCard() {
           ) : (
             <Plus className="mr-2 h-4 w-4" />
           )}
-          Aggiungi passkey su questo dispositivo
+          Aggiungi passkey
         </Button>
         {!supported && (
           <p className="text-xs text-muted-foreground">
