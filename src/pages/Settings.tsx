@@ -180,6 +180,9 @@ function SettingsContent({ activeSection }: { activeSection: string }) {
 }
 
 export default function Settings() {
+  const isMobile = useIsMobile();
+  if (isMobile) return <MobileSettings />;
+
   const { currentBrand, hasBrandSelected } = useBrand();
   const { hasRole, isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
