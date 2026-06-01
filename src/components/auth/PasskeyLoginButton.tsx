@@ -38,12 +38,14 @@ export function PasskeyLoginButton() {
     };
   }, []);
 
-  // Niente vault locale → niente pulsante (evitiamo fallback PIN nascosto).
-  if (!hasLocalVault) return null;
-
   const handleClick = async () => {
     const last = lastBiometricUser();
-    if (!last) return;
+    if (!last || !hasLocalVault) {
+      toast.info(
+        "Nessuna passkey su questo dispositivo. Accedi con email e password, poi attiva la biometria dal tuo profilo.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       await unlockBiometric({ userId: last.userId, mode: "biometric" });
