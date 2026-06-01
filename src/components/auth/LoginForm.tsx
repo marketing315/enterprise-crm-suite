@@ -185,7 +185,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
                 required
                 disabled={isLoading}
                 autoComplete="current-password"
-                className="pr-10"
+                className="h-11 md:h-10 pr-11 md:pr-10"
               />
               <button
                 type="button"
