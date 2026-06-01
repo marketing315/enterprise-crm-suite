@@ -3,87 +3,67 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Fingerprint, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import {
-  isWebAuthnAvailable,
-  b64urlEncode,
-} from "@/lib/biometric/webauthn";
+  detectSupport,
+  hasBiometricVaultLocally,
+  lastBiometricUser,
+  unlockBiometric,
+} from "@/lib/biometric/client";
+import { PinLoginDialog } from "./PinLoginDialog";
 
 /**
- * Pulsante "Accedi con passkey": lancia WebAuthn discoverable
- * (allowCredentials vuoto) per usare una passkey sincronizzata
- * iCloud/Google o quella registrata sul dispositivo. Dopo l'asserzione
- * chiede al backend di emettere una sessione Supabase via edge function.
+ * Pulsante "Accedi con passkey".
+ *
+ * - Se questo dispositivo ha una cassaforte biometrica per l'ultimo utente,
+ *   lancia Face ID / Touch ID / Windows Hello e sblocca la sessione locale.
+ * - Altrimenti propone all'utente di accedere via Email + PIN universale
+ *   (passkey sincronizzate da altri dispositivi → fallback PIN).
  */
 export function PasskeyLoginButton() {
-  const [supported, setSupported] = useState(false);
-  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+  const [hasLocalVault, setHasLocalVault] = useState(false);
+  const [platformOk, setPlatformOk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
 
   useEffect(() => {
-    setSupported(isWebAuthnAvailable());
+    let cancelled = false;
+    (async () => {
+      const sup = await detectSupport();
+      if (cancelled) return;
+      setPlatformOk(sup.platformAuthenticator);
+      const last = lastBiometricUser();
+      if (!last) return;
+      const has = await hasBiometricVaultLocally(last.userId);
+      if (!cancelled) setHasLocalVault(has);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (!supported) return null;
+  // Nessun supporto WebAuthn e nessun vault → non mostriamo nulla.
+  if (!platformOk && !hasLocalVault) return null;
 
   const handleClick = async () => {
+    const last = lastBiometricUser();
+    if (!last || !hasLocalVault) {
+      // Nessuna passkey/vault registrata su questo browser → fallback PIN universale
+      setPinOpen(true);
+      return;
+    }
     setBusy(true);
     try {
-      const challengeBytes = new Uint8Array(32);
-      crypto.getRandomValues(challengeBytes);
-
-      const publicKey: PublicKeyCredentialRequestOptions = {
-        challenge: challengeBytes as unknown as ArrayBuffer,
-        timeout: 60_000,
-        rpId: window.location.hostname,
-        userVerification: "required",
-        // allowCredentials vuoto → discoverable, mostra il picker passkey
-        allowCredentials: [],
-      };
-
-      const cred = (await navigator.credentials.get({
-        publicKey,
-      })) as PublicKeyCredential | null;
-
-      if (!cred) {
-        toast.error("Verifica annullata");
-        return;
-      }
-
-      const response = cred.response as AuthenticatorAssertionResponse;
-      const userHandle = response.userHandle
-        ? new Uint8Array(response.userHandle)
-        : null;
-
-      const payload = {
-        credential_id: b64urlEncode(new Uint8Array(cred.rawId)),
-        user_handle: userHandle ? b64urlEncode(userHandle) : null,
-        client_data_json: b64urlEncode(new Uint8Array(response.clientDataJSON)),
-        authenticator_data: b64urlEncode(new Uint8Array(response.authenticatorData)),
-        signature: b64urlEncode(new Uint8Array(response.signature)),
-      };
-
-      const { data, error } = await supabase.functions.invoke("passkey-login", {
-        body: payload,
-      });
-      if (error) throw error;
-      const r = data as { access_token?: string; refresh_token?: string; error?: string };
-      if (r?.error || !r?.access_token || !r?.refresh_token) {
-        throw new Error(r?.error || "Passkey non riconosciuta");
-      }
-      const { error: setErr } = await supabase.auth.setSession({
-        access_token: r.access_token,
-        refresh_token: r.refresh_token,
-      });
-      if (setErr) throw setErr;
+      await unlockBiometric({ userId: last.userId, mode: "biometric" });
       toast.success("Accesso riuscito");
       navigate("/select-brand");
     } catch (e) {
-      const name = (e as DOMException)?.name;
-      if (name === "NotAllowedError") {
-        toast.error("Operazione annullata o nessuna passkey trovata su questo dispositivo");
+      const msg = e instanceof Error ? e.message : "Sblocco fallito";
+      if (msg === "PRF_UNSUPPORTED") {
+        // Su browser senza PRF servono biometria + PIN: apri il dialog PIN universale
+        setPinOpen(true);
       } else {
-        toast.error(e instanceof Error ? e.message : "Accesso con passkey non riuscito");
+        toast.error(msg);
       }
     } finally {
       setBusy(false);
@@ -91,19 +71,26 @@ export function PasskeyLoginButton() {
   };
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      className="h-11 w-full md:h-10"
-      disabled={busy}
-      onClick={handleClick}
-    >
-      {busy ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <Fingerprint className="mr-2 h-4 w-4" />
-      )}
-      Accedi con passkey
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full md:h-10"
+        disabled={busy}
+        onClick={handleClick}
+      >
+        {busy ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Fingerprint className="mr-2 h-4 w-4" />
+        )}
+        Accedi con passkey
+      </Button>
+      <PinLoginDialog
+        triggerLabel=""
+        controlledOpen={pinOpen}
+        onControlledOpenChange={setPinOpen}
+      />
+    </>
   );
 }
