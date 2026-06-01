@@ -7,3 +7,4 @@ export { MobileFab, type MobileFabProps } from './MobileFab';
 export { Segmented, ChipGroup, type SegmentedProps, type ChipOption } from './Segmented';
 export { HeroMetricCard, type HeroMetricCardProps, type HeroVariant } from './HeroMetricCard';
 export { MetricRow, KpiList, type MetricRowProps, type KpiListProps, type MetricTone } from './MetricRow';
+export { MobileListItem, type MobileListItemProps, type MobileListItemAction } from './MobileListItem';
