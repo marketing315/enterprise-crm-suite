@@ -5,19 +5,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff, AlertCircle, ArrowUpToLine, MailWarning } from 'lucide-react';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
-import { PinLoginDialog } from './PinLoginDialog';
 
 interface LoginFormProps {
   showForgotPassword?: boolean;
   onForgotPasswordChange?: (show: boolean) => void;
 }
 
-const SUPPORT_EMAIL = 'marketing@gruppobenessere.it';
 const LOGIN_TIMEOUT_MS = 12000;
 
 type LoginErrorKind = 'invalid_credentials' | 'email_not_confirmed' | 'rate_limited' | 'generic';
@@ -77,7 +74,6 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
   const showForgotPassword = externalShow ?? showForgotPasswordInternal;
   const setShowForgotPassword = onForgotPasswordChange ?? setShowForgotPasswordInternal;
 
-  // Caps Lock detection — globale: utile anche durante l'email
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (typeof e.getModifierState === 'function') {
@@ -129,113 +125,90 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Accedi</CardTitle>
-        <CardDescription>
-          Inserisci le tue credenziali per accedere al CRM
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {loginError && (
-            <Alert variant={loginError.kind === 'email_not_confirmed' ? 'default' : 'destructive'}>
-              {loginError.kind === 'email_not_confirmed' ? (
-                <MailWarning className="h-4 w-4" />
-              ) : (
-                <AlertCircle className="h-4 w-4" />
-              )}
-              <AlertDescription>{loginError.text}</AlertDescription>
-            </Alert>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {loginError && (
+        <Alert variant={loginError.kind === 'email_not_confirmed' ? 'default' : 'destructive'}>
+          {loginError.kind === 'email_not_confirmed' ? (
+            <MailWarning className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
           )}
+          <AlertDescription>{loginError.text}</AlertDescription>
+        </Alert>
+      )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="nome@azienda.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
-              autoComplete="email"
-              className="h-11 md:h-10"
-            />
-          </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="email" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Email
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="nome@azienda.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={isLoading}
+          autoComplete="email"
+          className="h-12 bg-background/40 border-border/60 focus:border-primary/60 transition-colors"
+        />
+      </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Button
-                variant="link"
-                className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setShowForgotPassword(true)}
-                type="button"
-                tabIndex={-1}
-              >
-                Password dimenticata?
-              </Button>
-            </div>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-                autoComplete="current-password"
-                className="h-11 md:h-10 pr-11 md:pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(s => !s)}
-                disabled={isLoading}
-                aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
-                tabIndex={-1}
-                className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {capsLockOn && (
-              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                <ArrowUpToLine className="h-3.5 w-3.5" />
-                <span>Bloc Maiusc è attivo</span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-
-        <CardFooter className="flex flex-col gap-3">
-          <Button type="submit" className="w-full h-11 md:h-10" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Accesso in corso...
-              </>
-            ) : (
-              'Accedi'
-            )}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Password
+          </Label>
+          <Button
+            variant="link"
+            className="h-auto p-0 text-xs text-muted-foreground hover:text-primary font-normal"
+            onClick={() => setShowForgotPassword(true)}
+            type="button"
+            tabIndex={-1}
+          >
+            Password dimenticata?
           </Button>
-
-          <div className="flex items-center justify-center w-full">
-            <PinLoginDialog triggerLabel="Non hai la passkey su questo dispositivo? Accedi con PIN" />
+        </div>
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={isLoading}
+            autoComplete="current-password"
+            className="h-12 pr-12 bg-background/40 border-border/60 focus:border-primary/60 transition-colors"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(s => !s)}
+            disabled={isLoading}
+            aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
+            tabIndex={-1}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {capsLockOn && (
+          <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+            <ArrowUpToLine className="h-3.5 w-3.5" />
+            <span>Bloc Maiusc è attivo</span>
           </div>
+        )}
+      </div>
 
-          <p className="text-xs text-center text-muted-foreground leading-relaxed">
-            Hai bisogno di aiuto? Contatta il tuo amministratore all'indirizzo{' '}
-            <a
-              href={`mailto:${SUPPORT_EMAIL}`}
-              className="text-primary hover:underline font-medium"
-            >
-              {SUPPORT_EMAIL}
-            </a>
-          </p>
-
-        </CardFooter>
-      </form>
-    </Card>
+      <Button type="submit" className="w-full h-12 mt-2 font-medium" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Accesso in corso…
+          </>
+        ) : (
+          'Accedi'
+        )}
+      </Button>
+    </form>
   );
 }
