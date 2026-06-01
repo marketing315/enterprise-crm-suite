@@ -104,6 +104,7 @@ export function Segmented<V extends string = string>({
             key={opt.value}
             type="button"
             data-chip="1"
+            data-value={opt.value}
             role={asTabs ? 'tab' : 'radio'}
             aria-label={labelText}
             {...(asTabs
