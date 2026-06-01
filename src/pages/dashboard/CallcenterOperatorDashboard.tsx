@@ -11,11 +11,15 @@ import { useBrandFilter } from '@/hooks/useBrandFilter';
 import { untypedClient } from '@/integrations/supabase/untypedClient';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileCallcenterOperatorDashboard } from '@/components/callcenter/mobile/MobileCallcenterOperatorDashboard';
 
 export default function CallcenterOperatorDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
+  const isMobile = useIsMobile();
+  if (isMobile) return <MobileCallcenterOperatorDashboard />;
 
   const today = new Date();
   const todayStart = startOfDay(today).toISOString();
