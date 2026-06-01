@@ -21,7 +21,16 @@ import { useBrand } from "@/contexts/BrandContext";
 import { arrayToCSV, downloadCSV, formatMinutesForCSV } from "@/lib/csvExport";
 import { toast } from "sonner";
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileCallcenterKpi } from "@/components/admin/mobile/MobileCallcenterKpi";
+
 export default function AdminCallcenterKpi() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileCallcenterKpi />;
+  return <AdminCallcenterKpiDesktop />;
+}
+
+function AdminCallcenterKpiDesktop() {
   const { currentBrand } = useBrand();
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfDay(subDays(new Date(), 30)),
