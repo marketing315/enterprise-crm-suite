@@ -11,9 +11,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileAdminDashboard } from '@/components/admin/mobile/MobileAdminDashboard';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     leadsToday,
     leadsWeek,
