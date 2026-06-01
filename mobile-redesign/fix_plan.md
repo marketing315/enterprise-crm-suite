@@ -254,11 +254,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 - **AC:** SPEC §6.13.
 - *Note:* Creato `src/components/settings/mobile/MobileSettings.tsx` con root iOS-style: profile card (nome+email), gruppi (`Account` → Aspetto/Brand/Sicurezza, `CRM & Dati`, `Lead & Automazioni`, `Integrazioni`, `Notifiche`, `Sistema`) come `bg-card` rounded-2xl con righe min-h ≥52px e chevron; tap apre sub-screen full-width con back button in header. **Aspetto** inline: tre sezioni grouped (Tema light/dark/system via `next-themes`+`useUIPreferences`, Densità comfortable/compact, Lingua it/en via `i18n.changeLanguage`). **Brand** inline: lista brand con `setCurrentBrand` (riusa `useBrand`). **Sicurezza** naviga a `/settings/security`. Tutte le altre sezioni rendono il componente desktop esistente (`PipelineStagesSettings`, `TagManager`, `WebhookSettings`, `MetaAppsSettings`, …) dentro `MobileScreen` con padding `px-4`. Bottone `Esci` finale con `signOut()` (token `text-danger`). Solo token semantici. Wiring: `src/pages/Settings.tsx` ora fa `useIsMobile()` early-return → `<MobileSettings />`; desktop intatto. Visibilità ruoli identica a desktop (`adminOnly`/`brandAdminOnly`/`superAdminOnly`). RBAC e brand context invariati. Follow-up: F6.3 (Pagine Admin/Sistema: leggibilità mobile).
 
-### F6.3 — Pagine Admin/Sistema: leggibilità mobile `[ ]`
+### F6.3 — Pagine Admin/Sistema: leggibilità mobile `[x]`
 - **dep:** F2.4
 - Garantisci niente overflow orizzontale: tabelle in `overflow-x-auto no-scrollbar`, card impilate, header non rotti, su tutte le pagine `Admin*`. Nessun redesign profondo.
 - **AC:** SPEC §6.14; nessuna pagina rompe il layout <768px; desktop invariato.
-- *Note:*
+- *Note:* Approccio scope-globale a basso rischio: `MainLayout` ora aggiunge `data-admin-page="true"` su `<main>` quando `location.pathname.startsWith('/admin')`. In `src/index.css` aggiunte regole `@media (max-width: 767px)` mirate SOLO a `main[data-admin-page="true"]`: (1) `overflow-x: auto` + scrollbar nascosta sul container, (2) `min-width: 0` sui figli per spezzare flex/grid che forzano overflow, (3) `<table>` native trasformate in `display: block` con scroll orizzontale + scrollbar hidden, (4) `th/td` con `white-space: normal` + `word-break: break-word` (wrap preferito al testo che esplode). Zero modifiche ai singoli ~30 file `Admin*` e zero impatto desktop (regole gated da media query). I componenti che già usano `overflow-x-auto` esplicito continuano a funzionare. Follow-up: F7.1 (Pass motion & micro-interazioni).
 
 ---
 
