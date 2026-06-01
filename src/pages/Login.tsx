@@ -1,14 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginForm } from '@/components/auth/LoginForm';
-import { BiometricUnlockPanel } from '@/components/auth/BiometricUnlockPanel';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
+import { PasskeyLoginButton } from '@/components/auth/PasskeyLoginButton';
 import logo from '@/assets/logo.svg';
+
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 my-2">
+      <div className="h-px flex-1 bg-border" />
+      <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
 
 export default function Login() {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [hidePanel, setHidePanel] = useState(false);
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -26,14 +36,13 @@ export default function Login() {
         <p className="text-muted-foreground">Il cuore digitale di Gruppo Benessere</p>
       </div>
 
-      {!hidePanel && (
-        <div className="mb-4 w-full max-w-md">
-          <BiometricUnlockPanel onFallbackToPassword={() => setHidePanel(true)} />
-        </div>
-      )}
-
-      <LoginForm />
-
+      <div className="w-full max-w-md space-y-3">
+        <SocialLoginButtons />
+        <Divider label="oppure" />
+        <PasskeyLoginButton />
+        <Divider label="oppure" />
+        <LoginForm />
+      </div>
 
       <footer className="mt-8 text-center text-xs text-muted-foreground">
         <Link to="/privacy" className="hover:text-foreground hover:underline">
