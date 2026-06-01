@@ -50,7 +50,7 @@ export function MobileScreen({
           contentPadding,
           'py-4',
           contentSpacing,
-          !noEntryAnimation && 'animate-slide-up-fade',
+          !noEntryAnimation && 'motion-safe:animate-slide-up-fade',
         )}
         // Evita "rubber band" che mostra il bg dietro su iOS quando il body scrolla
         style={{ WebkitOverflowScrolling: 'touch' }}
