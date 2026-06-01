@@ -129,14 +129,47 @@ export function MobileCeoDashboard() {
               {currentBrand?.name ?? 'Tutti i brand'}
             </h1>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-9 px-2.5 rounded-full"
-            onClick={() => navigate('/ai-assistant')}
-          >
-            <Sparkles className="h-4 w-4 text-primary" />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            {showSwitcher && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 px-2.5 rounded-full gap-1"
+                    aria-label="Cambia vista dashboard"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    Cambia vista
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {availableDashboards.map((d) => (
+                    <DropdownMenuItem
+                      key={d.path}
+                      onClick={() => navigate(d.path)}
+                      className={location.pathname === d.path ? 'bg-accent font-medium' : ''}
+                    >
+                      {d.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 px-2.5 rounded-full"
+              onClick={() => navigate('/ai-assistant')}
+              aria-label="AI Assistant"
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+            </Button>
+          </div>
         </div>
         <MobileCeoPeriodChips
           from={from}
