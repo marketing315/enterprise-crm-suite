@@ -62,11 +62,25 @@ const levelColors: Record<string, string> = {
   log: "bg-muted text-muted-foreground",
 };
 
+export const ERROR_CONSOLE_OPEN_EVENT = "ralph:open-error-console";
+
+export function openErrorConsole() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(ERROR_CONSOLE_OPEN_EVENT));
+  }
+}
+
 export function ErrorConsolePanel() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "error" | "warn">("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener(ERROR_CONSOLE_OPEN_EVENT, handler);
+    return () => window.removeEventListener(ERROR_CONSOLE_OPEN_EVENT, handler);
+  }, []);
 
   const addLog = useCallback((level: LogEntry["level"], args: unknown[], stack?: string) => {
     const message = args.map(formatLogArg).join(" ");
