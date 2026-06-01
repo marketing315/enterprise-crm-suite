@@ -70,7 +70,16 @@ const REFRESH_OPTIONS: { label: string; value: string; ms: number | false }[] = 
   { label: "5min", value: "300", ms: 300_000 },
 ];
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileCallcenterWallboard } from "@/components/callcenter/mobile/MobileCallcenterWallboard";
+
 export default function CallcenterWallboard() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileCallcenterWallboard />;
+  return <CallcenterWallboardDesktop />;
+}
+
+function CallcenterWallboardDesktop() {
   const { currentBrand, hasBrandSelected, isAllBrandsSelected } = useBrand();
 
   const [preset, setPreset] = useState<RangePreset>("today");
