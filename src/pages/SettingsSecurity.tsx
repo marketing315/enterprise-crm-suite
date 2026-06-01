@@ -1,5 +1,6 @@
 import { Bug } from "lucide-react";
 import { MfaSettingsCard } from "@/components/settings/MfaSettingsCard";
+import { BiometricSettingsCard } from "@/components/settings/BiometricSettingsCard";
 import { IdleTimeoutSettingsCard } from "@/components/settings/IdleTimeoutSettingsCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export default function SettingsSecurity() {
         </p>
       </div>
       <MfaSettingsCard />
+      <BiometricSettingsCard />
       <IdleTimeoutSettingsCard />
 
       <Card>
