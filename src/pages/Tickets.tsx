@@ -26,10 +26,21 @@ import { exportTicketsToCSV } from "@/lib/ticketCsvExport";
 import { QueryErrorState } from "@/components/ui/QueryErrorState";
 import { toast } from "sonner";
 
+import { MobileTicketsList } from "@/components/tickets/mobile/MobileTicketsList";
+
 const PAGE_SIZE = 50;
 
 export default function Tickets() {
   const isMobile = useIsMobile();
+  if (isMobile) {
+    return <MobileTicketsList />;
+  }
+  return <TicketsDesktop />;
+}
+
+function TicketsDesktop() {
+  const isMobile = useIsMobile();
+  
   
   // URL-based state for refresh-safe navigation
   const { state: urlState, updateUrl, resetPagination } = useTicketUrlState();
