@@ -98,8 +98,12 @@ export function BiometricSettingsCard() {
       closeDialog();
       await refresh();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Attivazione fallita";
-      toast.error(msg);
+      console.error("[biometric] enable failed", e);
+      const anyE = e as { message?: string; code?: string; details?: string; hint?: string } | null;
+      const msg =
+        (anyE && (anyE.message || anyE.details || anyE.hint)) ||
+        (typeof e === "string" ? e : "Attivazione fallita");
+      toast.error(`Attivazione fallita: ${msg}`);
       setBusy(false);
       // Reset
       setEnrollStep("pin");
