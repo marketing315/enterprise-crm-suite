@@ -233,3 +233,35 @@ All colors MUST be HSL.
 /* Mobile horizontal scroll utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ============ Mobile redesign (F0.3) — safe-area, motion utilities ============ */
+
+@layer utilities {
+  /* Safe-area insets for notched devices */
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pl-safe { padding-left: env(safe-area-inset-left); }
+  .pr-safe { padding-right: env(safe-area-inset-right); }
+  .px-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Press-state for tactile feedback on primary tap targets */
+  .press-scale {
+    transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .press-scale:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Reduced motion: press-state becomes instant and invisible */
+@media (prefers-reduced-motion: reduce) {
+  .press-scale {
+    transition: none;
+  }
+  .press-scale:active {
+    transform: none;
+  }
+}

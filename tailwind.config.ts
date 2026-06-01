@@ -86,6 +86,17 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        card: "0 1px 3px hsl(222 20% 10% / 0.07), 0 4px 12px hsl(222 20% 10% / 0.05)",
+        hero: "0 8px 32px -4px hsl(var(--primary) / 0.15)",
+      },
+      transitionDuration: {
+        micro: "150ms",
+        screen: "250ms",
+      },
+      transitionTimingFunction: {
+        "ease-out-soft": "cubic-bezier(0.2, 0.8, 0.2, 1)",
+      },
       keyframes: {
         "accordion-down": {
           from: {
@@ -103,10 +114,21 @@ export default {
             height: "0",
           },
         },
+        "slide-up-fade": {
+          from: {
+            opacity: "0",
+            transform: "translateY(12px)",
+          },
+          to: {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "slide-up-fade": "slide-up-fade 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both",
       },
     },
   },
