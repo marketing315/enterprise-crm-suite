@@ -1,13 +1,17 @@
 // Edge function: passkey-register
-// Salva la public key di una passkey appena creata sull'utente loggato,
-// così da abilitare il login server-side discoverable.
+// Salva una nuova passkey nella tabella user_passkeys (multi-dispositivo).
+// Upsert idempotente su credential_id: se la stessa passkey viene ri-registrata
+// (es. dopo C6 - legacy migration) si aggiornano i campi senza duplicare.
 //
-// Riceve l'attestation completa, la verifica con @simplewebauthn/server
-// per estrarre la public key COSE + algoritmo + aaguid + sign_count.
+// Differenza rispetto alla versione precedente:
+//  - INSERT (non UPDATE) → consente N passkey per utente (laptop, telefono, …)
+//  - public_key_alg estratto dal CBOR/COSE reale (non più hardcoded -7)
+//  - label e user_agent salvati per la UI "I tuoi dispositivi"
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { verifyRegistrationResponse } from "npm:@simplewebauthn/server@10.0.1";
+import { extractCoseAlg } from "../_shared/cose-alg.ts";
 
 interface Body {
   challenge?: string;
@@ -17,6 +21,8 @@ interface Body {
   clientDataJSON?: string;
   credentialId?: string;
   transports?: string[];
+  label?: string;
+  userAgent?: string;
 }
 
 Deno.serve(async (req) => {
@@ -85,29 +91,63 @@ Deno.serve(async (req) => {
     const info = verification.registrationInfo;
     const cred = info.credential;
 
+    // Estrazione algoritmo reale dalla COSE public key
+    const coseAlg = extractCoseAlg(cred.publicKey);
+    const algorithm = coseAlg ?? -7; // fallback ES256 se parser fallisce
+
     const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Aggiorna la riga esistente dell'utente (UNIQUE su user_id già garantito)
-    const { error: updErr } = await admin
-      .from("user_biometric_credentials")
-      .update({
-        credential_id: cred.id ? base64urlToBytes(cred.id) : null,
-        public_key: cred.publicKey,
-        public_key_alg: -7, // ES256 (default; il valore reale è in COSE ma non esposto)
-        sign_count: cred.counter ?? 0,
-        aaguid: info.aaguid ?? null,
-        transports: body.transports ?? null,
-      })
-      .eq("user_id", userId);
+    // Upsert su credential_id: idempotente (stesso device che ri-registra)
+    const credentialIdBytes = base64urlToBytes(cred.id);
+    const labelTrim = (body.label ?? "").trim().slice(0, 80) || null;
+    const uaTrim = (body.userAgent ?? "").trim().slice(0, 200) || null;
 
-    if (updErr) {
-      console.error("[passkey-register] update failed", updErr.message);
+    const { error: upErr } = await admin
+      .from("user_passkeys")
+      .upsert(
+        {
+          user_id: userId,
+          credential_id: credentialIdBytes,
+          public_key: cred.publicKey,
+          public_key_alg: algorithm,
+          sign_count: cred.counter ?? 0,
+          aaguid: info.aaguid ?? null,
+          transports: body.transports ?? null,
+          label: labelTrim,
+          user_agent: uaTrim,
+          disabled_at: null,
+        },
+        { onConflict: "credential_id" },
+      );
+
+    if (upErr) {
+      console.error("[passkey-register] upsert failed", upErr.message);
       return json({ error: "save_failed" }, 500);
     }
 
-    return json({ ok: true });
+    // Compat legacy: scrivi anche in user_biometric_credentials se questo
+    // utente ha già la riga PIN ma senza public_key (per non rompere il
+    // fallback verify legacy). Best-effort, non-fatal.
+    try {
+      await admin
+        .from("user_biometric_credentials")
+        .update({
+          credential_id: credentialIdBytes,
+          public_key: cred.publicKey,
+          public_key_alg: algorithm,
+          sign_count: cred.counter ?? 0,
+          aaguid: info.aaguid ?? null,
+          transports: body.transports ?? null,
+        })
+        .eq("user_id", userId)
+        .is("public_key", null);
+    } catch {
+      /* best-effort */
+    }
+
+    return json({ ok: true, alg: algorithm });
   } catch (e) {
     console.error("[passkey-register] uncaught", e);
     return json({ error: "internal" }, 500);

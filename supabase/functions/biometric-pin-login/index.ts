@@ -58,36 +58,15 @@ Deno.serve(async (req) => {
       return json({ error: consume.reason ?? "invalid_token" }, 401);
     }
 
-    // 2) Genera un magic link per ottenere il token_hash da scambiare
-    //    poi via verifyOtp lato server per estrarre access+refresh token.
-    const { data: linkData, error: linkErr } =
-      await admin.auth.admin.generateLink({
-        type: "magiclink",
-        email: consume.email,
-      });
-    if (linkErr || !linkData?.properties?.hashed_token) {
-      console.error("[pin-login] generateLink failed", linkErr?.message);
+    // 2) Emetti sessione via helper condiviso (riusa la stessa logica di passkey-auth-verify)
+    const { issueSessionForEmail } = await import("../_shared/issue-session.ts");
+    const sessionRes = await issueSessionForEmail(admin, consume.email);
+    if (!sessionRes.ok) {
+      console.error("[pin-login] issue session failed", sessionRes.reason, sessionRes.detail);
       return json({ error: "session_unavailable" }, 500);
     }
 
-    const tokenHash = linkData.properties.hashed_token;
-
-    // 3) verifyOtp con il token_hash → sessione completa
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const anonClient = createClient(supabaseUrl, anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-    const { data: verifyData, error: verifyErr } = await anonClient.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: "magiclink",
-    });
-
-    if (verifyErr || !verifyData?.session) {
-      console.error("[pin-login] verifyOtp failed", verifyErr?.message);
-      return json({ error: "session_unavailable" }, 500);
-    }
-
-    // 4) Audit best-effort
+    // 3) Audit best-effort
     try {
       await admin.rpc("log_audit_event", {
         _event_type: "auth_event",
@@ -102,9 +81,9 @@ Deno.serve(async (req) => {
     }
 
     return json({
-      access_token: verifyData.session.access_token,
-      refresh_token: verifyData.session.refresh_token,
-      expires_at: verifyData.session.expires_at,
+      access_token: sessionRes.session.access_token,
+      refresh_token: sessionRes.session.refresh_token,
+      expires_at: sessionRes.session.expires_at,
       user_id: consume.auth_user_id,
     });
   } catch (e) {
