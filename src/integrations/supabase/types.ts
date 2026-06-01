@@ -8292,6 +8292,7 @@ export type Database = {
           id: string
           label: string | null
           last_used_at: string
+          method: string
           revoked_at: string | null
           token_hash: string
           user_agent: string | null
@@ -8303,6 +8304,7 @@ export type Database = {
           id?: string
           label?: string | null
           last_used_at?: string
+          method?: string
           revoked_at?: string | null
           token_hash: string
           user_agent?: string | null
@@ -8314,6 +8316,7 @@ export type Database = {
           id?: string
           label?: string | null
           last_used_at?: string
+          method?: string
           revoked_at?: string | null
           token_hash?: string
           user_agent?: string | null
@@ -11501,6 +11504,42 @@ export type Database = {
           },
         ]
       }
+      user_biometric_credentials: {
+        Row: {
+          created_at: string
+          disabled_at: string | null
+          id: string
+          label: string | null
+          last_used_at: string | null
+          locked_until: string | null
+          pin_attempts: number
+          pin_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          label?: string | null
+          last_used_at?: string | null
+          locked_until?: string | null
+          pin_attempts?: number
+          pin_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          label?: string | null
+          last_used_at?: string | null
+          locked_until?: string | null
+          pin_attempts?: number
+          pin_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_hidden_columns: {
         Row: {
           brand_id: string
@@ -13221,6 +13260,7 @@ export type Database = {
         Args: { p_threshold_hours?: number }
         Returns: Json
       }
+      check_biometric_aal2: { Args: { _token_hash: string }; Returns: boolean }
       check_mfa_trusted_device: {
         Args: { _token_hash: string }
         Returns: boolean
@@ -13737,6 +13777,7 @@ export type Database = {
           schedule: string
         }[]
       }
+      disable_biometric: { Args: never; Returns: boolean }
       dynamic_analytics_query: {
         Args: {
           p_brand_id?: string
@@ -14191,6 +14232,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_biometric_status: { Args: never; Returns: Json }
       get_board_slo_metrics: {
         Args: { p_brand_id?: string; p_month_start?: string }
         Returns: Json
@@ -15594,6 +15636,15 @@ export type Database = {
       record_slo_snapshot: { Args: never; Returns: number }
       refresh_anomaly_baselines: { Args: never; Returns: Json }
       refresh_performance_mvs: { Args: never; Returns: Json }
+      register_biometric_aal2_grant: {
+        Args: {
+          _days?: number
+          _label?: string
+          _token_hash: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       register_mfa_trusted_device: {
         Args: {
           _days?: number
@@ -15870,6 +15921,10 @@ export type Database = {
           p_source?: string
         }
         Returns: undefined
+      }
+      set_biometric_pin: {
+        Args: { _label?: string; _pin_client_hash: string }
+        Returns: string
       }
       set_lead_event_archived: {
         Args: { p_archived: boolean; p_event_id: string }
@@ -16186,6 +16241,10 @@ export type Database = {
           stored_prev_hash: string
           stored_row_hash: string
         }[]
+      }
+      verify_biometric_pin: {
+        Args: { _pin_client_hash: string }
+        Returns: Json
       }
       verify_critical_triggers: {
         Args: never
