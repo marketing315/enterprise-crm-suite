@@ -58,25 +58,28 @@ describe('MobileScreen', () => {
     expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
 
-  it('usa <main> per il body e applica animazione d\'ingresso di default', () => {
-    render(
+  it('usa un <div> scrollabile per il body (no main duplicato) e applica animazione d\'ingresso di default', () => {
+    const { container } = render(
       <MobileScreen>
-        <span>x</span>
+        <span data-testid="x">x</span>
       </MobileScreen>,
     );
-    const main = screen.getByRole('main');
-    expect(main.className).toMatch(/animate-slide-up-fade/);
-    expect(main.className).toMatch(/overflow-y-auto/);
-    expect(main.className).toMatch(/px-4/);
+    // Nessun <main> qui: MainLayout fornisce già il landmark.
+    expect(container.querySelector('main')).toBeNull();
+    const body = screen.getByTestId('x').parentElement as HTMLElement;
+    expect(body.className).toMatch(/animate-slide-up-fade/);
+    expect(body.className).toMatch(/overflow-y-auto/);
+    expect(body.className).toMatch(/px-4/);
   });
 
   it('noEntryAnimation rimuove la classe slide-up-fade (reduced motion safety)', () => {
     render(
       <MobileScreen noEntryAnimation>
-        <span>x</span>
+        <span data-testid="x">x</span>
       </MobileScreen>,
     );
-    expect(screen.getByRole('main').className).not.toMatch(/animate-slide-up-fade/);
+    const body = screen.getByTestId('x').parentElement as HTMLElement;
+    expect(body.className).not.toMatch(/animate-slide-up-fade/);
   });
 
   it('footer ha safe-area inferiore', () => {
