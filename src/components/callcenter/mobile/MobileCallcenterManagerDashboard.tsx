@@ -139,7 +139,7 @@ export function MobileCallcenterManagerDashboard() {
             <HeroMetricCard
               label="Backlog ticket"
               value={String(backlog)}
-              variant={backlog > 20 ? 'danger' : 'primary'}
+              variant={backlog > 20 ? 'negative' : 'primary'}
               caption={`${unassigned} non assegnati · Ultimi 7 giorni`}
             />
           </button>
