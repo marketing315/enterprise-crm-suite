@@ -32,18 +32,17 @@ describe('BottomSheet', () => {
   });
 
   it('mostra handle di default e lo nasconde con showHandle=false', () => {
-    const { container, rerender } = render(
+    const { rerender } = render(
       <BottomSheet open onOpenChange={() => {}} title="X">
         body
       </BottomSheet>,
     );
-    expect(container.querySelector('[aria-hidden="true"]')).toBeTruthy();
+    expect(document.querySelector('.bg-muted-foreground\\/30')).toBeTruthy();
     rerender(
       <BottomSheet open onOpenChange={() => {}} title="X" showHandle={false}>
         body
       </BottomSheet>,
     );
-    // handle è il primo div aria-hidden con classi rounded-full bg-muted-foreground
     expect(document.querySelector('.bg-muted-foreground\\/30')).toBeFalsy();
   });
 });
