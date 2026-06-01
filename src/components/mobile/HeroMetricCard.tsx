@@ -77,7 +77,7 @@ export const HeroMetricCard = React.forwardRef<HTMLElement, HeroMetricCardProps>
             {value}
           </span>
           {delta !== undefined && delta !== null && (
-            <TrendBadge value={delta} invert={invertTrend} />
+            <TrendBadge deltaPct={delta} intent={invertTrend ? 'inverse' : 'default'} />
           )}
         </div>
 
