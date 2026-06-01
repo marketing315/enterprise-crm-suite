@@ -110,8 +110,11 @@ export function MobileCeoDashboard() {
   const trend = finData?.revenue_change_percent ?? 0;
 
   return (
-    <div className="-mx-4 -mt-4 sm:mx-0 sm:mt-0 pb-10">
-      {/* Sticky compact header */}
+    <PullToRefresh
+      invalidateKeys={[['ceo-dashboard-bundle']]}
+      className="pb-10"
+    >
+      {/* Sticky compact header (sotto MobileHeader della shell) */}
       <header
         className={cn(
           'sticky top-0 z-30 px-4 pt-3 pb-3',
@@ -181,17 +184,24 @@ export function MobileCeoDashboard() {
       </header>
 
       <div className="px-4 pt-5 space-y-5">
-        {/* Hero card: Utile netto */}
+        {/* Hero card: Utile netto — tap → drill-down su pipeline (origine del fatturato) */}
         {isLoading ? (
           <HeroMetricSkeleton />
         ) : finData ? (
-          <HeroMetricCard
-            label="Utile Netto Stimato"
-            value={formatCurrency(profit)}
-            variant="primary"
-            delta={trend}
-            caption={`Fatturato vs periodo prec.`}
-          />
+          <button
+            type="button"
+            onClick={() => navigate('/pipeline')}
+            aria-label="Apri pipeline: dettaglio fatturato e deal vinti"
+            className="press-scale w-full text-left rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <HeroMetricCard
+              label="Utile Netto Stimato"
+              value={formatCurrency(profit)}
+              variant="primary"
+              delta={trend}
+              caption="Fatturato vs periodo prec. · Tocca per il dettaglio"
+            />
+          </button>
         ) : null}
 
         <CeoCalcVersionBanner calcVersion={finData?.calc_version} />
@@ -214,10 +224,24 @@ export function MobileCeoDashboard() {
         </section>
 
 
-        {/* Pipeline */}
+        {/* Pipeline — header con drill-down esplicito */}
         {opsData && (
           <section>
-            <SectionLabel>Pipeline</SectionLabel>
+            <SectionLabel
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => navigate('/pipeline')}
+                  className="press-scale inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary"
+                  aria-label="Apri la pipeline completa"
+                >
+                  Apri
+                  <ChevronRight className="h-3 w-3" aria-hidden="true" />
+                </button>
+              }
+            >
+              Pipeline
+            </SectionLabel>
             <div className="rounded-2xl bg-card border border-border/60 p-3">
               <CeoPipelineOverview
                 stages={opsData.deals_by_stage || []}
@@ -228,9 +252,23 @@ export function MobileCeoDashboard() {
           </section>
         )}
 
-        {/* Finanza — collassabile */}
+        {/* Finanza — collassabile + drill-down a /sales */}
         <section>
-          <SectionLabel>Finanza</SectionLabel>
+          <SectionLabel
+            trailing={
+              <button
+                type="button"
+                onClick={() => navigate('/sales')}
+                className="press-scale inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary"
+                aria-label="Apri la sezione vendite"
+              >
+                Apri
+                <ChevronRight className="h-3 w-3" aria-hidden="true" />
+              </button>
+            }
+          >
+            Finanza
+          </SectionLabel>
           <div className="space-y-2.5">
             <Collapsible title="Spese del periodo">
               <CeoExpensesPanel from={from} to={to} />
@@ -262,6 +300,7 @@ export function MobileCeoDashboard() {
           </section>
         )}
       </div>
-    </div>
+    </PullToRefresh>
   );
 }
+
