@@ -123,8 +123,10 @@ export async function createPlatformCredential(
     timeout: 60_000,
     attestation: "none",
     authenticatorSelection: {
-      authenticatorAttachment: "platform",
-      residentKey: "preferred",
+      // Niente authenticatorAttachment forzato → permette passkey
+      // sincronizzate via iCloud Keychain / Google Password Manager.
+      residentKey: "required",
+      requireResidentKey: true,
       userVerification: "required",
     },
     extensions: {
