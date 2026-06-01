@@ -322,7 +322,7 @@ export function MobileContactsList() {
 
         {/* Active filter chips */}
         {activeFiltersCount > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mb-1">
             {statusFilter !== 'all' && (
               <Badge variant="secondary" className="shrink-0 gap-1 cursor-pointer" onClick={() => setStatusFilter('all')}>
                 Stato: {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
