@@ -436,7 +436,7 @@ export default function MobileSettings() {
                   type="button"
                   onClick={closeSection}
                   aria-label="Indietro"
-                  className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 press-scale"
+                  className="-ml-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 press-scale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
