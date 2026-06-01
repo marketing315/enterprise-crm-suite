@@ -22,3 +22,11 @@ export {
 } from './MobileSkeletons';
 export { PullToRefresh, type PullToRefreshProps } from './PullToRefresh';
 export { MobileTabBar, MobileTabBarConnected, type MobileTabBarProps } from './MobileTabBar';
+export { MobileMoreSheet, type MobileMoreSheetProps } from './MobileMoreSheet';
+export {
+  MOBILE_NAV_SECTIONS,
+  MOBILE_MARKETING_ITEMS,
+  type MobileNavItem,
+  type MobileNavSection,
+  type AdvancedRole,
+} from './mobileNavData';
