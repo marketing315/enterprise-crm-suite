@@ -105,8 +105,8 @@ export function PasskeyDevicesCard() {
           Le tue passkey
         </CardTitle>
         <CardDescription>
-          Registra una passkey su ogni dispositivo che usi (Mac, iPhone, Android, Windows).
-          Da quel dispositivo potrai accedere con un tocco, senza email e password.
+          Crea una passkey: verrà archiviata su questo dispositivo.
+          Se usi iCloud Keychain o Google Password Manager, sarà disponibile anche sugli altri tuoi dispositivi collegati allo stesso account.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -117,8 +117,8 @@ export function PasskeyDevicesCard() {
           </div>
         ) : devices.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nessuna passkey registrata. Aggiungine una su questo dispositivo per
-            iniziare ad accedere con Face ID / impronta / passkey sincronizzata.
+            Nessuna passkey registrata. Aggiungine una per
+            iniziare ad accedere con Face ID / impronta / Windows Hello.
           </p>
         ) : (
           <ul className="divide-y divide-border/60 rounded-md border border-border/60">
@@ -198,7 +198,7 @@ export function PasskeyDevicesCard() {
           ) : (
             <Plus className="mr-2 h-4 w-4" />
           )}
-          Aggiungi passkey su questo dispositivo
+          Aggiungi passkey
         </Button>
         {!supported && (
           <p className="text-xs text-muted-foreground">
