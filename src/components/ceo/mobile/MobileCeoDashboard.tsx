@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
-import { TrendingUp, AlertCircle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { TrendingUp, AlertCircle, ChevronDown, ChevronUp, Sparkles, LayoutGrid } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useCeoDashboardBundle } from '@/hooks/useCeoDashboardBundle';
+import { useRoleDashboard } from '@/hooks/useRoleDashboard';
 import { formatCurrency } from '@/lib/formatKpi';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +71,9 @@ export function MobileCeoDashboard() {
   const { isAdmin, isCeo } = useAuth();
   const { currentBrand, hasBrandSelected } = useBrand();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { availableDashboards } = useRoleDashboard();
+  const showSwitcher = availableDashboards.length > 1;
 
   const [from, setFrom] = useState(() => startOfMonth(new Date()));
   const [to, setTo] = useState(() => endOfMonth(new Date()));
@@ -117,14 +129,47 @@ export function MobileCeoDashboard() {
               {currentBrand?.name ?? 'Tutti i brand'}
             </h1>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-9 px-2.5 rounded-full"
-            onClick={() => navigate('/ai-assistant')}
-          >
-            <Sparkles className="h-4 w-4 text-primary" />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            {showSwitcher && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 px-2.5 rounded-full gap-1"
+                    aria-label="Cambia vista dashboard"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    Cambia vista
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {availableDashboards.map((d) => (
+                    <DropdownMenuItem
+                      key={d.path}
+                      onClick={() => navigate(d.path)}
+                      className={location.pathname === d.path ? 'bg-accent font-medium' : ''}
+                    >
+                      {d.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 px-2.5 rounded-full"
+              onClick={() => navigate('/ai-assistant')}
+              aria-label="AI Assistant"
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+            </Button>
+          </div>
         </div>
         <MobileCeoPeriodChips
           from={from}
