@@ -299,4 +299,12 @@ All colors MUST be HSL.
   .press-scale:active {
     transform: none;
   }
+  /* F7.1 — Azzera le transizioni in tutti i container marcati `data-mobile-screen`.
+     Le animazioni di stato (spinner/skeleton) devono già usare `motion-safe:` e
+     restano gestite dalle utility Tailwind. */
+  [data-mobile-screen],
+  [data-mobile-screen] * {
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+  }
 }

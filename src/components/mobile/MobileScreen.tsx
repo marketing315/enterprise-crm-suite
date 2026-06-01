@@ -38,6 +38,7 @@ export function MobileScreen({
 }: MobileScreenProps) {
   return (
     <Tag
+      data-mobile-screen=""
       className={cn(
         'flex min-h-[100dvh] flex-col bg-background text-foreground',
         className,
@@ -50,7 +51,7 @@ export function MobileScreen({
           contentPadding,
           'py-4',
           contentSpacing,
-          !noEntryAnimation && 'animate-slide-up-fade',
+          !noEntryAnimation && 'motion-safe:animate-slide-up-fade',
         )}
         // Evita "rubber band" che mostra il bg dietro su iOS quando il body scrolla
         style={{ WebkitOverflowScrolling: 'touch' }}
