@@ -89,6 +89,8 @@ export default {
       boxShadow: {
         card: "0 1px 3px hsl(222 20% 10% / 0.07), 0 4px 12px hsl(222 20% 10% / 0.05)",
         hero: "0 8px 32px -4px hsl(var(--primary) / 0.15)",
+        sheet: "0 -8px 32px -8px hsl(222 20% 10% / 0.18), 0 -2px 8px hsl(222 20% 10% / 0.08)",
+        fab: "0 8px 24px -6px hsl(var(--primary) / 0.35), 0 2px 6px hsl(222 20% 10% / 0.12)",
       },
       transitionDuration: {
         micro: "150ms",
