@@ -117,8 +117,8 @@ export function PasskeyDevicesCard() {
           </div>
         ) : devices.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nessuna passkey registrata. Aggiungine una su questo dispositivo per
-            iniziare ad accedere con Face ID / impronta / passkey sincronizzata.
+            Nessuna passkey registrata. Aggiungine una per
+            iniziare ad accedere con Face ID / impronta / Windows Hello.
           </p>
         ) : (
           <ul className="divide-y divide-border/60 rounded-md border border-border/60">
