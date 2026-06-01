@@ -60,12 +60,15 @@ export interface BrandWithHierarchy extends Brand {
   child_count: number;
 }
 
+export type UserStatus = 'pending' | 'active' | 'suspended';
+
 export interface User {
   id: string;
   supabase_auth_id: string;
   email: string;
   full_name: string | null;
   avatar_url: string | null;
+  status: UserStatus;
   created_at: string;
   updated_at: string;
 }

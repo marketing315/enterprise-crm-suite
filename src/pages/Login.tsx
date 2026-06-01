@@ -5,12 +5,14 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { PasskeyLoginButton } from '@/components/auth/PasskeyLoginButton';
 import { PinLoginDialog } from '@/components/auth/PinLoginDialog';
+import { SignupDialog } from '@/components/auth/SignupDialog';
 import logo from '@/assets/logo.svg';
 
 export default function Login() {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -73,11 +75,20 @@ export default function Login() {
           />
 
           {!showForgotPassword && (
-            <div className="mt-5 flex justify-center">
+            <div className="mt-5 flex flex-col items-center gap-3">
               <PinLoginDialog triggerLabel="Accedi con PIN" />
+              <button
+                type="button"
+                onClick={() => setShowSignup(true)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Non hai un account? <span className="font-medium">Registrati</span>
+              </button>
             </div>
           )}
         </section>
+
+        <SignupDialog open={showSignup} onOpenChange={setShowSignup} />
 
         {/* Support + privacy */}
         <footer className="mt-8 text-center text-xs text-muted-foreground space-y-2">

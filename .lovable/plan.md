@@ -1,78 +1,58 @@
-## Obiettivo
+## Fase 3 — RBAC Modello 3 (open + pending)
 
-Quando clicchi "Accedi con passkey" il browser deve mostrare il selettore di passkey (Face ID/Touch ID/Windows Hello/iCloud Keychain/Google Password Manager). Tu confermi con la biometria, e il server identifica automaticamente l'account associato a quella passkey e ti logga, senza chiedere email o PIN.
+### Obiettivo
+Permettere a chiunque acceda (passkey, Google/Apple via bridge Lovable, email/password) di entrare in CRM in **stato pending**, senza ruoli né brand, e mostrare una schermata "in attesa di approvazione" finché un admin non lo abilita assegnando brand + ruolo.
 
-Oggi non funziona così: oggi memorizziamo solo l'ID credenziale lato browser e sblocchiamo una sessione cifrata in IndexedDB. Senza vault locale (es. nuovo browser, anche con passkey sincronizzata via iCloud) non possiamo identificare l'utente.
+### Stato attuale rilevato
+- `public.users`: NO colonna `status`. Tutti gli utenti sono trattati come attivi.
+- `public.user_roles`: gate effettivo (utente senza riga = nessun accesso). Oggi un utente senza ruoli vede schermata vuota / errori RLS.
+- `supabase.auth`: `disable_signup = true` (Sprint 3). Va riattivato per consentire signup open.
+- `AuthContext`: non distingue "in attesa approvazione" da "nessun brand selezionato".
 
-Per il vero login passkey serve **WebAuthn discoverable** + verifica firma lato server.
+### Database (1 migrazione additiva)
+1. **enum `user_status`**: `pending | active | suspended` (additivo).
+2. **`public.users.status`** `user_status NOT NULL DEFAULT 'pending'`.
+   - Backfill esistenti: utenti con almeno una riga in `user_roles` → `active`; restanti → `pending`.
+3. **Trigger `on_auth_user_created_provision`** su `auth.users` AFTER INSERT:
+   - Inserisce `public.users(supabase_auth_id, email, full_name, avatar_url, status='pending')` se non esiste.
+   - Estrae `full_name`/`avatar_url` da `raw_user_meta_data` (per Google/Apple).
+   - Idempotente (ON CONFLICT DO NOTHING).
+4. **RPC `approve_pending_user(p_user_id uuid, p_brand_id uuid, p_role app_role, p_can_access_children bool)`** SECURITY DEFINER:
+   - Guard: caller deve essere admin del brand target o system admin o CEO (`has_role_for_brand`).
+   - Set `users.status='active'`, INSERT `user_roles` (ON CONFLICT update is_active=true).
+   - Rate-limit critico (`consume_critical_rate_limit`, riusa pattern H2).
+   - Audit via `log_audit_event('user_approved', ...)`.
+5. **RPC `reject_pending_user(p_user_id uuid, p_reason text)`** SECURITY DEFINER:
+   - Set `status='suspended'`, audit `user_rejected`.
+6. **RPC `list_pending_users()`** SECURITY DEFINER: ritorna utenti `status='pending'` visibili al caller (admin del brand "X" vede tutti i pending non assegnati; system admin/CEO vedono tutti).
+7. **Notifica admin**: trigger AFTER INSERT su `public.users WHEN NEW.status='pending'` → INSERT `notifications(type='user_pending_approval', entity_type='user', entity_id=NEW.id)` per ogni admin (system + per ogni brand admin) + CEO. Riusa pattern chat-notifications.
+8. **RLS**: nessuna modifica ad altre tabelle. La policy di `user_roles` resta invariata (admin scoped al brand).
 
-## Cosa cambia in concreto
+### Backend / Auth config
+- `supabase.configure_auth({ disable_signup: false, password_hibp_enabled: true, auto_confirm_email: false, external_anonymous_users_enabled: false })`.
+- Edge function `biometric-pin-login` e `passkey-auth-verify` già emettono sessione tramite `_shared/issue-session.ts`; il trigger di provisioning si attiva sull'INSERT in `auth.users` quindi copre automaticamente passkey + OAuth bridge + email/password.
 
-### 1. Database — arricchire `user_biometric_credentials`
+### Frontend
+1. **`src/contexts/AuthContext.tsx`**: dopo `getUser()`, leggere `public.users.status`. Esporre `userStatus: 'pending'|'active'|'suspended'|null`.
+2. **`src/components/auth/PendingApprovalScreen.tsx`** (nuovo): card C-level con messaggio "Il tuo account è in attesa di approvazione", email di supporto, pulsante "Esci".
+3. **`src/components/auth/SuspendedScreen.tsx`** (nuovo): card "Account sospeso, contatta l'amministratore".
+4. **`src/App.tsx` / route guard**: prima del `BrandSelector`/`MfaGuard`, se `userStatus !== 'active'` mostrare la schermata corrispondente.
+5. **`src/pages/admin/PendingUsersPage.tsx`** (nuovo) + rotta `/admin/pending-users`:
+   - Lista utenti pending con email, nome, data signup, provider (passkey/google/apple/email).
+   - Per ogni riga: dialog "Approva" (select brand + select ruolo + checkbox can_access_children) → chiama `approve_pending_user`.
+   - Pulsante "Rifiuta" con motivo → `reject_pending_user`.
+6. **Sidebar** (area admin): voce "Approvazioni utenti" con badge count pending (riusa pattern notifiche).
+7. **Login form**: riattivare CTA "Crea account" (oggi nascosta per `disable_signup`). Dopo signup mostrare schermata pending.
 
-Migration additiva (NULL-safe per le credenziali esistenti):
-- `public_key BYTEA` — chiave pubblica COSE estratta dall'attestazione
-- `public_key_alg INT` — algoritmo (es. -7 ES256, -257 RS256)
-- `sign_count BIGINT NOT NULL DEFAULT 0` — contatore anti-clone
-- `aaguid UUID` — opzionale, per riconoscere l'authenticator
-- `transports TEXT[]` — hint trasporti (internal/hybrid/usb)
+### Sicurezza
+- Niente auto-grant di ruoli: stato pending è il default sicuro.
+- RPC approve/reject solo SECURITY DEFINER con guard ruolo + rate-limit + audit.
+- Trigger di provisioning idempotente per evitare doppi insert su retry.
 
-Le credenziali create prima di questa migration non avranno `public_key`: continueranno a funzionare per lo **sblocco locale**, ma per il **login server** l'utente dovrà ri-registrare la passkey una volta (lo gestiamo con un avviso nel profilo).
+### Memoria
+Salvare `mem://features/rbac-open-pending-modello-3` con: enum `user_status`, RPC approve/reject/list, trigger provisioning, schermate pending/suspended, pagina admin, riattivazione signup.
 
-Indice nuovo: `UNIQUE (credential_id)` per lookup O(1) sul rawId ricevuto dal browser.
-
-### 2. Edge functions
-
-Due nuove function pubbliche (`verify_jwt = false`, rate-limit IP via `consume_ip_rate_limit`):
-
-**`passkey-auth-begin`**
-- Genera challenge random (32 byte), TTL 5 min
-- La salva su nuova tabella `passkey_auth_challenges (challenge_b64, created_at, consumed_at)`
-- Risponde `{ challenge, rpId, timeout: 60000 }`
-
-**`passkey-auth-verify`**
-- Riceve `{ challenge, credentialId, clientDataJSON, authenticatorData, signature, userHandle }`
-- Consuma la challenge (single-use, fail se già usata o scaduta)
-- Lookup `user_biometric_credentials` per `credential_id`
-- Verifica firma WebAuthn con la `public_key` salvata (libreria `@simplewebauthn/server` via `npm:` specifier)
-- Aggiorna `sign_count` (rifiuta se non aumenta → clone detection)
-- Genera un **magiclink Supabase** con `admin.generateLink({ type: 'magiclink', email })` per l'utente associato
-- Risponde `{ action_link }` → il client fa `supabase.auth.verifyOtp` dal token nel link
-
-### 3. Client — `PasskeyLoginButton`
-
-Nuovo flusso, sostituisce quello attuale:
-1. `fetch passkey-auth-begin` → ottiene challenge
-2. `navigator.credentials.get({ publicKey: { challenge, rpId, userVerification: "required" /* niente allowCredentials → discoverable */ }})` → il browser mostra il selettore con tutte le passkey sincronizzate per questo dominio
-3. Manda la risposta a `passkey-auth-verify`
-4. Riceve `action_link` → estrae il token → `supabase.auth.verifyOtp({ type: 'magiclink', token, email })`
-5. Naviga a `/select-brand`
-
-Se l'utente annulla o non ha passkey valide → resta sulla schermata di login (come ora, niente PIN).
-
-### 4. MFA per admin/CEO
-
-Una passkey con `userVerification: "required"` è già un secondo fattore biometrico. Per gli admin/CEO la consideriamo equivalente al "trusted device 30g" (stesso pattern già usato per la biometria), così non chiediamo anche il TOTP.
-
-## Sicurezza
-
-- Challenge single-use con TTL → no replay
-- Verifica firma con chiave pubblica reale (no shortcut)
-- Sign counter monotonico → clone detection
-- Rate-limit IP sulla `verify` (5 req/min) per evitare enumerazione credenziali
-- RP ID hard-coded sul dominio reale (no wildcard)
-- `assertSafeUrl` non si applica (no outbound user URL)
-- Audit `log_audit_event` su ogni `passkey_login_success` e `passkey_login_failed`
-
-## Note sui limiti attuali
-
-- Le passkey **già registrate prima** di questa migration potranno solo fare lo sblocco locale finché l'utente non le rigenera (mostriamo un banner nel profilo: "Aggiorna la tua passkey per accedere da nuovi dispositivi")
-- L'utente deve esistere già nel sistema: il login passkey non crea nuovi account
-- Su browser senza WebAuthn discoverable (vecchi Safari/Firefox) il pulsante non funzionerà → fallback resta email+password o "Accedi con PIN"
-
-## Test E2E
-
-- Registra passkey su iPhone Safari (Face ID sincronizzato iCloud)
-- Apri il CRM su Mac Chrome → click "Accedi con passkey" → deve apparire il selettore con la passkey iCloud → conferma → login
-- Verifica sign_count aumentato, audit log scritto, sessione Supabase attiva
-- Rigioca la stessa challenge → deve fallire (single-use)
+### Fuori scope di questa fase
+- Auto-link identità su email verificata (resta gestito dal bridge Lovable).
+- Migrazione Google/Apple a OAuth nativo (Fasi 1/2, posticipate).
+- Allowlist dominio email (Modello 2, scartato).
