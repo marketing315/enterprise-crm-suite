@@ -1,61 +1,59 @@
-## Obiettivo
+# Login multi-metodo
 
-Permettere al CEO/admin di accedere via Face ID / Touch ID / impronta da **qualunque dispositivo personale** (sincronizzato via iCloud Keychain o Google Password Manager) **e** di avere un fallback "Email + PIN" che funziona su **qualunque browser nuovo**, senza dover ri-fare l'enrollment ogni volta.
+Riorganizzo la pagina `/login` per offrire quattro modalità di accesso chiare e separate, mantenendo intatta tutta la logica MFA e biometrica già esistente.
 
----
+## Nuovo layout di `/login`
 
-## Cosa cambia rispetto all'attuale
+```text
+┌──────────────────────────────────────┐
+│   Logo + "CRM Gruppo Benessere"     │
+├──────────────────────────────────────┤
+│   [ Accedi con Google ]             │
+│   [ Accedi con Apple  ]             │
+│   ──────── oppure ────────          │
+│   [ Accedi con passkey (Face ID) ]  │
+│   ──────── oppure ────────          │
+│   Email      [________________]      │
+│   Password   [________________] 👁   │
+│   [ Accedi ]                         │
+│   Password dimenticata?              │
+└──────────────────────────────────────┘
+```
 
-Oggi il flusso biometrico ralph:
-- Crea una credenziale WebAuthn legata al **device** (non sincronizzata).
-- Crea un **vault locale** in IndexedDB con la sessione cifrata.
-- Sul login mostra il pannello biometrico **solo** se quel browser ha già `lastBiometricUser` + vault.
+I 4 metodi:
 
-Risultato: se cambi browser/PC/telefono, niente biometria.
+1. **Email + password** — invariato, con 2FA TOTP per admin/CEO già gestita da `MfaGuard`.
+2. **Passkey** — pulsante esplicito sempre visibile che lancia WebAuthn discoverable (Face ID / Touch ID / Windows Hello / passkey sincronizzata iCloud-Google). Riusa `BiometricUnlockPanel` semplificandolo a un solo bottone.
+3. **Google** — OAuth via `lovable.auth.signInWithOAuth("google", ...)` (managed).
+4. **Apple** — OAuth via `lovable.auth.signInWithOAuth("apple", ...)` (managed).
 
-Opzione C porta due cambi:
+Il flusso esistente "Accedi con PIN biometrico" (Email + PIN cross-device) viene **spostato in un link secondario** sotto password ("Non hai la passkey su questo dispositivo? Accedi con PIN") per non affollare la schermata principale ma restare disponibile come fallback universale.
 
-### 1. Passkey sincronizzate (iCloud Keychain / Google Password Manager)
-- In `enableBiometric` chiediamo a WebAuthn una credenziale **discoverable + multi-device** (`residentKey: 'required'`, `authenticatorAttachment` non vincolato, `userVerification: 'required'`). Su iOS/macOS recenti e Android/Chrome viene salvata come passkey sincronizzata.
-- In `unlockBiometric` usiamo **conditional UI** (`navigator.credentials.get({ mediation: 'conditional' })`) sul campo email del login: il browser propone automaticamente la passkey disponibile (anche se sincronizzata da un altro device Apple/Google dello stesso utente).
-- Lato server salviamo `credential_id` + `public_key` + `aaguid` in `user_biometric_credentials` come oggi, ma marcandola `is_synced = true` quando l'authenticator lo dichiara (`backupEligible` / `backupState` dal CBOR).
+## Modifiche tecniche
 
-### 2. Fallback "Email + PIN" universale
-- Sul `/login` mostriamo sempre un link "Accedi con PIN" sotto al form password.
-- Apre un dialog: **Email → invio "challenge PIN" → PIN 6 cifre**.
-- Server verifica con `verify_biometric_pin` (già esistente, già con lockout 5/15min e wipe a 10 tentativi).
-- Su successo, l'edge function `biometric-pin-login` (nuova) emette una sessione Supabase via `admin.generateLink` o `signInWithIdToken` custom e la restituisce al client.
-- Funziona su **qualunque dispositivo nuovo**, senza vault locale.
+### Frontend
+- `src/pages/Login.tsx` — nuovo layout: blocco OAuth in alto, separatore, blocco passkey, separatore, form email/password.
+- `src/components/auth/SocialLoginButtons.tsx` *(nuovo)* — due pulsanti Google/Apple con icone brand, chiamano `lovable.auth.signInWithOAuth`. Loading state + toast errore.
+- `src/components/auth/PasskeyLoginButton.tsx` *(nuovo)* — bottone "Accedi con passkey" che chiama `navigator.credentials.get({ publicKey: { ..., userVerification: "required" }, mediaton: "optional" })` discoverable, riusando le funzioni in `src/lib/biometric/webauthn.ts`. In caso di passkey assente o cancel, mostra toast e resta sulla pagina.
+- `src/components/auth/LoginForm.tsx` — rimuovo il link "Accedi con PIN biometrico" dal footer e lo riposiziono come link discreto sotto "Password dimenticata?".
+- `src/components/auth/BiometricUnlockPanel.tsx` — non più mostrato in cima alla pagina (la passkey è ora un pulsante dedicato); il pannello resta usato altrove se serve, altrimenti rimosso dall'import in `Login.tsx`.
 
----
+### Backend / Auth
+- Abilito Google + Apple via `configure_social_auth(providers: ["google", "apple"])` mantenendo email attiva (NON disabilito email).
+- Nessuna modifica DB: la tabella `user_biometric_credentials` e tutto il flusso PIN restano invariati.
+- Nessuna modifica a `MfaGuard`: admin/CEO loggati con qualunque metodo (password/passkey/Google/Apple) continueranno a passare per la challenge TOTP la prima volta su un device non trusted.
 
-## Dettagli tecnici
+### Apple — nota importante
+Apple Sign In con credenziali managed di Lovable Cloud funziona out-of-the-box. Se in futuro vuoi branding custom (il tuo nome app nella sheet Apple), serviranno Services ID + Team ID + Key ID + chiave .p8 da Apple Developer (richiede account a pagamento Apple Developer Program, $99/anno). Per ora useremo il managed.
 
-### DB (migrazione additiva)
-- `user_biometric_credentials`: aggiungere `is_synced boolean default false`, `backup_eligible boolean`, `backup_state boolean`, `last_used_at timestamptz`. Nessun drop, nessuna modifica destructive.
-- Nuova RPC `start_pin_login(email)` → restituisce `{ user_id, challenge_id }` senza rivelare se l'email esiste (rate-limit IP).
-- Nuova RPC `verify_pin_login(challenge_id, pin)` → wrappa `verify_biometric_pin` + emette token one-shot consumabile dall'edge function.
+## Cosa NON cambia
+- 2FA TOTP, trusted device 30g, lockout, PIN, biometria su dispositivo, edge functions `biometric-pin-login`, RPC `start_pin_login`/`verify_pin_login`.
+- Nessuna migrazione DB.
+- Logica `AuthContext`, sessioni, idle timeout.
 
-### Edge functions
-- `biometric-passkey-register` (server-side challenge + verify attestation, opzionale: oggi ralph fa attestation client-side, lo manteniamo se preferisci).
-- `biometric-pin-login` nuova: verifica il token one-shot e crea una sessione Supabase (`admin.createSession` via service_role) per l'utente. **Rate-limit IP** via `consume_ip_rate_limit` (H1) e **circuit breaker** (H7). Audit `auth_event` su ogni tentativo.
-
-### Client
-- `src/lib/biometric/passkey.ts`: refactor `enableBiometric` per richiedere passkey sincronizzata + conditional UI in `unlockBiometric`.
-- `src/components/auth/BiometricUnlockPanel.tsx`: rimuovere il guard "mostra solo se hasVault" → usare **conditional UI** che si attiva automaticamente quando il browser ha una passkey valida (anche da iCloud Keychain).
-- Nuovo `src/components/auth/PinLoginDialog.tsx` montato sotto al form di `/login` con link "Hai dimenticato la password? Accedi con PIN".
-- `src/pages/Login.tsx`: aggiungere `autocomplete="username webauthn"` sul campo email per attivare la conditional UI.
-
-### Sicurezza
-- PIN login rate-limited per IP (10/15min) **e** per utente (già 5/15min + wipe a 10).
-- Edge function `biometric-pin-login` con `verify_jwt = false`, CORS restricted, audit completo (`auth_event` + `idempotency_keys` per evitare replay del token one-shot).
-- Passkey sincronizzate: nessun rischio aggiuntivo (il keychain Apple/Google è già protetto da Face ID/Touch ID del device).
-
----
-
-## Domande aperte (rispondi prima che proceda)
-
-1. **Sessione PIN login**: vuoi che dopo l'accesso col PIN il CEO sia considerato **AAL2** (come oggi avviene per la biometria → trusted-device 30g, bypass TOTP), oppure il PIN deve sempre richiedere **anche TOTP** dopo l'accesso?
-2. **Conditional UI**: ok se sui browser che non la supportano (Firefox desktop) appare comunque un pulsante "Accedi con Face ID / impronta" come fallback?
-
-Rispondi e procedo con migrazione DB + edge function + UI in un singolo passaggio.
+## QA
+- Login email+password → admin: richiede TOTP la prima volta, poi trusted.
+- Login passkey discoverable da iPhone Safari (Face ID), Mac Chrome, Android.
+- Login Google → redirect OAuth → torna su `/select-brand`.
+- Login Apple → redirect OAuth → torna su `/select-brand`.
+- Link "Accedi con PIN" ancora funzionante come fallback.

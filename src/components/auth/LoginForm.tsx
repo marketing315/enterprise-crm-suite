@@ -221,7 +221,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
           </Button>
 
           <div className="flex items-center justify-center w-full">
-            <PinLoginDialog triggerLabel="Accedi con PIN biometrico" />
+            <PinLoginDialog triggerLabel="Non hai la passkey su questo dispositivo? Accedi con PIN" />
           </div>
 
           <p className="text-xs text-center text-muted-foreground leading-relaxed">
