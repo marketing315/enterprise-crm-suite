@@ -46,7 +46,16 @@ import { cn } from "@/lib/utils";
 
 type DatePreset = "all" | "today" | "week" | "month" | "custom";
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileSales } from "@/components/sales/mobile/MobileSales";
+
 export default function Sales() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileSales />;
+  return <SalesDesktop />;
+}
+
+function SalesDesktop() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const { isAdmin, isCeo, hasRole } = useAuth();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
