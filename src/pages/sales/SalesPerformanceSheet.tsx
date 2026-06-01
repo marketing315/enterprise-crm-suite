@@ -56,7 +56,16 @@ function resolveRange(p: Period): { from: Date; to: Date } {
   return { from: new Date(now.getFullYear(), 0, 1), to: now };
 }
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileSalesPerformanceSheet } from "@/components/sales/mobile/MobileSalesPerformanceSheet";
+
 export default function SalesPerformanceSheet() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileSalesPerformanceSheet />;
+  return <SalesPerformanceSheetDesktop />;
+}
+
+function SalesPerformanceSheetDesktop() {
   const { currentBrand } = useBrand();
   const activeBrandId = currentBrand?.id ?? null;
   const { isAdmin, isCeo, hasRole } = useAuth();
