@@ -204,7 +204,7 @@ export function MobileContactsList() {
           <ErrorState
             title="Impossibile caricare i contatti"
             description={error instanceof Error ? error.message : undefined}
-            onRetry={() => refetch()}
+            onRetry={() => { void refetch(); }}
           />
         ) : isLoading ? (
           <MobileListSkeleton count={8} />
