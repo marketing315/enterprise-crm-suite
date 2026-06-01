@@ -14,9 +14,13 @@ import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatKpi';
 import { OverduePaymentsWidget } from '@/components/sales/OverduePaymentsWidget';
 import { onActivateKey } from "@/lib/a11y";
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileSalesManagerDashboard } from '@/components/sales/mobile/MobileSalesManagerDashboard';
 
 export default function SalesManagerDashboard() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  if (isMobile) return <MobileSalesManagerDashboard />;
 
   const { data: openDeals, isLoading: dealsLoading } = useDeals('open');
   const { data: wonDeals, isLoading: wonLoading } = useDeals('won');
