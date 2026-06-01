@@ -2,7 +2,9 @@ import { Bug } from "lucide-react";
 import { MfaSettingsCard } from "@/components/settings/MfaSettingsCard";
 import { BiometricSettingsCard } from "@/components/settings/BiometricSettingsCard";
 import { PasskeyDevicesCard } from "@/components/settings/PasskeyDevicesCard";
+import { IdentityLinkingCard } from "@/components/settings/IdentityLinkingCard";
 import { IdleTimeoutSettingsCard } from "@/components/settings/IdleTimeoutSettingsCard";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { openErrorConsole } from "@/components/admin/ErrorConsolePanel";
@@ -22,8 +24,10 @@ export default function SettingsSecurity() {
       </div>
       <MfaSettingsCard />
       <PasskeyDevicesCard />
+      <IdentityLinkingCard />
       <BiometricSettingsCard />
       <IdleTimeoutSettingsCard />
+
 
       <Card>
         <CardHeader>
