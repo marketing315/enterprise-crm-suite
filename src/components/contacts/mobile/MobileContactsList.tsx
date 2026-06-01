@@ -167,6 +167,11 @@ export function MobileContactsList() {
 
   const statusOptions = useMemo(() => STATUS_OPTIONS, []);
 
+  const visibleContacts = useMemo(() => {
+    if (!isAllBrandsSelected || brandFilter === 'all') return contacts;
+    return contacts.filter((c) => c.brand_id === brandFilter);
+  }, [contacts, isAllBrandsSelected, brandFilter]);
+
   const handleOpen = (id: string) => {
     setSelectedContactId(id);
     setSheetOpen(true);
