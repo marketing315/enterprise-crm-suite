@@ -129,11 +129,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 > Ogni dashboard: vista mobile alternativa che riusa i dati delle pagine `src/pages/dashboard/*`. Una hero + KpiList + 1–2 sezioni. dep comune: F2.4 + F1.5/F1.7.
 
-### F3.1 — Mobile Dashboard CEO/Admin `[ ]`
+### F3.1 — Mobile Dashboard CEO/Admin `[x]`
 - **dep:** F1.8, F2.4
 - Collega la CEO mobile rifattorizzata alla shell; aggiungi pull-to-refresh e drill-down hero→pipeline/finanza.
 - **AC:** SPEC §6.2 soddisfatta; stati gestiti; desktop CEO invariato.
-- *Note:*
+- *Note:* `MobileCeoDashboard` ora vive dentro `MobileLayout` (collegamento già esistente in `CeoDashboardView` via `useIsMobile`). Rimosso il vecchio hack `-mx-4 -mt-4` (residuo dei padding di `MainLayout`): la shell mobile ha `<main>` senza padding, quindi la pagina governa direttamente `px-4`. Aggiunto wrapper `PullToRefresh` (F1.7) con `invalidateKeys=[['ceo-dashboard-bundle']]` → swipe-down rifresca l'intero bundle CEO; rispetta `prefers-reduced-motion`. Drill-down: (a) **Hero "Utile Netto"** ora è un `<button>` `press-scale` che naviga a `/pipeline` con `aria-label` esplicita e caption aggiornato "Tocca per il dettaglio"; (b) **`SectionLabel` "Pipeline"** ha trailing "Apri →" verso `/pipeline`; (c) **`SectionLabel` "Finanza"** ha trailing "Apri →" verso `/sales`. Stati gestiti: `HeroMetricSkeleton`/`KpiListSkeleton` durante `isLoading`, Alert destructive su `finError`, guardrail Admin/CEO + brand selezionato già presenti. Nessuna modifica a `CeoDashboardView` desktop, ai dati/hook (`useCeoDashboardBundle` invariato) o ai pannelli `CeoExpensesPanel`/`CeoBudgetPanel`/`CeoCostBreakdown`/`BudgetBaselineCard`. Suite mobile vitest 140/140 verdi; `tsc` pulito sui file toccati.
 
 ### F3.2 — Mobile Dashboard Venditore/Sales `[ ]`
 - **dep:** F2.4, F1.5, F1.7
