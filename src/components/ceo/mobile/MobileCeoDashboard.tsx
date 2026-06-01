@@ -71,6 +71,9 @@ export function MobileCeoDashboard() {
   const { isAdmin, isCeo } = useAuth();
   const { currentBrand, hasBrandSelected } = useBrand();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { availableDashboards } = useRoleDashboard();
+  const showSwitcher = availableDashboards.length > 1;
 
   const [from, setFrom] = useState(() => startOfMonth(new Date()));
   const [to, setTo] = useState(() => endOfMonth(new Date()));
