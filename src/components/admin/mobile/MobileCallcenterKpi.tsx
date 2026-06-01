@@ -138,11 +138,9 @@ function MobileCallcenterKpi() {
                 value={String(overview.tickets_created ?? 0)}
                 caption={`Backlog ${overview.backlog_total ?? 0} · non assegnati ${overview.unassigned_now ?? 0}`}
                 variant={
-                  (overview.unassigned_now ?? 0) > 0
-                    ? "warning"
-                    : (overview.backlog_total ?? 0) > 20
-                      ? "warning"
-                      : "primary"
+                  (overview.unassigned_now ?? 0) > 0 || (overview.backlog_total ?? 0) > 20
+                    ? "negative"
+                    : "primary"
                 }
               />
               <KpiList ariaLabel="KPI ticket">
