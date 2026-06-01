@@ -218,10 +218,12 @@ export function NewContactDialog({ onContactCreated, onDuplicateFound, trigger }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={isGlobalView} title={isGlobalView ? "Seleziona un brand specifico per creare contatti" : undefined}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuovo contatto
-        </Button>
+        {trigger ?? (
+          <Button disabled={isGlobalView} title={isGlobalView ? "Seleziona un brand specifico per creare contatti" : undefined}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo contatto
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
