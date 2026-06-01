@@ -208,7 +208,7 @@ export function LoginForm({ showForgotPassword: externalShow, onForgotPasswordCh
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full h-11 md:h-10" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
