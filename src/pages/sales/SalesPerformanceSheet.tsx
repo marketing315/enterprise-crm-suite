@@ -57,7 +57,12 @@ function resolveRange(p: Period): { from: Date; to: Date } {
 }
 
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MobileSalesPerformanceSheet } from "@/components/sales/mobile/MobileSalesPerformanceSheet";
+import { lazyMobile } from "@/lib/lazyMobile";
+const MobileSalesPerformanceSheet = lazyMobile(() =>
+  import("@/components/sales/mobile/MobileSalesPerformanceSheet").then((m) => ({
+    default: m.MobileSalesPerformanceSheet,
+  })),
+);
 
 export default function SalesPerformanceSheet() {
   const isMobileViewport = useIsMobile();

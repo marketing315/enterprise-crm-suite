@@ -3,7 +3,12 @@ import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 import { DealInlinePanel } from "@/components/pipeline/DealInlinePanel";
 import { TagFilter } from "@/components/tags/TagFilter";
 import { ManageStagesDialog } from "@/components/pipeline/ManageStagesDialog";
-import { MobilePipelineView } from "@/components/pipeline/mobile/MobilePipelineView";
+import { lazyMobile } from "@/lib/lazyMobile";
+const MobilePipelineView = lazyMobile(() =>
+  import("@/components/pipeline/mobile/MobilePipelineView").then((m) => ({
+    default: m.MobilePipelineView,
+  })),
+);
 import { useBrand, SYSTEM_BRAND_ID } from "@/contexts/BrandContext";
 import { useDeals } from "@/hooks/usePipeline";
 import { useIsMobile } from "@/hooks/use-mobile";

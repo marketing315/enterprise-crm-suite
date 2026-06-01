@@ -88,7 +88,12 @@ type SortField = "date" | "contact" | "status" | "city" | "sales";
 type SortDir = "asc" | "desc";
 
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MobileAppointmentsView } from "@/components/appointments/mobile/MobileAppointmentsView";
+import { lazyMobile } from "@/lib/lazyMobile";
+const MobileAppointmentsView = lazyMobile(() =>
+  import("@/components/appointments/mobile/MobileAppointmentsView").then((m) => ({
+    default: m.MobileAppointmentsView,
+  })),
+);
 
 export default function Appointments() {
   const isMobile = useIsMobile();

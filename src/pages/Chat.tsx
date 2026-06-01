@@ -39,7 +39,12 @@ import { ChatMessagePanel } from "@/components/chat/ChatMessagePanel";
 import { useAIAgentChat, useCreateNewExecutiveThread } from "@/hooks/useAIAgent";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MobileChatView } from "@/components/chat/mobile/MobileChatView";
+import { lazyMobile } from "@/lib/lazyMobile";
+const MobileChatView = lazyMobile(() =>
+  import("@/components/chat/mobile/MobileChatView").then((m) => ({
+    default: m.MobileChatView,
+  })),
+);
 
 export default function Chat() {
   const isMobileViewport = useIsMobile();

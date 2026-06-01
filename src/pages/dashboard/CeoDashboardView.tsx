@@ -19,7 +19,12 @@ import { BudgetBaselineCard } from '@/components/ceo/BudgetBaselineCard';
 import { CeoCostBreakdown } from '@/components/ceo/CeoCostBreakdown';
 import { CeoCalcVersionBanner } from '@/components/ceo/CeoCalcVersionBanner';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { MobileCeoDashboard } from '@/components/ceo/mobile/MobileCeoDashboard';
+import { lazyMobile } from '@/lib/lazyMobile';
+const MobileCeoDashboard = lazyMobile(() =>
+  import('@/components/ceo/mobile/MobileCeoDashboard').then((m) => ({
+    default: m.MobileCeoDashboard,
+  })),
+);
 
 export default function CeoDashboardView() {
   const { isAdmin, isCeo } = useAuth();
