@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
-import { TrendingUp, AlertCircle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { TrendingUp, AlertCircle, ChevronDown, ChevronUp, Sparkles, LayoutGrid } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/contexts/BrandContext';
 import { useCeoDashboardBundle } from '@/hooks/useCeoDashboardBundle';
+import { useRoleDashboard } from '@/hooks/useRoleDashboard';
 import { formatCurrency } from '@/lib/formatKpi';
 import { cn } from '@/lib/utils';
 
