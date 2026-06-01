@@ -43,8 +43,16 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product } from "@/types/sales";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileProducts } from "@/components/sales/mobile/MobileProducts";
 
 export default function Products() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileProducts />;
+  return <ProductsDesktop />;
+}
+
+function ProductsDesktop() {
   const { currentBrand, hasBrandSelected } = useBrand();
   const { isAdmin, isCeo } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
