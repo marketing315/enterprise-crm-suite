@@ -189,7 +189,7 @@ export function MobileChatView() {
           <Button
             variant="ghost"
             size="icon"
-            className="press-scale h-10 w-10 shrink-0"
+            className="press-scale h-11 w-11 shrink-0"
             onClick={closeThread}
             aria-label="Torna alle conversazioni"
           >

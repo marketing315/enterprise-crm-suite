@@ -209,7 +209,7 @@ function MobileCallcenterWallboard() {
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9"
+              className="h-11 w-11"
               onClick={() => {
                 void handleRefresh();
               }}
