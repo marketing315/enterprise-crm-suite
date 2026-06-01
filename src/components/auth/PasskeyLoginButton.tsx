@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Fingerprint, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { b64urlEncode, isWebAuthnAvailable } from "@/lib/biometric/webauthn";
+
 
 /**
  * Login passkey discoverable (vero "Sign in with passkey").
@@ -21,6 +23,8 @@ import { b64urlEncode, isWebAuthnAvailable } from "@/lib/biometric/webauthn";
 export function PasskeyLoginButton() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [needsReregister, setNeedsReregister] = useState(false);
+
 
   const handleClick = async () => {
     if (!isWebAuthnAvailable()) {
@@ -28,7 +32,9 @@ export function PasskeyLoginButton() {
       return;
     }
     setBusy(true);
+    setNeedsReregister(false);
     try {
+
       // 1) challenge
       const rpId = window.location.hostname;
       const { data: beginData, error: beginErr } = await supabase.functions.invoke(
@@ -83,12 +89,14 @@ export function PasskeyLoginButton() {
           (verifyData as { error?: string } | null)?.error ??
           "verify_failed";
         if (errCode === "credential_needs_reregistration") {
+          setNeedsReregister(true);
           toast.error(
-            "Questa passkey è stata creata prima dell'aggiornamento. Accedi con email/password e riattiva la biometria dal profilo.",
+            "Questa passkey va aggiornata. Accedi con email/password e ricreala da Sicurezza → Passkey.",
           );
         }
         throw new Error(errCode);
       }
+
 
       // 4) sessione → setSession
       const { error: setErr } = await supabase.auth.setSession({
@@ -109,22 +117,38 @@ export function PasskeyLoginButton() {
   };
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      className="h-11 w-full md:h-10"
-      disabled={busy}
-      onClick={handleClick}
-    >
-      {busy ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <Fingerprint className="mr-2 h-4 w-4" />
+    <div className="space-y-2">
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full md:h-10"
+        disabled={busy}
+        onClick={handleClick}
+      >
+        {busy ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Fingerprint className="mr-2 h-4 w-4" />
+        )}
+        Accedi con passkey
+      </Button>
+      {needsReregister && (
+        <Alert variant="destructive" className="text-left">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            Passkey non più valida (creata prima dell'aggiornamento). Accedi con email e password,
+            poi vai in{" "}
+            <Link to="/settings/security" className="underline font-medium">
+              Sicurezza → Passkey
+            </Link>{" "}
+            per ricrearla.
+          </AlertDescription>
+        </Alert>
       )}
-      Accedi con passkey
-    </Button>
+    </div>
   );
 }
+
 
 function decodeB64Url(s: string): Uint8Array {
   const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
