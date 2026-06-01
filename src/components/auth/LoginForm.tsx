@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff, AlertCircle, ArrowUpToLine, MailWarning } from 'lucide-react';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
+import { PinLoginDialog } from './PinLoginDialog';
 
 interface LoginFormProps {
   showForgotPassword?: boolean;
