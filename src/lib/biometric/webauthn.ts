@@ -1,12 +1,10 @@
 /**
  * Wrapper su WebAuthn per lo "sblocco rapido biometrico".
  *
- * Strategia: usiamo un platform authenticator (Touch ID/Face ID/Windows Hello)
- * solo come "gate" di User Verification. Se il browser supporta l'extension
- * `prf` (Chrome desktop/Android, iOS 17+ Safari) deriviamo un secret stabile
- * dalla biometria e lo usiamo per cifrare la sessione locale. Su browser
- * senza PRF il PIN diventa la chiave di cifratura primaria e la biometria
- * resta solo un'asserzione di "presenza".
+ * Usiamo un platform authenticator (Touch ID/Face ID/Windows Hello) come
+ * gate di User Verification. Se il browser supporta l'extension `prf`
+ * deriviamo un secret stabile dalla biometria; altrimenti la biometria
+ * è solo "conferma di intento" e la cifratura viene fatta col PIN.
  */
 
 export const RP_NAME = "CRM Gruppo Benessere";
@@ -14,8 +12,11 @@ export const RP_NAME = "CRM Gruppo Benessere";
 const enc = new TextEncoder();
 const PRF_SALT = enc.encode("ralph.bio.prf.salt.v1");
 
+function bs(u: Uint8Array): BufferSource {
+  return u as unknown as BufferSource;
+}
+
 function rpId(): string {
-  // Usa l'hostname corrente: WebAuthn richiede match esatto su rpId.
   return window.location.hostname;
 }
 
@@ -55,8 +56,11 @@ export function isWebAuthnAvailable(): boolean {
 export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   if (!isWebAuthnAvailable()) return false;
   try {
-    // @ts-expect-error: presente su browser supportati
-    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    const pk = window.PublicKeyCredential as unknown as {
+      isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
+    };
+    if (!pk.isUserVerifyingPlatformAuthenticatorAvailable) return false;
+    return await pk.isUserVerifyingPlatformAuthenticatorAvailable();
   } catch {
     return false;
   }
@@ -68,10 +72,12 @@ export interface CreatedCredential {
   prfSecret: Uint8Array | null;
 }
 
+interface PrfExtResult {
+  prf?: { results?: { first?: ArrayBuffer } };
+}
+
 /**
- * Crea una credenziale platform (Face ID/impronta) per l'utente corrente.
- * Restituisce il rawId da memorizzare nel vault locale e, se possibile,
- * il secret PRF da usare come chiave di cifratura.
+ * Crea una credenziale platform e tenta di estrarre il secret PRF.
  */
 export async function createPlatformCredential(
   authUserId: string,
@@ -83,9 +89,13 @@ export async function createPlatformCredential(
   const userId = enc.encode(authUserId);
 
   const publicKey: PublicKeyCredentialCreationOptions = {
-    challenge,
+    challenge: bs(challenge) as ArrayBuffer,
     rp: { name: RP_NAME, id: rpId() },
-    user: { id: userId, name: userLabel, displayName: userLabel },
+    user: {
+      id: bs(userId) as ArrayBuffer,
+      name: userLabel,
+      displayName: userLabel,
+    },
     pubKeyCredParams: [
       { type: "public-key", alg: -7 }, // ES256
       { type: "public-key", alg: -257 }, // RS256
@@ -98,8 +108,8 @@ export async function createPlatformCredential(
       userVerification: "required",
     },
     extensions: {
-      // @ts-expect-error: PRF non sempre tipizzato
-      prf: { eval: { first: PRF_SALT } },
+      // PRF non sempre presente nei tipi DOM lib; va passato così com'è
+      ...({ prf: { eval: { first: PRF_SALT } } } as Record<string, unknown>),
     },
   };
 
@@ -110,9 +120,8 @@ export async function createPlatformCredential(
 
   let prfSecret: Uint8Array | null = null;
   try {
-    // @ts-expect-error: extension result
-    const ext = cred.getClientExtensionResults?.();
-    const first: ArrayBuffer | undefined = ext?.prf?.results?.first;
+    const ext = cred.getClientExtensionResults() as PrfExtResult;
+    const first = ext?.prf?.results?.first;
     if (first) prfSecret = new Uint8Array(first);
   } catch {
     prfSecret = null;
@@ -126,22 +135,21 @@ export interface AssertionResult {
 }
 
 /**
- * Esegue un'asserzione: chiede a Face ID/impronta di confermare l'identità.
- * Restituisce il secret PRF se l'autenticatore lo supporta.
+ * Asserzione biometrica: chiede a Face ID/impronta di confermare e
+ * restituisce, se disponibile, il secret PRF.
  */
 export async function assertCredential(rawId: Uint8Array): Promise<AssertionResult> {
   if (!isWebAuthnAvailable()) throw new Error("WebAuthn non disponibile");
 
   const challenge = randomBytes(32);
   const publicKey: PublicKeyCredentialRequestOptions = {
-    challenge,
+    challenge: bs(challenge) as ArrayBuffer,
     timeout: 60_000,
     rpId: rpId(),
     userVerification: "required",
-    allowCredentials: [{ id: rawId, type: "public-key" }],
+    allowCredentials: [{ id: bs(rawId) as ArrayBuffer, type: "public-key" }],
     extensions: {
-      // @ts-expect-error: PRF non sempre tipizzato
-      prf: { eval: { first: PRF_SALT } },
+      ...({ prf: { eval: { first: PRF_SALT } } } as Record<string, unknown>),
     },
   };
 
@@ -150,9 +158,8 @@ export async function assertCredential(rawId: Uint8Array): Promise<AssertionResu
 
   let prfSecret: Uint8Array | null = null;
   try {
-    // @ts-expect-error: extension result
-    const ext = cred.getClientExtensionResults?.();
-    const first: ArrayBuffer | undefined = ext?.prf?.results?.first;
+    const ext = cred.getClientExtensionResults() as PrfExtResult;
+    const first = ext?.prf?.results?.first;
     if (first) prfSecret = new Uint8Array(first);
   } catch {
     prfSecret = null;
