@@ -70,6 +70,14 @@ export interface CreatedCredential {
   rawId: Uint8Array;
   hasPrf: boolean;
   prfSecret: Uint8Array | null;
+  // Materiale necessario al server per registrare la passkey lato DB
+  attestationObjectB64: string;
+  clientDataJSONB64: string;
+  challengeB64: string;
+  credentialIdB64: string;
+  rpId: string;
+  origin: string;
+  transports: string[];
 }
 
 interface PrfExtResult {
@@ -160,6 +168,7 @@ export async function createPlatformCredential(
   if (!cred) throw new Error("Creazione credenziale annullata");
 
   const rawId = new Uint8Array(cred.rawId);
+  const resp = cred.response as AuthenticatorAttestationResponse;
 
   let prfSecret: Uint8Array | null = null;
   try {
@@ -170,7 +179,24 @@ export async function createPlatformCredential(
     prfSecret = null;
   }
 
-  return { rawId, hasPrf: !!prfSecret, prfSecret };
+  let transports: string[] = [];
+  try {
+    const t = (resp as unknown as { getTransports?: () => string[] }).getTransports?.();
+    if (Array.isArray(t)) transports = t;
+  } catch { /* ignore */ }
+
+  return {
+    rawId,
+    hasPrf: !!prfSecret,
+    prfSecret,
+    attestationObjectB64: b64urlEncode(resp.attestationObject),
+    clientDataJSONB64: b64urlEncode(resp.clientDataJSON),
+    challengeB64: b64urlEncode(challenge),
+    credentialIdB64: b64urlEncode(rawId),
+    rpId: rpId(),
+    origin: window.location.origin,
+    transports,
+  };
 }
 
 export interface AssertionResult {

@@ -8827,6 +8827,30 @@ export type Database = {
           },
         ]
       }
+      passkey_auth_challenges: {
+        Row: {
+          challenge_b64: string
+          client_ip: string | null
+          consumed_at: string | null
+          created_at: string
+          id: string
+        }
+        Insert: {
+          challenge_b64: string
+          client_ip?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          challenge_b64?: string
+          client_ip?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -11551,9 +11575,11 @@ export type Database = {
       }
       user_biometric_credentials: {
         Row: {
+          aaguid: string | null
           backup_eligible: boolean | null
           backup_state: boolean | null
           created_at: string
+          credential_id: string | null
           disabled_at: string | null
           id: string
           is_synced: boolean
@@ -11562,12 +11588,18 @@ export type Database = {
           locked_until: string | null
           pin_attempts: number
           pin_hash: string
+          public_key: string | null
+          public_key_alg: number | null
+          sign_count: number
+          transports: string[] | null
           user_id: string
         }
         Insert: {
+          aaguid?: string | null
           backup_eligible?: boolean | null
           backup_state?: boolean | null
           created_at?: string
+          credential_id?: string | null
           disabled_at?: string | null
           id?: string
           is_synced?: boolean
@@ -11576,12 +11608,18 @@ export type Database = {
           locked_until?: string | null
           pin_attempts?: number
           pin_hash: string
+          public_key?: string | null
+          public_key_alg?: number | null
+          sign_count?: number
+          transports?: string[] | null
           user_id: string
         }
         Update: {
+          aaguid?: string | null
           backup_eligible?: boolean | null
           backup_state?: boolean | null
           created_at?: string
+          credential_id?: string | null
           disabled_at?: string | null
           id?: string
           is_synced?: boolean
@@ -11590,6 +11628,10 @@ export type Database = {
           locked_until?: string | null
           pin_attempts?: number
           pin_hash?: string
+          public_key?: string | null
+          public_key_alg?: number | null
+          sign_count?: number
+          transports?: string[] | null
           user_id?: string
         }
         Relationships: []
@@ -13501,6 +13543,7 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: number
       }
+      cleanup_passkey_auth_challenges: { Args: never; Returns: number }
       cleanup_session_audit: { Args: never; Returns: number }
       cleanup_session_data_all: { Args: never; Returns: Json }
       cleanup_system_log_tables:
