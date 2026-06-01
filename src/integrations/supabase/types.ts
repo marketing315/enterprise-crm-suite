@@ -11781,6 +11781,54 @@ export type Database = {
           },
         ]
       }
+      user_passkeys: {
+        Row: {
+          aaguid: string | null
+          created_at: string
+          credential_id: string
+          disabled_at: string | null
+          id: string
+          label: string | null
+          last_used_at: string | null
+          public_key: string
+          public_key_alg: number
+          sign_count: number
+          transports: string[] | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          aaguid?: string | null
+          created_at?: string
+          credential_id: string
+          disabled_at?: string | null
+          id?: string
+          label?: string | null
+          last_used_at?: string | null
+          public_key: string
+          public_key_alg: number
+          sign_count?: number
+          transports?: string[] | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          aaguid?: string | null
+          created_at?: string
+          credential_id?: string
+          disabled_at?: string | null
+          id?: string
+          label?: string | null
+          last_used_at?: string | null
+          public_key?: string
+          public_key_alg?: number
+          sign_count?: number
+          transports?: string[] | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_push_preferences: {
         Row: {
           created_at: string
@@ -15306,6 +15354,18 @@ export type Database = {
           tenant_scope: string
         }[]
       }
+      list_my_passkeys: {
+        Args: never
+        Returns: {
+          aaguid: string
+          created_at: string
+          id: string
+          label: string
+          last_used_at: string
+          transports: string[]
+          user_agent: string
+        }[]
+      }
       list_outbound_webhooks: {
         Args: { p_brand_id: string }
         Returns: {
@@ -15767,6 +15827,10 @@ export type Database = {
         Args: { p_new_title: string; p_thread_id: string }
         Returns: undefined
       }
+      rename_my_passkey: {
+        Args: { _id: string; _label: string }
+        Returns: boolean
+      }
       reorder_pipeline_stages: {
         Args: { p_stage_ids: string[] }
         Returns: undefined
@@ -15835,6 +15899,7 @@ export type Database = {
         Returns: boolean
       }
       revoke_mcp_token: { Args: { p_token_id: string }; Returns: boolean }
+      revoke_my_passkey: { Args: { _id: string }; Returns: boolean }
       revoke_user_role: {
         Args: {
           p_brand_id: string
