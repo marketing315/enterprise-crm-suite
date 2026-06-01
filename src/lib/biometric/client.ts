@@ -50,7 +50,7 @@ export interface BiometricStatus {
 export async function getEnrollmentStatus(): Promise<BiometricStatus> {
   const { data, error } = await supabase.rpc("get_biometric_status");
   if (error) throw error;
-  return (data ?? { enrolled: false }) as BiometricStatus;
+  return ((data as unknown) ?? { enrolled: false }) as BiometricStatus;
 }
 
 /** Hash client del PIN: il server riceve solo l'hash SHA-256 (poi bcrypt). */
