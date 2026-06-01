@@ -113,7 +113,7 @@ export function MobileContactsList() {
   });
 
   // Infinite scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLLIElement | null>(null);
   useEffect(() => {
     if (!hasMore || isLoadingMore || isLoading) return;
     const el = sentinelRef.current;
