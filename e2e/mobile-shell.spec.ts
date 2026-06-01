@@ -12,7 +12,10 @@
  */
 import { test, expect, devices, type ConsoleMessage } from "@playwright/test";
 
-test.use({ ...devices["Pixel 5"] });
+test.use({
+  ...devices["Pixel 5"],
+  launchOptions: { executablePath: "/bin/chromium" },
+});
 
 /** Errori console accettabili: rumore noto del preview (favicon, sourcemap, sw). */
 const IGNORED_CONSOLE = [
