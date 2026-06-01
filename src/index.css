@@ -299,4 +299,12 @@ All colors MUST be HSL.
   .press-scale:active {
     transform: none;
   }
+  /* F7.1 — Disabilita anche le transizioni di schermo nei container mobile.
+     Mantiene solo gli spinner di stato (animate-spin) e gli skeleton
+     che già usano `motion-safe:animate-pulse`/`motion-safe:animate-spin`. */
+  [data-mobile-screen],
+  [data-mobile-screen] * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
