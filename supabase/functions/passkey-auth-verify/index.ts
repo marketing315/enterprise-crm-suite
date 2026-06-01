@@ -1,20 +1,23 @@
 // Edge function: passkey-auth-verify
 // Verifica una asserzione WebAuthn discoverable e restituisce una sessione Supabase.
 //
-// Flusso:
-//   1. client → passkey-auth-begin   → challenge
-//   2. browser → navigator.credentials.get({ challenge, no allowCredentials })
-//   3. client → passkey-auth-verify  → { access_token, refresh_token }
+// Lookup credenziale: prima nella tabella canonica `user_passkeys` (multi-dispositivo),
+// poi fallback su `user_biometric_credentials` (legacy / passkey "principale" registrata
+// insieme al PIN).
 //
 // Sicurezza:
-// - challenge single-use (consumed_at) con TTL 5 min
+// - challenge single-use (consumed_at) con TTL 3 min, allineato a passkey-auth-begin
 // - sign_count monotonico (anti-clone)
 // - rate-limit IP
 // - verifyAuthenticationResponse di @simplewebauthn/server
+// - sessione emessa via helper condiviso _shared/issue-session.ts
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { verifyAuthenticationResponse } from "npm:@simplewebauthn/server@10.0.1";
+import { issueSessionForEmail } from "../_shared/issue-session.ts";
+
+const CHALLENGE_TTL_MS = 3 * 60_000;
 
 interface Body {
   challenge?: string;
@@ -25,6 +28,16 @@ interface Body {
   clientDataJSON?: string;
   signature?: string;
   userHandle?: string | null;
+}
+
+interface CredentialRow {
+  source: "user_passkeys" | "user_biometric_credentials";
+  id: string;
+  user_id: string;
+  public_key: ArrayBuffer | null;
+  sign_count: number | null;
+  transports: string[] | null;
+  disabled_at: string | null;
 }
 
 function b64urlToBytes(s: string): Uint8Array {
@@ -71,27 +84,25 @@ Deno.serve(async (req) => {
       if (allowed === false) return json({ error: "rate_limited" }, 429);
     } catch { /* opzionale */ }
 
-    // 1) Consuma la challenge (single-use + TTL 5 min)
+    // 1) Consuma la challenge (single-use + TTL 3 min)
     const { data: ch, error: chErr } = await admin
       .from("passkey_auth_challenges")
       .update({ consumed_at: new Date().toISOString() })
       .eq("challenge_b64", body.challenge)
       .is("consumed_at", null)
-      .gte("created_at", new Date(Date.now() - 5 * 60_000).toISOString())
+      .gte("created_at", new Date(Date.now() - CHALLENGE_TTL_MS).toISOString())
       .select("id")
       .maybeSingle();
     if (chErr || !ch) {
       return json({ error: "challenge_invalid_or_expired" }, 401);
     }
 
-    // 2) Lookup credenziale via credential_id (rawId base64url → bytes)
+    // 2) Lookup credenziale: prima user_passkeys (nuovo, multi-device),
+    //    poi fallback user_biometric_credentials (legacy / passkey "primaria")
     const credIdBytes = b64urlToBytes(body.credentialId);
-    const { data: cred, error: credErr } = await admin
-      .from("user_biometric_credentials")
-      .select("id, user_id, public_key, public_key_alg, sign_count, transports, disabled_at")
-      .eq("credential_id", credIdBytes)
-      .maybeSingle();
-    if (credErr || !cred) {
+    const cred = await lookupCredential(admin, credIdBytes);
+
+    if (!cred) {
       await audit(admin, "passkey_login_failed", { reason: "credential_not_found", ip });
       return json({ error: "credential_not_found" }, 401);
     }
@@ -99,7 +110,6 @@ Deno.serve(async (req) => {
       return json({ error: "credential_disabled" }, 401);
     }
     if (!cred.public_key) {
-      // Passkey "legacy" registrata prima della migration → niente public key salvata
       return json({ error: "credential_needs_reregistration" }, 409);
     }
 
@@ -154,47 +164,33 @@ Deno.serve(async (req) => {
     }
 
     await admin
-      .from("user_biometric_credentials")
+      .from(cred.source)
       .update({ sign_count: newCounter, last_used_at: new Date().toISOString() })
       .eq("id", cred.id);
 
-    // 5) Recupera email dell'utente per il magiclink
+    // 5) Recupera email dell'utente per il helper sessione
     const { data: userRes, error: userErr } = await admin.auth.admin.getUserById(cred.user_id);
     if (userErr || !userRes?.user?.email) {
       return json({ error: "user_not_found" }, 401);
     }
-    const email = userRes.user.email;
 
-    // 6) Magiclink → verifyOtp → sessione completa (stesso pattern di biometric-pin-login)
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-    });
-    if (linkErr || !linkData?.properties?.hashed_token) {
-      console.error("[passkey-verify] generateLink failed", linkErr?.message);
+    // 6) Emetti sessione via helper condiviso
+    const sessionRes = await issueSessionForEmail(admin, userRes.user.email);
+    if (!sessionRes.ok) {
+      console.error("[passkey-verify] issue session failed", sessionRes.reason, sessionRes.detail);
       return json({ error: "session_unavailable" }, 500);
     }
 
-    const anonClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-    const { data: verifyData, error: verifyErr } = await anonClient.auth.verifyOtp({
-      token_hash: linkData.properties.hashed_token,
-      type: "magiclink",
+    await audit(admin, "passkey_login_success", {
+      user_id: cred.user_id,
+      source: cred.source,
+      ip,
     });
-    if (verifyErr || !verifyData?.session) {
-      console.error("[passkey-verify] verifyOtp failed", verifyErr?.message);
-      return json({ error: "session_unavailable" }, 500);
-    }
-
-    await audit(admin, "passkey_login_success", { user_id: cred.user_id, ip });
 
     return json({
-      access_token: verifyData.session.access_token,
-      refresh_token: verifyData.session.refresh_token,
-      expires_at: verifyData.session.expires_at,
+      access_token: sessionRes.session.access_token,
+      refresh_token: sessionRes.session.refresh_token,
+      expires_at: sessionRes.session.expires_at,
       user_id: cred.user_id,
     });
   } catch (e) {
@@ -203,8 +199,51 @@ Deno.serve(async (req) => {
   }
 });
 
+async function lookupCredential(
+  admin: SupabaseClient,
+  credIdBytes: Uint8Array,
+): Promise<CredentialRow | null> {
+  // 1) Tabella nuova
+  const { data: pk } = await admin
+    .from("user_passkeys")
+    .select("id, user_id, public_key, sign_count, transports, disabled_at")
+    .eq("credential_id", credIdBytes)
+    .maybeSingle();
+  if (pk) {
+    return {
+      source: "user_passkeys",
+      id: pk.id as string,
+      user_id: pk.user_id as string,
+      public_key: pk.public_key as ArrayBuffer | null,
+      sign_count: pk.sign_count as number | null,
+      transports: pk.transports as string[] | null,
+      disabled_at: pk.disabled_at as string | null,
+    };
+  }
+
+  // 2) Fallback legacy
+  const { data: legacy } = await admin
+    .from("user_biometric_credentials")
+    .select("id, user_id, public_key, sign_count, transports, disabled_at")
+    .eq("credential_id", credIdBytes)
+    .maybeSingle();
+  if (legacy) {
+    return {
+      source: "user_biometric_credentials",
+      id: legacy.id as string,
+      user_id: legacy.user_id as string,
+      public_key: legacy.public_key as ArrayBuffer | null,
+      sign_count: legacy.sign_count as number | null,
+      transports: legacy.transports as string[] | null,
+      disabled_at: legacy.disabled_at as string | null,
+    };
+  }
+
+  return null;
+}
+
 async function audit(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   action: string,
   details: Record<string, unknown>,
 ) {
