@@ -31,6 +31,8 @@ export default function AdminDashboard() {
 
   const { data: webhookMetrics, isLoading: webhookLoading } = useWebhookMetrics24h();
 
+  if (isMobile) return <MobileAdminDashboard />;
+
   const webhookOk = webhookMetrics?.success_count ?? 0;
   const webhookKo = webhookMetrics?.failed_count ?? 0;
   const webhookTotal = webhookMetrics?.total_deliveries ?? 0;
