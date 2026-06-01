@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { MainLayout } from "@/components/layout/MainLayout";
+import { ResponsiveLayout } from "@/components/layout/ResponsiveLayout";
 import { withModuleGuard } from "@/components/layout/withModuleGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { MfaGuard } from "@/components/auth/MfaGuard";
@@ -187,7 +187,7 @@ const App = () => (
                     element={
                       <ProtectedRoute>
                         <MfaGuard>
-                          <MainLayout />
+                          <ResponsiveLayout />
                         </MfaGuard>
                       </ProtectedRoute>
                     }
