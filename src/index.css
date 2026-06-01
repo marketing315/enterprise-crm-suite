@@ -299,12 +299,12 @@ All colors MUST be HSL.
   .press-scale:active {
     transform: none;
   }
-  /* F7.1 — Disabilita anche le transizioni di schermo nei container mobile.
-     Mantiene solo gli spinner di stato (animate-spin) e gli skeleton
-     che già usano `motion-safe:animate-pulse`/`motion-safe:animate-spin`. */
+  /* F7.1 — Azzera le transizioni in tutti i container marcati `data-mobile-screen`.
+     Le animazioni di stato (spinner/skeleton) devono già usare `motion-safe:` e
+     restano gestite dalle utility Tailwind. */
   [data-mobile-screen],
   [data-mobile-screen] * {
-    animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
   }
 }
