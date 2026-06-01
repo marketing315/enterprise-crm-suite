@@ -11,9 +11,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useCallcenterKpisOverview, useCallcenterKpisByOperator } from '@/hooks/useCallcenterKpis';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileCallcenterManagerDashboard } from '@/components/callcenter/mobile/MobileCallcenterManagerDashboard';
 
 export default function CallcenterManagerDashboard() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  if (isMobile) return <MobileCallcenterManagerDashboard />;
   const now = new Date();
   const from = useMemo(() => startOfDay(subDays(now, 7)), []);
   const to = useMemo(() => endOfDay(now), []);
