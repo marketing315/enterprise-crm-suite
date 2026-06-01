@@ -151,24 +151,8 @@ export function ErrorConsolePanel() {
   const errorCount = logs.filter(l => l.level === "error").length;
   const filtered = filter === "all" ? logs : logs.filter(l => l.level === filter);
 
-  if (!open) {
-    return (
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-[9999] h-12 w-12 rounded-full shadow-lg border-2 border-destructive/50 bg-background hover:bg-destructive/10"
-        title="Console Errori"
-       aria-label="Segnalazione bug">
-        <Bug className="h-5 w-5" />
-        {errorCount > 0 && (
-          <Badge className="absolute -top-2 -right-2 h-5 min-w-5 px-1 text-xs bg-destructive text-destructive-foreground">
-            {errorCount}
-          </Badge>
-        )}
-      </Button>
-    );
-  }
+  if (!open) return null;
+
 
   return (
     <div className="fixed bottom-0 right-0 z-[9999] w-full sm:w-[520px] h-[400px] border-t sm:border-l border-border bg-background shadow-2xl flex flex-col rounded-tl-lg">
