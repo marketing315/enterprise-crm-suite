@@ -87,11 +87,11 @@ export function useRoleMobileTabs(): MobileTab[] {
     if (isAdmin) roleSet.add('admin');
     if (isCeo) roleSet.add('ceo');
 
-    const role: AppRole | null = pick<AppRole>(
-      (isAdmin || isCeo) && (primaryRole ?? 'admin'),
-      primaryRole,
-      [...roleSet][0],
-    ) ?? null;
+    const executiveRole: AppRole | undefined = (isAdmin || isCeo)
+      ? (primaryRole ?? 'admin')
+      : undefined;
+    const role: AppRole | null =
+      pick<AppRole>(executiveRole, primaryRole ?? undefined, [...roleSet][0]) ?? null;
 
     // CEO / Admin — executive overview
     if (role && EXECUTIVE_ROLES.includes(role)) {
