@@ -212,11 +212,12 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 ## FASE 5 — Executive & analytics
 
-### F5.1 — Performance Hub mobile `[ ]`
+### F5.1 — Performance Hub mobile `[x]`
 - **dep:** F1.4, F1.5, F2.4
 - Hero KPI + `Segmented` periodo + grafici recharts semplificati (1 per card) + top-N lista.
 - **AC:** SPEC §6.10; nessuna tabella larga; dati invariati.
-- *Note:*
+- *Note:* Creato `src/components/performance/mobile/MobilePerformanceHub.tsx`. Header sticky + `Segmented<PeriodKey>` 7g/30g/90g; data hook esistente `useChannelPerformance({from,to})` (dati invariati). **Sezione KPI** (solo se brand singolo + `useHasMarketingAccess`): `HeroMetricCard` "Lead nel periodo" (primary), `KpiList` con `MetricRow` (Spesa, CPL medio, Deal vinti+win-rate, Revenue) usando `formatCurrency`/`formatNumber`. **Grafico recharts semplificato** (1 per card): `BarChart` top-5 canali per lead, axes minimali (`hsl(var(--muted-foreground))`), Tooltip su tap, label troncate a 10 char, niente legend, niente tabella. **Top-N lista** sotto: 5 canali con leads + CPL. Fallback `EmptyState` se: nessun brand / All Brands / no marketing access. Sezione "Esplora moduli" sempre presente: 11 link mobile-friendly (`MobileListItem`-style con icon + chevron) a `/marketing/performance`, `/callcenter/wallboard`, `/admin/callcenter-kpi`, `/callcenter/transcripts`, `/sales/performance-sheet`, `/sales`, `/admin/tracking-numbers`, `/marketing/costi`, `/admin/performance-alerts`, `/admin/data-retention`, `/admin/slo-board`. `PullToRefresh` invalida `channel-performance`. `PerformanceHub.tsx` delega via `useIsMobile()` early-return; desktop estratto in `PerformanceHubDesktop()` (zero modifiche funzionali). Test: 234/237 (3 fail pre-esistenti: auth-context Sprint 3 + 2 smoke timeout passano standalone).
+
 
 ### F5.2 — Performance venditori / Call center KPI mobile `[ ]`
 - **dep:** F5.1

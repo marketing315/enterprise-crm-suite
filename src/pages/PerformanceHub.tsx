@@ -285,7 +285,16 @@ function SectionBlock({ section, index }: { section: Section; index: number }) {
   );
 }
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobilePerformanceHub } from "@/components/performance/mobile/MobilePerformanceHub";
+
 export default function PerformanceHub() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobilePerformanceHub />;
+  return <PerformanceHubDesktop />;
+}
+
+function PerformanceHubDesktop() {
   const { user } = useAuth();
   const greeting = useMemo(() => {
     const h = new Date().getHours();
