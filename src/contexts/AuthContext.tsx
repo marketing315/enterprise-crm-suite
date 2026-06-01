@@ -294,13 +294,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signUp = async (_email: string, _password: string, _fullName?: string) => {
-    // Sprint 3 — Self-signup disabilitato lato server (auth.disable_signup=true).
-    // L'unico modo di creare utenti è la RPC admin_create_user invocata da admin/CEO.
-    return {
-      error: new Error('La registrazione autonoma è disabilitata. Contatta un amministratore per ottenere un account.')
-    };
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    // Fase 3 — RBAC Modello 3: signup aperto, utente creato in stato pending.
+    // Un admin assegna brand+ruolo prima che l'account diventi attivo.
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: fullName ? { full_name: fullName } : undefined,
+      },
+    });
+    return { error: error as Error | null };
   };
+
 
   const signOut = async () => {
     // Capture identifiers BEFORE local teardown — once supabase.auth.signOut()
