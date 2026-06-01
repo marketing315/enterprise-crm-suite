@@ -22,8 +22,6 @@ export function PasskeyLoginButton() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
-  if (!isWebAuthnAvailable()) return null;
-
   const handleClick = async () => {
     setBusy(true);
     try {
