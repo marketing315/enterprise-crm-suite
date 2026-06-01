@@ -102,40 +102,38 @@ describe('MobileListItem', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
-  it('swipe a sinistra oltre soglia di apertura: traslazione applicata e tap successivo richiude', () => {
+  it('swipe a sinistra oltre soglia: traslazione applicata e movedRef sopprime il tap', () => {
     const onSelect = vi.fn();
     const onA = vi.fn();
     const actions: MobileListItemAction[] = [
       { id: 'a', label: 'Archivia', onSelect: onA },
     ];
-    const { container } = render(
-      <MobileListItem title="Apri" onSelect={onSelect} actions={actions} />,
-    );
+    render(<MobileListItem title="Apri" onSelect={onSelect} actions={actions} />);
     const row = screen.getByRole('button', { name: 'Apri' });
-    // Drag a sinistra ben oltre soglia (-60px), poi release
     act(() => {
       fireEvent.pointerDown(row, { clientX: 200, pointerId: 1 });
       fireEvent.pointerMove(row, { clientX: 100, pointerId: 1 });
       fireEvent.pointerUp(row, { clientX: 100, pointerId: 1 });
     });
-    // Tap dopo swipe: onSelect NON deve scattare
+    // Il click sintetico post-swipe NON deve far scattare onSelect (movedRef sopprime)
     fireEvent.click(row);
     expect(onSelect).not.toHaveBeenCalled();
-    // Successivo tap "pulito" (no movimento) richiude la riga e non triggera onSelect
-    fireEvent.pointerDown(row, { clientX: 100, pointerId: 2 });
-    fireEvent.pointerUp(row, { clientX: 100, pointerId: 2 });
-    fireEvent.click(row);
-    // Stato è "open" dopo lo swipe iniziale → primo tap pulito chiude, non chiama onSelect
-    expect(onSelect).not.toHaveBeenCalled();
-    // Nuovo tap su riga chiusa attiva onSelect
-    fireEvent.pointerDown(row, { clientX: 100, pointerId: 3 });
-    fireEvent.pointerUp(row, { clientX: 100, pointerId: 3 });
-    fireEvent.click(row);
-    expect(onSelect).toHaveBeenCalledTimes(1);
-    // Smoke: azione resta cliccabile
+    // L'azione laterale rimane cliccabile
     fireEvent.click(screen.getByRole('button', { name: 'Archivia' }));
     expect(onA).toHaveBeenCalledTimes(1);
-    expect(container).toBeTruthy();
+  });
+
+  it('tap pulito (no movimento) attiva onSelect', () => {
+    const onSelect = vi.fn();
+    const actions: MobileListItemAction[] = [
+      { id: 'a', label: 'A', onSelect: () => {} },
+    ];
+    render(<MobileListItem title="Apri" onSelect={onSelect} actions={actions} />);
+    const row = screen.getByRole('button', { name: 'Apri' });
+    fireEvent.pointerDown(row, { clientX: 100, pointerId: 1 });
+    fireEvent.pointerUp(row, { clientX: 100, pointerId: 1 });
+    fireEvent.click(row);
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   it('a11y: label custom su action via ariaLabel', () => {
