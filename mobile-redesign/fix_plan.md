@@ -241,11 +241,12 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 
 ## FASE 6 — Sistema, impostazioni, notifiche
 
-### F6.1 — Notifiche mobile `[ ]`
+### F6.1 — Notifiche mobile `[x]`
 - **dep:** F1.6, F2.4
 - Lista raggruppata per data; "segna tutte come lette"; tap→contesto.
 - **AC:** SPEC §6.12.
-- *Note:*
+- *Note:* Creato `src/components/notifications/mobile/MobileNotifications.tsx`. Header sticky con titolo+conteggio (`N totali · N non lette`) e icon-button per "segna tutte come lette" (`CheckCheck`) + "elimina lette" (`Trash2`); `Segmented<Filter>` Tutte/Non lette. Lista raggruppata per data via `groupKey` (Oggi / Ieri / Questa settimana / `MMMM yyyy`) usando `date-fns` `isToday/isYesterday/isThisWeek`. Ogni notifica è una card cliccabile con dot colorato per `type` (mappa estesa anche a `chat_message`), badge tipo, indicatore "non letta" (dot primary), `formatDistanceToNow` it, titolo+body line-clamp-2, chevron se presente deep-link. Tap → `markRead` + navigate via `ENTITY_ROUTES` (ticket/contact/deal/appointment/lead_event/chat_thread). Riusa `usePaginatedNotifications`+`useMarkAllNotificationsRead`+`useDeleteReadNotifications`+`useMarkNotificationsRead` con paginazione "Carica altre" e accumulazione. `EmptyState` differenziato per filtro non-lette vs tutte; `ErrorState` con retry; `MobileListSkeleton`. `PullToRefresh` resetta offset+invalida `notifications`. Wiring: `Notifications.tsx` ora fa `useIsMobile()` early-return → desktop estratto in `NotificationsDesktop` (zero modifiche funzionali). Solo token semantici (eccetto i dot colorati legacy ereditati da desktop). Follow-up: F6.2 (Impostazioni/Profilo mobile).
+
 
 ### F6.2 — Impostazioni / Profilo mobile `[ ]`
 - **dep:** F2.4

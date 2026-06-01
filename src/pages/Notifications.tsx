@@ -58,7 +58,16 @@ const entityRoutes: Record<string, (id: string) => string> = {
   lead_event: (id) => `/events?event=${id}`,
 };
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileNotifications } from "@/components/notifications/mobile/MobileNotifications";
+
 export default function Notifications() {
+  const isMobileViewport = useIsMobile();
+  if (isMobileViewport) return <MobileNotifications />;
+  return <NotificationsDesktop />;
+}
+
+function NotificationsDesktop() {
   const navigate = useNavigate();
   const { currentBrand, isAllBrandsSelected } = useBrand();
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
