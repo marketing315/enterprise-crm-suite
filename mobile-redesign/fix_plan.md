@@ -29,11 +29,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 - **AC:** classi `bg-success`, `text-warning`, `bg-surface` ecc. funzionano; build verde; desktop invariato.
 - *Note:* Aggiunti in `src/index.css` (sezioni `:root` e `.dark`, blocchi additivi marcati F0.2) i token `--success/--warning/--danger/--info/--surface/--surface-2` + relativi `*-foreground` (HSL, light+dark con contrasto AA). Mappati in `tailwind.config.ts` come `success/warning/danger/info/surface` (con `surface.2` e `surface.2-foreground`). Nessun token esistente modificato; nessun componente toccato → desktop invariato. Disponibili classi `bg-success`, `text-warning`, `bg-surface`, `bg-surface-2`, ecc.
 
-### F0.3 — Utility safe-area + ombre + motion `[ ]`
+### F0.3 — Utility safe-area + ombre + motion `[x]`
 - **dep:** F0.2
 - Aggiungi in `index.css`/config: `pt-safe`/`pb-safe`/`pl-safe`/`pr-safe` (via `env(safe-area-inset-*)`), `shadow-card`, `shadow-hero`, easing/duration coerenti con SPEC §2.4. Press-state util `active:scale-[0.98]`.
 - **AC:** utility disponibili e usate da un esempio; reduced-motion rispettato; build verde.
-- *Note:*
+- *Note:* Aggiunti in `src/index.css` (blocco F0.3 sotto `@layer utilities`): `.pt-safe/.pb-safe/.pl-safe/.pr-safe/.px-safe` con `env(safe-area-inset-*)`; `.press-scale` con `transition` e `active:scale-[0.98]` (ridotta a `none` sotto `prefers-reduced-motion`). In `tailwind.config.ts` (extend): `boxShadow.card` (neutra soffusa), `boxShadow.hero` (colorata tenue con `hsl(var(--primary) / 0.15)`); `transitionDuration.micro` (150ms) / `screen` (250ms); `transitionTimingFunction.ease-out-soft` (`cubic-bezier(0.2, 0.8, 0.2, 1)`); keyframe `slide-up-fade` + animazione `slide-up-fade` (250ms). Build verde; desktop invariato (nessun componente toccato).
 
 ### F0.4 — Hook `useRoleMobileTabs` (config tab per ruolo) `[ ]`
 - **dep:** F0.1
