@@ -396,7 +396,7 @@ export function MobileContactsList() {
           />
         ) : (
           <ul className="space-y-2.5" role="list" aria-label="Lista contatti">
-            {contacts.map((c) => {
+            {visibleContacts.map((c) => {
               const name = getDisplayName(c.first_name, c.last_name, c.email, c.primary_phone);
               const initials = getInitials(c.first_name, c.last_name, c.email);
               const phone = c.primary_phone;
