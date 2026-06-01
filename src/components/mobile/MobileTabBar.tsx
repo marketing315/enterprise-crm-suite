@@ -14,8 +14,8 @@ import { useRoleMobileTabs, type MobileTab, type MobileTabAction } from '@/hooks
  * Non monta provider — è puro chrome di navigazione.
  */
 export interface MobileTabBarProps {
-  /** Override delle tab (default: `useRoleMobileTabs()`). */
-  tabs?: MobileTab[];
+  /** Tab da renderizzare. Per la versione connessa al ruolo usare `MobileTabBarConnected`. */
+  tabs: MobileTab[];
   /** Callback per tab `action` (search/menu/notifications/new-*). */
   onAction?: (action: MobileTabAction) => void;
   className?: string;
@@ -27,9 +27,7 @@ function isActivePath(current: string, target?: string): boolean {
   return current.startsWith(target + '/');
 }
 
-export function MobileTabBar({ tabs: tabsOverride, onAction, className }: MobileTabBarProps) {
-  const fallback = useRoleMobileTabs();
-  const tabs = tabsOverride ?? fallback;
+export function MobileTabBar({ tabs, onAction, className }: MobileTabBarProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
