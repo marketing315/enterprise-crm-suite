@@ -38,6 +38,7 @@ export function MobileScreen({
 }: MobileScreenProps) {
   return (
     <Tag
+      data-mobile-screen=""
       className={cn(
         'flex min-h-[100dvh] flex-col bg-background text-foreground',
         className,
