@@ -234,6 +234,41 @@ All colors MUST be HSL.
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ============ F6.3 — Mobile safety per pagine Admin/Sistema ============
+   Pagine Admin* sono usate raramente da mobile e non hanno redesign dedicato.
+   Su <768px applichiamo regole di "non rottura" (SPEC §6.14):
+   - container con `min-width: 0` (consente al flex/grid child di restringersi)
+   - scroll orizzontale consentito sul container con scrollbar nascosta
+   - tabelle native diventano blocchi scrollabili senza rompere righe
+   Desktop NON è toccato.
+   ============================================================ */
+@media (max-width: 767px) {
+  main[data-admin-page="true"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  main[data-admin-page="true"]::-webkit-scrollbar { display: none; }
+  main[data-admin-page="true"] > * {
+    min-width: 0;
+  }
+  /* Le <table> native vengono trasformate in blocchi a scroll orizzontale */
+  main[data-admin-page="true"] table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  main[data-admin-page="true"] table::-webkit-scrollbar { display: none; }
+  /* Mantieni white-space normale nelle celle: meglio wrap che far scoppiare il layout */
+  main[data-admin-page="true"] th,
+  main[data-admin-page="true"] td {
+    white-space: normal;
+    word-break: break-word;
+  }
+}
+
 /* ============ Mobile redesign (F0.3) — safe-area, motion utilities ============ */
 
 @layer utilities {
