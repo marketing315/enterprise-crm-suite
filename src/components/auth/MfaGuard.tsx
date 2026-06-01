@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMfaStatus } from "@/hooks/useMfaStatus";
 import { isDeviceTrusted } from "@/lib/mfa-trusted-device";
+import { isBiometricAal2Trusted } from "@/lib/biometric/client";
 
 /**
  * A5 — enforce MFA for admin/CEO globally on protected routes:
@@ -32,9 +33,14 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
       return;
     }
     setTrusted(null);
-    void isDeviceTrusted(authUid).then((ok) => {
-      if (!cancelled) setTrusted(ok);
-    });
+    void (async () => {
+      // Accettiamo come "trusted" sia il classico grant TOTP che il grant biometrico.
+      const [totpOk, bioOk] = await Promise.all([
+        isDeviceTrusted(authUid),
+        isBiometricAal2Trusted(authUid),
+      ]);
+      if (!cancelled) setTrusted(totpOk || bioOk);
+    })();
     return () => {
       cancelled = true;
     };
