@@ -53,11 +53,11 @@ Legenda: `[ ]` da fare · `[x]` fatto · `dep:` dipendenze · `AC:` criteri di a
 - **AC:** entrambi renderizzano in tutte le varianti; storybook/esempio non richiesto; test di render base.
 - *Note:* Creati `src/components/mobile/SectionLabel.tsx` (con slot `trailing`, override `as`) e `src/components/mobile/TrendBadge.tsx` (delta % con `intent="default"|"inverse"`, segno tipografico `−`, `tabular-nums`, `role=status` + `aria-label`, varianti pill/compact, colori `success/danger/muted-foreground` da token F0.2). Refactor `MobileCeoDashboard.tsx`: rimossa duplicazione locale, ora importa `SectionLabel` dalla libreria condivisa. Test `SectionLabel.TrendBadge.test.tsx`: 13 test verdi (positivo/negativo/null/zero/inverse/suffix/aria-label/compact/segno tipografico/tabular-nums). Barrel export in `src/components/mobile/index.ts`. Nessun colore hard-coded, accessibilità AA (segno = freccia + colore + label).
 
-### F1.2 — `MobileScreen` + `MobileHeader` `[ ]`
+### F1.2 — `MobileScreen` + `MobileHeader` `[x]`
 - **dep:** F0.3
 - Scaffold schermo (area scroll, safe-area, slot header) e header compatto sticky (titolo, sottotitolo/brand, 1 azione, `backdrop-blur`).
 - **AC:** usato in un esempio; sticky+blur ok; safe-area ok; desktop non usa questi componenti.
-- *Note:*
+- *Note:* Creati `src/components/mobile/MobileHeader.tsx` (sticky di default, `bg-background/85 backdrop-blur-xl border-b border-border/40`, `pt-safe`, titolo h1 17px `font-semibold tracking-tight`, sottotitolo opzionale cliccabile per brand selector con `press-scale`, 1 sola action a destra, `min-h-[44px]`) e `src/components/mobile/MobileScreen.tsx` (flex-col `min-h-[100dvh]`, slot header/footer, body `<main>` scroll verticale `overflow-y-auto`, `px-4 py-4 space-y-5` configurabili, `animate-slide-up-fade` da F0.3 con opt-out, footer sticky bottom con `pb-safe + backdrop-blur`). Test in `MobileScreen.MobileHeader.test.tsx`: 11 test verdi (sticky, blur, safe-area, action slot, sottotitolo cliccabile/onSubtitleClick, nonSticky, noEntryAnimation, AC esempio integrato). Barrel export aggiornato. `rg useRoleMobileTabs|MobileScreen|MobileHeader` su `src/` esclusa `components/mobile/**` = 0 → desktop intatto.
 
 ### F1.3 — `BottomSheet` + `MobileFab` `[ ]`
 - **dep:** F0.3
