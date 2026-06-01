@@ -286,7 +286,8 @@ function SectionBlock({ section, index }: { section: Section; index: number }) {
 }
 
 import { useIsMobile } from "@/hooks/use-mobile";
-const MobilePerformanceHub = lazy(() =>
+import { lazyMobile } from "@/lib/lazyMobile";
+const MobilePerformanceHub = lazyMobile(() =>
   import("@/components/performance/mobile/MobilePerformanceHub").then((m) => ({
     default: m.MobilePerformanceHub,
   })),
@@ -294,12 +295,7 @@ const MobilePerformanceHub = lazy(() =>
 
 export default function PerformanceHub() {
   const isMobileViewport = useIsMobile();
-  if (isMobileViewport)
-    return (
-      <Suspense fallback={<div className="min-h-[100dvh] bg-background" />}>
-        <MobilePerformanceHub />
-      </Suspense>
-    );
+  if (isMobileViewport) return <MobilePerformanceHub />;
   return <PerformanceHubDesktop />;
 }
 
