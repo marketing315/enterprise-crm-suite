@@ -50,14 +50,10 @@ export function PasskeyLoginButton() {
       toast.success("Accesso riuscito");
       navigate("/select-brand");
     } catch (e) {
+      // Qualsiasi errore (annullamento, PRF non supportato, sblocco fallito)
+      // → resta sulla schermata di login senza aprire il dialog PIN.
       const msg = e instanceof Error ? e.message : "Sblocco fallito";
-      if (msg === "PRF_UNSUPPORTED") {
-        toast.error(
-          "Questo browser non supporta la passkey biometrica diretta. Accedi con email e password.",
-        );
-      } else {
-        toast.error(msg);
-      }
+      console.warn("[passkey] unlock failed:", msg);
     } finally {
       setBusy(false);
     }
