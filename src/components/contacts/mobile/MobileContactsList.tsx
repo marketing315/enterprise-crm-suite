@@ -319,6 +319,42 @@ export function MobileContactsList() {
           ariaLabel="Filtra per stato"
           size="sm"
         />
+
+        {/* Active filter chips */}
+        {activeFiltersCount > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-hide">
+            {statusFilter !== 'all' && (
+              <Badge variant="secondary" className="shrink-0 gap-1 cursor-pointer" onClick={() => setStatusFilter('all')}>
+                Stato: {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+            {selectedTagIds.map((tagId) => (
+              <Badge key={tagId} variant="secondary" className="shrink-0 gap-1 cursor-pointer" onClick={() => setSelectedTagIds(prev => prev.filter(id => id !== tagId))}>
+                Tag
+                <X className="h-3 w-3" />
+              </Badge>
+            ))}
+            {sourceFilter !== 'all' && (
+              <Badge variant="secondary" className="shrink-0 gap-1 cursor-pointer" onClick={() => setSourceFilter('all')}>
+                Fonte: {sourceFilter}
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+            {(createdFromDate || createdToDate) && (
+              <Badge variant="secondary" className="shrink-0 gap-1 cursor-pointer" onClick={() => { setCreatedFromDate(undefined); setCreatedToDate(undefined); }}>
+                Data
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+            {isAllBrandsSelected && brandFilter !== 'all' && (
+              <Badge variant="secondary" className="shrink-0 gap-1 cursor-pointer" onClick={() => setBrandFilter('all')}>
+                Brand: {brands.find(b => b.id === brandFilter)?.name}
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+          </div>
+        )}
       </header>
 
       {/* Body */}
