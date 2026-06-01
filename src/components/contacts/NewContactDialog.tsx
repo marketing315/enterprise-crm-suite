@@ -55,9 +55,11 @@ interface DuplicateInfo {
 interface NewContactDialogProps {
   onContactCreated?: (contactId: string) => void;
   onDuplicateFound?: (contactId: string) => void;
+  /** Trigger custom (es. MobileFab). Se omesso, usa il pulsante "Nuovo contatto" standard. */
+  trigger?: React.ReactNode;
 }
 
-export function NewContactDialog({ onContactCreated, onDuplicateFound }: NewContactDialogProps) {
+export function NewContactDialog({ onContactCreated, onDuplicateFound, trigger }: NewContactDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // H8: synchronous re-entrancy guard against double-click submit races.
