@@ -384,7 +384,7 @@ export function MobileContactsList() {
           />
         ) : isLoading ? (
           <MobileListSkeleton count={8} />
-        ) : contacts.length === 0 ? (
+        ) : visibleContacts.length === 0 ? (
           <EmptyState
             icon={Users}
             title={searchQuery ? 'Nessun risultato' : 'Nessun contatto'}
