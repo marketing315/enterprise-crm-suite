@@ -45,7 +45,7 @@ export function MobileScreen({
       )}
     >
       {header}
-      <main
+      <div
         className={cn(
           'flex-1 overflow-y-auto',
           contentPadding,
@@ -57,7 +57,7 @@ export function MobileScreen({
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {children}
-      </main>
+      </div>
       {footer ? (
         <div className="pb-safe sticky bottom-0 bg-background/85 backdrop-blur-xl border-t border-border/40">
           {footer}
