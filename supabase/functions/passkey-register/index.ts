@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     });
 
     // Upsert su credential_id: idempotente (stesso device che ri-registra)
-    const credentialIdBytes = base64urlToBytes(cred.id);
+    const credentialIdBytes = base64urlToBytes(credId);
     const labelTrim = (body.label ?? "").trim().slice(0, 80) || null;
     const uaTrim = (body.userAgent ?? "").trim().slice(0, 200) || null;
 
@@ -129,9 +129,9 @@ Deno.serve(async (req) => {
         {
           user_id: userId,
           credential_id: credentialIdBytes,
-          public_key: cred.publicKey,
+          public_key: credPublicKey,
           public_key_alg: algorithm,
-          sign_count: cred.counter ?? 0,
+          sign_count: credCounter,
           aaguid: info.aaguid ?? null,
           transports: body.transports ?? null,
           label: labelTrim,
@@ -154,10 +154,11 @@ Deno.serve(async (req) => {
         .from("user_biometric_credentials")
         .update({
           credential_id: credentialIdBytes,
-          public_key: cred.publicKey,
+          public_key: credPublicKey,
           public_key_alg: algorithm,
-          sign_count: cred.counter ?? 0,
+          sign_count: credCounter,
           aaguid: info.aaguid ?? null,
+
           transports: body.transports ?? null,
         })
         .eq("user_id", userId)
