@@ -88,19 +88,38 @@ Deno.serve(async (req) => {
       return json({ error: "not_verified" }, 422);
     }
 
-    const info = verification.registrationInfo;
-    const cred = info.credential;
+    // SimpleWebAuthn v10: campi flat su registrationInfo (credentialID/credentialPublicKey/counter).
+    // Manteniamo fallback su .credential per compat con eventuali bump minor futuri.
+    const info = verification.registrationInfo as unknown as {
+      credentialID?: string | Uint8Array;
+      credentialPublicKey?: Uint8Array;
+      counter?: number;
+      aaguid?: string;
+      credential?: { id: string; publicKey: Uint8Array; counter: number };
+    };
+    const credId = info.credential?.id ?? (typeof info.credentialID === "string"
+      ? info.credentialID
+      : info.credentialID
+        ? bytesToBase64Url(info.credentialID)
+        : null);
+    const credPublicKey = info.credential?.publicKey ?? info.credentialPublicKey;
+    const credCounter = info.credential?.counter ?? info.counter ?? 0;
+    if (!credId || !credPublicKey) {
+      console.error("[passkey-register] missing credential fields", Object.keys(info));
+      return json({ error: "registration_info_missing" }, 500);
+    }
 
     // Estrazione algoritmo reale dalla COSE public key
-    const coseAlg = extractCoseAlg(cred.publicKey);
+    const coseAlg = extractCoseAlg(credPublicKey);
     const algorithm = coseAlg ?? -7; // fallback ES256 se parser fallisce
+
 
     const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
     // Upsert su credential_id: idempotente (stesso device che ri-registra)
-    const credentialIdBytes = base64urlToBytes(cred.id);
+    const credentialIdBytes = base64urlToBytes(credId);
     const labelTrim = (body.label ?? "").trim().slice(0, 80) || null;
     const uaTrim = (body.userAgent ?? "").trim().slice(0, 200) || null;
 
@@ -110,9 +129,9 @@ Deno.serve(async (req) => {
         {
           user_id: userId,
           credential_id: credentialIdBytes,
-          public_key: cred.publicKey,
+          public_key: credPublicKey,
           public_key_alg: algorithm,
-          sign_count: cred.counter ?? 0,
+          sign_count: credCounter,
           aaguid: info.aaguid ?? null,
           transports: body.transports ?? null,
           label: labelTrim,
@@ -135,10 +154,11 @@ Deno.serve(async (req) => {
         .from("user_biometric_credentials")
         .update({
           credential_id: credentialIdBytes,
-          public_key: cred.publicKey,
+          public_key: credPublicKey,
           public_key_alg: algorithm,
-          sign_count: cred.counter ?? 0,
+          sign_count: credCounter,
           aaguid: info.aaguid ?? null,
+
           transports: body.transports ?? null,
         })
         .eq("user_id", userId)
@@ -162,6 +182,12 @@ function base64urlToBytes(s: string): Uint8Array {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
 
 function json(obj: unknown, status = 200): Response {
   return new Response(JSON.stringify(obj), {
