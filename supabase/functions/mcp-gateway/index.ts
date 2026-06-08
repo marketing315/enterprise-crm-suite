@@ -800,6 +800,17 @@ Deno.serve(async (req: Request) => {
       let result: unknown;
       if (scheme === "crm") {
         const [table, ...rest] = path.split("/");
+        // SECURITY: enforce a strict allowlist of tables exposed via crm:// URIs.
+        // Mirrors registered mcp_resources templates; defence-in-depth against
+        // arbitrary table reads, especially when called with service role.
+        const RESOURCE_TABLE_ALLOWLIST = new Set<string>([
+          "contacts",
+          "deals",
+          "appointments",
+        ]);
+        if (!table || !RESOURCE_TABLE_ALLOWLIST.has(table)) {
+          throw new Error(`Resource table not allowed: ${table ?? "(empty)"}`);
+        }
         let q = userClient.from(table).select("*");
         if (body.brand_id) q = q.eq("brand_id", body.brand_id);
         if (rest[0]) q = q.eq("id", rest[0]);
