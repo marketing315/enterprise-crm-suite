@@ -73,6 +73,18 @@ Deno.serve(async (req) => {
       );
     }
 
+    // SSRF guard: validate image_url is a safe public https URL before forwarding to AI gateway.
+    if (image_url) {
+      const { assertSafeUrl } = await import("../_shared/safe-outbound.ts");
+      const check = await assertSafeUrl(String(image_url));
+      if (!check.ok) {
+        return new Response(
+          JSON.stringify({ error: "Invalid image_url", code: check.error }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const imageContent = image_base64
       ? { type: "image_url" as const, image_url: { url: `data:image/jpeg;base64,${image_base64}` } }
       : { type: "image_url" as const, image_url: { url: image_url } };
