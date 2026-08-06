@@ -82,6 +82,14 @@ export async function tryConditionalPasskeyLogin(
     });
     if (setErr) return { ok: false, reason: "set_session_failed" };
 
+    // Passkey verificata lato server → grant AAL2 su questo device (no TOTP).
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (uid) {
+      const { registerBiometricAal2Grant } = await import("@/lib/biometric/client");
+      await registerBiometricAal2Grant(uid);
+    }
+
     return { ok: true };
   } catch (e) {
     // AbortError quando la pagina viene smontata → silenzioso

@@ -6,6 +6,7 @@ import { Fingerprint, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { b64urlEncode, isWebAuthnAvailable } from "@/lib/biometric/webauthn";
+import { registerBiometricAal2Grant } from "@/lib/biometric/client";
 
 
 /**
@@ -104,6 +105,12 @@ export function PasskeyLoginButton() {
         refresh_token: verifyData.refresh_token,
       });
       if (setErr) throw setErr;
+
+      // Il login passkey con userVerification="required" è già un fattore forte:
+      // registriamo il grant AAL2 così MfaGuard non richiede di nuovo il TOTP.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      if (uid) await registerBiometricAal2Grant(uid);
 
       toast.success("Accesso con passkey riuscito");
       navigate("/select-brand");
