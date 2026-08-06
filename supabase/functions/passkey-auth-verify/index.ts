@@ -42,7 +42,8 @@ interface CredentialRow {
   source: "user_passkeys" | "user_biometric_credentials";
   id: string;
   user_id: string;
-  public_key: ArrayBuffer | null;
+  /** bytea restituito da PostgREST come stringa `\x<hex>` */
+  public_key: string | null;
   sign_count: number | null;
   transports: string[] | null;
   disabled_at: string | null;
@@ -54,6 +55,21 @@ function b64urlToBytes(s: string): Uint8Array {
   const bin = atob(b);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** bytea per PostgREST: `\x` + hex. */
+function bytesToPgHex(bytes: Uint8Array): string {
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
+  return `\\x${hex}`;
+}
+
+/** Converte un bytea `\x<hex>` restituito da PostgREST in Uint8Array. */
+function pgHexToBytes(v: string): Uint8Array {
+  const hex = v.startsWith("\\x") ? v.slice(2) : v;
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
   return out;
 }
 
@@ -107,10 +123,11 @@ export const handler = async (req: Request): Promise<Response> => {
 
     // 2) Lookup credenziale: prima user_passkeys (nuovo, multi-device),
     //    poi fallback user_biometric_credentials (legacy / passkey "primaria")
-    const credIdBytes = b64urlToBytes(body.credentialId);
-    const cred = await lookupCredential(admin, credIdBytes);
+    const credIdHex = bytesToPgHex(b64urlToBytes(body.credentialId));
+    const cred = await lookupCredential(admin, credIdHex);
 
     if (!cred) {
+      console.warn(`[passkey-verify] credential not found cid_hex_len=${credIdHex.length}`);
       await audit(admin, "passkey_login_failed", { reason: "credential_not_found", ip });
       return json({ error: "credential_not_found" }, 401);
     }
@@ -148,7 +165,7 @@ export const handler = async (req: Request): Promise<Response> => {
         expectedRPID: body.rpId,
         credential: {
           id: body.credentialId,
-          publicKey: new Uint8Array(cred.public_key as ArrayBuffer),
+          publicKey: pgHexToBytes(cred.public_key),
           counter: Number(cred.sign_count ?? 0),
           transports: (cred.transports ?? undefined) as AuthenticatorTransport[] | undefined,
         },
@@ -218,20 +235,21 @@ Deno.serve(handler);
 
 async function lookupCredential(
   admin: SupabaseClient,
-  credIdBytes: Uint8Array,
+  credIdHex: string,
 ): Promise<CredentialRow | null> {
   // 1) Tabella nuova
-  const { data: pk } = await admin
+  const { data: pk, error: pkErr } = await admin
     .from("user_passkeys")
     .select("id, user_id, public_key, sign_count, transports, disabled_at")
-    .eq("credential_id", credIdBytes)
+    .eq("credential_id", credIdHex)
     .maybeSingle();
+  if (pkErr) console.error("[passkey-verify] lookup user_passkeys failed", pkErr.message);
   if (pk) {
     return {
       source: "user_passkeys",
       id: pk.id as string,
       user_id: pk.user_id as string,
-      public_key: pk.public_key as ArrayBuffer | null,
+      public_key: pk.public_key as string | null,
       sign_count: pk.sign_count as number | null,
       transports: pk.transports as string[] | null,
       disabled_at: pk.disabled_at as string | null,
@@ -239,17 +257,20 @@ async function lookupCredential(
   }
 
   // 2) Fallback legacy
-  const { data: legacy } = await admin
+  const { data: legacy, error: legacyErr } = await admin
     .from("user_biometric_credentials")
     .select("id, user_id, public_key, sign_count, transports, disabled_at")
-    .eq("credential_id", credIdBytes)
+    .eq("credential_id", credIdHex)
     .maybeSingle();
+  if (legacyErr) {
+    console.error("[passkey-verify] lookup legacy failed", legacyErr.message);
+  }
   if (legacy) {
     return {
       source: "user_biometric_credentials",
       id: legacy.id as string,
       user_id: legacy.user_id as string,
-      public_key: legacy.public_key as ArrayBuffer | null,
+      public_key: legacy.public_key as string | null,
       sign_count: legacy.sign_count as number | null,
       transports: legacy.transports as string[] | null,
       disabled_at: legacy.disabled_at as string | null,

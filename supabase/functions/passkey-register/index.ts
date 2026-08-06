@@ -119,7 +119,10 @@ Deno.serve(async (req) => {
     });
 
     // Upsert su credential_id: idempotente (stesso device che ri-registra)
-    const credentialIdBytes = base64urlToBytes(credId);
+    // NB: colonne bytea → PostgREST vuole la forma esadecimale `\x...`,
+    // un Uint8Array verrebbe serializzato in JSON e salvato corrotto.
+    const credentialIdHex = bytesToPgHex(base64urlToBytes(credId));
+    const publicKeyHex = bytesToPgHex(credPublicKey);
     const labelTrim = (body.label ?? "").trim().slice(0, 80) || null;
     const uaTrim = (body.userAgent ?? "").trim().slice(0, 200) || null;
 
@@ -128,8 +131,8 @@ Deno.serve(async (req) => {
       .upsert(
         {
           user_id: userId,
-          credential_id: credentialIdBytes,
-          public_key: credPublicKey,
+          credential_id: credentialIdHex,
+          public_key: publicKeyHex,
           public_key_alg: algorithm,
           sign_count: credCounter,
           aaguid: info.aaguid ?? null,
@@ -146,6 +149,10 @@ Deno.serve(async (req) => {
       return json({ error: "save_failed" }, 500);
     }
 
+    console.log(
+      `[passkey-register] saved passkey user=${userId} alg=${algorithm} cid_len=${credentialIdHex.length}`,
+    );
+
     // Compat legacy: scrivi anche in user_biometric_credentials se questo
     // utente ha già la riga PIN ma senza public_key (per non rompere il
     // fallback verify legacy). Best-effort, non-fatal.
@@ -153,8 +160,8 @@ Deno.serve(async (req) => {
       await admin
         .from("user_biometric_credentials")
         .update({
-          credential_id: credentialIdBytes,
-          public_key: credPublicKey,
+          credential_id: credentialIdHex,
+          public_key: publicKeyHex,
           public_key_alg: algorithm,
           sign_count: credCounter,
           aaguid: info.aaguid ?? null,
@@ -187,6 +194,16 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   let bin = "";
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** bytea per PostgREST: `\x` + hex. */
+function bytesToPgHex(bytes: Uint8Array): string {
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
+  return `\\x${hex}`;
+}
+
+
 
 
 function json(obj: unknown, status = 200): Response {
