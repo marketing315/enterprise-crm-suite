@@ -42,7 +42,8 @@ interface CredentialRow {
   source: "user_passkeys" | "user_biometric_credentials";
   id: string;
   user_id: string;
-  public_key: ArrayBuffer | null;
+  /** bytea restituito da PostgREST come stringa `\x<hex>` */
+  public_key: string | null;
   sign_count: number | null;
   transports: string[] | null;
   disabled_at: string | null;
@@ -54,6 +55,21 @@ function b64urlToBytes(s: string): Uint8Array {
   const bin = atob(b);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** bytea per PostgREST: `\x` + hex. */
+function bytesToPgHex(bytes: Uint8Array): string {
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
+  return `\\x${hex}`;
+}
+
+/** Converte un bytea `\x<hex>` restituito da PostgREST in Uint8Array. */
+function pgHexToBytes(v: string): Uint8Array {
+  const hex = v.startsWith("\\x") ? v.slice(2) : v;
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
   return out;
 }
 
