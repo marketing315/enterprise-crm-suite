@@ -123,10 +123,11 @@ export const handler = async (req: Request): Promise<Response> => {
 
     // 2) Lookup credenziale: prima user_passkeys (nuovo, multi-device),
     //    poi fallback user_biometric_credentials (legacy / passkey "primaria")
-    const credIdBytes = b64urlToBytes(body.credentialId);
-    const cred = await lookupCredential(admin, credIdBytes);
+    const credIdHex = bytesToPgHex(b64urlToBytes(body.credentialId));
+    const cred = await lookupCredential(admin, credIdHex);
 
     if (!cred) {
+      console.warn(`[passkey-verify] credential not found cid_hex_len=${credIdHex.length}`);
       await audit(admin, "passkey_login_failed", { reason: "credential_not_found", ip });
       return json({ error: "credential_not_found" }, 401);
     }
