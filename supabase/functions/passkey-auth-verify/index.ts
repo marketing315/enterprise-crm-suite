@@ -165,7 +165,7 @@ export const handler = async (req: Request): Promise<Response> => {
         expectedRPID: body.rpId,
         credential: {
           id: body.credentialId,
-          publicKey: new Uint8Array(cred.public_key as ArrayBuffer),
+          publicKey: pgHexToBytes(cred.public_key),
           counter: Number(cred.sign_count ?? 0),
           transports: (cred.transports ?? undefined) as AuthenticatorTransport[] | undefined,
         },
