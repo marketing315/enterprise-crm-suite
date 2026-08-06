@@ -13953,6 +13953,7 @@ export type Database = {
         Returns: Json
       }
       e2e_revenue_snapshot: { Args: { p_phone: string }; Returns: Json }
+      email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_call_transcript: {
         Args: { p_call_log_id: string }
         Returns: string
