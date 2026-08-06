@@ -97,11 +97,11 @@ export async function enableBiometric(opts: {
   });
 
   // 4) Registra la public key lato server per abilitare il login passkey
-  //    da nuovi dispositivi (best-effort: se fallisce, lo sblocco locale
-  //    funziona comunque).
+  //    da nuovi dispositivi. Se fallisce lo sblocco locale resta attivo, ma
+  //    l'utente DEVE saperlo: senza questa riga il login passkey non funziona.
   try {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 200) : null;
-    await supabase.functions.invoke("passkey-register", {
+    const { data, error } = await supabase.functions.invoke("passkey-register", {
       body: {
         challenge: created.challengeB64,
         rpId: created.rpId,
@@ -114,8 +114,20 @@ export async function enableBiometric(opts: {
         userAgent: ua,
       },
     });
+    const res = data as { ok?: boolean; error?: string } | null;
+    if (error || !res?.ok) {
+      const reason = res?.error ?? error?.message ?? "unknown";
+      console.error("[biometric] passkey-register failed", reason);
+      throw new Error(
+        `Sblocco locale attivato, ma la passkey non è stata registrata sul server (${reason}). Il login con passkey da altri dispositivi non funzionerà: riprova ad attivarla.`,
+      );
+    }
   } catch (e) {
-    console.warn("[biometric] passkey-register failed (sblocco locale resta attivo)", e);
+    if (e instanceof Error && e.message.startsWith("Sblocco locale attivato")) throw e;
+    console.error("[biometric] passkey-register exception", e);
+    throw new Error(
+      "Sblocco locale attivato, ma la registrazione della passkey sul server non è riuscita. Riprova ad attivarla.",
+    );
   }
 }
 
