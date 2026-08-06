@@ -235,20 +235,21 @@ Deno.serve(handler);
 
 async function lookupCredential(
   admin: SupabaseClient,
-  credIdBytes: Uint8Array,
+  credIdHex: string,
 ): Promise<CredentialRow | null> {
   // 1) Tabella nuova
-  const { data: pk } = await admin
+  const { data: pk, error: pkErr } = await admin
     .from("user_passkeys")
     .select("id, user_id, public_key, sign_count, transports, disabled_at")
-    .eq("credential_id", credIdBytes)
+    .eq("credential_id", credIdHex)
     .maybeSingle();
+  if (pkErr) console.error("[passkey-verify] lookup user_passkeys failed", pkErr.message);
   if (pk) {
     return {
       source: "user_passkeys",
       id: pk.id as string,
       user_id: pk.user_id as string,
-      public_key: pk.public_key as ArrayBuffer | null,
+      public_key: pk.public_key as string | null,
       sign_count: pk.sign_count as number | null,
       transports: pk.transports as string[] | null,
       disabled_at: pk.disabled_at as string | null,
@@ -256,17 +257,20 @@ async function lookupCredential(
   }
 
   // 2) Fallback legacy
-  const { data: legacy } = await admin
+  const { data: legacy, error: legacyErr } = await admin
     .from("user_biometric_credentials")
     .select("id, user_id, public_key, sign_count, transports, disabled_at")
-    .eq("credential_id", credIdBytes)
+    .eq("credential_id", credIdHex)
     .maybeSingle();
+  if (legacyErr) {
+    console.error("[passkey-verify] lookup legacy failed", legacyErr.message);
+  }
   if (legacy) {
     return {
       source: "user_biometric_credentials",
       id: legacy.id as string,
       user_id: legacy.user_id as string,
-      public_key: legacy.public_key as ArrayBuffer | null,
+      public_key: legacy.public_key as string | null,
       sign_count: legacy.sign_count as number | null,
       transports: legacy.transports as string[] | null,
       disabled_at: legacy.disabled_at as string | null,
