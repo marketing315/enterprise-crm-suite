@@ -163,6 +163,13 @@ export const handler = async (req: Request): Promise<Response> => {
         expectedChallenge: body.challenge,
         expectedOrigin: body.origin,
         expectedRPID: body.rpId,
+        // v10 usa `authenticator`, v11+ usa `credential`: passiamo entrambi.
+        authenticator: {
+          credentialID: body.credentialId,
+          credentialPublicKey: pgHexToBytes(cred.public_key),
+          counter: Number(cred.sign_count ?? 0),
+          transports: (cred.transports ?? undefined) as AuthenticatorTransport[] | undefined,
+        },
         credential: {
           id: body.credentialId,
           publicKey: pgHexToBytes(cred.public_key),
