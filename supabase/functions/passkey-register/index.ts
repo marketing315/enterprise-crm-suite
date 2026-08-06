@@ -119,7 +119,10 @@ Deno.serve(async (req) => {
     });
 
     // Upsert su credential_id: idempotente (stesso device che ri-registra)
-    const credentialIdBytes = base64urlToBytes(credId);
+    // NB: colonne bytea → PostgREST vuole la forma esadecimale `\x...`,
+    // un Uint8Array verrebbe serializzato in JSON e salvato corrotto.
+    const credentialIdHex = bytesToPgHex(base64urlToBytes(credId));
+    const publicKeyHex = bytesToPgHex(credPublicKey);
     const labelTrim = (body.label ?? "").trim().slice(0, 80) || null;
     const uaTrim = (body.userAgent ?? "").trim().slice(0, 200) || null;
 
@@ -128,8 +131,8 @@ Deno.serve(async (req) => {
       .upsert(
         {
           user_id: userId,
-          credential_id: credentialIdBytes,
-          public_key: credPublicKey,
+          credential_id: credentialIdHex,
+          public_key: publicKeyHex,
           public_key_alg: algorithm,
           sign_count: credCounter,
           aaguid: info.aaguid ?? null,
@@ -145,6 +148,10 @@ Deno.serve(async (req) => {
       console.error("[passkey-register] upsert failed", upErr.message);
       return json({ error: "save_failed" }, 500);
     }
+
+    console.log(
+      `[passkey-register] saved passkey user=${userId} alg=${algorithm} cid_len=${credentialIdHex.length}`,
+    );
 
     // Compat legacy: scrivi anche in user_biometric_credentials se questo
     // utente ha già la riga PIN ma senza public_key (per non rompere il
