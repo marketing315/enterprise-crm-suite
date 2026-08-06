@@ -160,8 +160,8 @@ Deno.serve(async (req) => {
       await admin
         .from("user_biometric_credentials")
         .update({
-          credential_id: credentialIdBytes,
-          public_key: credPublicKey,
+          credential_id: credentialIdHex,
+          public_key: publicKeyHex,
           public_key_alg: algorithm,
           sign_count: credCounter,
           aaguid: info.aaguid ?? null,
