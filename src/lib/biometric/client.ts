@@ -286,7 +286,7 @@ async function applyUnlocked(
 
 const BIO_TOKEN_LS_KEY = "ralph.bio.aal2-token:";
 
-async function registerBiometricAal2Grant(userId: string): Promise<void> {
+export async function registerBiometricAal2Grant(userId: string): Promise<void> {
   try {
     const raw = new Uint8Array(32);
     crypto.getRandomValues(raw);
