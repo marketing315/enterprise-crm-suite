@@ -51,7 +51,10 @@ const ALLOWED_TARGETS = new Set<string>([
   "ticket-assign-recovery",
   "cron-health-monitor",
   "meta-token-health-check",
+  "meta-leads-recover",
 ]);
+
+console.log("[cron-relay] build=2026-09-01-targets-v2");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
