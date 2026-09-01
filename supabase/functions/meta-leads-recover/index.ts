@@ -94,10 +94,11 @@ Deno.serve(async (req) => {
     // Auth: require admin user OR INTERNAL_SERVICE_TOKEN
     const authHeader = req.headers.get("Authorization") ?? "";
     const internalToken = Deno.env.get("INTERNAL_SERVICE_TOKEN");
-    const isInternal = !!internalToken && (
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const isInternal = (!!internalToken && (
       req.headers.get("x-internal-service-token") === internalToken ||
       authHeader === `Bearer ${internalToken}`
-    );
+    )) || (!!cronSecret && req.headers.get("x-cron-secret") === cronSecret);
 
     let internalId: string | null = null;
     if (!isInternal) {
@@ -163,12 +164,15 @@ Deno.serve(async (req) => {
     }
 
     // Load stuck events
+    // Stuck = never linked to a lead_event, either because the Graph fetch never
+    // happened (fetched_payload null) or because a later step failed (status error).
     let q = supabase.from("meta_lead_events")
       .select("id, brand_id, source_id, leadgen_id, page_id, form_id, ad_id, raw_event")
-      .is("fetched_payload", null);
+      .is("lead_event_id", null)
+      .or("fetched_payload.is.null,status.eq.error");
     if (body.meta_event_ids?.length) q = q.in("id", body.meta_event_ids);
     if (body.brand_id) q = q.eq("brand_id", body.brand_id);
-    q = q.limit(50);
+    q = q.limit(15);
     const { data: events, error: evErr } = await q;
     if (evErr) throw evErr;
 

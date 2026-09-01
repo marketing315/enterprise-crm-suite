@@ -49,6 +49,8 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false
   [functions.meta-create-test-lead]
     verify_jwt = false
+  [functions.meta-leads-recover]
+    verify_jwt = false
   [functions.meta-leads-webhook]
     verify_jwt = false
   [functions.meta-oauth-callback]
