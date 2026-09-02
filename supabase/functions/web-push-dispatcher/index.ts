@@ -14,8 +14,19 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const VAPID_PUBLIC = Deno.env.get("VAPID_PUBLIC_KEY")!;
-const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY")!;
+
+// Normalize a possibly-malformed base64url key: strip whitespace, convert
+// standard base64 (+/) to base64url (-_), drop padding.
+function normalizeBase64Url(v: string | undefined): string {
+  return (v ?? "")
+    .replace(/\s+/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+const VAPID_PUBLIC = normalizeBase64Url(Deno.env.get("VAPID_PUBLIC_KEY"));
+const VAPID_PRIVATE = normalizeBase64Url(Deno.env.get("VAPID_PRIVATE_KEY"));
 // VAPID subject must be a URL (mailto:... or https://...). Normalize a bare
 // email address to mailto: so a misconfigured secret doesn't crash the worker.
 const RAW_VAPID_SUBJECT =
@@ -26,7 +37,15 @@ const VAPID_SUBJECT = /^(mailto:|https?:)/i.test(RAW_VAPID_SUBJECT)
     ? `mailto:${RAW_VAPID_SUBJECT}`
     : "mailto:tech@gruppobenessere.it";
 
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+try {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+} catch (e) {
+  console.error(
+    "[web-push-dispatcher] invalid VAPID configuration:",
+    (e as Error)?.message ?? e,
+  );
+  throw e;
+}
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
