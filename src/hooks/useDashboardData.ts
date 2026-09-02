@@ -198,9 +198,9 @@ export function useDashboardData() {
     enabled: isQueryEnabled(),
   });
 
-  // Trend data (7 giorni) - uses RPC for accurate new-lead counts
+  // Trend data (7 giorni) - conteggio grezzo di tutti i lead ricevuti per giorno
   const trendData = useQuery({
-    queryKey: ["dashboard-trend", getQueryKeyBrand()],
+    queryKey: ["dashboard-trend-raw", getQueryKeyBrand()],
     queryFn: async () => {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return [];
@@ -208,12 +208,19 @@ export function useDashboardData() {
       const weekAgo = subDays(new Date(), 6);
       const todayEnd = endOfDay(new Date());
 
-      // Use RPC for accurate new-lead-only counts per day
-      const leadsRpcPromise = supabase.rpc("count_new_leads_by_day", {
-        p_brand_ids: brandIds,
-        p_from: startOfDay(weekAgo).toISOString(),
-        p_to: todayEnd.toISOString(),
-      });
+      // Conteggio per giorno di TUTTI i lead_events (inclusi ricontatti)
+      const leadDays = Array.from({ length: 7 }, (_, idx) => subDays(new Date(), 6 - idx));
+      const leadCountsPromise = Promise.all(
+        leadDays.map(async (d) => ({
+          date: format(d, "yyyy-MM-dd"),
+          count: await countLeadEvents(
+            brandIds,
+            startOfDay(d).toISOString(),
+            endOfDay(d).toISOString()
+          ),
+        }))
+      );
+
 
       // Batch query: get all tickets for the 7-day range
       let ticketsQuery = supabase
