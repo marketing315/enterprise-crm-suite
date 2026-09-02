@@ -8,47 +8,60 @@ import { STALE, GC } from "@/lib/queryCache";
 export function useDashboardData() {
   const { getBrandIds, getQueryKeyBrand, isQueryEnabled } = useBrandFilter();
 
-  // KPI: Lead oggi (solo contatti nuovi, non aggiornamenti)
+  // Helper: conteggio grezzo di TUTTI i lead_events ricevuti in un intervallo
+  const countLeadEvents = async (brandIds: string[], fromIso: string, toIso: string) => {
+    let query = supabase
+      .from("lead_events")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", fromIso)
+      .lte("created_at", toIso);
+
+    if (brandIds.length === 1) {
+      query = query.eq("brand_id", brandIds[0]);
+    } else {
+      query = query.in("brand_id", brandIds);
+    }
+
+    const { count, error } = await query;
+    if (error) throw error;
+    return count ?? 0;
+  };
+
+  // KPI: Lead oggi (tutti gli eventi lead ricevuti oggi)
   const leadsToday = useQuery({
-    queryKey: ["dashboard-leads-today", getQueryKeyBrand()],
+    queryKey: ["dashboard-leads-today-raw", getQueryKeyBrand()],
     queryFn: async () => {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return 0;
       const today = new Date();
-
-      const { data, error } = await supabase.rpc("count_new_leads_in_range", {
-        p_brand_ids: brandIds,
-        p_from: startOfDay(today).toISOString(),
-        p_to: endOfDay(today).toISOString(),
-      });
-      if (error) throw error;
-      return (data as number) ?? 0;
+      return countLeadEvents(
+        brandIds,
+        startOfDay(today).toISOString(),
+        endOfDay(today).toISOString()
+      );
     },
     enabled: isQueryEnabled(),
     staleTime: STALE.CRITICAL,
     gcTime: GC.SHORT,
   });
 
-  // KPI: Lead ultimi 7 giorni (solo contatti nuovi, non aggiornamenti)
+  // KPI: Lead ultimi 7 giorni (tutti gli eventi lead ricevuti)
   const leadsWeek = useQuery({
-    queryKey: ["dashboard-leads-week", getQueryKeyBrand()],
+    queryKey: ["dashboard-leads-week-raw", getQueryKeyBrand()],
     queryFn: async () => {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return 0;
-      const weekAgo = subDays(new Date(), 7);
-
-      const { data, error } = await supabase.rpc("count_new_leads_in_range", {
-        p_brand_ids: brandIds,
-        p_from: weekAgo.toISOString(),
-        p_to: endOfDay(new Date()).toISOString(),
-      });
-      if (error) throw error;
-      return (data as number) ?? 0;
+      return countLeadEvents(
+        brandIds,
+        subDays(new Date(), 7).toISOString(),
+        endOfDay(new Date()).toISOString()
+      );
     },
     enabled: isQueryEnabled(),
     staleTime: STALE.CRITICAL,
     gcTime: GC.SHORT,
   });
+
 
   // KPI: Deal aperti
   const openDeals = useQuery({
@@ -185,9 +198,9 @@ export function useDashboardData() {
     enabled: isQueryEnabled(),
   });
 
-  // Trend data (7 giorni) - uses RPC for accurate new-lead counts
+  // Trend data (7 giorni) - conteggio grezzo di tutti i lead ricevuti per giorno
   const trendData = useQuery({
-    queryKey: ["dashboard-trend", getQueryKeyBrand()],
+    queryKey: ["dashboard-trend-raw", getQueryKeyBrand()],
     queryFn: async () => {
       const brandIds = getBrandIds();
       if (brandIds.length === 0) return [];
@@ -195,12 +208,19 @@ export function useDashboardData() {
       const weekAgo = subDays(new Date(), 6);
       const todayEnd = endOfDay(new Date());
 
-      // Use RPC for accurate new-lead-only counts per day
-      const leadsRpcPromise = supabase.rpc("count_new_leads_by_day", {
-        p_brand_ids: brandIds,
-        p_from: startOfDay(weekAgo).toISOString(),
-        p_to: todayEnd.toISOString(),
-      });
+      // Conteggio per giorno di TUTTI i lead_events (inclusi ricontatti)
+      const leadDays = Array.from({ length: 7 }, (_, idx) => subDays(new Date(), 6 - idx));
+      const leadCountsPromise = Promise.all(
+        leadDays.map(async (d) => ({
+          date: format(d, "yyyy-MM-dd"),
+          count: await countLeadEvents(
+            brandIds,
+            startOfDay(d).toISOString(),
+            endOfDay(d).toISOString()
+          ),
+        }))
+      );
+
 
       // Batch query: get all tickets for the 7-day range
       let ticketsQuery = supabase
@@ -241,20 +261,19 @@ export function useDashboardData() {
         adSpendQuery = adSpendQuery.in("brand_id", brandIds);
       }
 
-      const [leadsRpcResult, ticketsResult, costsResult, adSpendResult] = await Promise.all([
-        leadsRpcPromise, ticketsQuery, costsQuery, adSpendQuery,
+      const [leadCounts, ticketsResult, costsResult, adSpendResult] = await Promise.all([
+        leadCountsPromise, ticketsQuery, costsQuery, adSpendQuery,
       ]);
 
-      if (leadsRpcResult.error) throw leadsRpcResult.error;
       if (ticketsResult.error) throw ticketsResult.error;
       const costsData = costsResult.error ? [] : (costsResult.data || []);
       const adSpendData = adSpendResult.error ? [] : (adSpendResult.data || []);
 
-      // Build a map from the RPC result: day -> new_leads count
       const leadsMap = new Map<string, number>();
-      for (const row of (leadsRpcResult.data || []) as { day: string; new_leads: number }[]) {
-        leadsMap.set(row.day, Number(row.new_leads));
+      for (const row of leadCounts) {
+        leadsMap.set(row.date, row.count);
       }
+
 
       // Group by day client-side
       const days: { date: string; label: string; leads: number; tickets: number; cpl: number | null }[] = [];
