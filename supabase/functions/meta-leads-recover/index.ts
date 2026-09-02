@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
     let q = supabase.from("meta_lead_events")
       .select("id, brand_id, source_id, leadgen_id, page_id, form_id, ad_id, raw_event")
       .is("lead_event_id", null)
-      .or("fetched_payload.is.null,status.eq.error");
+      .or("fetched_payload.is.null,status.eq.error,status.eq.fetched");
     if (body.meta_event_ids?.length) q = q.in("id", body.meta_event_ids);
     if (body.brand_id) q = q.eq("brand_id", body.brand_id);
     q = q.limit(15);
