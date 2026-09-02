@@ -16,8 +16,15 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VAPID_PUBLIC = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const VAPID_SUBJECT =
+// VAPID subject must be a URL (mailto:... or https://...). Normalize a bare
+// email address to mailto: so a misconfigured secret doesn't crash the worker.
+const RAW_VAPID_SUBJECT =
   Deno.env.get("VAPID_SUBJECT") || "mailto:tech@gruppobenessere.it";
+const VAPID_SUBJECT = /^(mailto:|https?:)/i.test(RAW_VAPID_SUBJECT)
+  ? RAW_VAPID_SUBJECT
+  : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(RAW_VAPID_SUBJECT)
+    ? `mailto:${RAW_VAPID_SUBJECT}`
+    : "mailto:tech@gruppobenessere.it";
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
