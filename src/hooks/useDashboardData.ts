@@ -261,20 +261,19 @@ export function useDashboardData() {
         adSpendQuery = adSpendQuery.in("brand_id", brandIds);
       }
 
-      const [leadsRpcResult, ticketsResult, costsResult, adSpendResult] = await Promise.all([
-        leadsRpcPromise, ticketsQuery, costsQuery, adSpendQuery,
+      const [leadCounts, ticketsResult, costsResult, adSpendResult] = await Promise.all([
+        leadCountsPromise, ticketsQuery, costsQuery, adSpendQuery,
       ]);
 
-      if (leadsRpcResult.error) throw leadsRpcResult.error;
       if (ticketsResult.error) throw ticketsResult.error;
       const costsData = costsResult.error ? [] : (costsResult.data || []);
       const adSpendData = adSpendResult.error ? [] : (adSpendResult.data || []);
 
-      // Build a map from the RPC result: day -> new_leads count
       const leadsMap = new Map<string, number>();
-      for (const row of (leadsRpcResult.data || []) as { day: string; new_leads: number }[]) {
-        leadsMap.set(row.day, Number(row.new_leads));
+      for (const row of leadCounts) {
+        leadsMap.set(row.date, row.count);
       }
+
 
       // Group by day client-side
       const days: { date: string; label: string; leads: number; tickets: number; cpl: number | null }[] = [];
