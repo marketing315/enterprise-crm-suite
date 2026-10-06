@@ -3,6 +3,7 @@ import { timingSafeEqual } from "../_shared/crypto.ts";
 import { safeJson } from "../_shared/safe-json.ts";
 import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "../_shared/meta-secrets.ts";
 import { metaGraphUrl, withProof } from "../_shared/meta-graph.ts";
+import { resolveTargetBrand } from "../_shared/meta-form-routing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -203,11 +204,14 @@ async function processLeadChange(
     return { leadgen_id: "unknown", status: "skipped_no_leadgen_id" };
   }
 
+  // Per-form routing (fail-open to metaApp.brand_id)
+  const targetBrandId = await resolveTargetBrand(supabase, metaApp, formId);
+
   // 1. Insert meta_lead_events (dedupe via unique constraint)
   const { data: metaEvent, error: insertError } = await supabase
     .from("meta_lead_events")
     .insert({
-      brand_id: metaApp.brand_id,
+      brand_id: targetBrandId,
       source_id: metaApp.id,
       leadgen_id: leadgenId,
       page_id: pageId || metaApp.page_id || "unknown",
@@ -307,7 +311,7 @@ async function processLeadChange(
     let contactResult: string | null = null;
     let contactError: unknown = null;
     const rpcArgs = {
-      p_brand_id: metaApp.brand_id,
+      p_brand_id: targetBrandId,
       p_phone_normalized: normalizedPhone.normalized,
       p_phone_raw: normalizedPhone.raw,
       p_country_code: normalizedPhone.countryCode,
@@ -357,7 +361,7 @@ async function processLeadChange(
       // Find or create deal
       const { data: dealResult, error: dealError } = await supabase.rpc(
         "find_or_create_deal",
-        { p_brand_id: metaApp.brand_id, p_contact_id: contactId }
+        { p_brand_id: targetBrandId, p_contact_id: contactId }
       );
       if (dealError) {
         console.error(`[META-EVENT] Failed to create deal for ${leadgenId}:`, dealError);
@@ -371,7 +375,7 @@ async function processLeadChange(
         await supabase
           .from("contact_tracking")
           .upsert({
-            brand_id: metaApp.brand_id,
+            brand_id: targetBrandId,
             contact_id: contactId,
             utm_source: "meta",
             utm_medium: "paid",
@@ -392,7 +396,7 @@ async function processLeadChange(
   const { data: leadEvent, error: leadEventError } = await supabase
     .from("lead_events")
     .insert({
-      brand_id: metaApp.brand_id,
+      brand_id: targetBrandId,
       contact_id: contactId,
       deal_id: dealId,
       source: "meta",

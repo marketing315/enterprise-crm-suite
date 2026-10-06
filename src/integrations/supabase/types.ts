@@ -8009,6 +8009,57 @@ export type Database = {
           },
         ]
       }
+      meta_form_brand_routes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          form_id: string
+          form_name: string | null
+          id: string
+          is_active: boolean
+          meta_app_id: string
+          target_brand_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          form_id: string
+          form_name?: string | null
+          id?: string
+          is_active?: boolean
+          meta_app_id: string
+          target_brand_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          form_id?: string
+          form_name?: string | null
+          id?: string
+          is_active?: boolean
+          meta_app_id?: string
+          target_brand_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_form_brand_routes_meta_app_id_fkey"
+            columns: ["meta_app_id"]
+            isOneToOne: false
+            referencedRelation: "meta_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_form_brand_routes_target_brand_id_fkey"
+            columns: ["target_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_lead_events: {
         Row: {
           ad_id: string | null
@@ -15220,6 +15271,7 @@ export type Database = {
       invoke_db_growth_alert: { Args: never; Returns: number }
       is_admin_or_ceo_user: { Args: { p_user_id: string }; Returns: boolean }
       is_audit_admin: { Args: { _supabase_auth_id: string }; Returns: boolean }
+      is_brand_admin_or_ceo: { Args: { _brand_id: string }; Returns: boolean }
       is_column_hidden_for_user: {
         Args: {
           p_brand_id: string
@@ -15711,6 +15763,7 @@ export type Database = {
         Args: { p_source_id: string; p_target_id: string }
         Returns: Json
       }
+      meta_app_brand: { Args: { _meta_app_id: string }; Returns: string }
       meta_apps_get_access_token: { Args: { p_id: string }; Returns: string }
       meta_apps_put_access_token: {
         Args: { p_id: string; p_value: string }
