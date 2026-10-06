@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Edit, Trash2, TestTube, Link, Zap, History } from "lucide-react";
+import { Copy, Edit, Trash2, TestTube, Link, Zap, History, GitBranch } from "lucide-react";
 import { useMetaApps, MetaApp } from "@/hooks/useMetaApps";
 import { MetaAppFormDrawer } from "./MetaAppFormDrawer";
 import { DeleteMetaAppDialog } from "./DeleteMetaAppDialog";
 import { TestLeadDialog } from "./TestLeadDialog";
 import { MetaBackfillDialog } from "./MetaBackfillDialog";
+import { MetaFormRoutesDialog } from "./MetaFormRoutesDialog";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 
@@ -20,6 +21,7 @@ export function MetaAppsList() {
   const [testingApp, setTestingApp] = useState<MetaApp | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [backfillingApp, setBackfillingApp] = useState<MetaApp | null>(null);
+  const [routingApp, setRoutingApp] = useState<MetaApp | null>(null);
 
   const handleCopyToClipboard = (text: string, label: string) => {
     copyToClipboard(text, label);
@@ -147,6 +149,14 @@ export function MetaAppsList() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => setRoutingApp(app)}
+                    title="Regole di smistamento"
+                    aria-label="Regole di smistamento">
+                    <GitBranch className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setBackfillingApp(app)}
                     title="Backfill lead storici"
                    aria-label="Cronologia">
@@ -206,6 +216,11 @@ export function MetaAppsList() {
         open={!!backfillingApp}
         onOpenChange={(open) => !open && setBackfillingApp(null)}
         metaApp={backfillingApp}
+      />
+      <MetaFormRoutesDialog
+        open={!!routingApp}
+        onOpenChange={(open) => !open && setRoutingApp(null)}
+        metaApp={routingApp}
       />
     </>
   );
