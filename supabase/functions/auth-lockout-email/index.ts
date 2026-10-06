@@ -1,3 +1,4 @@
+import { sendTemplateEmailLogged } from '../_shared/transactional-email-templates/send-and-log.ts'
 /**
  * A8 — Account lockout notification email.
  *
@@ -91,27 +92,20 @@ Deno.serve(async (req) => {
       return ok();
     }
 
-    // 3. Send via send-transactional-email
+    // 3. Send via managed email helper
     const idempotencyKey = `lockout-${email}-${Math.floor(Date.now() / (60 * 60 * 1000))}`;
-    const { error: sendErr } = await supabase.functions.invoke(
-      "send-transactional-email",
-      {
-        body: {
-          templateName: "account-locked",
-          recipientEmail: email,
-          idempotencyKey,
-          templateData: {
-            retryMinutes,
-            ipAddress: ipAddress || undefined,
-            userAgent: userAgent || undefined,
-            whenIso: new Date().toISOString(),
-          },
+    try {
+      await sendTemplateEmailLogged("account-locked", email, {
+        idempotencyKey,
+        templateData: {
+          retryMinutes,
+          ipAddress: ipAddress || undefined,
+          userAgent: userAgent || undefined,
+          whenIso: new Date().toISOString(),
         },
-      },
-    );
-
-    if (sendErr) {
-      console.warn("[lockout-email] send failed", sendErr.message);
+      });
+    } catch (sendErr) {
+      console.warn("[lockout-email] send failed", (sendErr as Error).message);
     }
 
     return ok();

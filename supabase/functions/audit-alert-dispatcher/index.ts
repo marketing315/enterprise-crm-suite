@@ -1,3 +1,4 @@
+import { sendTemplateEmailLogged } from '../_shared/transactional-email-templates/send-and-log.ts'
 // Edge function: claim pending audit alert deliveries and dispatch via webhook/email
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { assertSafeUrl } from "../_shared/safe-outbound.ts";
@@ -114,15 +115,11 @@ async function deliverEmail(
   supabase: ReturnType<typeof createClient>,
 ): Promise<{ ok: boolean; status?: number; error?: string }> {
   try {
-    const { error } = await supabase.functions.invoke("send-transactional-email", {
-      body: {
-        templateName: "audit-anomaly-alert",
-        recipientEmail: delivery.destination,
-        idempotencyKey: `audit-alert-${delivery.delivery_id}`,
-        templateData: payload,
-      },
+    const res = await sendTemplateEmailLogged("audit-anomaly-alert", delivery.destination, {
+      idempotencyKey: `audit-alert-${delivery.delivery_id}`,
+      templateData: payload,
     });
-    if (error) return { ok: false, error: error.message };
+    if (!res.sent) return { ok: false, error: res.reason };
     return { ok: true, status: 202 };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };

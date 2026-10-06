@@ -1,3 +1,4 @@
+import { sendTemplateEmailLogged } from '../_shared/transactional-email-templates/send-and-log.ts'
 // sales-route-dispatcher
 // - Triggered by cron-relay every 15 minutes (with x-cron-secret), OR
 // - Manually via service-role Bearer for "send now" actions.
@@ -77,11 +78,9 @@ async function sendTransactional(
   templateData: Record<string, any>,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   try {
-    const { data, error } = await supabase.functions.invoke("send-transactional-email", {
-      body: { templateName, recipientEmail, idempotencyKey, templateData },
-    });
-    if (error) return { ok: false, error: String(error?.message || error) };
-    return { ok: true, messageId: data?.messageId || data?.message_id };
+    const res = await sendTemplateEmailLogged(templateName, recipientEmail, { idempotencyKey, templateData });
+    if (!res.sent) return { ok: false, error: res.reason };
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
