@@ -23,6 +23,7 @@ import {
 const META_OAUTH_APP_SECRET = Deno.env.get("META_OAUTH_APP_SECRET") ?? "";
 import { META_GRAPH_BASE, withProof } from "../_shared/meta-graph.ts";
 import { safeJson } from "../_shared/safe-json.ts";
+import { resolveTargetBrand } from "../_shared/meta-form-routing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -198,6 +199,7 @@ Deno.serve(async (req) => {
   let aborted = false;
 
   for (const fid of formIds) {
+    const fidBrandId = await resolveTargetBrand(supabase, app, fid);
     const c: FormCounter = { form_id: fid, pages: 0, seen: 0, inserted: 0, duplicate: 0 };
     counters.push(c);
 
@@ -229,7 +231,7 @@ Deno.serve(async (req) => {
         if (body.dry_run) continue;
 
         const stub = {
-          brand_id: app.brand_id,
+          brand_id: fidBrandId,
           source_id: app.id,
           leadgen_id: lead.id,
           page_id: app.page_id,
@@ -277,7 +279,7 @@ Deno.serve(async (req) => {
             "Authorization": `Bearer ${internalToken}`,
             "x-internal-service-token": internalToken,
           },
-          body: JSON.stringify({ brand_id: app.brand_id, meta_event_ids: chunk }),
+          body: JSON.stringify({ meta_event_ids: chunk }),
         });
         const json = await res.json().catch(() => null) as { results?: Array<{ status: string }> } | null;
         for (const r of (json?.results ?? [])) {
