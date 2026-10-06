@@ -57,7 +57,7 @@ export function MetaFormRoutesDialog({ open, onOpenChange, metaApp }: Props) {
         .select("form_id")
         .eq("source_id", metaApp!.id)
         .not("form_id", "is", null)
-        .order("created_at", { ascending: false })
+        .order("received_at", { ascending: false })
         .limit(500);
       const counts = new Map<string, number>();
       for (const r of (data ?? []) as { form_id: string }[]) counts.set(r.form_id, (counts.get(r.form_id) ?? 0) + 1);
