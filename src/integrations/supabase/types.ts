@@ -8060,6 +8060,50 @@ export type Database = {
           },
         ]
       }
+      meta_form_email_recipients: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          form_id: string
+          form_name: string | null
+          id: string
+          is_active: boolean
+          meta_app_id: string
+          recipient_email: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          form_id: string
+          form_name?: string | null
+          id?: string
+          is_active?: boolean
+          meta_app_id: string
+          recipient_email: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          form_id?: string
+          form_name?: string | null
+          id?: string
+          is_active?: boolean
+          meta_app_id?: string
+          recipient_email?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_form_email_recipients_meta_app_id_fkey"
+            columns: ["meta_app_id"]
+            isOneToOne: false
+            referencedRelation: "meta_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_lead_events: {
         Row: {
           ad_id: string | null
