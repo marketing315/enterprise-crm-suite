@@ -22,23 +22,20 @@ export const MagicLinkEmail = ({
   siteName,
   confirmationUrl,
 }: MagicLinkEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head>
-      <style>{darkModeCss}</style>
-    </Head>
-    <Preview>Your login link for {siteName}</Preview>
+  <Html lang="it" dir="ltr">
+    <Head />
+    <Preview>Il tuo link di accesso per {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Your login link</Heading>
+        <Heading style={h1}>Il tuo link di accesso</Heading>
         <Text style={text}>
-          Click the button below to log in to {siteName}. This link will expire
-          shortly.
+          Clicca il pulsante qui sotto per accedere a {siteName}. Questo link scadrà a breve.
         </Text>
-        <Button className="dm-btn" style={button} href={confirmationUrl}>
-          Log In
+        <Button style={button} href={confirmationUrl}>
+          Accedi
         </Button>
         <Text style={footer}>
-          If you didn't request this link, you can safely ignore this email.
+          Se non hai richiesto questo link, puoi ignorare questa email.
         </Text>
       </Container>
     </Body>
@@ -52,30 +49,21 @@ const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: 'hsl(222.2, 47.4%, 11.2%)',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
+  color: 'hsl(215.4, 16.3%, 46.9%)',
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
+  backgroundColor: 'hsl(222.2, 47.4%, 11.2%)',
+  color: 'hsl(210, 40%, 98%)',
   fontSize: '14px',
-  border: '1px solid #000000',
-  borderRadius: '8px',
+  borderRadius: '0.5rem',
   padding: '12px 20px',
   textDecoration: 'none',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
-// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
-const darkModeCss = `
-  @media (prefers-color-scheme: dark) {
-    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  }
-  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-`
