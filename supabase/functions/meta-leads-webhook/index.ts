@@ -4,6 +4,7 @@ import { safeJson } from "../_shared/safe-json.ts";
 import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "../_shared/meta-secrets.ts";
 import { metaGraphUrl, withProof } from "../_shared/meta-graph.ts";
 import { resolveTargetBrand } from "../_shared/meta-form-routing.ts";
+import { notifyMetaLeadByEmail } from "../_shared/meta-lead-email-notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -456,6 +457,11 @@ async function processLeadChange(
   if (finalUpdateErr) {
     console.error(`[META-EVENT] CRITICAL: Failed to update meta_lead_events ${metaEventId}:`, finalUpdateErr);
   }
+
+  await notifyMetaLeadByEmail(supabase, {
+    metaAppId: metaApp.id, formId, leadgenId, brandId: targetBrandId, contactId,
+    leadData, firstName, lastName, phone, email, city,
+  });
 
   const resultStatus = contactId ? "ingested" : "ingested_no_contact";
   if (!contactId) {

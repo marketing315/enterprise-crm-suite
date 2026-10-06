@@ -3,6 +3,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "../_shared/meta-secrets.ts";
 import { safeJson } from "../_shared/safe-json.ts";
+import { notifyMetaLeadByEmail } from "../_shared/meta-lead-email-notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -332,6 +333,11 @@ Deno.serve(async (req) => {
         status: "ingested", processed_at: new Date().toISOString(),
         error: null,
       }).eq("id", ev.id);
+
+      await notifyMetaLeadByEmail(supabase, {
+        metaAppId: ev.source_id, formId: ev.form_id, leadgenId: ev.leadgen_id, brandId: ev.brand_id,
+        contactId, leadData, firstName, lastName, phone, email, city,
+      });
 
       results.push({
         id: ev.id, leadgen_id: ev.leadgen_id, status: "recovered",
