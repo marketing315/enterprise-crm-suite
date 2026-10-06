@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { untypedClient as db } from "@/integrations/supabase/untypedClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Mail, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ export function MetaFormEmailRecipients({ metaAppId, forms, formsLoading }: Prop
   const qc = useQueryClient();
   const key = ["meta-form-email-recipients", metaAppId];
   const [formId, setFormId] = useState("");
-  const [email, setEmail] = useState("");
+  const [emailsRaw, setEmailsRaw] = useState("");
 
   const { data: list = [] } = useQuery({
     queryKey: key,
@@ -37,24 +37,66 @@ export function MetaFormEmailRecipients({ metaAppId, forms, formsLoading }: Prop
     },
   });
   const invalidate = () => qc.invalidateQueries({ queryKey: key });
-  const formLabel = (r: Recipient) => r.form_name || forms.find((f) => f.id === r.form_id)?.name || `Modulo ${r.form_id}`;
+  const formLabel = (r: Pick<Recipient, "form_id" | "form_name">) =>
+    r.form_name || forms.find((f) => f.id === r.form_id)?.name || `Modulo ${r.form_id}`;
+
+  // Group recipients by module, one heading per form.
+  const grouped = useMemo(() => {
+    const map = new Map<string, Recipient[]>();
+    for (const r of list) {
+      const arr = map.get(r.form_id) ?? [];
+      arr.push(r);
+      map.set(r.form_id, arr);
+    }
+    return [...map.entries()];
+  }, [list]);
+
+  const parseEmails = (): { valid: string[]; duplicates: string[]; invalid: string[] } => {
+    const tokens = emailsRaw
+      .split(/[\n,;]+/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const seen = new Set<string>();
+    const valid: string[] = [];
+    const duplicates: string[] = [];
+    const invalid: string[] = [];
+    const alreadyForForm = new Set(list.filter((r) => r.form_id === formId).map((r) => r.recipient_email));
+    for (const t of tokens) {
+      if (!emailSchema.safeParse(t).success) { invalid.push(t); continue; }
+      if (seen.has(t) || alreadyForForm.has(t)) { duplicates.push(t); continue; }
+      seen.add(t);
+      valid.push(t);
+    }
+    return { valid, duplicates, invalid };
+  };
+  const parsed = parseEmails();
+  const canAdd = !!formId && parsed.valid.length > 0;
 
   const add = useMutation({
     mutationFn: async () => {
-      const parsed = emailSchema.safeParse(email);
-      if (!parsed.success) throw new Error("Email non valida");
+      const { valid, duplicates, invalid } = parseEmails();
+      if (!formId) throw new Error("Scegli il modulo");
+      if (!valid.length) throw new Error("Nessun indirizzo email valido");
       const { data: u } = await db.auth.getUser();
-      const { error } = await db.from("meta_form_email_recipients").insert({
+      const rows = valid.map((email) => ({
         meta_app_id: metaAppId,
         form_id: formId,
         form_name: forms.find((f) => f.id === formId)?.name ?? null,
-        recipient_email: parsed.data.toLowerCase(),
+        recipient_email: email,
         created_by: u.user?.id ?? null,
-      });
+      }));
+      const { error } = await db.from("meta_form_email_recipients").insert(rows);
       if (error) throw error;
+      return { added: valid.length, duplicates: duplicates.length, invalid: invalid.length };
     },
-    onSuccess: () => { setEmail(""); invalidate(); toast.success("Destinatario aggiunto"); },
-    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "Questa email è già impostata per il modulo" : e.message),
+    onSuccess: ({ added, duplicates, invalid }) => {
+      setEmailsRaw("");
+      invalidate();
+      toast.success(`${added} ${added === 1 ? "destinatario aggiunto" : "destinatari aggiunti"}`);
+      if (duplicates > 0) toast.warning(`${duplicates} indirizzo/i già presente/i per il modulo`);
+      if (invalid > 0) toast.warning(`${invalid} indirizzo/i non valido/i ignorato/i`);
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
   const toggle = useMutation({
     mutationFn: async (r: Recipient) => {
@@ -77,18 +119,20 @@ export function MetaFormEmailRecipients({ metaAppId, forms, formsLoading }: Prop
     <div className="space-y-3 border-t pt-4">
       <div>
         <p className="text-sm font-medium flex items-center gap-2"><Mail className="h-4 w-4" /> Notifiche email</p>
-        <p className="text-xs text-muted-foreground">Ogni nuovo lead del modulo scelto viene inviato subito a questi indirizzi.</p>
+        <p className="text-xs text-muted-foreground">Ogni nuovo lead del modulo scelto viene inviato a tutti gli indirizzi elencati.</p>
       </div>
-      {list.map((r) => (
-        <div key={r.id} className="flex items-center gap-3 rounded-lg border p-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{r.recipient_email}</p>
-            <p className="text-xs text-muted-foreground truncate">{formLabel(r)}</p>
-          </div>
-          <Switch checked={r.is_active} onCheckedChange={() => toggle.mutate(r)} aria-label="Attiva invio email" />
-          <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)} aria-label="Elimina destinatario">
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+      {grouped.map(([fId, recips]) => (
+        <div key={fId} className="space-y-2 rounded-lg border p-3">
+          <p className="text-sm font-medium truncate">{formLabel(recips[0])}</p>
+          {recips.map((r) => (
+            <div key={r.id} className="flex items-center gap-3">
+              <p className="flex-1 min-w-0 text-sm truncate">{r.recipient_email}</p>
+              <Switch checked={r.is_active} onCheckedChange={() => toggle.mutate(r)} aria-label="Attiva invio email" />
+              <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)} aria-label="Elimina destinatario">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
         </div>
       ))}
       <Select value={formId} onValueChange={setFormId}>
@@ -97,9 +141,13 @@ export function MetaFormEmailRecipients({ metaAppId, forms, formsLoading }: Prop
           {forms.map((f) => <SelectItem key={f.id} value={f.id}>{f.name} · {f.leads_count ?? 0} lead</SelectItem>)}
         </SelectContent>
       </Select>
-      <Input type="email" placeholder="Email destinatario" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <Button className="w-full" variant="secondary" disabled={!formId || !emailSchema.safeParse(email).success || add.isPending} onClick={() => add.mutate()}>
-        Aggiungi destinatario
+      <Textarea
+        placeholder="Un indirizzo per riga, oppure separati da virgola o punto e virgola"
+        value={emailsRaw}
+        onChange={(e) => setEmailsRaw(e.target.value)}
+      />
+      <Button className="w-full" variant="secondary" disabled={!canAdd || add.isPending} onClick={() => add.mutate()}>
+        Aggiungi destinatari
       </Button>
     </div>
   );
