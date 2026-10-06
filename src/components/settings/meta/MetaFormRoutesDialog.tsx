@@ -10,6 +10,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand } from "@/contexts/BrandContext";
 import type { MetaApp } from "@/hooks/useMetaApps";
+import { MetaFormEmailRecipients } from "./MetaFormEmailRecipients";
 
 interface Route {
   id: string;
@@ -107,7 +108,7 @@ export function MetaFormRoutesDialog({ open, onOpenChange, metaApp }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Regole di smistamento</DialogTitle>
           <DialogDescription>
@@ -158,6 +159,8 @@ export function MetaFormRoutesDialog({ open, onOpenChange, metaApp }: Props) {
             Aggiungi regola
           </Button>
         </div>
+
+        {metaApp && <MetaFormEmailRecipients metaAppId={metaApp.id} forms={forms} formsLoading={formsLoading} />}
       </DialogContent>
     </Dialog>
   );
