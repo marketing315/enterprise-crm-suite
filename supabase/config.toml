@@ -156,3 +156,6 @@ project_id = "qmqcjtmcxfqahhubpaea"
     verify_jwt = false   # richiede Bearer utente, validato con getUser() in code
   [functions.biometric-pin-login]
     verify_jwt = false   # pre-login: token one-shot validato in code
+
+[functions.meta-list-forms]
+verify_jwt = false
