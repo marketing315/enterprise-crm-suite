@@ -1,3 +1,4 @@
+import { sendTemplateEmailLogged } from '../_shared/transactional-email-templates/send-and-log.ts'
 // cron-health-monitor
 // ─────────────────────────────────────────────────────────────────────────────
 // Periodic infrastructure health check that detects and emails:
@@ -83,16 +84,14 @@ async function maybeSendAlert(
   }
 
   // Send transactional email
-  const { error: invokeErr } = await supabase.functions.invoke("send-transactional-email", {
-    body: {
-      templateName: "cron-health-alert",
-      recipientEmail: ALERT_RECIPIENT,
+  try {
+    const res = await sendTemplateEmailLogged("cron-health-alert", ALERT_RECIPIENT, {
       idempotencyKey: `health-alert-${args.alertKey}-${Math.floor(now / (COOLDOWN_MINUTES * 60_000))}`,
       templateData: args.templateData,
-    },
-  });
-  if (invokeErr) {
-    log("error", "send-transactional-email failed", { err: invokeErr.message, alertKey: args.alertKey });
+    });
+    if (!res.sent) return { sent: false, reason: res.reason };
+  } catch (invokeErr) {
+    log("error", "health alert email failed", { err: (invokeErr as Error).message, alertKey: args.alertKey });
     return { sent: false, reason: "send_failed" };
   }
 

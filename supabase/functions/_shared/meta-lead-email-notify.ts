@@ -1,3 +1,4 @@
+import { sendTemplateEmailLogged } from './transactional-email-templates/send-and-log.ts'
 // Sends an HTML email per active recipient configured for (meta_app, form_id).
 // Never throws: lead ingestion must not depend on email delivery.
 // deno-lint-ignore-file no-explicit-any
@@ -53,15 +54,14 @@ export async function notifyMetaLeadByEmail(
     };
 
     for (const r of recips) {
-      const { error: invErr } = await supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "meta-lead-notification",
-          recipientEmail: r.recipient_email,
+      try {
+        await sendTemplateEmailLogged("meta-lead-notification", r.recipient_email, {
           idempotencyKey: `meta-lead-${args.leadgenId}-${r.recipient_email}`,
           templateData,
-        },
-      });
-      if (invErr) console.error(`[META-EMAIL] send failed leadgen=${args.leadgenId}: ${invErr.message}`);
+        });
+      } catch (sendErr) {
+        console.error(`[META-EMAIL] send failed leadgen=${args.leadgenId}: ${(sendErr as Error).message}`);
+      }
     }
     console.log(`[META-EMAIL] leadgen=${args.leadgenId} recipients=${recips.length}`);
   } catch (e) {

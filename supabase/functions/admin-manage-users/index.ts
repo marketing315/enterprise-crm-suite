@@ -440,24 +440,6 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // Try to enqueue the confirmation email via pgmq if available
-        const confirmationUrl = linkData?.properties?.action_link;
-        if (confirmationUrl) {
-          try {
-            await adminClient.rpc("enqueue_email", {
-              p_queue_name: "auth_emails",
-              p_to_email: userData.email,
-              p_subject: "Conferma il tuo indirizzo email",
-              p_html: `<p>Clicca il link per confermare il tuo account:</p><p><a href="${safeHrefHtml(confirmationUrl)}">Conferma Email</a></p>`,
-              p_from_name: "Sistema",
-              p_metadata: { type: "admin_resend_confirmation", user_id },
-            });
-          } catch {
-            // enqueue_email may not exist — confirmation link was still generated
-            console.log("enqueue_email not available, link generated only");
-          }
-        }
-
         return new Response(JSON.stringify({ success: true, email_sent: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
