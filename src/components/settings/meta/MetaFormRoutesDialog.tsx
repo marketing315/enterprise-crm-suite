@@ -47,23 +47,23 @@ export function MetaFormRoutesDialog({ open, onOpenChange, metaApp }: Props) {
     },
   });
 
-  // Recent forms seen for this Meta App, to help pick the right ID.
-  const { data: recentForms = [] } = useQuery({
-    queryKey: ["meta-recent-forms", metaApp?.id],
+  // All Lead Ads forms of the page, live from Meta (names included).
+  const { data: formsResp, isLoading: formsLoading } = useQuery({
+    queryKey: ["meta-page-forms", metaApp?.id],
     enabled: open && !!metaApp,
+    staleTime: 30_000,
     queryFn: async () => {
-      const { data } = await db
-        .from("meta_lead_events")
-        .select("form_id")
-        .eq("source_id", metaApp!.id)
-        .not("form_id", "is", null)
-        .order("received_at", { ascending: false })
-        .limit(500);
-      const counts = new Map<string, number>();
-      for (const r of (data ?? []) as { form_id: string }[]) counts.set(r.form_id, (counts.get(r.form_id) ?? 0) + 1);
-      return [...counts.entries()].map(([id, n]) => ({ id, n }));
+      const { data, error } = await db.functions.invoke("meta-list-forms", { body: { meta_app_id: metaApp!.id } });
+      if (error) {
+        const ctx = (error as { context?: Response }).context;
+        const details = ctx ? await ctx.text().catch(() => error.message) : error.message;
+        throw new Error(details);
+      }
+      return data as { forms: Array<{ id: string; name: string; status?: string; leads_count?: number }> };
     },
   });
+  const forms = (formsResp?.forms ?? []).filter((f) => f.status !== "ARCHIVED");
+  const formLabel = (id: string) => formsResp?.forms.find((f) => f.id === id)?.name;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: key });
 
@@ -120,7 +120,7 @@ export function MetaFormRoutesDialog({ open, onOpenChange, metaApp }: Props) {
           {routes.map((r) => (
             <div key={r.id} className="flex items-center gap-3 rounded-lg border p-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{r.form_name || `Modulo ${r.form_id}`}</p>
+                <p className="text-sm font-medium truncate">{r.form_name || formLabel(r.form_id) || `Modulo ${r.form_id}`}</p>
                 <p className="text-xs text-muted-foreground truncate">ID {r.form_id} → {brandName(r.target_brand_id)}</p>
               </div>
               <Switch checked={r.is_active} onCheckedChange={() => toggle.mutate(r)} aria-label="Attiva regola" />
@@ -133,16 +133,19 @@ export function MetaFormRoutesDialog({ open, onOpenChange, metaApp }: Props) {
 
         <div className="space-y-3 border-t pt-4">
           <p className="text-sm font-medium">Nuova regola</p>
-          {recentForms.length > 0 && (
-            <Select value="" onValueChange={setFormId}>
-              <SelectTrigger><SelectValue placeholder="Scegli tra i moduli recenti (opzionale)" /></SelectTrigger>
-              <SelectContent>
-                {recentForms.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>{f.id} · {f.n} lead recenti</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select
+            value={forms.some((f) => f.id === formId) ? formId : ""}
+            onValueChange={(id) => { setFormId(id); setFormName(forms.find((f) => f.id === id)?.name ?? ""); }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={formsLoading ? "Carico i moduli da Meta..." : "Scegli il modulo"} />
+            </SelectTrigger>
+            <SelectContent>
+              {forms.map((f) => (
+                <SelectItem key={f.id} value={f.id}>{f.name} · {f.leads_count ?? 0} lead</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input placeholder="ID modulo Meta (es. 1234567890123456)" value={formId} onChange={(e) => setFormId(e.target.value)} />
           <Input placeholder="Nome modulo (facoltativo)" value={formName} onChange={(e) => setFormName(e.target.value)} />
           <Select value={targetBrand} onValueChange={setTargetBrand}>
