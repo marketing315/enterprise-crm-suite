@@ -49,7 +49,7 @@ export async function notifyMetaLeadByEmail(
       brandName: brand?.name || undefined,
       receivedAt: created.toLocaleString("it-IT", { timeZone: "Europe/Rome", dateStyle: "short", timeStyle: "short" }),
       fields,
-      crmUrl: args.contactId ? `${CRM_BASE}/contacts/${args.contactId}` : `${CRM_BASE}/events`,
+      crmUrl: `${CRM_BASE}/events`,
     };
 
     for (const r of recips) {
