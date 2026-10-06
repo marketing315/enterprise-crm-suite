@@ -14003,10 +14003,6 @@ export type Database = {
         Args: { p_fallback_stage_id: string; p_stage_id: string }
         Returns: Json
       }
-      delete_email: {
-        Args: { message_id: number; queue_name: string }
-        Returns: boolean
-      }
       delete_notifications: {
         Args: { p_notification_ids: string[] }
         Returns: number
@@ -14048,14 +14044,9 @@ export type Database = {
         Returns: Json
       }
       e2e_revenue_snapshot: { Args: { p_phone: string }; Returns: Json }
-      email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_call_transcript: {
         Args: { p_call_log_id: string }
         Returns: string
-      }
-      enqueue_email: {
-        Args: { payload: Json; queue_name: string }
-        Returns: number
       }
       enqueue_missing_sheets_exports: {
         Args: { p_limit?: number; p_since: string; p_until?: string }
@@ -15833,15 +15824,6 @@ export type Database = {
           new_version: number
         }[]
       }
-      move_to_dlq: {
-        Args: {
-          dlq_name: string
-          message_id: number
-          payload: Json
-          source_queue: string
-        }
-        Returns: number
-      }
       normalize_topic_text: { Args: { p_text: string }; Returns: string }
       notify_high_risk_appointments: { Args: never; Returns: Json }
       override_ai_decision:
@@ -15872,14 +15854,6 @@ export type Database = {
         Returns: Json
       }
       reactivate_pipeline_stage: { Args: { p_stage_id: string }; Returns: Json }
-      read_email_batch: {
-        Args: { batch_size: number; queue_name: string; vt: number }
-        Returns: {
-          message: Json
-          msg_id: number
-          read_ct: number
-        }[]
-      }
       rebuild_contact_search_index: { Args: never; Returns: number }
       reclaim_stale_capi_events: { Args: never; Returns: number }
       record_appointment_outcome: {

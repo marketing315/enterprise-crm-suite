@@ -23,6 +23,7 @@ export async function notifyMetaLeadByEmail(
     phone?: string | null;
     email?: string | null;
     city?: string | null;
+    idempotencySuffix?: string;
   },
 ): Promise<void> {
   try {
@@ -56,7 +57,7 @@ export async function notifyMetaLeadByEmail(
     for (const r of recips) {
       try {
         await sendTemplateEmailLogged("meta-lead-notification", r.recipient_email, {
-          idempotencyKey: `meta-lead-${args.leadgenId}-${r.recipient_email}`,
+          idempotencyKey: `meta-lead-${args.leadgenId}-${r.recipient_email}${args.idempotencySuffix ?? ""}`,
           templateData,
         });
       } catch (sendErr) {
