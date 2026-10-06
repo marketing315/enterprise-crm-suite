@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       return ok();
     }
 
-    // 3. Send via send-transactional-email
+    // 3. Send via managed email helper
     const idempotencyKey = `lockout-${email}-${Math.floor(Date.now() / (60 * 60 * 1000))}`;
     try {
       await sendTemplateEmailLogged("account-locked", email, {
