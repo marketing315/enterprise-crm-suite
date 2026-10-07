@@ -163,7 +163,7 @@ function buildLeadMessage(fieldData: MetaFieldData[]): string {
     getField(fieldData, "sintomi");
 
   const standardFields = ['full_name', 'first_name', 'last_name', 'nome', 'cognome', 'email', 'e-mail',
-    'phone_number', 'phone', 'city', 'zip', 'postal_code', 'post_code', 'postcode', 'codice_postale'];
+    'phone_number','phone','numero_di_telefono','telefono','cellulare','numero_di_cellulare','numero_telefono','city','città','citta', 'zip', 'postal_code', 'post_code', 'postcode', 'codice_postale'];
   const additionalMessages: string[] = [];
   for (const field of fieldData) {
     const fieldName = field.name?.toLowerCase();
@@ -280,8 +280,8 @@ async function processLeadChange(
   let firstName = getField(fieldData, "first_name") || getField(fieldData, "nome") || (fullName ? fullName.split(" ")[0] : null);
   let lastName = getField(fieldData, "last_name") || getField(fieldData, "cognome") || (fullName ? fullName.split(" ").slice(1).join(" ") : null);
   let email = getField(fieldData, "email") || getField(fieldData, "e-mail");
-  let phone = getField(fieldData, "phone_number") || getField(fieldData, "phone");
-  const city = getField(fieldData, "city");
+  let phone = getField(fieldData, "phone_number") || getField(fieldData, "phone") || getField(fieldData, "numero_di_telefono") || getField(fieldData, "telefono") || getField(fieldData, "cellulare") || getField(fieldData, "numero_di_cellulare") || getField(fieldData, "numero_telefono");
+  const city = getField(fieldData, "city") || getField(fieldData, "città") || getField(fieldData, "citta");
   let cap = getField(fieldData, "zip") || getField(fieldData, "postal_code") || getField(fieldData, "post_code") || getField(fieldData, "postcode") || getField(fieldData, "codice_postale");
   const combinedMessage = buildLeadMessage(fieldData);
 
