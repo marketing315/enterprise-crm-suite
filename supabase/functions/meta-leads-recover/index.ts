@@ -47,7 +47,7 @@ function normalizePhone(phone: string, defaultCountry = "IT"): Norm {
 function buildMessage(fd: FieldData[]): string {
   const lm = getField(fd, "message") || getField(fd, "messaggio") || getField(fd, "note") ||
     getField(fd, "richiesta") || getField(fd, "motivo") || getField(fd, "descrizione") || getField(fd, "problema") || getField(fd, "sintomi");
-  const std = ['full_name','first_name','last_name','nome','cognome','email','e-mail','phone_number','phone','city','zip','postal_code','post_code','postcode','codice_postale'];
+  const std = ['full_name','first_name','last_name','nome','cognome','email','e-mail','phone_number','phone','numero_di_telefono','telefono','cellulare','numero_di_cellulare','numero_telefono','city','città','citta','zip','postal_code','post_code','postcode','codice_postale'];
   const extras: string[] = [];
   for (const f of fd) {
     const n = f.name?.toLowerCase();
@@ -230,8 +230,8 @@ Deno.serve(async (req) => {
       let firstName = getField(fd, "first_name") || getField(fd, "nome") || (fullName ? fullName.split(" ")[0] : null);
       let lastName = getField(fd, "last_name") || getField(fd, "cognome") || (fullName ? fullName.split(" ").slice(1).join(" ") : null);
       const email = getField(fd, "email") || getField(fd, "e-mail");
-      let phone = getField(fd, "phone_number") || getField(fd, "phone");
-      const city = getField(fd, "city");
+      let phone = getField(fd, "phone_number") || getField(fd, "phone") || getField(fd, "numero_di_telefono") || getField(fd, "telefono") || getField(fd, "cellulare") || getField(fd, "numero_di_cellulare") || getField(fd, "numero_telefono");
+      const city = getField(fd, "city") || getField(fd, "città") || getField(fd, "citta");
       let cap = getField(fd, "zip") || getField(fd, "postal_code") || getField(fd, "post_code") || getField(fd, "postcode") || getField(fd, "codice_postale");
       const combined = buildMessage(fd);
 
