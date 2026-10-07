@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useBrand } from "@/contexts/BrandContext";
 import type { MetaApp } from "@/hooks/useMetaApps";
 import { MetaFormEmailRecipients } from "./MetaFormEmailRecipients";
+import { MetaFormSheetExclusions } from "./MetaFormSheetExclusions";
 
 interface Route {
   id: string;
@@ -161,6 +162,7 @@ export function MetaFormRoutesDialog({ open, onOpenChange, metaApp }: Props) {
         </div>
 
         {metaApp && <MetaFormEmailRecipients metaAppId={metaApp.id} forms={forms} formsLoading={formsLoading} />}
+        {metaApp && <MetaFormSheetExclusions metaAppId={metaApp.id} forms={forms} formsLoading={formsLoading} />}
       </DialogContent>
     </Dialog>
   );
