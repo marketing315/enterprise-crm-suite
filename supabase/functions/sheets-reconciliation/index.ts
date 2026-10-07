@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const { count: sheetCount, error: succErr } = await supabase
       .from("sheets_export_logs")
       .select("id", { count: "exact", head: true })
-      .eq("status", "success")
+      .in("status", ["success", "skipped"])
       .gte("created_at", periodStart.toISOString())
       .lte("created_at", periodEnd.toISOString());
     if (succErr) throw succErr;
