@@ -453,7 +453,7 @@ function buildLeadsRow(
     contact?.email || pEmail,
     String(payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || ""),
     leadEvent.source_name || leadEvent.source,
-    composeAdsetCell(String(payload.adset || payload.adset_name || payload.meta_adset_name || ""), formName),
+    composeAdsetCell(String(payload.adset || payload.adset_name || payload.meta_adset_name || payload.fetched_payload?.adset_name || payload.fetched_payload?.adset || ""), formName),
     contact?.lead_reason || "",
     [contact?.lead_message, formatQuizAnswers(contact?.quiz_answers)].filter(Boolean).join(" | "),
     contact?.cap || "",
@@ -1040,7 +1040,7 @@ Deno.serve(async (req: Request) => {
     const rawPayload = leadEvent.raw_payload || {};
     const message = String(rawPayload.message || rawPayload.messaggio || rawPayload.notes || rawPayload.pain_area || "");
     const campaignName = String(rawPayload.campaign_name || rawPayload.campagna || rawPayload.utm_campaign || "");
-    const adsetName = String(rawPayload.adset_name || rawPayload.adset || rawPayload.utm_content || "");
+    const adsetName = String(rawPayload.adset_name || rawPayload.adset || rawPayload.fetched_payload?.adset_name || rawPayload.fetched_payload?.adset || rawPayload.utm_content || "");
     const adName = String(rawPayload.ad_name || rawPayload.ad || rawPayload.creative || "");
 
     // Resolve the Meta lead form name ("modulo di contatto") to enrich the
