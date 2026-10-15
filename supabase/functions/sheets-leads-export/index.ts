@@ -1,5 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getMetaLeadSourceAccessToken } from "../_shared/meta-secrets.ts";
+import { buildFormNameMap, resolveMetaFormNames, composeAdsetCell } from "../_shared/meta-form-name.ts";
+
+// Re-exported for the unit tests in index.test.ts.
+export { composeAdsetCell };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
