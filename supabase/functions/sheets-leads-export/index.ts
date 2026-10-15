@@ -1,4 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { buildFormNameMap, resolveMetaFormNames, composeAdsetCell } from "../_shared/meta-form-name.ts";
+
+// Re-exported for the unit tests in index.test.ts.
+export { composeAdsetCell };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -215,7 +219,8 @@ function extractStreetNumber(address: string | null): { street: string; number: 
   return { street: address, number: "" };
 }
 
-export function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any, pipelineStageName?: string): string[] {
+
+export function buildRow(event: any, contact: any, brandName: string, phone: string, tags: string, appt: any, pipelineStageName?: string, formName?: string): string[] {
   const payload = (event.raw_payload || {}) as Record<string, any>;
   const { street, number: civico } = extractStreetNumber(appt?.address || null);
 
@@ -236,7 +241,7 @@ export function buildRow(event: any, contact: any, brandName: string, phone: str
     contact?.email || "",
     payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || "",
     event.source_name || "",
-    payload.adset || payload.adset_name || payload.meta_adset_name || "",
+    composeAdsetCell(payload.adset || payload.adset_name || payload.meta_adset_name || "", formName),
     contact?.lead_reason || "",
     [contact?.lead_message, contact?.quiz_answers ? formatQuizAnswers(contact.quiz_answers) : ""].filter(Boolean).join(" | ") || "",
     contact?.cap || "",
@@ -302,7 +307,15 @@ async function fetchSingleLeadRow(
   const appt = (apptsRes.data as any[])?.[0] || null;
   const pipelineStageName = (stageRes.data as any[])?.[0]?.pipeline_stages?.name || "";
 
-  return buildRow(event, contact, brandName, phone, tags, appt, pipelineStageName);
+  const formId = (ev.raw_payload as any)?.meta_form_id as string | undefined;
+  let formName = "";
+  if (formId) {
+    const nameMap = await buildFormNameMap(supabaseAdmin);
+    await resolveMetaFormNames(supabaseAdmin, [formId], nameMap);
+    formName = nameMap.get(formId) || "";
+  }
+
+  return buildRow(event, contact, brandName, phone, tags, appt, pipelineStageName, formName);
 }
 
 // ============ Fetch all leads (full export) ============
@@ -387,15 +400,23 @@ async function fetchAllLeadsRows(
     }
   });
 
+  const formIds = events
+    .map((e) => (e.raw_payload as any)?.meta_form_id as string | undefined)
+    .filter(Boolean) as string[];
+  const formNameMap = await buildFormNameMap(supabaseAdmin);
+  await resolveMetaFormNames(supabaseAdmin, formIds, formNameMap);
+
   return events.map(event => {
     const c = event.contacts as any;
     const contactId = event.contact_id as string;
+    const formId = (event.raw_payload as any)?.meta_form_id as string | undefined;
     return buildRow(
       event, c, (event.brands as any)?.name || "",
       phoneMap.get(contactId) || c?.phone_normalized || "",
       tagMap.get(contactId)?.join(", ") || "",
       apptMap.get(contactId) || null,
       stageMap.get(contactId) || "",
+      formId ? formNameMap.get(formId) || "" : "",
     );
   });
 }

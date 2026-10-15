@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { timingSafeEqual } from "../_shared/crypto.ts";
 import { createCircuitBreaker } from "../_shared/circuit-breaker.ts";
+import { buildFormNameMap, resolveMetaFormNames, composeAdsetCell } from "../_shared/meta-form-name.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -428,6 +429,7 @@ function buildLeadsRow(
   tags: string,
   appointment: AppointmentInfo | null,
   stageName: string,
+  formName?: string,
 ): string[] {
   const payload = leadEvent.raw_payload || {};
   const apptDate = formatRomeDate(appointment?.scheduled_at);
@@ -451,7 +453,7 @@ function buildLeadsRow(
     contact?.email || pEmail,
     String(payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || ""),
     leadEvent.source_name || leadEvent.source,
-    String(payload.adset || payload.adset_name || payload.meta_adset_name || ""),
+    composeAdsetCell(String(payload.adset || payload.adset_name || payload.meta_adset_name || ""), formName),
     contact?.lead_reason || "",
     [contact?.lead_message, formatQuizAnswers(contact?.quiz_answers)].filter(Boolean).join(" | "),
     contact?.cap || "",
@@ -1041,6 +1043,20 @@ Deno.serve(async (req: Request) => {
     const adsetName = String(rawPayload.adset_name || rawPayload.adset || rawPayload.utm_content || "");
     const adName = String(rawPayload.ad_name || rawPayload.ad || rawPayload.creative || "");
 
+    // Resolve the Meta lead form name ("modulo di contatto") to enrich the
+    // AdSet column. Fail-open: on any error the name stays empty.
+    let formName = "";
+    const metaFormId = String(rawPayload.meta_form_id || "").trim();
+    if (metaFormId) {
+      try {
+        const formNameMap = await buildFormNameMap(supabaseAdmin);
+        await resolveMetaFormNames(supabaseAdmin, [metaFormId], formNameMap);
+        formName = formNameMap.get(metaFormId) || "";
+      } catch (err) {
+        console.warn("[sheets-export] form name resolution failed:", err instanceof Error ? err.message : String(err));
+      }
+    }
+
     // Fallback to raw_payload when contact fields are empty (recovery flows).
     const pFirst = String(rawPayload.first_name || rawPayload.nome || "").trim();
     const pLast = String(rawPayload.last_name || rawPayload.cognome || "").trim();
@@ -1052,7 +1068,7 @@ Deno.serve(async (req: Request) => {
       brand?.name || "",                                  // B - Brand
       leadEvent.source_name || leadEvent.source,          // C - Fonte
       campaignName,                                       // D - Campagna
-      adsetName,                                          // E - AdSet
+      composeAdsetCell(adsetName, formName),              // E - AdSet (+ Modulo)
       adName,                                             // F - Ad
       contact?.first_name || pFirst,                      // G - Nome
       contact?.last_name || pLast,                        // H - Cognome
@@ -1072,7 +1088,7 @@ Deno.serve(async (req: Request) => {
 
     // Ensure tabs exist and append data
     const finalPhone = phone?.phone_normalized || contact?.phone_normalized || "";
-    const leadsRow = buildLeadsRow(leadEvent, contact, brand?.name || "", finalPhone, tagsFlat, appointment, stage?.name || "");
+    const leadsRow = buildLeadsRow(leadEvent, contact, brand?.name || "", finalPhone, tagsFlat, appointment, stage?.name || "", formName);
 
     await ensureLeadsTab(accessToken, spreadsheetId, cache);
     await assertTabReady(accessToken, spreadsheetId, cache, LEADS_TAB, LEADS_HEADERS);
