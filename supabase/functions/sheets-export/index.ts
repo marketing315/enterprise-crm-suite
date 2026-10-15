@@ -431,7 +431,26 @@ function buildLeadsRow(
   stageName: string,
   formName?: string,
 ): string[] {
-...
+  const payload = leadEvent.raw_payload || {};
+  const apptDate = formatRomeDate(appointment?.scheduled_at);
+  const apptTime = formatRomeTime(appointment?.scheduled_at);
+  const { street, number: civico } = extractStreetNumber(appointment?.address);
+
+  // Fallback: when contact lookup is incomplete (e.g. recovery/reconcile flows
+  // that fire export before find_or_create_contact saved the names), read from
+  // raw_payload so the LEADS row still has Nome/Cognome/Email/Numero filled.
+  const pFirst = String(payload.first_name || payload.nome || "").trim();
+  const pLast = String(payload.last_name || payload.cognome || "").trim();
+  const pEmail = String(payload.email || "").trim();
+  const pPhone = String(payload.phone || payload.phone_number || payload.telefono || "").trim();
+
+  return [
+    formatRomeDateTime(leadEvent.received_at),
+    brandName,
+    contact?.first_name || pFirst,
+    contact?.last_name || pLast,
+    phone || contact?.phone_normalized || pPhone,
+    contact?.email || pEmail,
     String(payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || ""),
     leadEvent.source_name || leadEvent.source,
     composeAdsetCell(String(payload.adset || payload.adset_name || payload.meta_adset_name || ""), formName),
