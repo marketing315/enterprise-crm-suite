@@ -24,7 +24,10 @@ import {
   PHONE_COLUMN_INDEX,
   buildPhoneMap,
   buildRow,
+  composeAdsetCell,
 } from "./index.ts";
+
+const ADSET_COLUMN_INDEX = LEADS_HEADERS.indexOf("AdSet");
 
 // ---------- 1. Header contract ----------
 
