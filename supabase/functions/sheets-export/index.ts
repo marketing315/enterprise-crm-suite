@@ -1056,7 +1056,17 @@ Deno.serve(async (req: Request) => {
         console.warn("[sheets-export] form name resolution failed:", err instanceof Error ? err.message : String(err));
       }
     }
-...
+
+    // Fallback to raw_payload when contact fields are empty (recovery flows).
+    const pFirst = String(rawPayload.first_name || rawPayload.nome || "").trim();
+    const pLast = String(rawPayload.last_name || rawPayload.cognome || "").trim();
+    const pEmail = String(rawPayload.email || "").trim();
+    const pPhone = String(rawPayload.phone || rawPayload.phone_number || rawPayload.telefono || "").trim();
+
+    const row = [
+      formatRomeDateTime(leadEvent.received_at),          // A - Timestamp (Europe/Rome)
+      brand?.name || "",                                  // B - Brand
+      leadEvent.source_name || leadEvent.source,          // C - Fonte
       campaignName,                                       // D - Campagna
       composeAdsetCell(adsetName, formName),              // E - AdSet (+ Modulo)
       adName,                                             // F - Ad
