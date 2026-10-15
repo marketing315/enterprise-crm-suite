@@ -326,7 +326,7 @@ export function buildRow(event: any, contact: any, brandName: string, phone: str
     contact?.email || "",
     payload.campaign || payload.campaign_name || payload.meta_campaign_name || payload.utm_campaign || "",
     event.source_name || "",
-    payload.adset || payload.adset_name || payload.meta_adset_name || "",
+    composeAdsetCell(payload.adset || payload.adset_name || payload.meta_adset_name || "", formName),
     contact?.lead_reason || "",
     [contact?.lead_message, contact?.quiz_answers ? formatQuizAnswers(contact.quiz_answers) : ""].filter(Boolean).join(" | ") || "",
     contact?.cap || "",
