@@ -1024,18 +1024,22 @@ Deno.serve(async (req: Request) => {
     const adsetName = String(rawPayload.adset_name || rawPayload.adset || rawPayload.utm_content || "");
     const adName = String(rawPayload.ad_name || rawPayload.ad || rawPayload.creative || "");
 
-    // Fallback to raw_payload when contact fields are empty (recovery flows).
-    const pFirst = String(rawPayload.first_name || rawPayload.nome || "").trim();
-    const pLast = String(rawPayload.last_name || rawPayload.cognome || "").trim();
-    const pEmail = String(rawPayload.email || "").trim();
-    const pPhone = String(rawPayload.phone || rawPayload.phone_number || rawPayload.telefono || "").trim();
-
-    const row = [
-      formatRomeDateTime(leadEvent.received_at),          // A - Timestamp (Europe/Rome)
-      brand?.name || "",                                  // B - Brand
-      leadEvent.source_name || leadEvent.source,          // C - Fonte
+    // Resolve the Meta lead form name ("modulo di contatto") to enrich the
+    // AdSet column. Fail-open: on any error the name stays empty.
+    let formName = "";
+    const metaFormId = String(rawPayload.meta_form_id || "").trim();
+    if (metaFormId) {
+      try {
+        const formNameMap = await buildFormNameMap(supabaseAdmin);
+        await resolveMetaFormNames(supabaseAdmin, [metaFormId], formNameMap);
+        formName = formNameMap.get(metaFormId) || "";
+      } catch (err) {
+        console.warn("[sheets-export] form name resolution failed:", err instanceof Error ? err.message : String(err));
+      }
+    }
+...
       campaignName,                                       // D - Campagna
-      adsetName,                                          // E - AdSet
+      composeAdsetCell(adsetName, formName),              // E - AdSet (+ Modulo)
       adName,                                             // F - Ad
       contact?.first_name || pFirst,                      // G - Nome
       contact?.last_name || pLast,                        // H - Cognome
