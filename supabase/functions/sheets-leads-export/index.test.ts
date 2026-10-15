@@ -156,3 +156,47 @@ Deno.test("buildRow tolerates lead_event without contact (legacy events) and emi
   assertEquals(row[PHONE_COLUMN_INDEX], "");
   assertEquals(row.length, LEADS_HEADERS.length);
 });
+
+// ---------- 6. AdSet cell with Meta form name ----------
+
+Deno.test("composeAdsetCell joins adset and form name", () => {
+  assertEquals(composeAdsetCell("AdSet A", "Centri MyMed"), "AdSet A — Modulo: Centri MyMed");
+});
+
+Deno.test("composeAdsetCell emits only the form name when adset is empty", () => {
+  assertEquals(composeAdsetCell("", "Centri MyMed"), "Modulo: Centri MyMed");
+});
+
+Deno.test("composeAdsetCell leaves adset unchanged without a form name", () => {
+  assertEquals(composeAdsetCell("AdSet A"), "AdSet A");
+  assertEquals(composeAdsetCell("AdSet A", ""), "AdSet A");
+  assertEquals(composeAdsetCell("", ""), "");
+});
+
+Deno.test("buildRow puts 'AdSet — Modulo: X' in the AdSet column for Meta leads", () => {
+  const row = buildRow(
+    { received_at: "2026-05-06T10:00:00Z", source_name: "Meta", raw_payload: { adset_name: "AdSet A" } },
+    { first_name: "Mario", last_name: "Rossi", email: "" },
+    "Brand A",
+    "+393331234567",
+    "",
+    null,
+    "",
+    "Centri MyMed",
+  );
+  assertEquals(row[ADSET_COLUMN_INDEX], "AdSet A — Modulo: Centri MyMed");
+  assertEquals(row.length, LEADS_HEADERS.length);
+});
+
+Deno.test("buildRow keeps the plain adset for non-Meta leads (no form name)", () => {
+  const row = buildRow(
+    { received_at: "2026-05-06T10:00:00Z", source_name: "Generic", raw_payload: { adset: "AdSet B" } },
+    null,
+    "Brand A",
+    "",
+    "",
+    null,
+    "",
+  );
+  assertEquals(row[ADSET_COLUMN_INDEX], "AdSet B");
+});
