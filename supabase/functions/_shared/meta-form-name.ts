@@ -14,7 +14,7 @@
 // deno-lint-ignore no-explicit-any
 type Client = any;
 
-import { getMetaLeadSourceAccessToken } from "./meta-secrets.ts";
+import { getMetaAppAccessToken, resolveMetaPageAccessToken } from "./meta-secrets.ts";
 
 export async function buildFormNameMap(supabaseAdmin: Client): Promise<Map<string, string>> {
   const map = new Map<string, string>();
@@ -42,44 +42,44 @@ export async function resolveMetaFormNames(
   const missing = [...new Set(formIds)].filter((id) => id && !nameMap.has(id));
   if (missing.length === 0) return;
 
-  // Map form_id → source_id via meta_lead_events (any row with that form).
-  const { data: mleRows, error } = await supabaseAdmin
-    .from("meta_lead_events")
-    .select("form_id, source_id")
-    .in("form_id", missing)
-    .limit(1000);
-  if (error) {
-    console.error("[meta-form-name] meta_lead_events lookup error:", error.message);
-    return;
-  }
-  const sourceByForm = new Map<string, string>();
-  for (const r of mleRows || []) {
-    if (r.form_id && r.source_id && !sourceByForm.has(r.form_id)) {
-      sourceByForm.set(r.form_id, r.source_id);
-    }
-  }
+  const appByForm = new Map<string, string>();
 
-  const tokenBySource = new Map<string, string | null>();
-  for (const formId of missing) {
-    const sourceId = sourceByForm.get(formId);
-    if (!sourceId) continue;
-    if (!tokenBySource.has(sourceId)) {
-      tokenBySource.set(sourceId, await getMetaLeadSourceAccessToken(supabaseAdmin, sourceId));
+  // Fallback candidates: all active Meta Apps.
+  const { data: apps } = await supabaseAdmin
+    .from("meta_apps")
+    .select("id, page_id")
+    .eq("is_active", true);
+  const pageByApp = new Map<string, string | null>();
+  for (const a of apps || []) pageByApp.set(a.id, a.page_id ?? null);
+
+  const tokenByApp = new Map<string, string | null>();
+  const getToken = async (appId: string): Promise<string | null> => {
+    if (!tokenByApp.has(appId)) {
+      const raw = await getMetaAppAccessToken(supabaseAdmin, appId);
+      tokenByApp.set(appId, raw ? await resolveMetaPageAccessToken(raw, pageByApp.get(appId)) : null);
     }
-    const token = tokenBySource.get(sourceId);
-    if (!token) continue;
-    try {
-      const res = await fetch(
-        `https://graph.facebook.com/v21.0/${formId}?fields=name&access_token=${encodeURIComponent(token)}`,
-      );
-      const data = await res.json();
-      if (res.ok && data?.name) {
-        nameMap.set(formId, data.name);
-      } else {
+    return tokenByApp.get(appId) ?? null;
+  };
+
+  for (const formId of missing) {
+    const preferred = appByForm.get(formId);
+    const candidates = preferred ? [preferred, ...[...pageByApp.keys()].filter((k) => k !== preferred)] : [...pageByApp.keys()];
+    for (const appId of candidates) {
+      const token = await getToken(appId);
+      if (!token) continue;
+      try {
+        const res = await fetch(
+          `https://graph.facebook.com/v21.0/${formId}?fields=name&access_token=${encodeURIComponent(token)}`,
+        );
+        const data = await res.json();
+        if (res.ok && data?.name) {
+          nameMap.set(formId, data.name);
+          break;
+        }
         console.warn("[meta-form-name] graph error for form", formId, data?.error?.message || res.status);
+      } catch (err) {
+        console.warn("[meta-form-name] fetch failed for form", formId, err instanceof Error ? err.message : String(err));
       }
-    } catch (err) {
-      console.warn("[meta-form-name] fetch failed for form", formId, err instanceof Error ? err.message : String(err));
     }
   }
 }
