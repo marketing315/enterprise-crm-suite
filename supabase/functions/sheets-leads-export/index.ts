@@ -392,7 +392,15 @@ async function fetchSingleLeadRow(
   const appt = (apptsRes.data as any[])?.[0] || null;
   const pipelineStageName = (stageRes.data as any[])?.[0]?.pipeline_stages?.name || "";
 
-  return buildRow(event, contact, brandName, phone, tags, appt, pipelineStageName);
+  const formId = (ev.raw_payload as any)?.meta_form_id as string | undefined;
+  let formName = "";
+  if (formId) {
+    const nameMap = await buildFormNameMap(supabaseAdmin);
+    await resolveMetaFormNames(supabaseAdmin, [formId], nameMap);
+    formName = nameMap.get(formId) || "";
+  }
+
+  return buildRow(event, contact, brandName, phone, tags, appt, pipelineStageName, formName);
 }
 
 // ============ Fetch all leads (full export) ============
@@ -477,15 +485,23 @@ async function fetchAllLeadsRows(
     }
   });
 
+  const formIds = events
+    .map((e) => (e.raw_payload as any)?.meta_form_id as string | undefined)
+    .filter(Boolean) as string[];
+  const formNameMap = await buildFormNameMap(supabaseAdmin);
+  await resolveMetaFormNames(supabaseAdmin, formIds, formNameMap);
+
   return events.map(event => {
     const c = event.contacts as any;
     const contactId = event.contact_id as string;
+    const formId = (event.raw_payload as any)?.meta_form_id as string | undefined;
     return buildRow(
       event, c, (event.brands as any)?.name || "",
       phoneMap.get(contactId) || c?.phone_normalized || "",
       tagMap.get(contactId)?.join(", ") || "",
       apptMap.get(contactId) || null,
       stageMap.get(contactId) || "",
+      formId ? formNameMap.get(formId) || "" : "",
     );
   });
 }
