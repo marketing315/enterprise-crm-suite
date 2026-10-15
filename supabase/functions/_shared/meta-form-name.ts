@@ -42,21 +42,7 @@ export async function resolveMetaFormNames(
   const missing = [...new Set(formIds)].filter((id) => id && !nameMap.has(id));
   if (missing.length === 0) return;
 
-  // Map form_id → meta_app_id via meta_lead_events (any row with that form).
-  const { data: mleRows, error } = await supabaseAdmin
-    .from("meta_lead_events")
-    .select("form_id, meta_app_id")
-    .in("form_id", missing)
-    .limit(1000);
-  if (error) {
-    console.error("[meta-form-name] meta_lead_events lookup error:", error.message);
-  }
   const appByForm = new Map<string, string>();
-  for (const r of mleRows || []) {
-    if (r.form_id && r.meta_app_id && !appByForm.has(r.form_id)) {
-      appByForm.set(r.form_id, r.meta_app_id);
-    }
-  }
 
   // Fallback candidates: all active Meta Apps.
   const { data: apps } = await supabaseAdmin
