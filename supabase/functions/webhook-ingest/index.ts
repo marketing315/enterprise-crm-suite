@@ -37,6 +37,7 @@ import {
 } from "../_shared/webhook-ingest/extract.ts";
 import { tryFlattenSystemeIoPayload } from "../_shared/webhook-ingest/mappers/systeme.ts";
 import type { PayloadSchema } from "../_shared/webhook-ingest/types.ts";
+import { enqueueSheetsExport } from "../_shared/webhook-ingest/sheets-enqueue.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -951,18 +952,7 @@ Deno.serve(async (req: Request) => {
     if (leadEvent?.id && !isDuplicate && !isOptedOut) {
       // 1) Enqueue durable job. Idempotent thanks to unique(lead_event_id).
       try {
-        const { error: enqueueErr } = await supabase
-          .from("sheets_export_logs")
-          .insert({
-            lead_event_id: leadEvent.id,
-            brand_id: brandId,
-            status: "pending",
-            next_attempt_at: new Date(Date.now() + 30_000).toISOString(),
-            attempts: 0,
-          });
-        if (enqueueErr && enqueueErr.code !== "23505") {
-          console.error("Failed to enqueue sheets export job:", enqueueErr.message);
-        }
+        await enqueueSheetsExport(supabaseAdmin, leadEvent.id, brandId);
       } catch (err) {
         console.error("Enqueue sheets export error:", err);
       }
